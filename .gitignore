@@ -1,0 +1,5 @@
+.scratch/
+.tmp/
+.agents/
+.claude/
+__pycache__/

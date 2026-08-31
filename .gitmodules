@@ -1,0 +1,3 @@
+[submodule "vendor/chinese-novelist-skill"]
+	path = vendor/chinese-novelist-skill
+	url = https://github.com/penglonghuang/chinese-novelist-skill
