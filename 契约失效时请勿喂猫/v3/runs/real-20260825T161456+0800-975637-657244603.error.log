@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v3/harness/real_run.py", line 57, in main
+    reason = runner.run(stop_at=endpoint, max_turns=20_000)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v3/harness/runner.py", line 118, in run
+    done, _ = wait(futures.values(), timeout=batch_timeout)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 305, in wait
+    waiter.event.wait(timeout)
+  File "/usr/lib/python3.12/threading.py", line 655, in wait
+    signaled = self._cond.wait(timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/threading.py", line 359, in wait
+    gotit = waiter.acquire(True, timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt

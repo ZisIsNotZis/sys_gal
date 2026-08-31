@@ -1,0 +1,135 @@
+schema_version: 1
+world_id: riverbend-campus
+system:
+  name: ledger
+  bound_actor: chen-mo
+  case_id: ambiguous-obligations
+  terms: [name the object, name the responsible person, name a deadline]
+  reward: one narrow objective clarification
+  query_limit: 1
+  facts:
+    Where is the red whistle?: old neighborhood basement
+    Who is responsible for the old permit form?: the person who signed the 2013 neighborhood permit
+    What deadline is currently recorded?: the permit review at 2026-03-17T09:00:00+08:00
+public_knowledge:
+  harbor-archive: The harbor archive is closed until the storm records arrive on March 20; staff say it will reopen that afternoon.
+  old-basement: The old basement is closed for maintenance and is expected to be unlocked around March 18.
+clock:
+  start: '2026-03-16T07:00:00+08:00'
+  stop: '2026-03-27T21:30:00+08:00'
+copy_material_items: [blank-paper]
+# Generic wall-time tuning, also overridable at runtime via V3_IDLE_WAIT_SECONDS
+# and V3_CLOCK_STOP (see harness/tuning.py). Larger idle waits cut the number
+# of idle agent turns per simulated day at the cost of slower reactions.
+engine:
+  idle_wait_seconds: 3600
+locations:
+  - {id: dorm, x: 0, y: 0, sound_radius: 18}
+  - {id: archive, x: 14, y: 0, sound_radius: 14}
+  - {id: union, x: 0, y: 12, sound_radius: 14}
+  - {id: cafe, x: 14, y: 12, sound_radius: 16}
+  - {id: courtyard, x: 28, y: 0, sound_radius: 35}
+  - {id: market, x: 28, y: 14, sound_radius: 22}
+  - {id: old-basement, x: -18, y: -12, sound_radius: 8, sound_loss: 8, open: false}
+  - {id: harbor-archive, x: 42, y: 4, sound_radius: 12, open: false}
+  - {id: north-gate, x: -14, y: 16, sound_radius: 20}
+  - {id: infirmary, x: 6, y: 24, sound_radius: 10}
+  - {id: print-shop, x: 26, y: 24, sound_radius: 12}
+  - {id: river-pier, x: 44, y: 18, sound_radius: 28}
+  - {id: greenhouse, x: 36, y: -14, sound_radius: 16}
+  - {id: lecture-hall, x: -8, y: -20, sound_radius: 24}
+actors:
+  - {id: chen-mo, location: dorm, inventory: [old-permit-form, blank-paper], known_contacts: [lin-yao, gao-rui, he-qian]}
+  - {id: lin-yao, location: archive, inventory: [], known_contacts: [chen-mo, amani-njoroge, park-minseo]}
+  - {id: gao-rui, location: dorm, inventory: [], known_contacts: [chen-mo, qiao-shun, he-qian]}
+  - {id: qiao-shun, location: union, inventory: [], known_contacts: [gao-rui]}
+  - {id: he-qian, location: cafe, inventory: [], known_contacts: [chen-mo, gao-rui]}
+  - {id: amani-njoroge, location: courtyard, inventory: [], known_contacts: [lin-yao, gao-rui]}
+  - {id: xu-meiling, location: market, inventory: [], known_contacts: [he-qian]}
+  - {id: park-minseo, location: archive, inventory: [], known_contacts: [lin-yao]}
+items:
+  - {id: red-whistle, location: old-basement}
+  - {id: blank-paper, location: null}
+  - {id: blue-rabbit-umbrella, location: old-basement}
+  - {id: storm-inventory-box, location: old-basement}
+  - {id: brass-key, location: union}
+  - {id: cracked-mug, location: cafe}
+  - {id: green-ribbon, location: greenhouse}
+  - {id: ferry-token, location: river-pier}
+  - {id: carbon-paper, location: print-shop}
+  - {id: hearing-aid-battery, location: infirmary}
+  - {id: market-stamp, location: market}
+  - {id: red-binder, location: harbor-archive}
+documents:
+  - {id: old-permit-form, title: 2013 Neighborhood Permit, location: null, reading_seconds: 40, content: 'A permit form bearing an old neighborhood signature and a narrow flood-route annotation.'}
+  - {id: storm-ledger, title: 2013 Storm Ledger, location: archive, reading_seconds: 90, content: 'A dated ledger of storm calls, equipment checkout, and one incomplete witness line.'}
+  - {id: original-export, title: Original Export, location: archive, reading_seconds: 55, content: 'A machine export whose timestamps disagree with the summary sheet.'}
+  - {id: union-audit, title: Union Audit Packet, location: union, reading_seconds: 70, content: 'Rows of reimbursements with two unlabeled totals and a handwritten correction.'}
+  - {id: access-plan, title: Access Route Plan, location: harbor-archive, reading_seconds: 65, content: 'A draft route plan with a missing curb measurement near the north gate.'}
+  - {id: bank-timeline, title: Cooperative Payment Timeline, location: market, reading_seconds: 45, content: 'A payment timeline prepared for a bank review, with one invoice still disputed.'}
+  - {id: editor-draft, title: Campus Paper Draft, location: cafe, reading_seconds: 50, content: 'A draft article with a protected source and several claims marked for verification.'}
+  - {id: blue-rabbit-register, title: Blue Rabbit Sticker Register, location: old-basement, reading_seconds: 35, content: 'A water-damaged register containing a child-sized sticker inventory.'}
+  - {id: permit-review-outcome, title: Permit Review Outcome, location: null, reading_seconds: 30, content: 'A short review record concluding the 2013 permit flood-route annotation is not current guidance; the original stays with its holder.'}
+  - {id: storm-records, title: Recovered Harbor Storm Records, location: null, reading_seconds: 60, content: 'Recovered harbor logs confirming which storm calls were logged and who checked out equipment on the night of the storm.'}
+  - {id: bank-resolution, title: Bank Resolution Note, location: null, reading_seconds: 40, content: 'A bank note confirming the disputed invoice was resolved and the cooperative payment timeline reconciled.'}
+routes:
+  - {from: dorm, to: archive, duration_seconds: 900}
+  - {from: archive, to: dorm, duration_seconds: 900}
+  - {from: dorm, to: union, duration_seconds: 720}
+  - {from: union, to: dorm, duration_seconds: 720}
+  - {from: archive, to: cafe, duration_seconds: 600}
+  - {from: cafe, to: archive, duration_seconds: 600}
+  - {from: archive, to: courtyard, duration_seconds: 480}
+  - {from: courtyard, to: archive, duration_seconds: 480}
+  - {from: cafe, to: market, duration_seconds: 900}
+  - {from: market, to: cafe, duration_seconds: 900}
+  - {from: archive, to: old-basement, duration_seconds: 1200}
+  - {from: old-basement, to: archive, duration_seconds: 1200}
+  - {from: archive, to: harbor-archive, duration_seconds: 900}
+  - {from: harbor-archive, to: archive, duration_seconds: 900}
+  - {from: dorm, to: north-gate, duration_seconds: 840}
+  - {from: north-gate, to: dorm, duration_seconds: 840}
+  - {from: union, to: infirmary, duration_seconds: 720}
+  - {from: infirmary, to: union, duration_seconds: 720}
+  - {from: cafe, to: print-shop, duration_seconds: 720}
+  - {from: print-shop, to: cafe, duration_seconds: 720}
+  - {from: harbor-archive, to: river-pier, duration_seconds: 840}
+  - {from: river-pier, to: harbor-archive, duration_seconds: 840}
+  - {from: courtyard, to: greenhouse, duration_seconds: 600}
+  - {from: greenhouse, to: courtyard, duration_seconds: 600}
+  - {from: dorm, to: lecture-hall, duration_seconds: 900}
+  - {from: lecture-hall, to: dorm, duration_seconds: 900}
+  - {from: dorm, to: cafe, duration_seconds: 900}
+  - {from: cafe, to: dorm, duration_seconds: 900}
+  - {from: dorm, to: market, duration_seconds: 1200}
+  - {from: market, to: dorm, duration_seconds: 1200}
+  - {from: union, to: cafe, duration_seconds: 600}
+  - {from: cafe, to: union, duration_seconds: 600}
+  - {from: archive, to: lecture-hall, duration_seconds: 720}
+  - {from: lecture-hall, to: archive, duration_seconds: 720}
+barriers:
+  - {from: dorm, to: archive, loss: 12}
+  - {from: dorm, to: union, loss: 10}
+  - {from: archive, to: cafe, loss: 8}
+  - {from: archive, to: courtyard, loss: 6}
+  - {from: cafe, to: market, loss: 5}
+  - {from: archive, to: old-basement, loss: 16}
+  - {from: harbor-archive, to: river-pier, loss: 7}
+  - {from: dorm, to: lecture-hall, loss: 10}
+scheduled:
+  - {event: class_begins, time: '2026-03-16T08:10:00+08:00', target: chen-mo, notice: Morning class begins; attendance is expected.'}
+  - {event: private_copy_due, time: '2026-03-16T09:30:00+08:00', target: lin-yao, notice: Your private copy of the permit is due to be filed by now.'}
+  - {event: audit_deadline, time: '2026-03-16T16:00:00+08:00', target: qiao-shun, notice: The union audit deadline passes; the packet must be reconciled before tomorrow.'}
+  - {event: editor_pitch_due, time: '2026-03-16T17:40:00+08:00', target: he-qian, notice: Your article pitch is due to the editor this evening.'}
+  - {event: permit_review, time: '2026-03-17T09:00:00+08:00', notice: The permit review concludes; its written outcome is placed in the archive.', effects: [{op: add_document, id: permit-review-outcome, location: archive}]}
+  - {event: old_basement_opens, time: '2026-03-18T10:00:00+08:00', notice: The old basement is unlocked for a maintenance inspection; the storm shelter is accessible again.', effects: [{op: open_location, id: old-basement}]}
+  - {event: bank_call, time: '2026-03-19T10:00:00+08:00', target: xu-meiling, notice: The bank review resolves the disputed invoice; the resolution note is placed at the market.', effects: [{op: add_document, id: bank-resolution, location: market}]}
+  - {event: storm_records_available, time: '2026-03-20T15:00:00+08:00', notice: The harbor archive reopens; the recovered storm records are inside.', effects: [{op: open_location, id: harbor-archive}, {op: add_document, id: storm-records, location: harbor-archive}]}
+  - {event: review_meeting, time: '2026-03-21T10:00:00+08:00', target: [lin-yao, chen-mo, gao-rui], notice: A review meeting is scheduled at the lecture hall; those named are expected to attend.'}
+  - {event: accessibility_walkthrough, time: '2026-03-21T15:00:00+08:00', target: lin-yao, notice: The accessibility walkthrough starts at the north gate.'}
+  - {event: accessibility_walkthrough_followup, time: '2026-03-22T11:00:00+08:00', target: chen-mo, notice: A follow-up on the access route plan is due to Lin.'}
+  - {event: rain_warning, time: '2026-03-24T16:00:00+08:00', notice: A heavy-rain warning is issued; the old flood route may become relevant.'}
+  - {event: fair_setup, time: '2026-03-25T17:00:00+08:00', notice: The riverside fair setup begins at the courtyard and market.'}
+  - {event: fair_opens, time: '2026-03-26T08:00:00+08:00', notice: The riverside fair opens; the market, print-shop, and courtyard are busy.'}
+  - {event: fair_closes, time: '2026-03-26T21:30:00+08:00', notice: The riverside fair closes for the night.'}
+  - {event: world_stops, time: '2026-03-27T21:30:00+08:00'}

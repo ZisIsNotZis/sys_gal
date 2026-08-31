@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v2/harness/real_run.py", line 44, in main
+    reason = runner.run(stop_at=endpoint, max_turns=20_000)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v2/harness/runner.py", line 114, in run
+    self.trace.record_agent(state=self.states[actor_id], perception=perception,
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v2/harness/trace.py", line 28, in record_agent
+    "private_state": state.snapshot(), "affordances": deepcopy(affordances),
+                     ^^^^^^^^^^^^^^^^
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v2/harness/agent_state.py", line 21, in snapshot
+    "memories": [dict(x) for x in self.memories],
+                 ^^^^^^^
+ValueError: dictionary update sequence element #0 has length 1; 2 is required

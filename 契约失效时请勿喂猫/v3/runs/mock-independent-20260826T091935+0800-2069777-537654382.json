@@ -1,0 +1,30 @@
+{
+  "format": "v3-trajectory-1",
+  "seed_version": "v3",
+  "run_id": "mock-independent-20260826T091935+0800-2069777-537654382",
+  "agent_turns": [],
+  "system_turns": [],
+  "gm_turns": [],
+  "sessions": {},
+  "outcome": null,
+  "world_events": [],
+  "replay": {
+    "event_count": 0,
+    "contiguous": true,
+    "world_versions_contiguous": true,
+    "first_time": null,
+    "last_time": null,
+    "last_event_id": null,
+    "active_actors": [
+      "amani-njoroge",
+      "chen-mo",
+      "gao-rui",
+      "he-qian",
+      "lin-yao",
+      "park-minseo",
+      "qiao-shun",
+      "xu-meiling"
+    ],
+    "actors_with_turns": []
+  }
+}

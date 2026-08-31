@@ -1,0 +1,4770 @@
+{
+  "format": "v3-trajectory-1",
+  "seed_version": "v3",
+  "run_id": "real-20260825T163507+0800-6-674159021",
+  "agent_turns": [
+    {
+      "actor": "amani-njoroge",
+      "perception": {
+        "observer": "amani-njoroge",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "courtyard",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [],
+        "descriptions": {
+          "courtyard": "# Central Courtyard\n\nAn open paved courtyard between campus buildings. Sound travels farther here,\nbut traffic and weather can mask parts of a sentence."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-1"
+      },
+      "private_state": {
+        "actor_id": "amani-njoroge",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "greenhouse",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "chen-mo",
+      "perception": {
+        "observer": "chen-mo",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "dorm",
+        "inventory": [
+          "blank-paper",
+          "old-permit-form",
+          "red-whistle"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "gao-rui"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [],
+        "descriptions": {
+          "red-whistle": "# Red Whistle\n\nA small red emergency whistle carried by Chen from the old neighborhood. It\nis an ordinary object; its connection to the 2013 storm is part of Chen's\nfragmentary memory, not an objective conclusion supplied by the engine.",
+          "blank-paper": "# Blank Paper\n\nOrdinary blank paper suitable as a copying material.",
+          "dorm": "# Student Dormitory\n\nShared rooms and a corridor where residents can overhear ordinary noise only\nwhen the acoustic geometry permits it.",
+          "old-permit-form": "# 2013 Neighborhood Permit\n\nAn old permit form bearing a neighborhood signature and a narrow flood-route\nannotation. The machine-readable document content is authoritative for\nreading; this file is its descriptive catalog entry."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-2"
+      },
+      "private_state": {
+        "actor_id": "chen-mo",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "move",
+          "target": "north-gate",
+          "duration_seconds": 840
+        },
+        {
+          "kind": "move",
+          "target": "lecture-hall",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "blank-paper"
+        },
+        {
+          "kind": "inspect",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "inspect",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "give",
+          "target": "gao-rui",
+          "item": "blank-paper"
+        },
+        {
+          "kind": "give",
+          "target": "gao-rui",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "give",
+          "target": "gao-rui",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "drop",
+          "item": "blank-paper"
+        },
+        {
+          "kind": "drop",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "drop",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "read",
+          "document": "old-permit-form"
+        },
+        {
+          "kind": "copy",
+          "document": "old-permit-form"
+        },
+        {
+          "kind": "label",
+          "document": "old-permit-form",
+          "label": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "gao-rui",
+      "perception": {
+        "observer": "gao-rui",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "dorm",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "chen-mo"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [],
+        "descriptions": {
+          "dorm": "# Student Dormitory\n\nShared rooms and a corridor where residents can overhear ordinary noise only\nwhen the acoustic geometry permits it."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-3"
+      },
+      "private_state": {
+        "actor_id": "gao-rui",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "move",
+          "target": "north-gate",
+          "duration_seconds": 840
+        },
+        {
+          "kind": "move",
+          "target": "lecture-hall",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "he-qian",
+      "perception": {
+        "observer": "he-qian",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "cafe",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "cracked-mug",
+          "editor-draft"
+        ],
+        "inbox": [],
+        "events": [],
+        "descriptions": {
+          "cracked-mug": "# Cracked Mug\n\nA chipped cafe mug that belongs to the cafe rather than its current finder.",
+          "cafe": "# Riverbend Cafe\n\nA public cafe with enough ambient noise that quiet conversations do not carry\nfar beyond the table.",
+          "editor-draft": "# Campus Paper Draft\n\nA draft article at the cafe. It includes a protected source and claims still\nrequiring verification."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-4"
+      },
+      "private_state": {
+        "actor_id": "he-qian",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "market",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "print-shop",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "cracked-mug"
+        },
+        {
+          "kind": "take",
+          "item": "editor-draft"
+        },
+        {
+          "kind": "inspect",
+          "item": "cracked-mug"
+        },
+        {
+          "kind": "inspect",
+          "item": "editor-draft"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "editor-draft"
+        },
+        {
+          "kind": "label",
+          "document": "editor-draft",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "lin-yao",
+      "perception": {
+        "observer": "lin-yao",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "park-minseo"
+        ],
+        "nearby_items": [
+          "original-export",
+          "storm-ledger"
+        ],
+        "inbox": [],
+        "events": [],
+        "descriptions": {
+          "storm-ledger": "# 2013 Storm Ledger\n\nAn objective document stored in the archive. The readable text is seeded in\nthe manifest. This description is world data, not an automatic grant of\nknowledge: an actor must physically reach the document and spend time reading\nit, or receive a concrete copy or message.",
+          "archive": "# Campus Archive\n\nThe older campus archive, separate from the harbor archive. Its reading room\nholds historical material and its staff control access to fragile originals.",
+          "original-export": "# Original Export\n\nThe archive's machine-generated export. Its timestamps can be compared with\nthe audit packet, but comparison is an actor action and not a plot flag."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-5"
+      },
+      "private_state": {
+        "actor_id": "lin-yao",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "move",
+          "target": "harbor-archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "storm-ledger"
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        },
+        {
+          "kind": "inspect",
+          "item": "storm-ledger"
+        },
+        {
+          "kind": "inspect",
+          "item": "original-export"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "interact",
+          "target": "old-basement",
+          "verb": "knock",
+          "parameters": {}
+        },
+        {
+          "kind": "interact",
+          "target": "harbor-archive",
+          "verb": "knock",
+          "parameters": {}
+        },
+        {
+          "kind": "knock",
+          "target": "old-basement"
+        },
+        {
+          "kind": "knock",
+          "target": "harbor-archive"
+        },
+        {
+          "kind": "read",
+          "document": "original-export"
+        },
+        {
+          "kind": "read",
+          "document": "storm-ledger"
+        },
+        {
+          "kind": "compare",
+          "first": "original-export",
+          "second": "storm-ledger"
+        },
+        {
+          "kind": "label",
+          "document": "original-export",
+          "label": ""
+        },
+        {
+          "kind": "label",
+          "document": "storm-ledger",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "park-minseo",
+      "perception": {
+        "observer": "park-minseo",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "lin-yao"
+        ],
+        "nearby_items": [
+          "original-export",
+          "storm-ledger"
+        ],
+        "inbox": [],
+        "events": [],
+        "descriptions": {
+          "storm-ledger": "# 2013 Storm Ledger\n\nAn objective document stored in the archive. The readable text is seeded in\nthe manifest. This description is world data, not an automatic grant of\nknowledge: an actor must physically reach the document and spend time reading\nit, or receive a concrete copy or message.",
+          "archive": "# Campus Archive\n\nThe older campus archive, separate from the harbor archive. Its reading room\nholds historical material and its staff control access to fragile originals.",
+          "original-export": "# Original Export\n\nThe archive's machine-generated export. Its timestamps can be compared with\nthe audit packet, but comparison is an actor action and not a plot flag."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-6"
+      },
+      "private_state": {
+        "actor_id": "park-minseo",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "move",
+          "target": "harbor-archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "storm-ledger"
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        },
+        {
+          "kind": "inspect",
+          "item": "storm-ledger"
+        },
+        {
+          "kind": "inspect",
+          "item": "original-export"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "interact",
+          "target": "old-basement",
+          "verb": "knock",
+          "parameters": {}
+        },
+        {
+          "kind": "interact",
+          "target": "harbor-archive",
+          "verb": "knock",
+          "parameters": {}
+        },
+        {
+          "kind": "knock",
+          "target": "old-basement"
+        },
+        {
+          "kind": "knock",
+          "target": "harbor-archive"
+        },
+        {
+          "kind": "read",
+          "document": "original-export"
+        },
+        {
+          "kind": "read",
+          "document": "storm-ledger"
+        },
+        {
+          "kind": "compare",
+          "first": "original-export",
+          "second": "storm-ledger"
+        },
+        {
+          "kind": "label",
+          "document": "original-export",
+          "label": ""
+        },
+        {
+          "kind": "label",
+          "document": "storm-ledger",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "qiao-shun",
+      "perception": {
+        "observer": "qiao-shun",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "union",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "brass-key",
+          "union-audit"
+        ],
+        "inbox": [],
+        "events": [],
+        "descriptions": {
+          "union-audit": "# Union Audit Packet\n\nA working document at the union office. It contains ordinary accounting\ninformation and visibly incomplete labels.",
+          "brass-key": "# Brass Key\n\nA worn key found among union supplies. The engine does not assume which lock\nit fits; that is a fact an actor may inspect, test, or learn from a person.",
+          "union": "# Student Union Office\n\nA cramped office with a public counter and a back desk where financial papers\nare usually sorted."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-7"
+      },
+      "private_state": {
+        "actor_id": "qiao-shun",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "move",
+          "target": "infirmary",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "brass-key"
+        },
+        {
+          "kind": "take",
+          "item": "union-audit"
+        },
+        {
+          "kind": "inspect",
+          "item": "brass-key"
+        },
+        {
+          "kind": "inspect",
+          "item": "union-audit"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "union-audit"
+        },
+        {
+          "kind": "label",
+          "document": "union-audit",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "xu-meiling",
+      "perception": {
+        "observer": "xu-meiling",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "market",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "bank-timeline",
+          "market-stamp"
+        ],
+        "inbox": [],
+        "events": [],
+        "descriptions": {
+          "bank-timeline": "# Cooperative Payment Timeline\n\nA payment schedule at the market cooperative. It is useful to the owner, but\nthe engine never marks it as correct merely because it exists.",
+          "market": "# Riverbend Food Cooperative\n\nA working market where invoices, deliveries, and customers compete for\nattention.",
+          "market-stamp": "# Market Stamp\n\nThe cooperative's dated rubber stamp."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-8"
+      },
+      "private_state": {
+        "actor_id": "xu-meiling",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "market-stamp"
+        },
+        {
+          "kind": "take",
+          "item": "bank-timeline"
+        },
+        {
+          "kind": "inspect",
+          "item": "market-stamp"
+        },
+        {
+          "kind": "inspect",
+          "item": "bank-timeline"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "bank-timeline"
+        },
+        {
+          "kind": "label",
+          "document": "bank-timeline",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "amani-njoroge",
+      "perception": {
+        "observer": "amani-njoroge",
+        "time": "2026-03-16T07:05:00+08:00",
+        "world_version": 1,
+        "location": "courtyard",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 1,
+            "time": "2026-03-16T07:05:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:00:00+08:00",
+              "to": "2026-03-16T07:05:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "courtyard": "# Central Courtyard\n\nAn open paved courtyard between campus buildings. Sound travels farther here,\nbut traffic and weather can mask parts of a sentence."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-9"
+      },
+      "private_state": {
+        "actor_id": "amani-njoroge",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "greenhouse",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 1,
+      "version_after": 1,
+      "event_ids": []
+    },
+    {
+      "actor": "chen-mo",
+      "perception": {
+        "observer": "chen-mo",
+        "time": "2026-03-16T07:05:00+08:00",
+        "world_version": 1,
+        "location": "dorm",
+        "inventory": [
+          "blank-paper",
+          "old-permit-form",
+          "red-whistle"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "gao-rui"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 1,
+            "time": "2026-03-16T07:05:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:00:00+08:00",
+              "to": "2026-03-16T07:05:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "red-whistle": "# Red Whistle\n\nA small red emergency whistle carried by Chen from the old neighborhood. It\nis an ordinary object; its connection to the 2013 storm is part of Chen's\nfragmentary memory, not an objective conclusion supplied by the engine.",
+          "blank-paper": "# Blank Paper\n\nOrdinary blank paper suitable as a copying material.",
+          "dorm": "# Student Dormitory\n\nShared rooms and a corridor where residents can overhear ordinary noise only\nwhen the acoustic geometry permits it.",
+          "old-permit-form": "# 2013 Neighborhood Permit\n\nAn old permit form bearing a neighborhood signature and a narrow flood-route\nannotation. The machine-readable document content is authoritative for\nreading; this file is its descriptive catalog entry."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-10"
+      },
+      "private_state": {
+        "actor_id": "chen-mo",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "move",
+          "target": "north-gate",
+          "duration_seconds": 840
+        },
+        {
+          "kind": "move",
+          "target": "lecture-hall",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "blank-paper"
+        },
+        {
+          "kind": "inspect",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "inspect",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "give",
+          "target": "gao-rui",
+          "item": "blank-paper"
+        },
+        {
+          "kind": "give",
+          "target": "gao-rui",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "give",
+          "target": "gao-rui",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "drop",
+          "item": "blank-paper"
+        },
+        {
+          "kind": "drop",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "drop",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "read",
+          "document": "old-permit-form"
+        },
+        {
+          "kind": "copy",
+          "document": "old-permit-form"
+        },
+        {
+          "kind": "label",
+          "document": "old-permit-form",
+          "label": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 1,
+      "version_after": 1,
+      "event_ids": []
+    },
+    {
+      "actor": "gao-rui",
+      "perception": {
+        "observer": "gao-rui",
+        "time": "2026-03-16T07:05:00+08:00",
+        "world_version": 1,
+        "location": "dorm",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "chen-mo"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 1,
+            "time": "2026-03-16T07:05:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:00:00+08:00",
+              "to": "2026-03-16T07:05:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "dorm": "# Student Dormitory\n\nShared rooms and a corridor where residents can overhear ordinary noise only\nwhen the acoustic geometry permits it."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-11"
+      },
+      "private_state": {
+        "actor_id": "gao-rui",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "move",
+          "target": "north-gate",
+          "duration_seconds": 840
+        },
+        {
+          "kind": "move",
+          "target": "lecture-hall",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 1,
+      "version_after": 1,
+      "event_ids": []
+    },
+    {
+      "actor": "he-qian",
+      "perception": {
+        "observer": "he-qian",
+        "time": "2026-03-16T07:05:00+08:00",
+        "world_version": 1,
+        "location": "cafe",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "cracked-mug",
+          "editor-draft"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 1,
+            "time": "2026-03-16T07:05:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:00:00+08:00",
+              "to": "2026-03-16T07:05:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "cracked-mug": "# Cracked Mug\n\nA chipped cafe mug that belongs to the cafe rather than its current finder.",
+          "cafe": "# Riverbend Cafe\n\nA public cafe with enough ambient noise that quiet conversations do not carry\nfar beyond the table.",
+          "editor-draft": "# Campus Paper Draft\n\nA draft article at the cafe. It includes a protected source and claims still\nrequiring verification."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-12"
+      },
+      "private_state": {
+        "actor_id": "he-qian",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "market",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "print-shop",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "cracked-mug"
+        },
+        {
+          "kind": "take",
+          "item": "editor-draft"
+        },
+        {
+          "kind": "inspect",
+          "item": "cracked-mug"
+        },
+        {
+          "kind": "inspect",
+          "item": "editor-draft"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "editor-draft"
+        },
+        {
+          "kind": "label",
+          "document": "editor-draft",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 1,
+      "version_after": 1,
+      "event_ids": []
+    },
+    {
+      "actor": "lin-yao",
+      "perception": {
+        "observer": "lin-yao",
+        "time": "2026-03-16T07:05:00+08:00",
+        "world_version": 1,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "park-minseo"
+        ],
+        "nearby_items": [
+          "original-export",
+          "storm-ledger"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 1,
+            "time": "2026-03-16T07:05:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:00:00+08:00",
+              "to": "2026-03-16T07:05:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "storm-ledger": "# 2013 Storm Ledger\n\nAn objective document stored in the archive. The readable text is seeded in\nthe manifest. This description is world data, not an automatic grant of\nknowledge: an actor must physically reach the document and spend time reading\nit, or receive a concrete copy or message.",
+          "archive": "# Campus Archive\n\nThe older campus archive, separate from the harbor archive. Its reading room\nholds historical material and its staff control access to fragile originals.",
+          "original-export": "# Original Export\n\nThe archive's machine-generated export. Its timestamps can be compared with\nthe audit packet, but comparison is an actor action and not a plot flag."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-13"
+      },
+      "private_state": {
+        "actor_id": "lin-yao",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "move",
+          "target": "harbor-archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "storm-ledger"
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        },
+        {
+          "kind": "inspect",
+          "item": "storm-ledger"
+        },
+        {
+          "kind": "inspect",
+          "item": "original-export"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "interact",
+          "target": "old-basement",
+          "verb": "knock",
+          "parameters": {}
+        },
+        {
+          "kind": "interact",
+          "target": "harbor-archive",
+          "verb": "knock",
+          "parameters": {}
+        },
+        {
+          "kind": "knock",
+          "target": "old-basement"
+        },
+        {
+          "kind": "knock",
+          "target": "harbor-archive"
+        },
+        {
+          "kind": "read",
+          "document": "original-export"
+        },
+        {
+          "kind": "read",
+          "document": "storm-ledger"
+        },
+        {
+          "kind": "compare",
+          "first": "original-export",
+          "second": "storm-ledger"
+        },
+        {
+          "kind": "label",
+          "document": "original-export",
+          "label": ""
+        },
+        {
+          "kind": "label",
+          "document": "storm-ledger",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 1,
+      "version_after": 1,
+      "event_ids": []
+    },
+    {
+      "actor": "park-minseo",
+      "perception": {
+        "observer": "park-minseo",
+        "time": "2026-03-16T07:05:00+08:00",
+        "world_version": 1,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "lin-yao"
+        ],
+        "nearby_items": [
+          "original-export",
+          "storm-ledger"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 1,
+            "time": "2026-03-16T07:05:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:00:00+08:00",
+              "to": "2026-03-16T07:05:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "storm-ledger": "# 2013 Storm Ledger\n\nAn objective document stored in the archive. The readable text is seeded in\nthe manifest. This description is world data, not an automatic grant of\nknowledge: an actor must physically reach the document and spend time reading\nit, or receive a concrete copy or message.",
+          "archive": "# Campus Archive\n\nThe older campus archive, separate from the harbor archive. Its reading room\nholds historical material and its staff control access to fragile originals.",
+          "original-export": "# Original Export\n\nThe archive's machine-generated export. Its timestamps can be compared with\nthe audit packet, but comparison is an actor action and not a plot flag."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-14"
+      },
+      "private_state": {
+        "actor_id": "park-minseo",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "move",
+          "target": "harbor-archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "storm-ledger"
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        },
+        {
+          "kind": "inspect",
+          "item": "storm-ledger"
+        },
+        {
+          "kind": "inspect",
+          "item": "original-export"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "interact",
+          "target": "old-basement",
+          "verb": "knock",
+          "parameters": {}
+        },
+        {
+          "kind": "interact",
+          "target": "harbor-archive",
+          "verb": "knock",
+          "parameters": {}
+        },
+        {
+          "kind": "knock",
+          "target": "old-basement"
+        },
+        {
+          "kind": "knock",
+          "target": "harbor-archive"
+        },
+        {
+          "kind": "read",
+          "document": "original-export"
+        },
+        {
+          "kind": "read",
+          "document": "storm-ledger"
+        },
+        {
+          "kind": "compare",
+          "first": "original-export",
+          "second": "storm-ledger"
+        },
+        {
+          "kind": "label",
+          "document": "original-export",
+          "label": ""
+        },
+        {
+          "kind": "label",
+          "document": "storm-ledger",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 1,
+      "version_after": 1,
+      "event_ids": []
+    },
+    {
+      "actor": "qiao-shun",
+      "perception": {
+        "observer": "qiao-shun",
+        "time": "2026-03-16T07:05:00+08:00",
+        "world_version": 1,
+        "location": "union",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "brass-key",
+          "union-audit"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 1,
+            "time": "2026-03-16T07:05:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:00:00+08:00",
+              "to": "2026-03-16T07:05:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "union-audit": "# Union Audit Packet\n\nA working document at the union office. It contains ordinary accounting\ninformation and visibly incomplete labels.",
+          "brass-key": "# Brass Key\n\nA worn key found among union supplies. The engine does not assume which lock\nit fits; that is a fact an actor may inspect, test, or learn from a person.",
+          "union": "# Student Union Office\n\nA cramped office with a public counter and a back desk where financial papers\nare usually sorted."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-15"
+      },
+      "private_state": {
+        "actor_id": "qiao-shun",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "move",
+          "target": "infirmary",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "brass-key"
+        },
+        {
+          "kind": "take",
+          "item": "union-audit"
+        },
+        {
+          "kind": "inspect",
+          "item": "brass-key"
+        },
+        {
+          "kind": "inspect",
+          "item": "union-audit"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "union-audit"
+        },
+        {
+          "kind": "label",
+          "document": "union-audit",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 1,
+      "version_after": 1,
+      "event_ids": []
+    },
+    {
+      "actor": "xu-meiling",
+      "perception": {
+        "observer": "xu-meiling",
+        "time": "2026-03-16T07:05:00+08:00",
+        "world_version": 1,
+        "location": "market",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "bank-timeline",
+          "market-stamp"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 1,
+            "time": "2026-03-16T07:05:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:00:00+08:00",
+              "to": "2026-03-16T07:05:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "bank-timeline": "# Cooperative Payment Timeline\n\nA payment schedule at the market cooperative. It is useful to the owner, but\nthe engine never marks it as correct merely because it exists.",
+          "market": "# Riverbend Food Cooperative\n\nA working market where invoices, deliveries, and customers compete for\nattention.",
+          "market-stamp": "# Market Stamp\n\nThe cooperative's dated rubber stamp."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-16"
+      },
+      "private_state": {
+        "actor_id": "xu-meiling",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "market-stamp"
+        },
+        {
+          "kind": "take",
+          "item": "bank-timeline"
+        },
+        {
+          "kind": "inspect",
+          "item": "market-stamp"
+        },
+        {
+          "kind": "inspect",
+          "item": "bank-timeline"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "bank-timeline"
+        },
+        {
+          "kind": "label",
+          "document": "bank-timeline",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 1,
+      "version_after": 1,
+      "event_ids": []
+    },
+    {
+      "actor": "amani-njoroge",
+      "perception": {
+        "observer": "amani-njoroge",
+        "time": "2026-03-16T07:10:00+08:00",
+        "world_version": 2,
+        "location": "courtyard",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 2,
+            "time": "2026-03-16T07:10:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:05:00+08:00",
+              "to": "2026-03-16T07:10:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "courtyard": "# Central Courtyard\n\nAn open paved courtyard between campus buildings. Sound travels farther here,\nbut traffic and weather can mask parts of a sentence."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-17"
+      },
+      "private_state": {
+        "actor_id": "amani-njoroge",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "greenhouse",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 2,
+      "version_after": 2,
+      "event_ids": []
+    },
+    {
+      "actor": "chen-mo",
+      "perception": {
+        "observer": "chen-mo",
+        "time": "2026-03-16T07:10:00+08:00",
+        "world_version": 2,
+        "location": "dorm",
+        "inventory": [
+          "blank-paper",
+          "old-permit-form",
+          "red-whistle"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "gao-rui"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 2,
+            "time": "2026-03-16T07:10:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:05:00+08:00",
+              "to": "2026-03-16T07:10:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "red-whistle": "# Red Whistle\n\nA small red emergency whistle carried by Chen from the old neighborhood. It\nis an ordinary object; its connection to the 2013 storm is part of Chen's\nfragmentary memory, not an objective conclusion supplied by the engine.",
+          "blank-paper": "# Blank Paper\n\nOrdinary blank paper suitable as a copying material.",
+          "dorm": "# Student Dormitory\n\nShared rooms and a corridor where residents can overhear ordinary noise only\nwhen the acoustic geometry permits it.",
+          "old-permit-form": "# 2013 Neighborhood Permit\n\nAn old permit form bearing a neighborhood signature and a narrow flood-route\nannotation. The machine-readable document content is authoritative for\nreading; this file is its descriptive catalog entry."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-18"
+      },
+      "private_state": {
+        "actor_id": "chen-mo",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "move",
+          "target": "north-gate",
+          "duration_seconds": 840
+        },
+        {
+          "kind": "move",
+          "target": "lecture-hall",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "blank-paper"
+        },
+        {
+          "kind": "inspect",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "inspect",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "give",
+          "target": "gao-rui",
+          "item": "blank-paper"
+        },
+        {
+          "kind": "give",
+          "target": "gao-rui",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "give",
+          "target": "gao-rui",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "drop",
+          "item": "blank-paper"
+        },
+        {
+          "kind": "drop",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "drop",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "read",
+          "document": "old-permit-form"
+        },
+        {
+          "kind": "copy",
+          "document": "old-permit-form"
+        },
+        {
+          "kind": "label",
+          "document": "old-permit-form",
+          "label": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 2,
+      "version_after": 2,
+      "event_ids": []
+    },
+    {
+      "actor": "gao-rui",
+      "perception": {
+        "observer": "gao-rui",
+        "time": "2026-03-16T07:10:00+08:00",
+        "world_version": 2,
+        "location": "dorm",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "chen-mo"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 2,
+            "time": "2026-03-16T07:10:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:05:00+08:00",
+              "to": "2026-03-16T07:10:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "dorm": "# Student Dormitory\n\nShared rooms and a corridor where residents can overhear ordinary noise only\nwhen the acoustic geometry permits it."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-19"
+      },
+      "private_state": {
+        "actor_id": "gao-rui",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "move",
+          "target": "north-gate",
+          "duration_seconds": 840
+        },
+        {
+          "kind": "move",
+          "target": "lecture-hall",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 2,
+      "version_after": 2,
+      "event_ids": []
+    },
+    {
+      "actor": "he-qian",
+      "perception": {
+        "observer": "he-qian",
+        "time": "2026-03-16T07:10:00+08:00",
+        "world_version": 2,
+        "location": "cafe",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "cracked-mug",
+          "editor-draft"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 2,
+            "time": "2026-03-16T07:10:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:05:00+08:00",
+              "to": "2026-03-16T07:10:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "cracked-mug": "# Cracked Mug\n\nA chipped cafe mug that belongs to the cafe rather than its current finder.",
+          "cafe": "# Riverbend Cafe\n\nA public cafe with enough ambient noise that quiet conversations do not carry\nfar beyond the table.",
+          "editor-draft": "# Campus Paper Draft\n\nA draft article at the cafe. It includes a protected source and claims still\nrequiring verification."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-20"
+      },
+      "private_state": {
+        "actor_id": "he-qian",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "market",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "print-shop",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "cracked-mug"
+        },
+        {
+          "kind": "take",
+          "item": "editor-draft"
+        },
+        {
+          "kind": "inspect",
+          "item": "cracked-mug"
+        },
+        {
+          "kind": "inspect",
+          "item": "editor-draft"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "editor-draft"
+        },
+        {
+          "kind": "label",
+          "document": "editor-draft",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 2,
+      "version_after": 2,
+      "event_ids": []
+    },
+    {
+      "actor": "lin-yao",
+      "perception": {
+        "observer": "lin-yao",
+        "time": "2026-03-16T07:10:00+08:00",
+        "world_version": 2,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "park-minseo"
+        ],
+        "nearby_items": [
+          "original-export",
+          "storm-ledger"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 2,
+            "time": "2026-03-16T07:10:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:05:00+08:00",
+              "to": "2026-03-16T07:10:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "storm-ledger": "# 2013 Storm Ledger\n\nAn objective document stored in the archive. The readable text is seeded in\nthe manifest. This description is world data, not an automatic grant of\nknowledge: an actor must physically reach the document and spend time reading\nit, or receive a concrete copy or message.",
+          "archive": "# Campus Archive\n\nThe older campus archive, separate from the harbor archive. Its reading room\nholds historical material and its staff control access to fragile originals.",
+          "original-export": "# Original Export\n\nThe archive's machine-generated export. Its timestamps can be compared with\nthe audit packet, but comparison is an actor action and not a plot flag."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-21"
+      },
+      "private_state": {
+        "actor_id": "lin-yao",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "move",
+          "target": "harbor-archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "storm-ledger"
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        },
+        {
+          "kind": "inspect",
+          "item": "storm-ledger"
+        },
+        {
+          "kind": "inspect",
+          "item": "original-export"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "interact",
+          "target": "old-basement",
+          "verb": "knock",
+          "parameters": {}
+        },
+        {
+          "kind": "interact",
+          "target": "harbor-archive",
+          "verb": "knock",
+          "parameters": {}
+        },
+        {
+          "kind": "knock",
+          "target": "old-basement"
+        },
+        {
+          "kind": "knock",
+          "target": "harbor-archive"
+        },
+        {
+          "kind": "read",
+          "document": "original-export"
+        },
+        {
+          "kind": "read",
+          "document": "storm-ledger"
+        },
+        {
+          "kind": "compare",
+          "first": "original-export",
+          "second": "storm-ledger"
+        },
+        {
+          "kind": "label",
+          "document": "original-export",
+          "label": ""
+        },
+        {
+          "kind": "label",
+          "document": "storm-ledger",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 2,
+      "version_after": 2,
+      "event_ids": []
+    },
+    {
+      "actor": "park-minseo",
+      "perception": {
+        "observer": "park-minseo",
+        "time": "2026-03-16T07:10:00+08:00",
+        "world_version": 2,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "lin-yao"
+        ],
+        "nearby_items": [
+          "original-export",
+          "storm-ledger"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 2,
+            "time": "2026-03-16T07:10:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:05:00+08:00",
+              "to": "2026-03-16T07:10:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "storm-ledger": "# 2013 Storm Ledger\n\nAn objective document stored in the archive. The readable text is seeded in\nthe manifest. This description is world data, not an automatic grant of\nknowledge: an actor must physically reach the document and spend time reading\nit, or receive a concrete copy or message.",
+          "archive": "# Campus Archive\n\nThe older campus archive, separate from the harbor archive. Its reading room\nholds historical material and its staff control access to fragile originals.",
+          "original-export": "# Original Export\n\nThe archive's machine-generated export. Its timestamps can be compared with\nthe audit packet, but comparison is an actor action and not a plot flag."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-22"
+      },
+      "private_state": {
+        "actor_id": "park-minseo",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "move",
+          "target": "harbor-archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "storm-ledger"
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        },
+        {
+          "kind": "inspect",
+          "item": "storm-ledger"
+        },
+        {
+          "kind": "inspect",
+          "item": "original-export"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "interact",
+          "target": "old-basement",
+          "verb": "knock",
+          "parameters": {}
+        },
+        {
+          "kind": "interact",
+          "target": "harbor-archive",
+          "verb": "knock",
+          "parameters": {}
+        },
+        {
+          "kind": "knock",
+          "target": "old-basement"
+        },
+        {
+          "kind": "knock",
+          "target": "harbor-archive"
+        },
+        {
+          "kind": "read",
+          "document": "original-export"
+        },
+        {
+          "kind": "read",
+          "document": "storm-ledger"
+        },
+        {
+          "kind": "compare",
+          "first": "original-export",
+          "second": "storm-ledger"
+        },
+        {
+          "kind": "label",
+          "document": "original-export",
+          "label": ""
+        },
+        {
+          "kind": "label",
+          "document": "storm-ledger",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 2,
+      "version_after": 2,
+      "event_ids": []
+    },
+    {
+      "actor": "qiao-shun",
+      "perception": {
+        "observer": "qiao-shun",
+        "time": "2026-03-16T07:10:00+08:00",
+        "world_version": 2,
+        "location": "union",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "brass-key",
+          "union-audit"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 2,
+            "time": "2026-03-16T07:10:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:05:00+08:00",
+              "to": "2026-03-16T07:10:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "union-audit": "# Union Audit Packet\n\nA working document at the union office. It contains ordinary accounting\ninformation and visibly incomplete labels.",
+          "brass-key": "# Brass Key\n\nA worn key found among union supplies. The engine does not assume which lock\nit fits; that is a fact an actor may inspect, test, or learn from a person.",
+          "union": "# Student Union Office\n\nA cramped office with a public counter and a back desk where financial papers\nare usually sorted."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-23"
+      },
+      "private_state": {
+        "actor_id": "qiao-shun",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "move",
+          "target": "infirmary",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "brass-key"
+        },
+        {
+          "kind": "take",
+          "item": "union-audit"
+        },
+        {
+          "kind": "inspect",
+          "item": "brass-key"
+        },
+        {
+          "kind": "inspect",
+          "item": "union-audit"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "union-audit"
+        },
+        {
+          "kind": "label",
+          "document": "union-audit",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 2,
+      "version_after": 2,
+      "event_ids": []
+    },
+    {
+      "actor": "xu-meiling",
+      "perception": {
+        "observer": "xu-meiling",
+        "time": "2026-03-16T07:10:00+08:00",
+        "world_version": 2,
+        "location": "market",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "bank-timeline",
+          "market-stamp"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 2,
+            "time": "2026-03-16T07:10:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:05:00+08:00",
+              "to": "2026-03-16T07:10:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "bank-timeline": "# Cooperative Payment Timeline\n\nA payment schedule at the market cooperative. It is useful to the owner, but\nthe engine never marks it as correct merely because it exists.",
+          "market": "# Riverbend Food Cooperative\n\nA working market where invoices, deliveries, and customers compete for\nattention.",
+          "market-stamp": "# Market Stamp\n\nThe cooperative's dated rubber stamp."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-24"
+      },
+      "private_state": {
+        "actor_id": "xu-meiling",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "market-stamp"
+        },
+        {
+          "kind": "take",
+          "item": "bank-timeline"
+        },
+        {
+          "kind": "inspect",
+          "item": "market-stamp"
+        },
+        {
+          "kind": "inspect",
+          "item": "bank-timeline"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "bank-timeline"
+        },
+        {
+          "kind": "label",
+          "document": "bank-timeline",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "retryable_failure",
+      "error": "retryable: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 2,
+      "version_after": 2,
+      "event_ids": []
+    },
+    {
+      "actor": "amani-njoroge",
+      "perception": {
+        "observer": "amani-njoroge",
+        "time": "2026-03-16T07:15:00+08:00",
+        "world_version": 3,
+        "location": "courtyard",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 3,
+            "time": "2026-03-16T07:15:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:10:00+08:00",
+              "to": "2026-03-16T07:15:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "courtyard": "# Central Courtyard\n\nAn open paved courtyard between campus buildings. Sound travels farther here,\nbut traffic and weather can mask parts of a sentence."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-25"
+      },
+      "private_state": {
+        "actor_id": "amani-njoroge",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "greenhouse",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 3,
+      "version_after": 3,
+      "event_ids": []
+    },
+    {
+      "actor": "chen-mo",
+      "perception": {
+        "observer": "chen-mo",
+        "time": "2026-03-16T07:15:00+08:00",
+        "world_version": 3,
+        "location": "dorm",
+        "inventory": [
+          "blank-paper",
+          "old-permit-form",
+          "red-whistle"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "gao-rui"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 3,
+            "time": "2026-03-16T07:15:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:10:00+08:00",
+              "to": "2026-03-16T07:15:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "red-whistle": "# Red Whistle\n\nA small red emergency whistle carried by Chen from the old neighborhood. It\nis an ordinary object; its connection to the 2013 storm is part of Chen's\nfragmentary memory, not an objective conclusion supplied by the engine.",
+          "blank-paper": "# Blank Paper\n\nOrdinary blank paper suitable as a copying material.",
+          "dorm": "# Student Dormitory\n\nShared rooms and a corridor where residents can overhear ordinary noise only\nwhen the acoustic geometry permits it.",
+          "old-permit-form": "# 2013 Neighborhood Permit\n\nAn old permit form bearing a neighborhood signature and a narrow flood-route\nannotation. The machine-readable document content is authoritative for\nreading; this file is its descriptive catalog entry."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-26"
+      },
+      "private_state": {
+        "actor_id": "chen-mo",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "move",
+          "target": "north-gate",
+          "duration_seconds": 840
+        },
+        {
+          "kind": "move",
+          "target": "lecture-hall",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "blank-paper"
+        },
+        {
+          "kind": "inspect",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "inspect",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "give",
+          "target": "gao-rui",
+          "item": "blank-paper"
+        },
+        {
+          "kind": "give",
+          "target": "gao-rui",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "give",
+          "target": "gao-rui",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "drop",
+          "item": "blank-paper"
+        },
+        {
+          "kind": "drop",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "drop",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "read",
+          "document": "old-permit-form"
+        },
+        {
+          "kind": "copy",
+          "document": "old-permit-form"
+        },
+        {
+          "kind": "label",
+          "document": "old-permit-form",
+          "label": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 3,
+      "version_after": 3,
+      "event_ids": []
+    },
+    {
+      "actor": "gao-rui",
+      "perception": {
+        "observer": "gao-rui",
+        "time": "2026-03-16T07:15:00+08:00",
+        "world_version": 3,
+        "location": "dorm",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "chen-mo"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 3,
+            "time": "2026-03-16T07:15:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:10:00+08:00",
+              "to": "2026-03-16T07:15:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "dorm": "# Student Dormitory\n\nShared rooms and a corridor where residents can overhear ordinary noise only\nwhen the acoustic geometry permits it."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-27"
+      },
+      "private_state": {
+        "actor_id": "gao-rui",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "move",
+          "target": "north-gate",
+          "duration_seconds": 840
+        },
+        {
+          "kind": "move",
+          "target": "lecture-hall",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 3,
+      "version_after": 3,
+      "event_ids": []
+    },
+    {
+      "actor": "he-qian",
+      "perception": {
+        "observer": "he-qian",
+        "time": "2026-03-16T07:15:00+08:00",
+        "world_version": 3,
+        "location": "cafe",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "cracked-mug",
+          "editor-draft"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 3,
+            "time": "2026-03-16T07:15:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:10:00+08:00",
+              "to": "2026-03-16T07:15:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "cracked-mug": "# Cracked Mug\n\nA chipped cafe mug that belongs to the cafe rather than its current finder.",
+          "cafe": "# Riverbend Cafe\n\nA public cafe with enough ambient noise that quiet conversations do not carry\nfar beyond the table.",
+          "editor-draft": "# Campus Paper Draft\n\nA draft article at the cafe. It includes a protected source and claims still\nrequiring verification."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-28"
+      },
+      "private_state": {
+        "actor_id": "he-qian",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "market",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "print-shop",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "cracked-mug"
+        },
+        {
+          "kind": "take",
+          "item": "editor-draft"
+        },
+        {
+          "kind": "inspect",
+          "item": "cracked-mug"
+        },
+        {
+          "kind": "inspect",
+          "item": "editor-draft"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "editor-draft"
+        },
+        {
+          "kind": "label",
+          "document": "editor-draft",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 3,
+      "version_after": 3,
+      "event_ids": []
+    },
+    {
+      "actor": "lin-yao",
+      "perception": {
+        "observer": "lin-yao",
+        "time": "2026-03-16T07:15:00+08:00",
+        "world_version": 3,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "park-minseo"
+        ],
+        "nearby_items": [
+          "original-export",
+          "storm-ledger"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 3,
+            "time": "2026-03-16T07:15:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:10:00+08:00",
+              "to": "2026-03-16T07:15:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "storm-ledger": "# 2013 Storm Ledger\n\nAn objective document stored in the archive. The readable text is seeded in\nthe manifest. This description is world data, not an automatic grant of\nknowledge: an actor must physically reach the document and spend time reading\nit, or receive a concrete copy or message.",
+          "archive": "# Campus Archive\n\nThe older campus archive, separate from the harbor archive. Its reading room\nholds historical material and its staff control access to fragile originals.",
+          "original-export": "# Original Export\n\nThe archive's machine-generated export. Its timestamps can be compared with\nthe audit packet, but comparison is an actor action and not a plot flag."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-29"
+      },
+      "private_state": {
+        "actor_id": "lin-yao",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "move",
+          "target": "harbor-archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "storm-ledger"
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        },
+        {
+          "kind": "inspect",
+          "item": "storm-ledger"
+        },
+        {
+          "kind": "inspect",
+          "item": "original-export"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "interact",
+          "target": "old-basement",
+          "verb": "knock",
+          "parameters": {}
+        },
+        {
+          "kind": "interact",
+          "target": "harbor-archive",
+          "verb": "knock",
+          "parameters": {}
+        },
+        {
+          "kind": "knock",
+          "target": "old-basement"
+        },
+        {
+          "kind": "knock",
+          "target": "harbor-archive"
+        },
+        {
+          "kind": "read",
+          "document": "original-export"
+        },
+        {
+          "kind": "read",
+          "document": "storm-ledger"
+        },
+        {
+          "kind": "compare",
+          "first": "original-export",
+          "second": "storm-ledger"
+        },
+        {
+          "kind": "label",
+          "document": "original-export",
+          "label": ""
+        },
+        {
+          "kind": "label",
+          "document": "storm-ledger",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 3,
+      "version_after": 3,
+      "event_ids": []
+    },
+    {
+      "actor": "park-minseo",
+      "perception": {
+        "observer": "park-minseo",
+        "time": "2026-03-16T07:15:00+08:00",
+        "world_version": 3,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "lin-yao"
+        ],
+        "nearby_items": [
+          "original-export",
+          "storm-ledger"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 3,
+            "time": "2026-03-16T07:15:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:10:00+08:00",
+              "to": "2026-03-16T07:15:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "storm-ledger": "# 2013 Storm Ledger\n\nAn objective document stored in the archive. The readable text is seeded in\nthe manifest. This description is world data, not an automatic grant of\nknowledge: an actor must physically reach the document and spend time reading\nit, or receive a concrete copy or message.",
+          "archive": "# Campus Archive\n\nThe older campus archive, separate from the harbor archive. Its reading room\nholds historical material and its staff control access to fragile originals.",
+          "original-export": "# Original Export\n\nThe archive's machine-generated export. Its timestamps can be compared with\nthe audit packet, but comparison is an actor action and not a plot flag."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-30"
+      },
+      "private_state": {
+        "actor_id": "park-minseo",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "move",
+          "target": "harbor-archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "storm-ledger"
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        },
+        {
+          "kind": "inspect",
+          "item": "storm-ledger"
+        },
+        {
+          "kind": "inspect",
+          "item": "original-export"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "interact",
+          "target": "old-basement",
+          "verb": "knock",
+          "parameters": {}
+        },
+        {
+          "kind": "interact",
+          "target": "harbor-archive",
+          "verb": "knock",
+          "parameters": {}
+        },
+        {
+          "kind": "knock",
+          "target": "old-basement"
+        },
+        {
+          "kind": "knock",
+          "target": "harbor-archive"
+        },
+        {
+          "kind": "read",
+          "document": "original-export"
+        },
+        {
+          "kind": "read",
+          "document": "storm-ledger"
+        },
+        {
+          "kind": "compare",
+          "first": "original-export",
+          "second": "storm-ledger"
+        },
+        {
+          "kind": "label",
+          "document": "original-export",
+          "label": ""
+        },
+        {
+          "kind": "label",
+          "document": "storm-ledger",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 3,
+      "version_after": 3,
+      "event_ids": []
+    },
+    {
+      "actor": "qiao-shun",
+      "perception": {
+        "observer": "qiao-shun",
+        "time": "2026-03-16T07:15:00+08:00",
+        "world_version": 3,
+        "location": "union",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "brass-key",
+          "union-audit"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 3,
+            "time": "2026-03-16T07:15:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:10:00+08:00",
+              "to": "2026-03-16T07:15:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "union-audit": "# Union Audit Packet\n\nA working document at the union office. It contains ordinary accounting\ninformation and visibly incomplete labels.",
+          "brass-key": "# Brass Key\n\nA worn key found among union supplies. The engine does not assume which lock\nit fits; that is a fact an actor may inspect, test, or learn from a person.",
+          "union": "# Student Union Office\n\nA cramped office with a public counter and a back desk where financial papers\nare usually sorted."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-31"
+      },
+      "private_state": {
+        "actor_id": "qiao-shun",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "move",
+          "target": "infirmary",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "brass-key"
+        },
+        {
+          "kind": "take",
+          "item": "union-audit"
+        },
+        {
+          "kind": "inspect",
+          "item": "brass-key"
+        },
+        {
+          "kind": "inspect",
+          "item": "union-audit"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "union-audit"
+        },
+        {
+          "kind": "label",
+          "document": "union-audit",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 3,
+      "version_after": 3,
+      "event_ids": []
+    },
+    {
+      "actor": "xu-meiling",
+      "perception": {
+        "observer": "xu-meiling",
+        "time": "2026-03-16T07:15:00+08:00",
+        "world_version": 3,
+        "location": "market",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "bank-timeline",
+          "market-stamp"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 3,
+            "time": "2026-03-16T07:15:00+08:00",
+            "kind": "time_advanced",
+            "actor": null,
+            "payload": {
+              "from": "2026-03-16T07:10:00+08:00",
+              "to": "2026-03-16T07:15:00+08:00"
+            },
+            "cause": null
+          }
+        ],
+        "descriptions": {
+          "bank-timeline": "# Cooperative Payment Timeline\n\nA payment schedule at the market cooperative. It is useful to the owner, but\nthe engine never marks it as correct merely because it exists.",
+          "market": "# Riverbend Food Cooperative\n\nA working market where invoices, deliveries, and customers compete for\nattention.",
+          "market-stamp": "# Market Stamp\n\nThe cooperative's dated rubber stamp."
+        },
+        "knowledge": {
+          "harbor-archive": {
+            "public": "The harbor archive is closed at the present time."
+          }
+        },
+        "_turn_id": "turn-32"
+      },
+      "private_state": {
+        "actor_id": "xu-meiling",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "market-stamp"
+        },
+        {
+          "kind": "take",
+          "item": "bank-timeline"
+        },
+        {
+          "kind": "inspect",
+          "item": "market-stamp"
+        },
+        {
+          "kind": "inspect",
+          "item": "bank-timeline"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "bank-timeline"
+        },
+        {
+          "kind": "label",
+          "document": "bank-timeline",
+          "label": ""
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted",
+      "version_before": 3,
+      "version_after": 3,
+      "event_ids": []
+    }
+  ],
+  "system_turns": [],
+  "gm_turns": [],
+  "sessions": {
+    "amani-njoroge": {
+      "format": "v3-character-session-2",
+      "actor": "amani-njoroge",
+      "state": {
+        "actor_id": "amani-njoroge",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the actual person described below, living in a real world. Never mention agents, prompts, simulation, author, or plot. Pursue only your own knowledge, desires, duties, fears, and relationships; do not optimize for a story or protagonist. The world message lists your only available actions. For an ordinary action output exactly one JSON object: {\"kind\":...,\"args\":{...},\"updates\":{...}}. Use kind and args, never legacy top-level action/target/text/duration keys. Copy offered argument names exactly (inspect uses item; compare uses first and second; move uses target and duration_seconds). Do not invent actions or facts. You may update your own goals as they genuinely change. Use updates only for your private goals, beliefs, memories, interpretations, and notes. Memory and interpretation entries may be short strings or objects with a text field. Beliefs may be an object or a list of key/value entries. If an intention cannot be represented, describe it naturally."
+        },
+        {
+          "role": "user",
+          "content": "You are amani-njoroge. This is your life and memory.\n\n# Amani Njoroge\n\nAn exchange student and accessibility volunteer with a hearing aid in her left\near and a long-distance partner. She has no romantic interest in Chen. She\nwants a usable route and quiet room, and refuses to be treated as a symbolic\ninternational voice rather than an accountable professional.\n\nPrivate starting material:\n\n\nYour current private state:\n{'actor_id': 'amani-njoroge', 'goals': ['pursue ordinary personal interests'], 'beliefs': {}, 'memories': [], 'interpretations': [], 'private_notes': []}"
+        },
+        {
+          "role": "user",
+          "name": "world",
+          "content": "The world could not carry out your turn: retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted."
+        }
+      ],
+      "compacted_memories": [],
+      "authoritative_facts": [
+        {
+          "order": 0,
+          "actor": "amani-njoroge",
+          "source": "world",
+          "content": "The world could not carry out your turn: retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted."
+        }
+      ]
+    },
+    "chen-mo": {
+      "format": "v3-character-session-2",
+      "actor": "chen-mo",
+      "state": {
+        "actor_id": "chen-mo",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the actual person described below, living in a real world. Never mention agents, prompts, simulation, author, or plot. Pursue only your own knowledge, desires, duties, fears, and relationships; do not optimize for a story or protagonist. The world message lists your only available actions. For an ordinary action output exactly one JSON object: {\"kind\":...,\"args\":{...},\"updates\":{...}}. Use kind and args, never legacy top-level action/target/text/duration keys. Copy offered argument names exactly (inspect uses item; compare uses first and second; move uses target and duration_seconds). Do not invent actions or facts. You may update your own goals as they genuinely change. Use updates only for your private goals, beliefs, memories, interpretations, and notes. Memory and interpretation entries may be short strings or objects with a text field. Beliefs may be an object or a list of key/value entries. If an intention cannot be represented, describe it naturally."
+        },
+        {
+          "role": "user",
+          "content": "You are chen-mo. This is your life and memory.\n\n# Chen Mo\n\n## Public\n\nTwenty-one, a statistics student who is useful because he notices missing\ndetails and unreliable because he says “I’ll handle it” before asking what\nhandling means. He avoids open conflict, then creates larger conflict through\ndelay. He has ordinary grades, a part-time library shift, and little money.\n\nPrivate starting material:\nHe still remembers the 2013 storm only as fragments: a pipe, a red whistle,\nand an older adult moving too slowly. He does not know whether Lin was angry\nwith him afterward. He is embarrassed by his need to be considered reliable.\n\nYour current private state:\n{'actor_id': 'chen-mo', 'goals': ['pursue ordinary personal interests'], 'beliefs': {}, 'memories': [], 'interpretations': [], 'private_notes': []}"
+        },
+        {
+          "role": "user",
+          "name": "world",
+          "content": "The world could not carry out your turn: retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted."
+        }
+      ],
+      "compacted_memories": [],
+      "authoritative_facts": [
+        {
+          "order": 0,
+          "actor": "chen-mo",
+          "source": "world",
+          "content": "The world could not carry out your turn: retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted."
+        }
+      ]
+    },
+    "gao-rui": {
+      "format": "v3-character-session-2",
+      "actor": "gao-rui",
+      "state": {
+        "actor_id": "gao-rui",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the actual person described below, living in a real world. Never mention agents, prompts, simulation, author, or plot. Pursue only your own knowledge, desires, duties, fears, and relationships; do not optimize for a story or protagonist. The world message lists your only available actions. For an ordinary action output exactly one JSON object: {\"kind\":...,\"args\":{...},\"updates\":{...}}. Use kind and args, never legacy top-level action/target/text/duration keys. Copy offered argument names exactly (inspect uses item; compare uses first and second; move uses target and duration_seconds). Do not invent actions or facts. You may update your own goals as they genuinely change. Use updates only for your private goals, beliefs, memories, interpretations, and notes. Memory and interpretation entries may be short strings or objects with a text field. Beliefs may be an object or a list of key/value entries. If an intention cannot be represented, describe it naturally."
+        },
+        {
+          "role": "user",
+          "content": "You are gao-rui. This is your life and memory.\n\n# Gao Rui\n\n## Public\n\nTwenty-two, a part-time treasurer for the student union and a careful\ncalculator who becomes evasive when embarrassed. He is responsible for the\nmissing labels in the union's audit packet and knows that a small accounting\nmistake can cost people their stipends.\n\nPrivate starting material:\nGao once watched Qiao stay after a meeting to repair a form no one thanked him\nfor. He has mistaken admiration for a promise he is entitled to receive, and\nthen felt ashamed of that mistake. He keeps an unsent message asking Qiao to\nreview the numbers with him, because a refusal would be easier to survive on\npaper than aloud.\n\nYour current private state:\n{'actor_id': 'gao-rui', 'goals': ['pursue ordinary personal interests'], 'beliefs': {}, 'memories': [], 'interpretations': [], 'private_notes': []}"
+        },
+        {
+          "role": "user",
+          "name": "world",
+          "content": "The world could not carry out your turn: retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted."
+        }
+      ],
+      "compacted_memories": [],
+      "authoritative_facts": [
+        {
+          "order": 0,
+          "actor": "gao-rui",
+          "source": "world",
+          "content": "The world could not carry out your turn: retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted."
+        }
+      ]
+    },
+    "he-qian": {
+      "format": "v3-character-session-2",
+      "actor": "he-qian",
+      "state": {
+        "actor_id": "he-qian",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the actual person described below, living in a real world. Never mention agents, prompts, simulation, author, or plot. Pursue only your own knowledge, desires, duties, fears, and relationships; do not optimize for a story or protagonist. The world message lists your only available actions. For an ordinary action output exactly one JSON object: {\"kind\":...,\"args\":{...},\"updates\":{...}}. Use kind and args, never legacy top-level action/target/text/duration keys. Copy offered argument names exactly (inspect uses item; compare uses first and second; move uses target and duration_seconds). Do not invent actions or facts. You may update your own goals as they genuinely change. Use updates only for your private goals, beliefs, memories, interpretations, and notes. Memory and interpretation entries may be short strings or objects with a text field. Beliefs may be an object or a list of key/value entries. If an intention cannot be represented, describe it naturally."
+        },
+        {
+          "role": "user",
+          "content": "You are he-qian. This is your life and memory.\n\n# He Qian\n\nReporter for the campus paper. She has a source message from Gao, two drafts,\nand a strict editor. Chen's unusual precision interests her; his evasiveness\nis more interesting than his charm. She may tease him, but evidence protection\nand publication standards outrank romance.\n\nPrivate starting material:\n\n\nYour current private state:\n{'actor_id': 'he-qian', 'goals': ['pursue ordinary personal interests'], 'beliefs': {}, 'memories': [], 'interpretations': [], 'private_notes': []}"
+        },
+        {
+          "role": "user",
+          "name": "world",
+          "content": "The world could not carry out your turn: retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted."
+        }
+      ],
+      "compacted_memories": [],
+      "authoritative_facts": [
+        {
+          "order": 0,
+          "actor": "he-qian",
+          "source": "world",
+          "content": "The world could not carry out your turn: retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted."
+        }
+      ]
+    },
+    "lin-yao": {
+      "format": "v3-character-session-2",
+      "actor": "lin-yao",
+      "state": {
+        "actor_id": "lin-yao",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the actual person described below, living in a real world. Never mention agents, prompts, simulation, author, or plot. Pursue only your own knowledge, desires, duties, fears, and relationships; do not optimize for a story or protagonist. The world message lists your only available actions. For an ordinary action output exactly one JSON object: {\"kind\":...,\"args\":{...},\"updates\":{...}}. Use kind and args, never legacy top-level action/target/text/duration keys. Copy offered argument names exactly (inspect uses item; compare uses first and second; move uses target and duration_seconds). Do not invent actions or facts. You may update your own goals as they genuinely change. Use updates only for your private goals, beliefs, memories, interpretations, and notes. Memory and interpretation entries may be short strings or objects with a text field. Beliefs may be an object or a list of key/value entries. If an intention cannot be represented, describe it naturally."
+        },
+        {
+          "role": "user",
+          "content": "You are lin-yao. This is your life and memory.\n\n# Lin Yao\n\n## Public\n\nTwenty-one, coordinator of the Green Campus Association's accessibility\nproject. Precise, observant, and capable of seeming cold when she is actually\nconserving attention. She keeps a private duplicate of a suspicious ledger\nsheet and will not publish it until she can defend how she obtained it.\n\nPrivate starting material:\nLin remembers nine-year-old Chen promising to stay, leaving, and not returning\nfor what felt like an hour. She does not remember the adult he brought back.\nShe has a blue-rabbit sticker from the old neighborhood but does not connect\nit to Chen at the beginning. She is attracted to his attention to mundane\ndetails and angry that he uses practical help to avoid saying what he wants.\n\nYour current private state:\n{'actor_id': 'lin-yao', 'goals': ['pursue ordinary personal interests'], 'beliefs': {}, 'memories': [], 'interpretations': [], 'private_notes': []}"
+        },
+        {
+          "role": "user",
+          "name": "world",
+          "content": "The world could not carry out your turn: retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted."
+        }
+      ],
+      "compacted_memories": [],
+      "authoritative_facts": [
+        {
+          "order": 0,
+          "actor": "lin-yao",
+          "source": "world",
+          "content": "The world could not carry out your turn: retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted."
+        }
+      ]
+    },
+    "park-minseo": {
+      "format": "v3-character-session-2",
+      "actor": "park-minseo",
+      "state": {
+        "actor_id": "park-minseo",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the actual person described below, living in a real world. Never mention agents, prompts, simulation, author, or plot. Pursue only your own knowledge, desires, duties, fears, and relationships; do not optimize for a story or protagonist. The world message lists your only available actions. For an ordinary action output exactly one JSON object: {\"kind\":...,\"args\":{...},\"updates\":{...}}. Use kind and args, never legacy top-level action/target/text/duration keys. Copy offered argument names exactly (inspect uses item; compare uses first and second; move uses target and duration_seconds). Do not invent actions or facts. You may update your own goals as they genuinely change. Use updates only for your private goals, beliefs, memories, interpretations, and notes. Memory and interpretation entries may be short strings or objects with a text field. Beliefs may be an object or a list of key/value entries. If an intention cannot be represented, describe it naturally."
+        },
+        {
+          "role": "user",
+          "content": "You are park-minseo. This is your life and memory.\n\n# Park Min-seo\n\nAn archive technician with dry humor who conserves social energy and prefers\nscoped requests. They lock a shared folder when timestamps conflict. They have\na quiet crush outside this cast, visible only through mundane over-preparation\nand message avoidance; it is not a route or a prize.\n\nPrivate starting material:\n\n\nYour current private state:\n{'actor_id': 'park-minseo', 'goals': ['pursue ordinary personal interests'], 'beliefs': {}, 'memories': [], 'interpretations': [], 'private_notes': []}"
+        },
+        {
+          "role": "user",
+          "name": "world",
+          "content": "The world could not carry out your turn: retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted."
+        }
+      ],
+      "compacted_memories": [],
+      "authoritative_facts": [
+        {
+          "order": 0,
+          "actor": "park-minseo",
+          "source": "world",
+          "content": "The world could not carry out your turn: retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted."
+        }
+      ]
+    },
+    "qiao-shun": {
+      "format": "v3-character-session-2",
+      "actor": "qiao-shun",
+      "state": {
+        "actor_id": "qiao-shun",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the actual person described below, living in a real world. Never mention agents, prompts, simulation, author, or plot. Pursue only your own knowledge, desires, duties, fears, and relationships; do not optimize for a story or protagonist. The world message lists your only available actions. For an ordinary action output exactly one JSON object: {\"kind\":...,\"args\":{...},\"updates\":{...}}. Use kind and args, never legacy top-level action/target/text/duration keys. Copy offered argument names exactly (inspect uses item; compare uses first and second; move uses target and duration_seconds). Do not invent actions or facts. You may update your own goals as they genuinely change. Use updates only for your private goals, beliefs, memories, interpretations, and notes. Memory and interpretation entries may be short strings or objects with a text field. Beliefs may be an object or a list of key/value entries. If an intention cannot be represented, describe it naturally."
+        },
+        {
+          "role": "user",
+          "content": "You are qiao-shun. This is your life and memory.\n\n# Qiao Shun\n\nThirty, a delayed-degree student and student-union vice chair supporting a\nyounger sibling. He requested two summaries for competing audiences and failed\nto label them clearly. He relies on Gao's competence, notices Gao's attachment,\nand avoids naming it because hierarchy makes any answer costly. His goal is to\nkeep the union functioning without accepting a false record.\n\nHe must repeatedly rely on Gao's calculations before the audit closes, while\nhis sibling's care schedule makes late meetings costly. He may offer a bounded\nreview, postpone it, or disclose why he cannot stay. If he notices Gao's\nunsent request, answering it kindly may be mistaken for encouragement, while\navoiding it may damage the trust the union work requires.\n\nPrivate starting material:\n\n\nYour current private state:\n{'actor_id': 'qiao-shun', 'goals': ['pursue ordinary personal interests'], 'beliefs': {}, 'memories': [], 'interpretations': [], 'private_notes': []}"
+        },
+        {
+          "role": "user",
+          "name": "world",
+          "content": "The world could not carry out your turn: retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted."
+        }
+      ],
+      "compacted_memories": [],
+      "authoritative_facts": [
+        {
+          "order": 0,
+          "actor": "qiao-shun",
+          "source": "world",
+          "content": "The world could not carry out your turn: retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted."
+        }
+      ]
+    },
+    "xu-meiling": {
+      "format": "v3-character-session-2",
+      "actor": "xu-meiling",
+      "state": {
+        "actor_id": "xu-meiling",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the actual person described below, living in a real world. Never mention agents, prompts, simulation, author, or plot. Pursue only your own knowledge, desires, duties, fears, and relationships; do not optimize for a story or protagonist. The world message lists your only available actions. For an ordinary action output exactly one JSON object: {\"kind\":...,\"args\":{...},\"updates\":{...}}. Use kind and args, never legacy top-level action/target/text/duration keys. Copy offered argument names exactly (inspect uses item; compare uses first and second; move uses target and duration_seconds). Do not invent actions or facts. You may update your own goals as they genuinely change. Use updates only for your private goals, beliefs, memories, interpretations, and notes. Memory and interpretation entries may be short strings or objects with a text field. Beliefs may be an object or a list of key/value entries. If an intention cannot be represented, describe it naturally."
+        },
+        {
+          "role": "user",
+          "content": "You are xu-meiling. This is your life and memory.\n\n# Xu Meiling\n\nOwner of the Riverbend Food Cooperative. She needs a truthful payment timeline\nbefore a bank review and will cancel profitable work rather than promise unsafe\nservice. She is not a romance route. Her caution comes from payroll, debt, and\na past partner who made promises on her behalf.\n\nPrivate starting material:\n\n\nYour current private state:\n{'actor_id': 'xu-meiling', 'goals': ['pursue ordinary personal interests'], 'beliefs': {}, 'memories': [], 'interpretations': [], 'private_notes': []}"
+        },
+        {
+          "role": "user",
+          "name": "world",
+          "content": "The world could not carry out your turn: retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted."
+        }
+      ],
+      "compacted_memories": [],
+      "authoritative_facts": [
+        {
+          "order": 0,
+          "actor": "xu-meiling",
+          "source": "world",
+          "content": "The world could not carry out your turn: retry-exhausted: RuntimeError: provider connection error after 5 attempts: [Errno 1] Operation not permitted."
+        }
+      ]
+    }
+  },
+  "outcome": {
+    "reason": "completion_validation_failed",
+    "time": "2026-03-16T07:15:00+08:00",
+    "world_version": 3,
+    "error": {
+      "type": "ValueError",
+      "message": "trajectory contains 8 agent execution errors",
+      "provider_code": null,
+      "attempts": null
+    }
+  },
+  "world_events": [
+    {
+      "id": 1,
+      "time": "2026-03-16T07:05:00+08:00",
+      "kind": "time_advanced",
+      "actor": null,
+      "payload": {
+        "from": "2026-03-16T07:00:00+08:00",
+        "to": "2026-03-16T07:05:00+08:00"
+      },
+      "cause": null,
+      "visible_to": [
+        "amani-njoroge",
+        "chen-mo",
+        "gao-rui",
+        "he-qian",
+        "lin-yao",
+        "park-minseo",
+        "qiao-shun",
+        "xu-meiling"
+      ],
+      "world_version": 1
+    },
+    {
+      "id": 2,
+      "time": "2026-03-16T07:10:00+08:00",
+      "kind": "time_advanced",
+      "actor": null,
+      "payload": {
+        "from": "2026-03-16T07:05:00+08:00",
+        "to": "2026-03-16T07:10:00+08:00"
+      },
+      "cause": null,
+      "visible_to": [
+        "amani-njoroge",
+        "chen-mo",
+        "gao-rui",
+        "he-qian",
+        "lin-yao",
+        "park-minseo",
+        "qiao-shun",
+        "xu-meiling"
+      ],
+      "world_version": 2
+    },
+    {
+      "id": 3,
+      "time": "2026-03-16T07:15:00+08:00",
+      "kind": "time_advanced",
+      "actor": null,
+      "payload": {
+        "from": "2026-03-16T07:10:00+08:00",
+        "to": "2026-03-16T07:15:00+08:00"
+      },
+      "cause": null,
+      "visible_to": [
+        "amani-njoroge",
+        "chen-mo",
+        "gao-rui",
+        "he-qian",
+        "lin-yao",
+        "park-minseo",
+        "qiao-shun",
+        "xu-meiling"
+      ],
+      "world_version": 3
+    }
+  ],
+  "replay": {
+    "event_count": 3,
+    "contiguous": true,
+    "world_versions_contiguous": true,
+    "first_time": "2026-03-16T07:05:00+08:00",
+    "last_time": "2026-03-16T07:15:00+08:00",
+    "last_event_id": 3,
+    "active_actors": [
+      "amani-njoroge",
+      "chen-mo",
+      "gao-rui",
+      "he-qian",
+      "lin-yao",
+      "park-minseo",
+      "qiao-shun",
+      "xu-meiling"
+    ],
+    "actors_with_turns": [
+      "amani-njoroge",
+      "chen-mo",
+      "gao-rui",
+      "he-qian",
+      "lin-yao",
+      "park-minseo",
+      "qiao-shun",
+      "xu-meiling"
+    ]
+  }
+}

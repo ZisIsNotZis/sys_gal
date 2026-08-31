@@ -1,0 +1,6509 @@
+{
+  "format": "v2-trajectory-1",
+  "seed_version": "v2",
+  "run_id": "real-2026-08-24-02",
+  "agent_turns": [
+    {
+      "actor": "amani-njoroge",
+      "perception": {
+        "observer": "amani-njoroge",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "courtyard",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": []
+      },
+      "private_state": {
+        "actor_id": "amani-njoroge",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "chen-mo",
+      "perception": {
+        "observer": "chen-mo",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "dorm",
+        "inventory": [
+          "old-permit-form",
+          "red-whistle"
+        ],
+        "sleeping": false,
+        "nearby_actors": [
+          "gao-rui"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": []
+      },
+      "private_state": {
+        "actor_id": "chen-mo",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "drop",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "drop",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "gao-rui",
+      "perception": {
+        "observer": "gao-rui",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "dorm",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "chen-mo"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": []
+      },
+      "private_state": {
+        "actor_id": "gao-rui",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "he-qian",
+      "perception": {
+        "observer": "he-qian",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "cafe",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": []
+      },
+      "private_state": {
+        "actor_id": "he-qian",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "market",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "lin-yao",
+      "perception": {
+        "observer": "lin-yao",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "park-minseo"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": []
+      },
+      "private_state": {
+        "actor_id": "lin-yao",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "park-minseo",
+      "perception": {
+        "observer": "park-minseo",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "lin-yao"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": []
+      },
+      "private_state": {
+        "actor_id": "park-minseo",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "qiao-shun",
+      "perception": {
+        "observer": "qiao-shun",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "union",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": []
+      },
+      "private_state": {
+        "actor_id": "qiao-shun",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "xu-meiling",
+      "perception": {
+        "observer": "xu-meiling",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "market",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": []
+      },
+      "private_state": {
+        "actor_id": "xu-meiling",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "chen-mo",
+      "perception": {
+        "observer": "chen-mo",
+        "time": "2026-03-16T08:10:00+08:00",
+        "world_version": 1,
+        "location": "dorm",
+        "inventory": [
+          "old-permit-form",
+          "red-whistle"
+        ],
+        "sleeping": false,
+        "nearby_actors": [
+          "gao-rui"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 1,
+            "time": "2026-03-16T08:10:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "class_begins",
+              "time": "2026-03-16T08:10:00+08:00",
+              "target": "chen-mo"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "chen-mo",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "drop",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "drop",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 1,
+      "version_after": 1,
+      "event_ids": []
+    },
+    {
+      "actor": "lin-yao",
+      "perception": {
+        "observer": "lin-yao",
+        "time": "2026-03-16T09:30:00+08:00",
+        "world_version": 2,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "park-minseo"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 2,
+            "time": "2026-03-16T09:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "private_copy_due",
+              "time": "2026-03-16T09:30:00+08:00",
+              "target": "lin-yao"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "lin-yao",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 2,
+      "version_after": 2,
+      "event_ids": []
+    },
+    {
+      "actor": "qiao-shun",
+      "perception": {
+        "observer": "qiao-shun",
+        "time": "2026-03-16T16:00:00+08:00",
+        "world_version": 3,
+        "location": "union",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 3,
+            "time": "2026-03-16T16:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "audit_deadline",
+              "time": "2026-03-16T16:00:00+08:00",
+              "target": "qiao-shun"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "qiao-shun",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 3,
+      "version_after": 3,
+      "event_ids": []
+    },
+    {
+      "actor": "he-qian",
+      "perception": {
+        "observer": "he-qian",
+        "time": "2026-03-16T17:40:00+08:00",
+        "world_version": 4,
+        "location": "cafe",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 4,
+            "time": "2026-03-16T17:40:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "editor_pitch_due",
+              "time": "2026-03-16T17:40:00+08:00",
+              "target": "he-qian"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "he-qian",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "market",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 4,
+      "version_after": 4,
+      "event_ids": []
+    },
+    {
+      "actor": "amani-njoroge",
+      "perception": {
+        "observer": "amani-njoroge",
+        "time": "2026-03-17T09:00:00+08:00",
+        "world_version": 5,
+        "location": "courtyard",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 5,
+            "time": "2026-03-17T09:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "permit_review",
+              "time": "2026-03-17T09:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "amani-njoroge",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 5,
+      "version_after": 5,
+      "event_ids": []
+    },
+    {
+      "actor": "chen-mo",
+      "perception": {
+        "observer": "chen-mo",
+        "time": "2026-03-17T09:00:00+08:00",
+        "world_version": 5,
+        "location": "dorm",
+        "inventory": [
+          "old-permit-form",
+          "red-whistle"
+        ],
+        "sleeping": false,
+        "nearby_actors": [
+          "gao-rui"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 5,
+            "time": "2026-03-17T09:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "permit_review",
+              "time": "2026-03-17T09:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "chen-mo",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "drop",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "drop",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 5,
+      "version_after": 5,
+      "event_ids": []
+    },
+    {
+      "actor": "gao-rui",
+      "perception": {
+        "observer": "gao-rui",
+        "time": "2026-03-17T09:00:00+08:00",
+        "world_version": 5,
+        "location": "dorm",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "chen-mo"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 5,
+            "time": "2026-03-17T09:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "permit_review",
+              "time": "2026-03-17T09:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "gao-rui",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 5,
+      "version_after": 5,
+      "event_ids": []
+    },
+    {
+      "actor": "he-qian",
+      "perception": {
+        "observer": "he-qian",
+        "time": "2026-03-17T09:00:00+08:00",
+        "world_version": 5,
+        "location": "cafe",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 5,
+            "time": "2026-03-17T09:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "permit_review",
+              "time": "2026-03-17T09:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "he-qian",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "market",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 5,
+      "version_after": 5,
+      "event_ids": []
+    },
+    {
+      "actor": "lin-yao",
+      "perception": {
+        "observer": "lin-yao",
+        "time": "2026-03-17T09:00:00+08:00",
+        "world_version": 5,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "park-minseo"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 5,
+            "time": "2026-03-17T09:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "permit_review",
+              "time": "2026-03-17T09:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "lin-yao",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 5,
+      "version_after": 5,
+      "event_ids": []
+    },
+    {
+      "actor": "park-minseo",
+      "perception": {
+        "observer": "park-minseo",
+        "time": "2026-03-17T09:00:00+08:00",
+        "world_version": 5,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "lin-yao"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 5,
+            "time": "2026-03-17T09:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "permit_review",
+              "time": "2026-03-17T09:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "park-minseo",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 5,
+      "version_after": 5,
+      "event_ids": []
+    },
+    {
+      "actor": "qiao-shun",
+      "perception": {
+        "observer": "qiao-shun",
+        "time": "2026-03-17T09:00:00+08:00",
+        "world_version": 5,
+        "location": "union",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 5,
+            "time": "2026-03-17T09:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "permit_review",
+              "time": "2026-03-17T09:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "qiao-shun",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 5,
+      "version_after": 5,
+      "event_ids": []
+    },
+    {
+      "actor": "xu-meiling",
+      "perception": {
+        "observer": "xu-meiling",
+        "time": "2026-03-17T09:00:00+08:00",
+        "world_version": 5,
+        "location": "market",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 5,
+            "time": "2026-03-17T09:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "permit_review",
+              "time": "2026-03-17T09:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "xu-meiling",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 5,
+      "version_after": 5,
+      "event_ids": []
+    },
+    {
+      "actor": "xu-meiling",
+      "perception": {
+        "observer": "xu-meiling",
+        "time": "2026-03-19T10:00:00+08:00",
+        "world_version": 6,
+        "location": "market",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 6,
+            "time": "2026-03-19T10:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "bank_call",
+              "time": "2026-03-19T10:00:00+08:00",
+              "target": "xu-meiling"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "xu-meiling",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 6,
+      "version_after": 6,
+      "event_ids": []
+    },
+    {
+      "actor": "amani-njoroge",
+      "perception": {
+        "observer": "amani-njoroge",
+        "time": "2026-03-20T15:00:00+08:00",
+        "world_version": 7,
+        "location": "courtyard",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 7,
+            "time": "2026-03-20T15:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "storm_records_available",
+              "time": "2026-03-20T15:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "amani-njoroge",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 7,
+      "version_after": 7,
+      "event_ids": []
+    },
+    {
+      "actor": "chen-mo",
+      "perception": {
+        "observer": "chen-mo",
+        "time": "2026-03-20T15:00:00+08:00",
+        "world_version": 7,
+        "location": "dorm",
+        "inventory": [
+          "old-permit-form",
+          "red-whistle"
+        ],
+        "sleeping": false,
+        "nearby_actors": [
+          "gao-rui"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 7,
+            "time": "2026-03-20T15:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "storm_records_available",
+              "time": "2026-03-20T15:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "chen-mo",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "drop",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "drop",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 7,
+      "version_after": 7,
+      "event_ids": []
+    },
+    {
+      "actor": "gao-rui",
+      "perception": {
+        "observer": "gao-rui",
+        "time": "2026-03-20T15:00:00+08:00",
+        "world_version": 7,
+        "location": "dorm",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "chen-mo"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 7,
+            "time": "2026-03-20T15:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "storm_records_available",
+              "time": "2026-03-20T15:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "gao-rui",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 7,
+      "version_after": 7,
+      "event_ids": []
+    },
+    {
+      "actor": "he-qian",
+      "perception": {
+        "observer": "he-qian",
+        "time": "2026-03-20T15:00:00+08:00",
+        "world_version": 7,
+        "location": "cafe",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 7,
+            "time": "2026-03-20T15:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "storm_records_available",
+              "time": "2026-03-20T15:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "he-qian",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "market",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 7,
+      "version_after": 7,
+      "event_ids": []
+    },
+    {
+      "actor": "lin-yao",
+      "perception": {
+        "observer": "lin-yao",
+        "time": "2026-03-20T15:00:00+08:00",
+        "world_version": 7,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "park-minseo"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 7,
+            "time": "2026-03-20T15:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "storm_records_available",
+              "time": "2026-03-20T15:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "lin-yao",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 7,
+      "version_after": 7,
+      "event_ids": []
+    },
+    {
+      "actor": "park-minseo",
+      "perception": {
+        "observer": "park-minseo",
+        "time": "2026-03-20T15:00:00+08:00",
+        "world_version": 7,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "lin-yao"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 7,
+            "time": "2026-03-20T15:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "storm_records_available",
+              "time": "2026-03-20T15:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "park-minseo",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 7,
+      "version_after": 7,
+      "event_ids": []
+    },
+    {
+      "actor": "qiao-shun",
+      "perception": {
+        "observer": "qiao-shun",
+        "time": "2026-03-20T15:00:00+08:00",
+        "world_version": 7,
+        "location": "union",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 7,
+            "time": "2026-03-20T15:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "storm_records_available",
+              "time": "2026-03-20T15:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "qiao-shun",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 7,
+      "version_after": 7,
+      "event_ids": []
+    },
+    {
+      "actor": "xu-meiling",
+      "perception": {
+        "observer": "xu-meiling",
+        "time": "2026-03-20T15:00:00+08:00",
+        "world_version": 7,
+        "location": "market",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 7,
+            "time": "2026-03-20T15:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "storm_records_available",
+              "time": "2026-03-20T15:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "xu-meiling",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 7,
+      "version_after": 7,
+      "event_ids": []
+    },
+    {
+      "actor": "amani-njoroge",
+      "perception": {
+        "observer": "amani-njoroge",
+        "time": "2026-03-21T10:00:00+08:00",
+        "world_version": 8,
+        "location": "courtyard",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 8,
+            "time": "2026-03-21T10:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "review_meeting",
+              "time": "2026-03-21T10:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "amani-njoroge",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 8,
+      "version_after": 8,
+      "event_ids": []
+    },
+    {
+      "actor": "chen-mo",
+      "perception": {
+        "observer": "chen-mo",
+        "time": "2026-03-21T10:00:00+08:00",
+        "world_version": 8,
+        "location": "dorm",
+        "inventory": [
+          "old-permit-form",
+          "red-whistle"
+        ],
+        "sleeping": false,
+        "nearby_actors": [
+          "gao-rui"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 8,
+            "time": "2026-03-21T10:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "review_meeting",
+              "time": "2026-03-21T10:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "chen-mo",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "drop",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "drop",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 8,
+      "version_after": 8,
+      "event_ids": []
+    },
+    {
+      "actor": "gao-rui",
+      "perception": {
+        "observer": "gao-rui",
+        "time": "2026-03-21T10:00:00+08:00",
+        "world_version": 8,
+        "location": "dorm",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "chen-mo"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 8,
+            "time": "2026-03-21T10:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "review_meeting",
+              "time": "2026-03-21T10:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "gao-rui",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 8,
+      "version_after": 8,
+      "event_ids": []
+    },
+    {
+      "actor": "he-qian",
+      "perception": {
+        "observer": "he-qian",
+        "time": "2026-03-21T10:00:00+08:00",
+        "world_version": 8,
+        "location": "cafe",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 8,
+            "time": "2026-03-21T10:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "review_meeting",
+              "time": "2026-03-21T10:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "he-qian",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "market",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 8,
+      "version_after": 8,
+      "event_ids": []
+    },
+    {
+      "actor": "lin-yao",
+      "perception": {
+        "observer": "lin-yao",
+        "time": "2026-03-21T10:00:00+08:00",
+        "world_version": 8,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "park-minseo"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 8,
+            "time": "2026-03-21T10:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "review_meeting",
+              "time": "2026-03-21T10:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "lin-yao",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 8,
+      "version_after": 8,
+      "event_ids": []
+    },
+    {
+      "actor": "park-minseo",
+      "perception": {
+        "observer": "park-minseo",
+        "time": "2026-03-21T10:00:00+08:00",
+        "world_version": 8,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "lin-yao"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 8,
+            "time": "2026-03-21T10:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "review_meeting",
+              "time": "2026-03-21T10:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "park-minseo",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 8,
+      "version_after": 8,
+      "event_ids": []
+    },
+    {
+      "actor": "qiao-shun",
+      "perception": {
+        "observer": "qiao-shun",
+        "time": "2026-03-21T10:00:00+08:00",
+        "world_version": 8,
+        "location": "union",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 8,
+            "time": "2026-03-21T10:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "review_meeting",
+              "time": "2026-03-21T10:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "qiao-shun",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 8,
+      "version_after": 8,
+      "event_ids": []
+    },
+    {
+      "actor": "xu-meiling",
+      "perception": {
+        "observer": "xu-meiling",
+        "time": "2026-03-21T10:00:00+08:00",
+        "world_version": 8,
+        "location": "market",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 8,
+            "time": "2026-03-21T10:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "review_meeting",
+              "time": "2026-03-21T10:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "xu-meiling",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 8,
+      "version_after": 8,
+      "event_ids": []
+    },
+    {
+      "actor": "amani-njoroge",
+      "perception": {
+        "observer": "amani-njoroge",
+        "time": "2026-03-24T16:00:00+08:00",
+        "world_version": 9,
+        "location": "courtyard",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 9,
+            "time": "2026-03-24T16:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "rain_warning",
+              "time": "2026-03-24T16:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "amani-njoroge",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 9,
+      "version_after": 9,
+      "event_ids": []
+    },
+    {
+      "actor": "chen-mo",
+      "perception": {
+        "observer": "chen-mo",
+        "time": "2026-03-24T16:00:00+08:00",
+        "world_version": 9,
+        "location": "dorm",
+        "inventory": [
+          "old-permit-form",
+          "red-whistle"
+        ],
+        "sleeping": false,
+        "nearby_actors": [
+          "gao-rui"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 9,
+            "time": "2026-03-24T16:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "rain_warning",
+              "time": "2026-03-24T16:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "chen-mo",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "drop",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "drop",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 9,
+      "version_after": 9,
+      "event_ids": []
+    },
+    {
+      "actor": "gao-rui",
+      "perception": {
+        "observer": "gao-rui",
+        "time": "2026-03-24T16:00:00+08:00",
+        "world_version": 9,
+        "location": "dorm",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "chen-mo"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 9,
+            "time": "2026-03-24T16:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "rain_warning",
+              "time": "2026-03-24T16:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "gao-rui",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 9,
+      "version_after": 9,
+      "event_ids": []
+    },
+    {
+      "actor": "he-qian",
+      "perception": {
+        "observer": "he-qian",
+        "time": "2026-03-24T16:00:00+08:00",
+        "world_version": 9,
+        "location": "cafe",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 9,
+            "time": "2026-03-24T16:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "rain_warning",
+              "time": "2026-03-24T16:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "he-qian",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "market",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 9,
+      "version_after": 9,
+      "event_ids": []
+    },
+    {
+      "actor": "lin-yao",
+      "perception": {
+        "observer": "lin-yao",
+        "time": "2026-03-24T16:00:00+08:00",
+        "world_version": 9,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "park-minseo"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 9,
+            "time": "2026-03-24T16:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "rain_warning",
+              "time": "2026-03-24T16:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "lin-yao",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 9,
+      "version_after": 9,
+      "event_ids": []
+    },
+    {
+      "actor": "park-minseo",
+      "perception": {
+        "observer": "park-minseo",
+        "time": "2026-03-24T16:00:00+08:00",
+        "world_version": 9,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "lin-yao"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 9,
+            "time": "2026-03-24T16:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "rain_warning",
+              "time": "2026-03-24T16:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "park-minseo",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 9,
+      "version_after": 9,
+      "event_ids": []
+    },
+    {
+      "actor": "qiao-shun",
+      "perception": {
+        "observer": "qiao-shun",
+        "time": "2026-03-24T16:00:00+08:00",
+        "world_version": 9,
+        "location": "union",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 9,
+            "time": "2026-03-24T16:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "rain_warning",
+              "time": "2026-03-24T16:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "qiao-shun",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 9,
+      "version_after": 9,
+      "event_ids": []
+    },
+    {
+      "actor": "xu-meiling",
+      "perception": {
+        "observer": "xu-meiling",
+        "time": "2026-03-24T16:00:00+08:00",
+        "world_version": 9,
+        "location": "market",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 9,
+            "time": "2026-03-24T16:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "rain_warning",
+              "time": "2026-03-24T16:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "xu-meiling",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 9,
+      "version_after": 9,
+      "event_ids": []
+    },
+    {
+      "actor": "amani-njoroge",
+      "perception": {
+        "observer": "amani-njoroge",
+        "time": "2026-03-26T08:00:00+08:00",
+        "world_version": 10,
+        "location": "courtyard",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 10,
+            "time": "2026-03-26T08:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "fair_opens",
+              "time": "2026-03-26T08:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "amani-njoroge",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 10,
+      "version_after": 10,
+      "event_ids": []
+    },
+    {
+      "actor": "chen-mo",
+      "perception": {
+        "observer": "chen-mo",
+        "time": "2026-03-26T08:00:00+08:00",
+        "world_version": 10,
+        "location": "dorm",
+        "inventory": [
+          "old-permit-form",
+          "red-whistle"
+        ],
+        "sleeping": false,
+        "nearby_actors": [
+          "gao-rui"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 10,
+            "time": "2026-03-26T08:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "fair_opens",
+              "time": "2026-03-26T08:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "chen-mo",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "drop",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "drop",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 10,
+      "version_after": 10,
+      "event_ids": []
+    },
+    {
+      "actor": "gao-rui",
+      "perception": {
+        "observer": "gao-rui",
+        "time": "2026-03-26T08:00:00+08:00",
+        "world_version": 10,
+        "location": "dorm",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "chen-mo"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 10,
+            "time": "2026-03-26T08:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "fair_opens",
+              "time": "2026-03-26T08:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "gao-rui",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 10,
+      "version_after": 10,
+      "event_ids": []
+    },
+    {
+      "actor": "he-qian",
+      "perception": {
+        "observer": "he-qian",
+        "time": "2026-03-26T08:00:00+08:00",
+        "world_version": 10,
+        "location": "cafe",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 10,
+            "time": "2026-03-26T08:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "fair_opens",
+              "time": "2026-03-26T08:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "he-qian",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "market",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 10,
+      "version_after": 10,
+      "event_ids": []
+    },
+    {
+      "actor": "lin-yao",
+      "perception": {
+        "observer": "lin-yao",
+        "time": "2026-03-26T08:00:00+08:00",
+        "world_version": 10,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "park-minseo"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 10,
+            "time": "2026-03-26T08:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "fair_opens",
+              "time": "2026-03-26T08:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "lin-yao",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 10,
+      "version_after": 10,
+      "event_ids": []
+    },
+    {
+      "actor": "park-minseo",
+      "perception": {
+        "observer": "park-minseo",
+        "time": "2026-03-26T08:00:00+08:00",
+        "world_version": 10,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "lin-yao"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 10,
+            "time": "2026-03-26T08:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "fair_opens",
+              "time": "2026-03-26T08:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "park-minseo",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 10,
+      "version_after": 10,
+      "event_ids": []
+    },
+    {
+      "actor": "qiao-shun",
+      "perception": {
+        "observer": "qiao-shun",
+        "time": "2026-03-26T08:00:00+08:00",
+        "world_version": 10,
+        "location": "union",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 10,
+            "time": "2026-03-26T08:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "fair_opens",
+              "time": "2026-03-26T08:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "qiao-shun",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 10,
+      "version_after": 10,
+      "event_ids": []
+    },
+    {
+      "actor": "xu-meiling",
+      "perception": {
+        "observer": "xu-meiling",
+        "time": "2026-03-26T08:00:00+08:00",
+        "world_version": 10,
+        "location": "market",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 10,
+            "time": "2026-03-26T08:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "fair_opens",
+              "time": "2026-03-26T08:00:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "xu-meiling",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 10,
+      "version_after": 10,
+      "event_ids": []
+    },
+    {
+      "actor": "amani-njoroge",
+      "perception": {
+        "observer": "amani-njoroge",
+        "time": "2026-03-26T21:30:00+08:00",
+        "world_version": 11,
+        "location": "courtyard",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 11,
+            "time": "2026-03-26T21:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "fair_closes",
+              "time": "2026-03-26T21:30:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "amani-njoroge",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 11,
+      "version_after": 11,
+      "event_ids": []
+    },
+    {
+      "actor": "chen-mo",
+      "perception": {
+        "observer": "chen-mo",
+        "time": "2026-03-26T21:30:00+08:00",
+        "world_version": 11,
+        "location": "dorm",
+        "inventory": [
+          "old-permit-form",
+          "red-whistle"
+        ],
+        "sleeping": false,
+        "nearby_actors": [
+          "gao-rui"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 11,
+            "time": "2026-03-26T21:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "fair_closes",
+              "time": "2026-03-26T21:30:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "chen-mo",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "drop",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "drop",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 11,
+      "version_after": 11,
+      "event_ids": []
+    },
+    {
+      "actor": "gao-rui",
+      "perception": {
+        "observer": "gao-rui",
+        "time": "2026-03-26T21:30:00+08:00",
+        "world_version": 11,
+        "location": "dorm",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "chen-mo"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 11,
+            "time": "2026-03-26T21:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "fair_closes",
+              "time": "2026-03-26T21:30:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "gao-rui",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 11,
+      "version_after": 11,
+      "event_ids": []
+    },
+    {
+      "actor": "he-qian",
+      "perception": {
+        "observer": "he-qian",
+        "time": "2026-03-26T21:30:00+08:00",
+        "world_version": 11,
+        "location": "cafe",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 11,
+            "time": "2026-03-26T21:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "fair_closes",
+              "time": "2026-03-26T21:30:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "he-qian",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "market",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 11,
+      "version_after": 11,
+      "event_ids": []
+    },
+    {
+      "actor": "lin-yao",
+      "perception": {
+        "observer": "lin-yao",
+        "time": "2026-03-26T21:30:00+08:00",
+        "world_version": 11,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "park-minseo"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 11,
+            "time": "2026-03-26T21:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "fair_closes",
+              "time": "2026-03-26T21:30:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "lin-yao",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 11,
+      "version_after": 11,
+      "event_ids": []
+    },
+    {
+      "actor": "park-minseo",
+      "perception": {
+        "observer": "park-minseo",
+        "time": "2026-03-26T21:30:00+08:00",
+        "world_version": 11,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [
+          "lin-yao"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 11,
+            "time": "2026-03-26T21:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "fair_closes",
+              "time": "2026-03-26T21:30:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "park-minseo",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 11,
+      "version_after": 11,
+      "event_ids": []
+    },
+    {
+      "actor": "qiao-shun",
+      "perception": {
+        "observer": "qiao-shun",
+        "time": "2026-03-26T21:30:00+08:00",
+        "world_version": 11,
+        "location": "union",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 11,
+            "time": "2026-03-26T21:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "fair_closes",
+              "time": "2026-03-26T21:30:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "qiao-shun",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 11,
+      "version_after": 11,
+      "event_ids": []
+    },
+    {
+      "actor": "xu-meiling",
+      "perception": {
+        "observer": "xu-meiling",
+        "time": "2026-03-26T21:30:00+08:00",
+        "world_version": 11,
+        "location": "market",
+        "inventory": [],
+        "sleeping": false,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 11,
+            "time": "2026-03-26T21:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "fair_closes",
+              "time": "2026-03-26T21:30:00+08:00"
+            },
+            "cause": null
+          }
+        ]
+      },
+      "private_state": {
+        "actor_id": "xu-meiling",
+        "goals": [
+          "pursue your own immediate practical interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "HTTPError: HTTP Error 400: Bad Request",
+      "version_before": 11,
+      "version_after": 11,
+      "event_ids": []
+    }
+  ],
+  "system_turns": [],
+  "outcome": {
+    "reason": "stop_at_reached",
+    "time": "2026-03-27T21:30:00+08:00",
+    "world_version": 12
+  },
+  "world_events": [
+    {
+      "id": 1,
+      "time": "2026-03-16T08:10:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "class_begins",
+        "time": "2026-03-16T08:10:00+08:00",
+        "target": "chen-mo"
+      },
+      "cause": null,
+      "visible_to": [
+        "chen-mo"
+      ],
+      "world_version": 1
+    },
+    {
+      "id": 2,
+      "time": "2026-03-16T09:30:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "private_copy_due",
+        "time": "2026-03-16T09:30:00+08:00",
+        "target": "lin-yao"
+      },
+      "cause": null,
+      "visible_to": [
+        "lin-yao"
+      ],
+      "world_version": 2
+    },
+    {
+      "id": 3,
+      "time": "2026-03-16T16:00:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "audit_deadline",
+        "time": "2026-03-16T16:00:00+08:00",
+        "target": "qiao-shun"
+      },
+      "cause": null,
+      "visible_to": [
+        "qiao-shun"
+      ],
+      "world_version": 3
+    },
+    {
+      "id": 4,
+      "time": "2026-03-16T17:40:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "editor_pitch_due",
+        "time": "2026-03-16T17:40:00+08:00",
+        "target": "he-qian"
+      },
+      "cause": null,
+      "visible_to": [
+        "he-qian"
+      ],
+      "world_version": 4
+    },
+    {
+      "id": 5,
+      "time": "2026-03-17T09:00:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "permit_review",
+        "time": "2026-03-17T09:00:00+08:00"
+      },
+      "cause": null,
+      "visible_to": [
+        "amani-njoroge",
+        "chen-mo",
+        "gao-rui",
+        "he-qian",
+        "lin-yao",
+        "park-minseo",
+        "qiao-shun",
+        "xu-meiling"
+      ],
+      "world_version": 5
+    },
+    {
+      "id": 6,
+      "time": "2026-03-19T10:00:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "bank_call",
+        "time": "2026-03-19T10:00:00+08:00",
+        "target": "xu-meiling"
+      },
+      "cause": null,
+      "visible_to": [
+        "xu-meiling"
+      ],
+      "world_version": 6
+    },
+    {
+      "id": 7,
+      "time": "2026-03-20T15:00:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "storm_records_available",
+        "time": "2026-03-20T15:00:00+08:00"
+      },
+      "cause": null,
+      "visible_to": [
+        "amani-njoroge",
+        "chen-mo",
+        "gao-rui",
+        "he-qian",
+        "lin-yao",
+        "park-minseo",
+        "qiao-shun",
+        "xu-meiling"
+      ],
+      "world_version": 7
+    },
+    {
+      "id": 8,
+      "time": "2026-03-21T10:00:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "review_meeting",
+        "time": "2026-03-21T10:00:00+08:00"
+      },
+      "cause": null,
+      "visible_to": [
+        "amani-njoroge",
+        "chen-mo",
+        "gao-rui",
+        "he-qian",
+        "lin-yao",
+        "park-minseo",
+        "qiao-shun",
+        "xu-meiling"
+      ],
+      "world_version": 8
+    },
+    {
+      "id": 9,
+      "time": "2026-03-24T16:00:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "rain_warning",
+        "time": "2026-03-24T16:00:00+08:00"
+      },
+      "cause": null,
+      "visible_to": [
+        "amani-njoroge",
+        "chen-mo",
+        "gao-rui",
+        "he-qian",
+        "lin-yao",
+        "park-minseo",
+        "qiao-shun",
+        "xu-meiling"
+      ],
+      "world_version": 9
+    },
+    {
+      "id": 10,
+      "time": "2026-03-26T08:00:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "fair_opens",
+        "time": "2026-03-26T08:00:00+08:00"
+      },
+      "cause": null,
+      "visible_to": [
+        "amani-njoroge",
+        "chen-mo",
+        "gao-rui",
+        "he-qian",
+        "lin-yao",
+        "park-minseo",
+        "qiao-shun",
+        "xu-meiling"
+      ],
+      "world_version": 10
+    },
+    {
+      "id": 11,
+      "time": "2026-03-26T21:30:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "fair_closes",
+        "time": "2026-03-26T21:30:00+08:00"
+      },
+      "cause": null,
+      "visible_to": [
+        "amani-njoroge",
+        "chen-mo",
+        "gao-rui",
+        "he-qian",
+        "lin-yao",
+        "park-minseo",
+        "qiao-shun",
+        "xu-meiling"
+      ],
+      "world_version": 11
+    },
+    {
+      "id": 12,
+      "time": "2026-03-27T21:30:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "world_stops",
+        "time": "2026-03-27T21:30:00+08:00"
+      },
+      "cause": null,
+      "visible_to": [
+        "amani-njoroge",
+        "chen-mo",
+        "gao-rui",
+        "he-qian",
+        "lin-yao",
+        "park-minseo",
+        "qiao-shun",
+        "xu-meiling"
+      ],
+      "world_version": 12
+    }
+  ],
+  "replay": {
+    "event_count": 12,
+    "contiguous": true,
+    "world_versions_contiguous": true,
+    "first_time": "2026-03-16T08:10:00+08:00",
+    "last_time": "2026-03-27T21:30:00+08:00"
+  }
+}

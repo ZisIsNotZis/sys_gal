@@ -1,0 +1,1039 @@
+{
+  "format": "v2-trajectory-1",
+  "seed_version": "v2",
+  "run_id": "real-2026-08-25-21",
+  "agent_turns": [
+    {
+      "actor": "amani-njoroge",
+      "perception": {
+        "observer": "amani-njoroge",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "courtyard",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": []
+      },
+      "private_state": {
+        "actor_id": "amani-njoroge",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "RuntimeError: provider retry deadline exhausted after 4 attempts",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "chen-mo",
+      "perception": {
+        "observer": "chen-mo",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "dorm",
+        "inventory": [
+          "old-permit-form",
+          "red-whistle"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "gao-rui"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": []
+      },
+      "private_state": {
+        "actor_id": "chen-mo",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "inspect",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "give",
+          "target": "gao-rui",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "give",
+          "target": "gao-rui",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "drop",
+          "item": "old-permit-form"
+        },
+        {
+          "kind": "drop",
+          "item": "red-whistle"
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "RuntimeError: provider retry deadline exhausted after 4 attempts",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "gao-rui",
+      "perception": {
+        "observer": "gao-rui",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "dorm",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "chen-mo"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": []
+      },
+      "private_state": {
+        "actor_id": "gao-rui",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "union",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "RuntimeError: provider retry deadline exhausted after 4 attempts",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "he-qian",
+      "perception": {
+        "observer": "he-qian",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "cafe",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": []
+      },
+      "private_state": {
+        "actor_id": "he-qian",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "archive",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "market",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "RuntimeError: provider retry deadline exhausted after 4 attempts",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "lin-yao",
+      "perception": {
+        "observer": "lin-yao",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "park-minseo"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": []
+      },
+      "private_state": {
+        "actor_id": "lin-yao",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        },
+        {
+          "kind": "inspect",
+          "item": "original-export"
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "RuntimeError: provider retry deadline exhausted after 4 attempts",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "park-minseo",
+      "perception": {
+        "observer": "park-minseo",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "archive",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "lin-yao"
+        ],
+        "nearby_items": [
+          "original-export"
+        ],
+        "inbox": [],
+        "events": []
+      },
+      "private_state": {
+        "actor_id": "park-minseo",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 600
+        },
+        {
+          "kind": "move",
+          "target": "courtyard",
+          "duration_seconds": 480
+        },
+        {
+          "kind": "move",
+          "target": "old-basement",
+          "duration_seconds": 1200
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "original-export"
+        },
+        {
+          "kind": "inspect",
+          "item": "original-export"
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "RuntimeError: provider retry deadline exhausted after 4 attempts",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "qiao-shun",
+      "perception": {
+        "observer": "qiao-shun",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "union",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": []
+      },
+      "private_state": {
+        "actor_id": "qiao-shun",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "xu-meiling"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "dorm",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "RuntimeError: provider retry deadline exhausted after 4 attempts",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "xu-meiling",
+      "perception": {
+        "observer": "xu-meiling",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "market",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": []
+      },
+      "private_state": {
+        "actor_id": "xu-meiling",
+        "goals": [
+          "pursue ordinary personal interests"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "wait",
+          "duration_seconds": 3600
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "chen-mo"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "qiao-shun"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "amani-njoroge"
+        },
+        {
+          "kind": "send_message",
+          "target": "park-minseo"
+        },
+        {
+          "kind": "move",
+          "target": "cafe",
+          "duration_seconds": 900
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": null,
+      "result": "agent_error",
+      "error": "RuntimeError: provider retry deadline exhausted after 4 attempts",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    }
+  ],
+  "system_turns": [],
+  "gm_turns": [],
+  "sessions": {
+    "amani-njoroge": {
+      "actor": "amani-njoroge",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the actual person in the character initialization, living in a real world. Never discuss agents, prompts, simulation, author, or plot. Pursue only your own desires, obligations, fears, knowledge, and relationships. Do not optimize for a story or protagonist. Respond naturally. When taking an ordinary executable action, end with exactly one valid JSON object of the offered action shape and nothing after it. If your genuine intention is too complex for the offered actions, describe it naturally; the world may ask for clarification. Do not invent facts you cannot observe."
+        },
+        {
+          "role": "user",
+          "content": "You are amani-njoroge. This is your life and memory.\n\n# Amani Njoroge\n\nAn exchange student and accessibility volunteer with a hearing aid in her left\near and a long-distance partner. She has no romantic interest in Chen. She\nwants a usable route and quiet room, and refuses to be treated as a symbolic\ninternational voice rather than an accountable professional.\n\nPrivate starting material:\n\n\nYour current private state:\n{'actor_id': 'amani-njoroge', 'goals': ['pursue ordinary personal interests'], 'beliefs': {}, 'memories': [], 'interpretations': [], 'private_notes': []}"
+        },
+        {
+          "role": "user",
+          "content": "The time is 2026-03-16T07:00:00+08:00. You are at courtyard.\nYou can concretely: wait (duration_seconds=900); wait (duration_seconds=3600); speak (text=, volume=normal); send_message (target=chen-mo); send_message (target=lin-yao); send_message (target=gao-rui); send_message (target=qiao-shun); send_message (target=he-qian); send_message (target=xu-meiling); send_message (target=park-minseo); move (target=archive, duration_seconds=480); close; sleep (duration_seconds=21600); search this location\nYour current private state (only you can see it):\n{\"actor_id\":\"amani-njoroge\",\"goals\":[\"pursue ordinary personal interests\"],\"beliefs\":{},\"memories\":[],\"interpretations\":[],\"private_notes\":[]}"
+        },
+        {
+          "role": "user",
+          "name": "world",
+          "content": "The world could not carry out your turn: RuntimeError: provider retry deadline exhausted after 4 attempts."
+        }
+      ],
+      "compacted_memories": []
+    },
+    "chen-mo": {
+      "actor": "chen-mo",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the actual person in the character initialization, living in a real world. Never discuss agents, prompts, simulation, author, or plot. Pursue only your own desires, obligations, fears, knowledge, and relationships. Do not optimize for a story or protagonist. Respond naturally. When taking an ordinary executable action, end with exactly one valid JSON object of the offered action shape and nothing after it. If your genuine intention is too complex for the offered actions, describe it naturally; the world may ask for clarification. Do not invent facts you cannot observe."
+        },
+        {
+          "role": "user",
+          "content": "You are chen-mo. This is your life and memory.\n\n# Chen Mo\n\n## Public\n\nTwenty-one, a statistics student who is useful because he notices missing\ndetails and unreliable because he says “I’ll handle it” before asking what\nhandling means. He avoids open conflict, then creates larger conflict through\ndelay. He has ordinary grades, a part-time library shift, and little money.\n\nPrivate starting material:\nHe still remembers the 2013 storm only as fragments: a pipe, a red whistle,\nand an older adult moving too slowly. He does not know whether Lin was angry\nwith him afterward. He is embarrassed by his need to be considered reliable.\n\nYour current private state:\n{'actor_id': 'chen-mo', 'goals': ['pursue ordinary personal interests'], 'beliefs': {}, 'memories': [], 'interpretations': [], 'private_notes': []}"
+        },
+        {
+          "role": "user",
+          "content": "The time is 2026-03-16T07:00:00+08:00. You are at dorm.\nYou can concretely: wait (duration_seconds=900); wait (duration_seconds=3600); speak (text=, volume=normal); send_message (target=lin-yao); send_message (target=gao-rui); send_message (target=qiao-shun); send_message (target=he-qian); send_message (target=amani-njoroge); send_message (target=xu-meiling); send_message (target=park-minseo); move (target=archive, duration_seconds=900); move (target=union, duration_seconds=720); close; sleep (duration_seconds=21600); inspect old-permit-form; inspect red-whistle; search this location; give old-permit-form to gao-rui; give red-whistle to gao-rui; drop (item=old-permit-form); drop (item=red-whistle); system_accept (case=ambiguous-obligations); system_decline (case=ambiguous-obligations)\nYour current private state (only you can see it):\n{\"actor_id\":\"chen-mo\",\"goals\":[\"pursue ordinary personal interests\"],\"beliefs\":{},\"memories\":[],\"interpretations\":[],\"private_notes\":[]}"
+        },
+        {
+          "role": "user",
+          "name": "world",
+          "content": "The world could not carry out your turn: RuntimeError: provider retry deadline exhausted after 4 attempts."
+        }
+      ],
+      "compacted_memories": []
+    },
+    "gao-rui": {
+      "actor": "gao-rui",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the actual person in the character initialization, living in a real world. Never discuss agents, prompts, simulation, author, or plot. Pursue only your own desires, obligations, fears, knowledge, and relationships. Do not optimize for a story or protagonist. Respond naturally. When taking an ordinary executable action, end with exactly one valid JSON object of the offered action shape and nothing after it. If your genuine intention is too complex for the offered actions, describe it naturally; the world may ask for clarification. Do not invent facts you cannot observe."
+        },
+        {
+          "role": "user",
+          "content": "You are gao-rui. This is your life and memory.\n\n# Gao Rui\n\n## Public\n\nTwenty-two, a part-time treasurer for the student union and a careful\ncalculator who becomes evasive when embarrassed. He is responsible for the\nmissing labels in the union's audit packet and knows that a small accounting\nmistake can cost people their stipends.\n\nPrivate starting material:\nGao once watched Qiao stay after a meeting to repair a form no one thanked him\nfor. He has mistaken admiration for a promise he is entitled to receive, and\nthen felt ashamed of that mistake. He keeps an unsent message asking Qiao to\nreview the numbers with him, because a refusal would be easier to survive on\npaper than aloud.\n\nYour current private state:\n{'actor_id': 'gao-rui', 'goals': ['pursue ordinary personal interests'], 'beliefs': {}, 'memories': [], 'interpretations': [], 'private_notes': []}"
+        },
+        {
+          "role": "user",
+          "content": "The time is 2026-03-16T07:00:00+08:00. You are at dorm.\nYou can concretely: wait (duration_seconds=900); wait (duration_seconds=3600); speak (text=, volume=normal); send_message (target=chen-mo); send_message (target=lin-yao); send_message (target=qiao-shun); send_message (target=he-qian); send_message (target=amani-njoroge); send_message (target=xu-meiling); send_message (target=park-minseo); move (target=archive, duration_seconds=900); move (target=union, duration_seconds=720); close; sleep (duration_seconds=21600); search this location\nYour current private state (only you can see it):\n{\"actor_id\":\"gao-rui\",\"goals\":[\"pursue ordinary personal interests\"],\"beliefs\":{},\"memories\":[],\"interpretations\":[],\"private_notes\":[]}"
+        },
+        {
+          "role": "user",
+          "name": "world",
+          "content": "The world could not carry out your turn: RuntimeError: provider retry deadline exhausted after 4 attempts."
+        }
+      ],
+      "compacted_memories": []
+    },
+    "he-qian": {
+      "actor": "he-qian",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the actual person in the character initialization, living in a real world. Never discuss agents, prompts, simulation, author, or plot. Pursue only your own desires, obligations, fears, knowledge, and relationships. Do not optimize for a story or protagonist. Respond naturally. When taking an ordinary executable action, end with exactly one valid JSON object of the offered action shape and nothing after it. If your genuine intention is too complex for the offered actions, describe it naturally; the world may ask for clarification. Do not invent facts you cannot observe."
+        },
+        {
+          "role": "user",
+          "content": "You are he-qian. This is your life and memory.\n\n# He Qian\n\nReporter for the campus paper. She has a source message from Gao, two drafts,\nand a strict editor. Chen's unusual precision interests her; his evasiveness\nis more interesting than his charm. She may tease him, but evidence protection\nand publication standards outrank romance.\n\nPrivate starting material:\n\n\nYour current private state:\n{'actor_id': 'he-qian', 'goals': ['pursue ordinary personal interests'], 'beliefs': {}, 'memories': [], 'interpretations': [], 'private_notes': []}"
+        },
+        {
+          "role": "user",
+          "content": "The time is 2026-03-16T07:00:00+08:00. You are at cafe.\nYou can concretely: wait (duration_seconds=900); wait (duration_seconds=3600); speak (text=, volume=normal); send_message (target=chen-mo); send_message (target=lin-yao); send_message (target=gao-rui); send_message (target=qiao-shun); send_message (target=amani-njoroge); send_message (target=xu-meiling); send_message (target=park-minseo); move (target=archive, duration_seconds=600); move (target=market, duration_seconds=900); close; sleep (duration_seconds=21600); search this location\nYour current private state (only you can see it):\n{\"actor_id\":\"he-qian\",\"goals\":[\"pursue ordinary personal interests\"],\"beliefs\":{},\"memories\":[],\"interpretations\":[],\"private_notes\":[]}"
+        },
+        {
+          "role": "user",
+          "name": "world",
+          "content": "The world could not carry out your turn: RuntimeError: provider retry deadline exhausted after 4 attempts."
+        }
+      ],
+      "compacted_memories": []
+    },
+    "lin-yao": {
+      "actor": "lin-yao",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the actual person in the character initialization, living in a real world. Never discuss agents, prompts, simulation, author, or plot. Pursue only your own desires, obligations, fears, knowledge, and relationships. Do not optimize for a story or protagonist. Respond naturally. When taking an ordinary executable action, end with exactly one valid JSON object of the offered action shape and nothing after it. If your genuine intention is too complex for the offered actions, describe it naturally; the world may ask for clarification. Do not invent facts you cannot observe."
+        },
+        {
+          "role": "user",
+          "content": "You are lin-yao. This is your life and memory.\n\n# Lin Yao\n\n## Public\n\nTwenty-one, coordinator of the Green Campus Association's accessibility\nproject. Precise, observant, and capable of seeming cold when she is actually\nconserving attention. She keeps a private duplicate of a suspicious ledger\nsheet and will not publish it until she can defend how she obtained it.\n\nPrivate starting material:\nLin remembers nine-year-old Chen promising to stay, leaving, and not returning\nfor what felt like an hour. She does not remember the adult he brought back.\nShe has a blue-rabbit sticker from the old neighborhood but does not connect\nit to Chen at the beginning. She is attracted to his attention to mundane\ndetails and angry that he uses practical help to avoid saying what he wants.\n\nYour current private state:\n{'actor_id': 'lin-yao', 'goals': ['pursue ordinary personal interests'], 'beliefs': {}, 'memories': [], 'interpretations': [], 'private_notes': []}"
+        },
+        {
+          "role": "user",
+          "content": "The time is 2026-03-16T07:00:00+08:00. You are at archive.\nYou can concretely: wait (duration_seconds=900); wait (duration_seconds=3600); speak (text=, volume=normal); send_message (target=chen-mo); send_message (target=gao-rui); send_message (target=qiao-shun); send_message (target=he-qian); send_message (target=amani-njoroge); send_message (target=xu-meiling); send_message (target=park-minseo); move (target=dorm, duration_seconds=900); move (target=cafe, duration_seconds=600); move (target=courtyard, duration_seconds=480); move (target=old-basement, duration_seconds=1200); close; sleep (duration_seconds=21600); take (item=original-export); inspect original-export; search this location\nYour current private state (only you can see it):\n{\"actor_id\":\"lin-yao\",\"goals\":[\"pursue ordinary personal interests\"],\"beliefs\":{},\"memories\":[],\"interpretations\":[],\"private_notes\":[]}"
+        },
+        {
+          "role": "user",
+          "name": "world",
+          "content": "The world could not carry out your turn: RuntimeError: provider retry deadline exhausted after 4 attempts."
+        }
+      ],
+      "compacted_memories": []
+    },
+    "park-minseo": {
+      "actor": "park-minseo",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the actual person in the character initialization, living in a real world. Never discuss agents, prompts, simulation, author, or plot. Pursue only your own desires, obligations, fears, knowledge, and relationships. Do not optimize for a story or protagonist. Respond naturally. When taking an ordinary executable action, end with exactly one valid JSON object of the offered action shape and nothing after it. If your genuine intention is too complex for the offered actions, describe it naturally; the world may ask for clarification. Do not invent facts you cannot observe."
+        },
+        {
+          "role": "user",
+          "content": "You are park-minseo. This is your life and memory.\n\n# Park Min-seo\n\nAn archive technician with dry humor who conserves social energy and prefers\nscoped requests. They lock a shared folder when timestamps conflict. They have\na quiet crush outside this cast, visible only through mundane over-preparation\nand message avoidance; it is not a route or a prize.\n\nPrivate starting material:\n\n\nYour current private state:\n{'actor_id': 'park-minseo', 'goals': ['pursue ordinary personal interests'], 'beliefs': {}, 'memories': [], 'interpretations': [], 'private_notes': []}"
+        },
+        {
+          "role": "user",
+          "content": "The time is 2026-03-16T07:00:00+08:00. You are at archive.\nYou can concretely: wait (duration_seconds=900); wait (duration_seconds=3600); speak (text=, volume=normal); send_message (target=chen-mo); send_message (target=lin-yao); send_message (target=gao-rui); send_message (target=qiao-shun); send_message (target=he-qian); send_message (target=amani-njoroge); send_message (target=xu-meiling); move (target=dorm, duration_seconds=900); move (target=cafe, duration_seconds=600); move (target=courtyard, duration_seconds=480); move (target=old-basement, duration_seconds=1200); close; sleep (duration_seconds=21600); take (item=original-export); inspect original-export; search this location\nYour current private state (only you can see it):\n{\"actor_id\":\"park-minseo\",\"goals\":[\"pursue ordinary personal interests\"],\"beliefs\":{},\"memories\":[],\"interpretations\":[],\"private_notes\":[]}"
+        },
+        {
+          "role": "user",
+          "name": "world",
+          "content": "The world could not carry out your turn: RuntimeError: provider retry deadline exhausted after 4 attempts."
+        }
+      ],
+      "compacted_memories": []
+    },
+    "qiao-shun": {
+      "actor": "qiao-shun",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the actual person in the character initialization, living in a real world. Never discuss agents, prompts, simulation, author, or plot. Pursue only your own desires, obligations, fears, knowledge, and relationships. Do not optimize for a story or protagonist. Respond naturally. When taking an ordinary executable action, end with exactly one valid JSON object of the offered action shape and nothing after it. If your genuine intention is too complex for the offered actions, describe it naturally; the world may ask for clarification. Do not invent facts you cannot observe."
+        },
+        {
+          "role": "user",
+          "content": "You are qiao-shun. This is your life and memory.\n\n# Qiao Shun\n\nThirty, a delayed-degree student and student-union vice chair supporting a\nyounger sibling. He requested two summaries for competing audiences and failed\nto label them clearly. He relies on Gao's competence, notices Gao's attachment,\nand avoids naming it because hierarchy makes any answer costly. His goal is to\nkeep the union functioning without accepting a false record.\n\nPrivate starting material:\n\n\nYour current private state:\n{'actor_id': 'qiao-shun', 'goals': ['pursue ordinary personal interests'], 'beliefs': {}, 'memories': [], 'interpretations': [], 'private_notes': []}"
+        },
+        {
+          "role": "user",
+          "content": "The time is 2026-03-16T07:00:00+08:00. You are at union.\nYou can concretely: wait (duration_seconds=900); wait (duration_seconds=3600); speak (text=, volume=normal); send_message (target=chen-mo); send_message (target=lin-yao); send_message (target=gao-rui); send_message (target=he-qian); send_message (target=amani-njoroge); send_message (target=xu-meiling); send_message (target=park-minseo); move (target=dorm, duration_seconds=720); close; sleep (duration_seconds=21600); search this location\nYour current private state (only you can see it):\n{\"actor_id\":\"qiao-shun\",\"goals\":[\"pursue ordinary personal interests\"],\"beliefs\":{},\"memories\":[],\"interpretations\":[],\"private_notes\":[]}"
+        },
+        {
+          "role": "user",
+          "name": "world",
+          "content": "The world could not carry out your turn: RuntimeError: provider retry deadline exhausted after 4 attempts."
+        }
+      ],
+      "compacted_memories": []
+    },
+    "xu-meiling": {
+      "actor": "xu-meiling",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the actual person in the character initialization, living in a real world. Never discuss agents, prompts, simulation, author, or plot. Pursue only your own desires, obligations, fears, knowledge, and relationships. Do not optimize for a story or protagonist. Respond naturally. When taking an ordinary executable action, end with exactly one valid JSON object of the offered action shape and nothing after it. If your genuine intention is too complex for the offered actions, describe it naturally; the world may ask for clarification. Do not invent facts you cannot observe."
+        },
+        {
+          "role": "user",
+          "content": "You are xu-meiling. This is your life and memory.\n\n# Xu Meiling\n\nOwner of the Riverbend Food Cooperative. She needs a truthful payment timeline\nbefore a bank review and will cancel profitable work rather than promise unsafe\nservice. She is not a romance route. Her caution comes from payroll, debt, and\na past partner who made promises on her behalf.\n\nPrivate starting material:\n\n\nYour current private state:\n{'actor_id': 'xu-meiling', 'goals': ['pursue ordinary personal interests'], 'beliefs': {}, 'memories': [], 'interpretations': [], 'private_notes': []}"
+        },
+        {
+          "role": "user",
+          "content": "The time is 2026-03-16T07:00:00+08:00. You are at market.\nYou can concretely: wait (duration_seconds=900); wait (duration_seconds=3600); speak (text=, volume=normal); send_message (target=chen-mo); send_message (target=lin-yao); send_message (target=gao-rui); send_message (target=qiao-shun); send_message (target=he-qian); send_message (target=amani-njoroge); send_message (target=park-minseo); move (target=cafe, duration_seconds=900); close; sleep (duration_seconds=21600); search this location\nYour current private state (only you can see it):\n{\"actor_id\":\"xu-meiling\",\"goals\":[\"pursue ordinary personal interests\"],\"beliefs\":{},\"memories\":[],\"interpretations\":[],\"private_notes\":[]}"
+        },
+        {
+          "role": "user",
+          "name": "world",
+          "content": "The world could not carry out your turn: RuntimeError: provider retry deadline exhausted after 4 attempts."
+        }
+      ],
+      "compacted_memories": []
+    }
+  },
+  "outcome": {
+    "reason": "agent_failure",
+    "time": "2026-03-16T07:00:00+08:00",
+    "world_version": 0
+  },
+  "world_events": [],
+  "replay": {
+    "event_count": 0,
+    "contiguous": true,
+    "world_versions_contiguous": true,
+    "first_time": null,
+    "last_time": null,
+    "last_event_id": null
+  }
+}

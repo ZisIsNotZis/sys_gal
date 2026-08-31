@@ -1,0 +1,503 @@
+{
+  "source_version": "v1",
+  "run_id": "smoke-2026-08-24",
+  "agent_trajectory": [
+    {
+      "actor": "chen-mo",
+      "world_version": 0,
+      "time": "2026-03-16T07:00:00+08:00",
+      "perception": {
+        "observer": "chen-mo",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "dorm-3-room-417",
+        "inventory": [
+          "outdated-permit-form"
+        ],
+        "sleeping": false,
+        "nearby_actors": [
+          "gao-rui"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": []
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "finish_activity"
+        },
+        {
+          "kind": "speak",
+          "text": ""
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "luo-wen"
+        },
+        {
+          "kind": "move",
+          "target": "greenhouse-courtyard",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "move",
+          "target": "community-partnerships-office",
+          "duration_seconds": 1080
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "drop",
+          "item": "outdated-permit-form"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": {
+        "actor": "chen-mo",
+        "kind": "send_message",
+        "args": {
+          "target": "lin-yao",
+          "text": "Can we talk?"
+        },
+        "expected_version": 0
+      },
+      "result": "submitted",
+      "error": null
+    },
+    {
+      "actor": "chen-mo",
+      "world_version": 4,
+      "time": "2026-03-16T07:00:05+08:00",
+      "perception": {
+        "observer": "chen-mo",
+        "time": "2026-03-16T07:00:05+08:00",
+        "world_version": 4,
+        "location": "dorm-3-room-417",
+        "inventory": [
+          "outdated-permit-form"
+        ],
+        "sleeping": false,
+        "nearby_actors": [
+          "gao-rui"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 1,
+            "time": "2026-03-16T07:00:00+08:00",
+            "kind": "action_started",
+            "actor": "chen-mo",
+            "payload": {
+              "action": "send_message",
+              "target": "lin-yao",
+              "text": "Can we talk?"
+            },
+            "cause": null
+          },
+          {
+            "id": 2,
+            "time": "2026-03-16T07:00:00+08:00",
+            "kind": "message_sent",
+            "actor": "chen-mo",
+            "payload": {
+              "target": "lin-yao",
+              "text": "Can we talk?"
+            },
+            "cause": "1"
+          },
+          {
+            "id": 3,
+            "time": "2026-03-16T07:00:05+08:00",
+            "kind": "action_completed",
+            "actor": "chen-mo",
+            "payload": {
+              "action": "send_message",
+              "target": "lin-yao",
+              "text": "Can we talk?"
+            },
+            "cause": "1"
+          }
+        ]
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "finish_activity"
+        },
+        {
+          "kind": "speak",
+          "text": ""
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "luo-wen"
+        },
+        {
+          "kind": "move",
+          "target": "greenhouse-courtyard",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "move",
+          "target": "community-partnerships-office",
+          "duration_seconds": 1080
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "drop",
+          "item": "outdated-permit-form"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": {
+        "actor": "chen-mo",
+        "kind": "move",
+        "args": {
+          "target": "greenhouse-courtyard",
+          "duration_seconds": 720
+        },
+        "expected_version": 4
+      },
+      "result": "submitted",
+      "error": null
+    },
+    {
+      "actor": "chen-mo",
+      "world_version": 6,
+      "time": "2026-03-16T07:12:05+08:00",
+      "perception": {
+        "observer": "chen-mo",
+        "time": "2026-03-16T07:12:05+08:00",
+        "world_version": 6,
+        "location": "greenhouse-courtyard",
+        "inventory": [
+          "outdated-permit-form"
+        ],
+        "sleeping": false,
+        "nearby_actors": [
+          "lin-yao"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 5,
+            "time": "2026-03-16T07:00:05+08:00",
+            "kind": "action_started",
+            "actor": "chen-mo",
+            "payload": {
+              "action": "move",
+              "target": "greenhouse-courtyard",
+              "duration_seconds": 720
+            },
+            "cause": null
+          },
+          {
+            "id": 6,
+            "time": "2026-03-16T07:12:05+08:00",
+            "kind": "action_completed",
+            "actor": "chen-mo",
+            "payload": {
+              "action": "move",
+              "target": "greenhouse-courtyard",
+              "duration_seconds": 720
+            },
+            "cause": "5"
+          }
+        ]
+      },
+      "affordances": [
+        {
+          "kind": "wait",
+          "duration_seconds": 60
+        },
+        {
+          "kind": "finish_activity"
+        },
+        {
+          "kind": "speak",
+          "text": ""
+        },
+        {
+          "kind": "send_message",
+          "target": "gao-rui"
+        },
+        {
+          "kind": "send_message",
+          "target": "lin-yao"
+        },
+        {
+          "kind": "send_message",
+          "target": "he-qian"
+        },
+        {
+          "kind": "send_message",
+          "target": "luo-wen"
+        },
+        {
+          "kind": "move",
+          "target": "dorm-3-room-417",
+          "duration_seconds": 720
+        },
+        {
+          "kind": "close"
+        },
+        {
+          "kind": "drop",
+          "item": "outdated-permit-form"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        }
+      ],
+      "intention": {
+        "actor": "chen-mo",
+        "kind": "speak",
+        "args": {
+          "text": "I need to clarify what I promised."
+        },
+        "expected_version": 6
+      },
+      "result": "submitted",
+      "error": null
+    }
+  ],
+  "judge_trajectory": [],
+  "world_trajectory": [
+    {
+      "id": 1,
+      "time": "2026-03-16T07:00:00+08:00",
+      "kind": "action_started",
+      "actor": "chen-mo",
+      "payload": {
+        "action": "send_message",
+        "target": "lin-yao",
+        "text": "Can we talk?"
+      },
+      "cause": null,
+      "visible_to": [
+        "chen-mo",
+        "gao-rui"
+      ],
+      "world_version": 1
+    },
+    {
+      "id": 2,
+      "time": "2026-03-16T07:00:00+08:00",
+      "kind": "message_sent",
+      "actor": "chen-mo",
+      "payload": {
+        "target": "lin-yao",
+        "text": "Can we talk?"
+      },
+      "cause": "1",
+      "visible_to": [
+        "chen-mo"
+      ],
+      "world_version": 2
+    },
+    {
+      "id": 3,
+      "time": "2026-03-16T07:00:05+08:00",
+      "kind": "action_completed",
+      "actor": "chen-mo",
+      "payload": {
+        "action": "send_message",
+        "target": "lin-yao",
+        "text": "Can we talk?"
+      },
+      "cause": "1",
+      "visible_to": [
+        "chen-mo",
+        "gao-rui"
+      ],
+      "world_version": 3
+    },
+    {
+      "id": 4,
+      "time": "2026-03-16T07:00:05+08:00",
+      "kind": "message_delivered",
+      "actor": "chen-mo",
+      "payload": {
+        "target": "lin-yao",
+        "text": "Can we talk?"
+      },
+      "cause": "3",
+      "visible_to": [
+        "lin-yao"
+      ],
+      "world_version": 4
+    },
+    {
+      "id": 5,
+      "time": "2026-03-16T07:00:05+08:00",
+      "kind": "action_started",
+      "actor": "chen-mo",
+      "payload": {
+        "action": "move",
+        "target": "greenhouse-courtyard",
+        "duration_seconds": 720
+      },
+      "cause": null,
+      "visible_to": [
+        "chen-mo",
+        "gao-rui"
+      ],
+      "world_version": 5
+    },
+    {
+      "id": 6,
+      "time": "2026-03-16T07:12:05+08:00",
+      "kind": "action_completed",
+      "actor": "chen-mo",
+      "payload": {
+        "action": "move",
+        "target": "greenhouse-courtyard",
+        "duration_seconds": 720
+      },
+      "cause": "5",
+      "visible_to": [
+        "chen-mo",
+        "gao-rui"
+      ],
+      "world_version": 6
+    },
+    {
+      "id": 7,
+      "time": "2026-03-16T07:12:05+08:00",
+      "kind": "action_started",
+      "actor": "chen-mo",
+      "payload": {
+        "action": "speak",
+        "text": "I need to clarify what I promised."
+      },
+      "cause": null,
+      "visible_to": [
+        "chen-mo",
+        "lin-yao"
+      ],
+      "world_version": 7
+    },
+    {
+      "id": 8,
+      "time": "2026-03-16T07:12:05+08:00",
+      "kind": "speech",
+      "actor": "chen-mo",
+      "payload": {
+        "text": "I need to clarify what I promised."
+      },
+      "cause": "7",
+      "visible_to": [
+        "chen-mo",
+        "lin-yao"
+      ],
+      "world_version": 8
+    },
+    {
+      "id": 9,
+      "time": "2026-03-16T07:12:10+08:00",
+      "kind": "action_completed",
+      "actor": "chen-mo",
+      "payload": {
+        "action": "speak",
+        "text": "I need to clarify what I promised."
+      },
+      "cause": "7",
+      "visible_to": [
+        "chen-mo",
+        "lin-yao"
+      ],
+      "world_version": 9
+    }
+  ],
+  "final_state": {
+    "time": "2026-03-16T07:12:10+08:00",
+    "world_version": 9,
+    "actors": {
+      "chen-mo": {
+        "location": "greenhouse-courtyard",
+        "inventory": [
+          "outdated-permit-form"
+        ],
+        "sleeping": false,
+        "inbox": []
+      },
+      "gao-rui": {
+        "location": "dorm-3-room-417",
+        "inventory": [],
+        "sleeping": false,
+        "inbox": []
+      },
+      "he-qian": {
+        "location": "river-market-cafe",
+        "inventory": [],
+        "sleeping": false,
+        "inbox": []
+      },
+      "lin-yao": {
+        "location": "greenhouse-courtyard",
+        "inventory": [],
+        "sleeping": false,
+        "inbox": [
+          {
+            "from": "chen-mo",
+            "text": "Can we talk?",
+            "sent_at": "2026-03-16T07:00:05+08:00"
+          }
+        ]
+      },
+      "luo-wen": {
+        "location": "community-partnerships-office",
+        "inventory": [],
+        "sleeping": false,
+        "inbox": []
+      }
+    },
+    "item_locations": {
+      "blue-rabbit-umbrella": "old-neighborhood-office",
+      "red-plastic-whistle": "old-neighborhood-office"
+    }
+  }
+}

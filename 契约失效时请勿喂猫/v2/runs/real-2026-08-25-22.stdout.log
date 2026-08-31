@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v2/harness/real_run.py", line 73, in <module>
+    main()
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v2/harness/real_run.py", line 66, in main
+    raise RuntimeError(f"real experiment had {len(errors)} provider/agent errors; trajectory is invalid")
+RuntimeError: real experiment had 8 provider/agent errors; trajectory is invalid
+/home/z/vibe/sys_gal/契约失效时请勿喂猫/v2/runs/real-2026-08-25-22.json reason=agent_failure events=0 turns=8 time=2026-03-16T07:00:00+08:00

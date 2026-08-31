@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v3/harness/small_real_run.py", line 62, in <module>
+    main()
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v3/harness/small_real_run.py", line 50, in main
+    trace.verify_no_agent_errors()
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v3/harness/trace.py", line 72, in verify_no_agent_errors
+    raise ValueError(f"trajectory contains {len(errors)} agent execution errors")
+ValueError: trajectory contains 1 agent execution errors

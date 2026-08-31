@@ -1,0 +1,944 @@
+{
+  "format": "v3-checkpoint-1",
+  "world": {
+    "format": "v3-world-checkpoint-1",
+    "now": "2026-03-20T14:30:00+08:00",
+    "version": 8,
+    "next_sequence": 17,
+    "next_event_id": 9,
+    "actors": {
+      "chen-mo": {
+        "id": "chen-mo",
+        "location": "dorm",
+        "inventory": [
+          "blank-paper",
+          "old-permit-form",
+          "red-whistle"
+        ],
+        "busy_until": null,
+        "sleeping": false,
+        "inbox": [],
+        "known_contacts": [
+          "gao-rui",
+          "he-qian",
+          "lin-yao"
+        ]
+      },
+      "lin-yao": {
+        "id": "lin-yao",
+        "location": "archive",
+        "inventory": [],
+        "busy_until": null,
+        "sleeping": false,
+        "inbox": [],
+        "known_contacts": [
+          "amani-njoroge",
+          "chen-mo",
+          "park-minseo"
+        ]
+      },
+      "gao-rui": {
+        "id": "gao-rui",
+        "location": "dorm",
+        "inventory": [],
+        "busy_until": null,
+        "sleeping": false,
+        "inbox": [],
+        "known_contacts": [
+          "chen-mo",
+          "he-qian",
+          "qiao-shun"
+        ]
+      },
+      "qiao-shun": {
+        "id": "qiao-shun",
+        "location": "union",
+        "inventory": [],
+        "busy_until": null,
+        "sleeping": false,
+        "inbox": [],
+        "known_contacts": [
+          "gao-rui"
+        ]
+      },
+      "he-qian": {
+        "id": "he-qian",
+        "location": "cafe",
+        "inventory": [],
+        "busy_until": null,
+        "sleeping": false,
+        "inbox": [],
+        "known_contacts": [
+          "chen-mo",
+          "gao-rui"
+        ]
+      },
+      "amani-njoroge": {
+        "id": "amani-njoroge",
+        "location": "courtyard",
+        "inventory": [],
+        "busy_until": null,
+        "sleeping": false,
+        "inbox": [],
+        "known_contacts": [
+          "gao-rui",
+          "lin-yao"
+        ]
+      },
+      "xu-meiling": {
+        "id": "xu-meiling",
+        "location": "market",
+        "inventory": [],
+        "busy_until": null,
+        "sleeping": false,
+        "inbox": [],
+        "known_contacts": [
+          "he-qian"
+        ]
+      },
+      "park-minseo": {
+        "id": "park-minseo",
+        "location": "archive",
+        "inventory": [],
+        "busy_until": null,
+        "sleeping": false,
+        "inbox": [],
+        "known_contacts": [
+          "lin-yao"
+        ]
+      }
+    },
+    "locations": {
+      "dorm": {
+        "id": "dorm",
+        "open": true,
+        "x": 0.0,
+        "y": 0.0,
+        "sound_radius": 18.0,
+        "sound_loss": 0.0,
+        "controllable": false,
+        "physical_capabilities": {}
+      },
+      "archive": {
+        "id": "archive",
+        "open": true,
+        "x": 14.0,
+        "y": 0.0,
+        "sound_radius": 14.0,
+        "sound_loss": 0.0,
+        "controllable": false,
+        "physical_capabilities": {}
+      },
+      "union": {
+        "id": "union",
+        "open": true,
+        "x": 0.0,
+        "y": 12.0,
+        "sound_radius": 14.0,
+        "sound_loss": 0.0,
+        "controllable": false,
+        "physical_capabilities": {}
+      },
+      "cafe": {
+        "id": "cafe",
+        "open": true,
+        "x": 14.0,
+        "y": 12.0,
+        "sound_radius": 16.0,
+        "sound_loss": 0.0,
+        "controllable": false,
+        "physical_capabilities": {}
+      },
+      "courtyard": {
+        "id": "courtyard",
+        "open": true,
+        "x": 28.0,
+        "y": 0.0,
+        "sound_radius": 35.0,
+        "sound_loss": 0.0,
+        "controllable": false,
+        "physical_capabilities": {}
+      },
+      "market": {
+        "id": "market",
+        "open": true,
+        "x": 28.0,
+        "y": 14.0,
+        "sound_radius": 22.0,
+        "sound_loss": 0.0,
+        "controllable": false,
+        "physical_capabilities": {}
+      },
+      "old-basement": {
+        "id": "old-basement",
+        "open": true,
+        "x": -18.0,
+        "y": -12.0,
+        "sound_radius": 8.0,
+        "sound_loss": 8.0,
+        "controllable": false,
+        "physical_capabilities": {}
+      },
+      "harbor-archive": {
+        "id": "harbor-archive",
+        "open": false,
+        "x": 42.0,
+        "y": 4.0,
+        "sound_radius": 12.0,
+        "sound_loss": 0.0,
+        "controllable": false,
+        "physical_capabilities": {}
+      },
+      "north-gate": {
+        "id": "north-gate",
+        "open": true,
+        "x": -14.0,
+        "y": 16.0,
+        "sound_radius": 20.0,
+        "sound_loss": 0.0,
+        "controllable": false,
+        "physical_capabilities": {}
+      },
+      "infirmary": {
+        "id": "infirmary",
+        "open": true,
+        "x": 6.0,
+        "y": 24.0,
+        "sound_radius": 10.0,
+        "sound_loss": 0.0,
+        "controllable": false,
+        "physical_capabilities": {}
+      },
+      "print-shop": {
+        "id": "print-shop",
+        "open": true,
+        "x": 26.0,
+        "y": 24.0,
+        "sound_radius": 12.0,
+        "sound_loss": 0.0,
+        "controllable": false,
+        "physical_capabilities": {}
+      },
+      "river-pier": {
+        "id": "river-pier",
+        "open": true,
+        "x": 44.0,
+        "y": 18.0,
+        "sound_radius": 28.0,
+        "sound_loss": 0.0,
+        "controllable": false,
+        "physical_capabilities": {}
+      },
+      "greenhouse": {
+        "id": "greenhouse",
+        "open": true,
+        "x": 36.0,
+        "y": -14.0,
+        "sound_radius": 16.0,
+        "sound_loss": 0.0,
+        "controllable": false,
+        "physical_capabilities": {}
+      },
+      "lecture-hall": {
+        "id": "lecture-hall",
+        "open": true,
+        "x": -8.0,
+        "y": -20.0,
+        "sound_radius": 24.0,
+        "sound_loss": 0.0,
+        "controllable": false,
+        "physical_capabilities": {}
+      }
+    },
+    "item_locations": {
+      "blue-rabbit-umbrella": "old-basement",
+      "storm-inventory-box": "old-basement",
+      "brass-key": "union",
+      "cracked-mug": "cafe",
+      "green-ribbon": "greenhouse",
+      "ferry-token": "river-pier",
+      "carbon-paper": "print-shop",
+      "hearing-aid-battery": "infirmary",
+      "market-stamp": "market",
+      "red-binder": "harbor-archive",
+      "storm-ledger": "archive",
+      "original-export": "archive",
+      "union-audit": "union",
+      "access-plan": "harbor-archive",
+      "bank-timeline": "market",
+      "editor-draft": "cafe",
+      "blue-rabbit-register": "old-basement",
+      "permit-review-outcome": "archive",
+      "bank-resolution": "market"
+    },
+    "document_defs": {
+      "old-permit-form": {
+        "title": "2013 Neighborhood Permit",
+        "content": "A permit form bearing an old neighborhood signature and a narrow flood-route annotation.",
+        "reading_seconds": 40
+      },
+      "storm-ledger": {
+        "title": "2013 Storm Ledger",
+        "content": "A dated ledger of storm calls, equipment checkout, and one incomplete witness line.",
+        "reading_seconds": 90
+      },
+      "original-export": {
+        "title": "Original Export",
+        "content": "A machine export whose timestamps disagree with the summary sheet.",
+        "reading_seconds": 55
+      },
+      "union-audit": {
+        "title": "Union Audit Packet",
+        "content": "Rows of reimbursements with two unlabeled totals and a handwritten correction.",
+        "reading_seconds": 70
+      },
+      "access-plan": {
+        "title": "Access Route Plan",
+        "content": "A draft route plan with a missing curb measurement near the north gate.",
+        "reading_seconds": 65
+      },
+      "bank-timeline": {
+        "title": "Cooperative Payment Timeline",
+        "content": "A payment timeline prepared for a bank review, with one invoice still disputed.",
+        "reading_seconds": 45
+      },
+      "editor-draft": {
+        "title": "Campus Paper Draft",
+        "content": "A draft article with a protected source and several claims marked for verification.",
+        "reading_seconds": 50
+      },
+      "blue-rabbit-register": {
+        "title": "Blue Rabbit Sticker Register",
+        "content": "A water-damaged register containing a child-sized sticker inventory.",
+        "reading_seconds": 35
+      },
+      "permit-review-outcome": {
+        "title": "Permit Review Outcome",
+        "content": "A short review record concluding the 2013 permit flood-route annotation is not current guidance; the original stays with its holder.",
+        "reading_seconds": 30
+      },
+      "storm-records": {
+        "title": "Recovered Harbor Storm Records",
+        "content": "Recovered harbor logs confirming which storm calls were logged and who checked out equipment on the night of the storm.",
+        "reading_seconds": 60
+      },
+      "bank-resolution": {
+        "title": "Bank Resolution Note",
+        "content": "A bank note confirming the disputed invoice was resolved and the cooperative payment timeline reconciled.",
+        "reading_seconds": 40
+      }
+    },
+    "queue": [
+      {
+        "time": "2026-03-20T15:00:00+08:00",
+        "sequence": 8,
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "storm_records_available",
+          "time": "2026-03-20T15:00:00+08:00",
+          "notice": "The harbor archive reopens; the recovered storm records are inside.'",
+          "effects": [
+            {
+              "op": "open_location",
+              "id": "harbor-archive"
+            },
+            {
+              "op": "add_document",
+              "id": "storm-records",
+              "location": "harbor-archive"
+            }
+          ]
+        },
+        "cause": null
+      },
+      {
+        "time": "2026-03-21T10:00:00+08:00",
+        "sequence": 9,
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "review_meeting",
+          "time": "2026-03-21T10:00:00+08:00",
+          "target": [
+            "lin-yao",
+            "chen-mo",
+            "gao-rui"
+          ],
+          "notice": "A review meeting is scheduled at the lecture hall; those named are expected to attend.'"
+        },
+        "cause": null
+      },
+      {
+        "time": "2026-03-21T15:00:00+08:00",
+        "sequence": 10,
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "accessibility_walkthrough",
+          "time": "2026-03-21T15:00:00+08:00",
+          "target": "lin-yao",
+          "notice": "The accessibility walkthrough starts at the north gate.'"
+        },
+        "cause": null
+      },
+      {
+        "time": "2026-03-22T11:00:00+08:00",
+        "sequence": 11,
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "accessibility_walkthrough_followup",
+          "time": "2026-03-22T11:00:00+08:00",
+          "target": "chen-mo",
+          "notice": "A follow-up on the access route plan is due to Lin.'"
+        },
+        "cause": null
+      },
+      {
+        "time": "2026-03-24T16:00:00+08:00",
+        "sequence": 12,
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "rain_warning",
+          "time": "2026-03-24T16:00:00+08:00",
+          "notice": "A heavy-rain warning is issued; the old flood route may become relevant.'"
+        },
+        "cause": null
+      },
+      {
+        "time": "2026-03-25T17:00:00+08:00",
+        "sequence": 13,
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "fair_setup",
+          "time": "2026-03-25T17:00:00+08:00",
+          "notice": "The riverside fair setup begins at the courtyard and market.'"
+        },
+        "cause": null
+      },
+      {
+        "time": "2026-03-26T08:00:00+08:00",
+        "sequence": 14,
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "fair_opens",
+          "time": "2026-03-26T08:00:00+08:00",
+          "notice": "The riverside fair opens; the market",
+          "print-shop": null,
+          "and courtyard are busy.'": null
+        },
+        "cause": null
+      },
+      {
+        "time": "2026-03-26T21:30:00+08:00",
+        "sequence": 15,
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "fair_closes",
+          "time": "2026-03-26T21:30:00+08:00",
+          "notice": "The riverside fair closes for the night.'"
+        },
+        "cause": null
+      },
+      {
+        "time": "2026-03-27T21:30:00+08:00",
+        "sequence": 16,
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "world_stops",
+          "time": "2026-03-27T21:30:00+08:00"
+        },
+        "cause": null
+      }
+    ],
+    "event_log": [
+      {
+        "id": 1,
+        "time": "2026-03-16T08:10:00+08:00",
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "class_begins",
+          "time": "2026-03-16T08:10:00+08:00",
+          "target": "chen-mo",
+          "notice": "Morning class begins; attendance is expected.'"
+        },
+        "cause": null,
+        "visible_to": [
+          "chen-mo"
+        ],
+        "world_version": 1
+      },
+      {
+        "id": 2,
+        "time": "2026-03-16T09:30:00+08:00",
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "private_copy_due",
+          "time": "2026-03-16T09:30:00+08:00",
+          "target": "lin-yao",
+          "notice": "Your private copy of the permit is due to be filed by now.'"
+        },
+        "cause": null,
+        "visible_to": [
+          "lin-yao"
+        ],
+        "world_version": 2
+      },
+      {
+        "id": 3,
+        "time": "2026-03-16T16:00:00+08:00",
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "audit_deadline",
+          "time": "2026-03-16T16:00:00+08:00",
+          "target": "qiao-shun",
+          "notice": "The union audit deadline passes; the packet must be reconciled before tomorrow.'"
+        },
+        "cause": null,
+        "visible_to": [
+          "qiao-shun"
+        ],
+        "world_version": 3
+      },
+      {
+        "id": 4,
+        "time": "2026-03-16T17:40:00+08:00",
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "editor_pitch_due",
+          "time": "2026-03-16T17:40:00+08:00",
+          "target": "he-qian",
+          "notice": "Your article pitch is due to the editor this evening.'"
+        },
+        "cause": null,
+        "visible_to": [
+          "he-qian"
+        ],
+        "world_version": 4
+      },
+      {
+        "id": 5,
+        "time": "2026-03-17T09:00:00+08:00",
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "permit_review",
+          "time": "2026-03-17T09:00:00+08:00",
+          "notice": "The permit review concludes; its written outcome is placed in the archive.'",
+          "effects": [
+            {
+              "op": "add_document",
+              "id": "permit-review-outcome",
+              "location": "archive"
+            }
+          ]
+        },
+        "cause": null,
+        "visible_to": [
+          "amani-njoroge",
+          "chen-mo",
+          "gao-rui",
+          "he-qian",
+          "lin-yao",
+          "park-minseo",
+          "qiao-shun",
+          "xu-meiling"
+        ],
+        "world_version": 5
+      },
+      {
+        "id": 6,
+        "time": "2026-03-18T10:00:00+08:00",
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "old_basement_opens",
+          "time": "2026-03-18T10:00:00+08:00",
+          "notice": "The old basement is unlocked for a maintenance inspection; the storm shelter is accessible again.'",
+          "effects": [
+            {
+              "op": "open_location",
+              "id": "old-basement"
+            }
+          ]
+        },
+        "cause": null,
+        "visible_to": [
+          "amani-njoroge",
+          "chen-mo",
+          "gao-rui",
+          "he-qian",
+          "lin-yao",
+          "park-minseo",
+          "qiao-shun",
+          "xu-meiling"
+        ],
+        "world_version": 6
+      },
+      {
+        "id": 7,
+        "time": "2026-03-19T10:00:00+08:00",
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "bank_call",
+          "time": "2026-03-19T10:00:00+08:00",
+          "target": "xu-meiling",
+          "notice": "The bank review resolves the disputed invoice; the resolution note is placed at the market.'",
+          "effects": [
+            {
+              "op": "add_document",
+              "id": "bank-resolution",
+              "location": "market"
+            }
+          ]
+        },
+        "cause": null,
+        "visible_to": [
+          "xu-meiling"
+        ],
+        "world_version": 7
+      },
+      {
+        "id": 8,
+        "time": "2026-03-20T14:30:00+08:00",
+        "kind": "time_advanced",
+        "actor": null,
+        "payload": {
+          "from": "2026-03-19T10:00:00+08:00",
+          "to": "2026-03-20T14:30:00+08:00"
+        },
+        "cause": null,
+        "visible_to": [
+          "amani-njoroge",
+          "chen-mo",
+          "gao-rui",
+          "he-qian",
+          "lin-yao",
+          "park-minseo",
+          "qiao-shun",
+          "xu-meiling"
+        ],
+        "world_version": 8
+      }
+    ],
+    "cursor": {
+      "chen-mo": 0,
+      "lin-yao": 0,
+      "gao-rui": 0,
+      "qiao-shun": 0,
+      "he-qian": 0,
+      "amani-njoroge": 0,
+      "xu-meiling": 0,
+      "park-minseo": 0
+    }
+  },
+  "runner": {
+    "waiting": [],
+    "transient_failures": {
+      "chen-mo": 0,
+      "lin-yao": 0,
+      "gao-rui": 0,
+      "qiao-shun": 0,
+      "he-qian": 0,
+      "amani-njoroge": 0,
+      "xu-meiling": 0,
+      "park-minseo": 0
+    },
+    "operational_facts": {
+      "chen-mo": [],
+      "lin-yao": [],
+      "gao-rui": [],
+      "qiao-shun": [],
+      "he-qian": [],
+      "amani-njoroge": [],
+      "xu-meiling": [],
+      "park-minseo": []
+    },
+    "stop_reason": null,
+    "rejection_sequence": 0,
+    "turn_sequence": 0,
+    "retry_context": {}
+  },
+  "states": {
+    "chen-mo": {
+      "actor_id": "chen-mo",
+      "goals": [],
+      "beliefs": {},
+      "memories": [],
+      "interpretations": [],
+      "private_notes": []
+    },
+    "lin-yao": {
+      "actor_id": "lin-yao",
+      "goals": [],
+      "beliefs": {},
+      "memories": [],
+      "interpretations": [],
+      "private_notes": []
+    },
+    "gao-rui": {
+      "actor_id": "gao-rui",
+      "goals": [],
+      "beliefs": {},
+      "memories": [],
+      "interpretations": [],
+      "private_notes": []
+    },
+    "qiao-shun": {
+      "actor_id": "qiao-shun",
+      "goals": [],
+      "beliefs": {},
+      "memories": [],
+      "interpretations": [],
+      "private_notes": []
+    },
+    "he-qian": {
+      "actor_id": "he-qian",
+      "goals": [],
+      "beliefs": {},
+      "memories": [],
+      "interpretations": [],
+      "private_notes": []
+    },
+    "amani-njoroge": {
+      "actor_id": "amani-njoroge",
+      "goals": [],
+      "beliefs": {},
+      "memories": [],
+      "interpretations": [],
+      "private_notes": []
+    },
+    "xu-meiling": {
+      "actor_id": "xu-meiling",
+      "goals": [],
+      "beliefs": {},
+      "memories": [],
+      "interpretations": [],
+      "private_notes": []
+    },
+    "park-minseo": {
+      "actor_id": "park-minseo",
+      "goals": [],
+      "beliefs": {},
+      "memories": [],
+      "interpretations": [],
+      "private_notes": []
+    }
+  },
+  "sessions": {},
+  "trace": {
+    "format": "v3-trajectory-1",
+    "seed_version": "v3",
+    "run_id": "scenario-storm_records_available-active-20260826T090806+0800-2010930-145562396",
+    "agent_turns": [],
+    "system_turns": [],
+    "gm_turns": [],
+    "sessions": {},
+    "outcome": null,
+    "world_events": [
+      {
+        "id": 1,
+        "time": "2026-03-16T08:10:00+08:00",
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "class_begins",
+          "time": "2026-03-16T08:10:00+08:00",
+          "target": "chen-mo",
+          "notice": "Morning class begins; attendance is expected.'"
+        },
+        "cause": null,
+        "visible_to": [
+          "chen-mo"
+        ],
+        "world_version": 1
+      },
+      {
+        "id": 2,
+        "time": "2026-03-16T09:30:00+08:00",
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "private_copy_due",
+          "time": "2026-03-16T09:30:00+08:00",
+          "target": "lin-yao",
+          "notice": "Your private copy of the permit is due to be filed by now.'"
+        },
+        "cause": null,
+        "visible_to": [
+          "lin-yao"
+        ],
+        "world_version": 2
+      },
+      {
+        "id": 3,
+        "time": "2026-03-16T16:00:00+08:00",
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "audit_deadline",
+          "time": "2026-03-16T16:00:00+08:00",
+          "target": "qiao-shun",
+          "notice": "The union audit deadline passes; the packet must be reconciled before tomorrow.'"
+        },
+        "cause": null,
+        "visible_to": [
+          "qiao-shun"
+        ],
+        "world_version": 3
+      },
+      {
+        "id": 4,
+        "time": "2026-03-16T17:40:00+08:00",
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "editor_pitch_due",
+          "time": "2026-03-16T17:40:00+08:00",
+          "target": "he-qian",
+          "notice": "Your article pitch is due to the editor this evening.'"
+        },
+        "cause": null,
+        "visible_to": [
+          "he-qian"
+        ],
+        "world_version": 4
+      },
+      {
+        "id": 5,
+        "time": "2026-03-17T09:00:00+08:00",
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "permit_review",
+          "time": "2026-03-17T09:00:00+08:00",
+          "notice": "The permit review concludes; its written outcome is placed in the archive.'",
+          "effects": [
+            {
+              "op": "add_document",
+              "id": "permit-review-outcome",
+              "location": "archive"
+            }
+          ]
+        },
+        "cause": null,
+        "visible_to": [
+          "amani-njoroge",
+          "chen-mo",
+          "gao-rui",
+          "he-qian",
+          "lin-yao",
+          "park-minseo",
+          "qiao-shun",
+          "xu-meiling"
+        ],
+        "world_version": 5
+      },
+      {
+        "id": 6,
+        "time": "2026-03-18T10:00:00+08:00",
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "old_basement_opens",
+          "time": "2026-03-18T10:00:00+08:00",
+          "notice": "The old basement is unlocked for a maintenance inspection; the storm shelter is accessible again.'",
+          "effects": [
+            {
+              "op": "open_location",
+              "id": "old-basement"
+            }
+          ]
+        },
+        "cause": null,
+        "visible_to": [
+          "amani-njoroge",
+          "chen-mo",
+          "gao-rui",
+          "he-qian",
+          "lin-yao",
+          "park-minseo",
+          "qiao-shun",
+          "xu-meiling"
+        ],
+        "world_version": 6
+      },
+      {
+        "id": 7,
+        "time": "2026-03-19T10:00:00+08:00",
+        "kind": "world_event",
+        "actor": null,
+        "payload": {
+          "event": "bank_call",
+          "time": "2026-03-19T10:00:00+08:00",
+          "target": "xu-meiling",
+          "notice": "The bank review resolves the disputed invoice; the resolution note is placed at the market.'",
+          "effects": [
+            {
+              "op": "add_document",
+              "id": "bank-resolution",
+              "location": "market"
+            }
+          ]
+        },
+        "cause": null,
+        "visible_to": [
+          "xu-meiling"
+        ],
+        "world_version": 7
+      },
+      {
+        "id": 8,
+        "time": "2026-03-20T14:30:00+08:00",
+        "kind": "time_advanced",
+        "actor": null,
+        "payload": {
+          "from": "2026-03-19T10:00:00+08:00",
+          "to": "2026-03-20T14:30:00+08:00"
+        },
+        "cause": null,
+        "visible_to": [
+          "amani-njoroge",
+          "chen-mo",
+          "gao-rui",
+          "he-qian",
+          "lin-yao",
+          "park-minseo",
+          "qiao-shun",
+          "xu-meiling"
+        ],
+        "world_version": 8
+      }
+    ],
+    "replay": {
+      "event_count": 8,
+      "contiguous": true,
+      "world_versions_contiguous": true,
+      "first_time": "2026-03-16T08:10:00+08:00",
+      "last_time": "2026-03-20T14:30:00+08:00",
+      "last_event_id": 8,
+      "active_actors": [
+        "amani-njoroge",
+        "chen-mo",
+        "gao-rui",
+        "he-qian",
+        "lin-yao",
+        "park-minseo",
+        "qiao-shun",
+        "xu-meiling"
+      ],
+      "actors_with_turns": []
+    }
+  }
+}
