@@ -110,6 +110,8 @@ class AsyncEngine:
         self._recall_lines: dict[str, list[str]] = {}
         self._flashback_display: dict[str, list[str]] = {}
         self._flashback_pool: dict[str, list[tuple[datetime, str, frozenset[str]]]] = {}
+        self._pending_notices: dict[str, list[str]] = {}
+        self._reminder_jobs: dict[tuple[str, str], int] = {}
 
     # ------------------------------------------------------------------ run
 
@@ -188,6 +190,7 @@ class AsyncEngine:
                 self._finish("stop_at_reached")
                 break
             self._cast_scan()
+            self._reminder_scan()
             self._wake_waiters()
             self._notify_ready()
             if self.stop_reason:
@@ -235,6 +238,11 @@ class AsyncEngine:
                         pass
                 self._stall_seconds += time.monotonic() - started
                 continue
+            if self._has_pending_turns():
+                # Ready actors must act at the current moment; never advance
+                # the clock past an owed turn.
+                await self._await_activity()
+                continue
             self.world.advance(until=next_event)
             self._after_advance()
             await asyncio.sleep(0)
@@ -245,6 +253,17 @@ class AsyncEngine:
     def _quiescent(self) -> bool:
         """True when no actor can still create an event on its own."""
         return (not self._inflight and not self._force_turn and not self._any_ready())
+
+    def _has_pending_turns(self) -> bool:
+        """True when some actor owes a turn at the current moment (woken or
+        interrupted but not yet polled/deciding). Time must not advance past
+        such an actor — its perception belongs to now. Deliberating actors
+        are excluded: their moment is governed by the decision horizon
+        (V4-ENGINE §2.3), not by readiness."""
+        if self._force_turn:
+            return True
+        return any(self._ready_now(actor) and actor not in self._inflight
+                   for actor in self._persistent_actors())
 
     async def _await_activity(self) -> None:
         """Block until some actor state changes (bounded poll against lost
@@ -261,6 +280,42 @@ class AsyncEngine:
         if not self._inflight:
             return None
         return min(self._inflight.values()) + timedelta(seconds=TICK_SECONDS)
+
+    def _reminder_scan(self) -> None:
+        """Schedule open reminder rows as kernel queue jobs (V4-AGENT-INTERFACE
+        §4): the kernel fires them on time (robust against DES jumps), the
+        engine turns the private reminder_due events into notices and auto-
+        closes the rows when they are perceived."""
+        now = self.world.now
+        from .kb import parse_reminder_time
+        for actor_id, kb in self._kb.items():
+            if actor_id not in self.world.actors:
+                continue
+            for row in kb.snapshot()["rows"]:
+                fields, row_id = row.get("fields", {}), row.get("id")
+                raw = fields.get("reminder")
+                if not raw or row.get("status", "open") != "open":
+                    continue
+                if (actor_id, row_id) in self._reminder_jobs:
+                    continue
+                when = parse_reminder_time(raw, now)
+                if when is None or when <= now:
+                    continue
+                self._reminder_jobs[(actor_id, row_id)] = self.world.schedule_reminder(
+                    actor_id, when, row_id, str(row.get("desc", "")), raw)
+            for row in kb.snapshot()["rows"]:
+                fields, row_id = row.get("fields", {}), row.get("id")
+                status = row.get("status", "open")
+                raw = fields.get("reminder")
+                if not raw or status != "open":
+                    continue
+                if (actor_id, row_id) in self._reminder_jobs:
+                    continue
+                when = parse_reminder_time(raw, now)
+                if when is None or when <= now:
+                    continue
+                self._reminder_jobs[(actor_id, row_id)] = \
+                    self.world.schedule_private_wake(actor_id, when)
 
     def _after_advance(self) -> None:
         for event in self.world.event_log[self._rep_scan:]:
@@ -461,10 +516,14 @@ class AsyncEngine:
         kb = self._kb[actor_id]
         lines = list(kb.due_lines(self.world.now, mention))
         lines.extend(self._recall_lines.pop(actor_id, []))
-        for reminder in kb.due_reminders(self.world.now):
-            kb.close_reminder(reminder["id"])
-            lines.append(f"[reminder={reminder['time']}]: {reminder['desc']}（到期）")
-            self.world.force_interrupt(actor_id, "reminder")
+        lines.extend(self._pending_notices.pop(actor_id, []))
+        for event in perception.get("events", []):
+            if event.get("kind") != "reminder_due":
+                continue
+            payload = event.get("payload", {})
+            kb.close_reminder(str(payload.get("row_id", "")))
+            lines.append(f"[reminder={payload.get('rendered', '')}]: "
+                         f"{payload.get('desc', '')}（到期）")
         return lines
 
     def _flashback_query(self, actor_id: str, entity: str) -> list[str]:
@@ -480,8 +539,7 @@ class AsyncEngine:
         from .prompt import _event_sentence
         pool = self._flashback_pool.setdefault(actor_id, [])
         for event in perception.get("events", []):
-            line = _event_sentence(event, observer=actor_id,
-                                   location=perception.get("location", ""))
+            line = _event_sentence(event, location=perception.get("location", ""))
             if not line:
                 continue
             payload = event.get("payload", {})
@@ -545,6 +603,11 @@ class AsyncEngine:
                 errors.append(f"{name}: {exc}")
             except Exception as exc:
                 errors.append(f"{name}: {type(exc).__name__}: {exc}")
+            if a.pending is not None:
+                # A reminder (or another force interrupt) suspended the chain:
+                # the actor must answer continue-or-cancel before anything else.
+                errors.append(f"{name}: interrupted by reminder; choose continue_action or abandon_action")
+                break
         if not world_actions:
             # 一回合没有任何世界动作 = 发呆 1 tick (V4-AGENT-INTERFACE §0/§4).
             try:
@@ -556,14 +619,15 @@ class AsyncEngine:
         self._remember_lines(actor_id, perception)
         if errors:
             self._pending_errors[actor_id] = errors
-        synthetic = {"kind": (calls[0].get("name") if calls else "none"),
-                     "args": {"calls": [{"name": c.get("name"),
-                                          "args": c.get("arguments") or {}}
-                                         for c in calls]}}
         result = "submitted" if (world_actions or calls) else "none"
         self._repetition.note_turn(actor_id, None, result)
+        recorded = (Intention(actor_id, str(calls[0].get("name", "think")),
+                              {"calls": [{"name": c.get("name"),
+                                           "args": c.get("arguments") or {}}
+                                          for c in calls]})
+                    if calls else None)
         self.trace.record_agent(state=self.states[actor_id], perception=perception,
-                                affordances=affordances, intention=synthetic,
+                                affordances=affordances, intention=recorded,
                                 result=result, error="; ".join(errors) or None,
                                 version_before=version_before,
                                 version_after=world.version, event_ids=[],

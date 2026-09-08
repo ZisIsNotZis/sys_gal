@@ -243,3 +243,98 @@ class MultiHopMoveTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             AsyncEngine(world, {"a": agents["a"], "b": agents["b"]}, states,
                         Trace("v4-test", "missing-mc"))
+
+
+class FakeV4Agent:
+    """v4-protocol test double: records the rendered world message, returns
+    a scripted tool-call list (V4-AGENT-INTERFACE §4)."""
+
+    session_obj = object()
+
+    def __init__(self, script):
+        self.script = script
+        self.seen_messages = []
+
+    def __call__(self, world_message_text, state):
+        self.seen_messages.append(world_message_text)
+        return self.script.pop(0) if self.script else []
+
+    def consume_compaction(self):
+        return False
+
+    def session_snapshot(self):
+        return None
+
+
+class V4ProtocolTests(unittest.TestCase):
+    def _engine(self, world, agents, **kw):
+        states = {actor: PrivateState(actor) for actor in world.actors}
+        return AsyncEngine(world, agents, states, Trace("v4-test", "v4proto"), **kw)
+
+    def test_chain_executes_in_order_and_accumulates_time(self):
+        world = _world()
+        agent = FakeV4Agent([
+            [{"name": "speak", "arguments": {"text": "先说"}},
+             {"name": "move", "arguments": {"target": "far"}}],
+        ])
+        engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
+        engine.run(stop_at=START + timedelta(seconds=400), max_turns=30)
+        speeches = [e for e in world.event_log if e.kind == "speech" and e.actor == "a"]
+        self.assertEqual(len(speeches), 1)
+        self.assertEqual(world.actors["a"].location, "far")
+
+    def test_more_than_eight_calls_truncate_with_error(self):
+        world = _world()
+        calls = [{"name": "wait", "arguments": {"duration_seconds": 60}} for _ in range(10)]
+        agent = FakeV4Agent([calls])
+        engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
+        engine.run(stop_at=START + timedelta(seconds=200), max_turns=30)
+        # the queued #error is consumed by the next turn's message; the trace
+        # keeps the turn-level error line
+        turn_errors = " ".join(str(t.get("error") or "") for t in engine.trace.agent_turns)
+        self.assertIn("truncated: 2 calls dropped", turn_errors)
+
+    def test_no_world_action_chain_idles_one_tick(self):
+        world = _world()
+        agent = FakeV4Agent([[{"name": "think", "arguments": {"inner": "想一想"}}]])
+        engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
+        engine.run(stop_at=START + timedelta(seconds=150), max_turns=30)
+        waits = [e for e in world.event_log if e.kind == "action_completed"
+                 and e.actor == "a" and e.payload.get("action") == "wait"]
+        self.assertTrue(waits, "no-world-action chain must idle one tick")
+
+    def test_kb_seed_renders_knowledge_and_update_memory_queues_errors(self):
+        world = _world()
+        rows = [{"fields": {"person": "陈默", "self": True}, "id": "identity",
+                 "desc": "我，测试角色。"},
+                {"fields": {"todo": True}, "id": "check", "desc": "查一下台账"}]
+        agent = FakeV4Agent([
+            [{"name": "update_memory",
+              "arguments": {"rows": [{"id": "check", "op": "edit", "desc": "改了"}]}},
+             {"name": "speak", "arguments": {"text": "开工"}}],
+        ])
+        engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])},
+                              kb_seeds={"a": rows})
+        engine.run(stop_at=START + timedelta(seconds=200), max_turns=30)
+        first = agent.seen_messages[0]
+        self.assertIn("# knowledge", first)
+        self.assertIn("[person=", first)
+        self.assertIn("查一下台账", first)
+
+    def test_due_reminder_force_interrupts_and_notifies(self):
+        world = _world()
+        rows = [{"fields": {"person": "陈默", "self": True}, "id": "identity",
+                 "desc": "我，测试角色。"},
+                {"fields": {"reminder": "1/1(周四) 00:03"}, "id": "ring", "desc": "该动了"}]
+        agent = FakeV4Agent([
+            [{"name": "wait", "arguments": {"duration_seconds": 60}}],
+            [{"name": "wait", "arguments": {"duration_seconds": 180}}],
+            [{"name": "continue_action", "arguments": {}}],
+        ])
+        engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])},
+                              kb_seeds={"a": rows})
+        engine.run(stop_at=START + timedelta(seconds=250), max_turns=30)
+        interrupted = [e for e in world.event_log if e.kind == "action_interrupted"
+                       and e.payload.get("by") == "reminder"]
+        self.assertTrue(interrupted, "due reminder must force-interrupt the wait")
+        self.assertIn("该动了", agent.seen_messages[-1] + agent.seen_messages[-2])
