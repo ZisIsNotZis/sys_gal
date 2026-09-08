@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Callable
 import os
 import threading
 import time
@@ -81,11 +81,11 @@ class OpenAICompatible:
         # role/content items — chat is its battle-tested path).
         if self.api_style == "chat":
             body = {"model": self.model, "messages": api_messages}
-            url_path, reply_path = "/chat/completions", ("choices", 0, "message", "content")
+            url_path = "/chat/completions"
         else:
             body = {"model": self.model, "input": api_messages,
                     "thinking": _thinking_param(self.model)}
-            url_path, reply_path = "/responses", ("output",)
+            url_path = "/responses"
         request_data = json.dumps(body, ensure_ascii=False).encode()
         if len(request_data) > self.max_request_bytes:
             error = ValueError(
@@ -95,6 +95,14 @@ class OpenAICompatible:
             error.request_limit = self.max_request_bytes  # type: ignore[attr-defined]
             error.retryable = False  # type: ignore[attr-defined]
             raise error
+        return self._run_request(request_data, url_path, self._extract_text)
+
+    def _run_request(self, request_data: bytes, url_path: str,
+                     extract: Callable[[dict], Any | None]) -> Any:
+        """One provider round-trip under the shared concurrency/retry/backoff
+        machinery; ``extract`` pulls the payload out of a decoded response and
+        returns None to schedule a retry (same semantics as the legacy
+        no-textual-output path)."""
         request = Request(self.base_url + url_path,
                           data=request_data,
                           headers={"Content-Type": "application/json",
@@ -139,7 +147,7 @@ class OpenAICompatible:
                         error.retryable = True  # type: ignore[attr-defined]
                         error.retry_exhausted = attempt >= retry_limit  # type: ignore[attr-defined]
                         raise error
-                    content = self._extract_text(result)
+                    content = extract(result)
                     if content is None:
                         if attempt >= retry_limit:
                             error = RuntimeError(
@@ -200,6 +208,33 @@ class OpenAICompatible:
             if acquired:
                 self._slots.release()
         return content
+
+    def chat_with_tools(self, messages: list[dict], tools: list[dict]) -> dict:
+        """One chat-completions call with native function tools; returns the
+        raw assistant message (``tool_calls`` entries carry
+        {id, function: {name, arguments-as-JSON-string}}). A reply with no
+        tool_calls is a valid decision (no world action); only unusable
+        response shapes retry."""
+        body = {"model": self.model, "messages": messages,
+                "tools": tools, "tool_choice": "auto"}
+        return self._run_request(json.dumps(body, ensure_ascii=False).encode(),
+                                 "/chat/completions", self._extract_tool_message)
+
+    @staticmethod
+    def _extract_tool_message(result: dict) -> dict | None:
+        try:
+            message = result["choices"][0]["message"]
+        except (KeyError, IndexError, TypeError):
+            return None
+        if not isinstance(message, dict):
+            return None
+        calls = message.get("tool_calls")
+        if not isinstance(calls, list) or not calls:
+            # A reply without native tool calls violates the protocol
+            # (V4-AGENT-INTERFACE §0: no lenient parsing) — retry it; an
+            # exhausted budget surfaces as the usual retryable failure.
+            return None
+        return message
 
     def _extract_text(self, result: dict) -> str | None:
         if self.api_style == "chat":

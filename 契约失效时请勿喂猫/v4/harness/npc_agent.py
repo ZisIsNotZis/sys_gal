@@ -9,11 +9,13 @@ within the conversation, destroyed with zero memory when it ends.
 
 from __future__ import annotations
 
+import json
 import random
 from typing import Any, Callable, Iterable, Mapping
 
 from .adapter import parse_decision
 from .character_loader import CharacterSeed
+from .action_schema import SPEAK_TOOLS
 
 # Event kinds eligible for the MC public-behavior digest. Deliberately
 # excludes document_read/documents_compared payloads (private analysis) —
@@ -232,3 +234,47 @@ def make_npc_agent(seed: CharacterSeed, call: Callable, context_provider: Callab
     """Factory mirroring make_persistent_agent for event-driven NPCs."""
     return NpcAgent(seed, call, context_provider,
                     director_notes=director_notes, session=session)
+
+
+def make_npc_agent_v4(seed: CharacterSeed, provider: Any, *,
+                      session: "V4Session | None" = None):
+    """V4 protocol NPC agent (V4-AGENT-INTERFACE §5): identical message
+    structure to MCs — the same verbatim system prompt, no persona prompt;
+    the director briefing arrives inside the rendered world message. Returns
+    agent(world_message_text, state) -> parsed tool-call list."""
+    from .natural_agent import V4Session
+    sess = session or V4Session(seed.actor_id, provider)
+
+    def agent(world_message_text: str, state: Any) -> list[dict[str, Any]]:
+        return sess.decide(world_message_text)
+
+    agent.consume_compaction = (lambda: sess.consume_compaction())  # type: ignore[attr-defined]
+    agent.session_snapshot = lambda: sess.snapshot()  # type: ignore[attr-defined]
+    agent.session_obj = sess  # type: ignore[attr-defined]
+    return agent
+
+
+def extra_tool_calls(provider: Any, system_text: str, briefing_text: str) -> list[dict[str, Any]]:
+    """One extras turn under the v4 protocol (V4-AGENT-INTERFACE §5): the
+    extra's whole world is the briefing; its tool surface is speak-only.
+    Returns the parsed tool-call list (same shape as the v4 agents)."""
+    message = provider.chat_with_tools(
+        [{"role": "system", "content": system_text},
+         {"role": "user", "content": briefing_text}],
+        SPEAK_TOOLS)
+    calls: list[dict[str, Any]] = []
+    for raw in message.get("tool_calls") or []:
+        function = raw.get("function") or {}
+        try:
+            args = json.loads(function.get("arguments") or "{}")
+            if not isinstance(args, dict):
+                raise ValueError("arguments must be a JSON object")
+        except (ValueError, TypeError) as exc:
+            args = {}
+            calls.append({"name": str(function.get("name", "")), "arguments": {},
+                          "tool_call_id": raw.get("id"),
+                          "parse_error": f"{type(exc).__name__}: {exc}"})
+            continue
+        calls.append({"name": str(function.get("name", "")), "arguments": args,
+                      "tool_call_id": raw.get("id")})
+    return calls

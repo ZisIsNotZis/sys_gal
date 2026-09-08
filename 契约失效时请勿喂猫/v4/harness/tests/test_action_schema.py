@@ -12,7 +12,11 @@ class ActionSchemaTests(unittest.TestCase):
     def test_every_kernel_action_has_a_schema(self):
         world = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
                       actors=[ActorState("a", "room")], locations=[LocationState("room")])
-        for kind in world.ACTIONS:
+        # V4-AGENT-INTERFACE M1: sleep is merged into wait — the schema must
+        # not declare it, and the memory tools must be declared even though
+        # they never reach the world kernel (the engine consumes them).
+        self.assertNotIn("sleep", SCHEMAS)
+        for kind in world.ACTIONS - {"sleep"}:
             self.assertIn(kind, SCHEMAS, f"missing schema for {kind}")
 
     def test_valid_args_pass(self):
