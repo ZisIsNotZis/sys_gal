@@ -1,0 +1,738 @@
+schema_version: 1
+world_id: banshan-campus
+system:
+  name: 台账
+  bound_actor: 陈默
+  case_id: ambiguous-obligations
+  terms:
+  - 说出它是什么
+  - 说出责任人是谁
+  - 说出期限
+  reward: 一个窄口径的客观澄清
+  query_limit: 1
+  facts:
+    红色哨子在哪里？: 老家属院的地下室
+    2013年邻居许可证的责任人是谁？: 当年在许可证上签名的那个人
+    当前记录的期限是什么？: 学生会审计核对，2026-03-16T16:00:00+08:00
+clock:
+  start: '2026-03-16T07:00:00+08:00'
+  stop: '2026-03-16T22:00:00+08:00'
+copy_material_items:
+- 空白纸
+engine:
+  idle_wait_seconds: 900
+locations:
+- id: 男生宿舍
+  x: -6
+  y: 0
+  sound_radius: 14
+  rules:
+  - 23:00 后熄灯保持安静
+  - 异性访客须在一楼大厅会客
+  - 晚归须在门口登记
+  extras:
+  - fragment: 楼层值班同学
+    rarity: common
+    knowledge_notes: 谁几点回寝、晚归登记本放在哪、走廊尽头洗衣机的使用规矩
+    weight: 3
+  - fragment: 隔壁寝室的学生
+    rarity: common
+    knowledge_notes: 楼里最近的公开小道消息：谁熬夜、谁谈恋爱
+    weight: 2
+  - fragment: 查寝的宿管助理
+    rarity: rare
+    knowledge_notes: 查寝表与晚归名单；见过陈默最近几天的归寝时间
+    weight: 1
+- id: 女生宿舍
+  x: -6
+  y: 5
+  sound_radius: 12
+  rules:
+  - 男生止步于一楼大厅
+  - 23:00 后保持安静
+  - 访客须登记并由被访人下楼接
+  extras:
+  - fragment: 一楼大厅自习的同学
+    rarity: common
+    knowledge_notes: 大厅会客规矩、宿管阿姨的作息
+    weight: 3
+  - fragment: 值班宿管助理
+    rarity: common
+    knowledge_notes: 访客登记与门禁时间
+    weight: 2
+  - fragment: 林瑶的隔壁寝室同学
+    rarity: rare
+    knowledge_notes: 见过林瑶最近常往校史档案室跑；听她提过一句'旧邻居'，没细说
+    weight: 1
+- id: 校史档案室
+  x: 14
+  y: 0
+  sound_radius: 12
+  rules:
+  - 原件经借阅登记后方可翻阅，不得带离
+  - 17:00 闭馆，晚间仅值班学生留守
+  - 管理员不在时重大事项须电话报备
+  extras:
+  - fragment: 值班学生
+    rarity: common
+    knowledge_notes: 借阅登记规矩、扫描仪用法、管理员不在时的代办流程
+    weight: 3
+  - fragment: 来查资料的学姐
+    rarity: common
+    knowledge_notes: 哪个柜子放哪年的材料
+    weight: 2
+  - fragment: 2013年在档案室值过班的老校友
+    rarity: rare
+    knowledge_notes: 台风那晚档案室进过水，纸质台账是后来抢救晾干的，个别页码缺失
+    weight: 1
+- id: 学生会办公室
+  x: 0
+  y: 12
+  sound_radius: 12
+  rules:
+  - 18:00 后无人值班
+  - 审计材料不得外借，仅限在场查阅
+  extras:
+  - fragment: 值班干事
+    rarity: common
+    knowledge_notes: 公告栏张贴流程、审计催办单的公开来龙去脉
+    weight: 3
+  - fragment: 来交材料的社团负责人
+    rarity: common
+    knowledge_notes: 各社团最近的活动安排
+    weight: 2
+  - fragment: 学生会主席团成员
+    rarity: rare
+    knowledge_notes: 审计包两个总额的校内公开背景：经费来源与用途的争议
+    weight: 1
+- id: 半坡咖啡馆
+  x: 14
+  y: 12
+  sound_radius: 14
+  rules:
+  - 22:00 打烊
+  - 吧台内非请莫入
+  - 自带食品请勿入座
+  extras:
+  - fragment: 熟客
+    rarity: common
+    knowledge_notes: 店里的规矩、唐小岚的记性和嘴严
+    weight: 3
+  - fragment: 兼职店员
+    rarity: common
+    knowledge_notes: 谁常坐哪个位子、催稿单在吧台贴了几天
+    weight: 2
+  - fragment: 校报编辑部来取稿的学姐
+    rarity: rare
+    knowledge_notes: 编辑在催那篇涉及报销争议的稿子；投稿渠道与截稿时间
+    weight: 1
+- id: 中庭
+  x: 28
+  y: 0
+  sound_radius: 30
+  extras:
+  - fragment: 路过的学生
+    rarity: common
+    knowledge_notes: 教学楼铃声规律、哪条路最近
+    weight: 3
+  - fragment: 摆摊贴海报的社团成员
+    rarity: common
+    knowledge_notes: 最近校园活动的海报内容
+    weight: 2
+  - fragment: 下棋大爷的棋友
+    rarity: rare
+    knowledge_notes: 大爷常讲的 2013 年台风夜故事（公共记忆版本）
+    weight: 1
+- id: 食堂
+  x: 8
+  y: 22
+  sound_radius: 20
+  rules:
+  - 饭点排队，先到先得
+  - 15:00–16:30 闭餐整理
+  - 餐盘请回收到收餐台
+  extras:
+  - fragment: 排队的同学
+    rarity: common
+    knowledge_notes: 今天哪个窗口好吃、饭点人流的规律
+    weight: 3
+  - fragment: 收餐盘的勤工俭学学生
+    rarity: common
+    knowledge_notes: 饭桌上流传的公开八卦
+    weight: 2
+  - fragment: 后勤师傅
+    rarity: rare
+    knowledge_notes: 2013 年台风后食堂后厨淹过水；当年器材室借抽水泵去帮小学的传闻（公开记忆）
+    weight: 1
+- id: 小卖部
+  x: 20
+  y: 16
+  sound_radius: 12
+  rules:
+  - 7:00–23:00 营业
+  extras:
+  - fragment: 店员
+    rarity: common
+    knowledge_notes: 谁常来买什么、夜里关门时间
+    weight: 3
+  - fragment: 关东煮摊前的学生
+    rarity: common
+    knowledge_notes: 校门口的公开闲话
+    weight: 2
+  - fragment: 来盘货的老板娘
+    rarity: rare
+    knowledge_notes: 台风纪念活动的筹备群正在拉人
+    weight: 1
+- id: 操场
+  x: 34
+  y: 14
+  sound_radius: 26
+  rules:
+  - 22:30 后熄灯清场
+  extras:
+  - fragment: 晚跑的同学
+    rarity: common
+    knowledge_notes: 操场开放时间、广播站放歌的规律
+    weight: 3
+  - fragment: 体育部训练的学生
+    rarity: common
+    knowledge_notes: 校运会与台风纪念活动的场地安排
+    weight: 2
+  - fragment: 体育老师
+    rarity: rare
+    knowledge_notes: 2013 年台风后操场翻修过、排水沟是那之后挖的
+    weight: 1
+- id: 图书馆
+  x: 8
+  y: -8
+  sound_radius: 8
+  rules:
+  - 保持安静
+  - 带书出馆须借阅登记
+  - 21:30 闭馆
+  extras:
+  - fragment: 自习的同学
+    rarity: common
+    knowledge_notes: 占座规矩、闭馆时间
+    weight: 3
+  - fragment: 图书馆学生馆员
+    rarity: common
+    knowledge_notes: 借阅记录的查询流程
+    weight: 2
+  - fragment: 校史研究社社长
+    rarity: rare
+    knowledge_notes: 2013 年校史档案的整理经过；台账与导出件的差异在校史社内早有耳闻
+    weight: 1
+- id: 教学楼
+  x: 0
+  y: -14
+  sound_radius: 18
+  rules:
+  - 22:00 后锁楼
+  - 公告栏张贴须经学生会盖章
+  extras:
+  - fragment: 课间的同学
+    rarity: common
+    knowledge_notes: 课程表、辅导员办公室在哪一层
+    weight: 3
+  - fragment: 贴通知的学生会干事
+    rarity: common
+    knowledge_notes: 公告栏与催办通知的内容
+    weight: 2
+  - fragment: 值班的教务秘书
+    rarity: rare
+    knowledge_notes: 辅导员的行程；正式授权与盖章该找谁
+    weight: 1
+- id: 夜市
+  x: 36
+  y: 24
+  sound_radius: 22
+  rules:
+  - 18:00–24:00 出摊
+  extras:
+  - fragment: 摊主
+    rarity: common
+    knowledge_notes: 烤冷面摊的规矩、哪天出摊
+    weight: 3
+  - fragment: 吃夜宵的学生
+    rarity: common
+    knowledge_notes: 校门口的公开闲话
+    weight: 2
+  - fragment: 收摊的老店主
+    rarity: rare
+    knowledge_notes: 老家属院的公开故事：地下室进过水、老人常提一只红色哨子
+    weight: 1
+- id: 河堤
+  x: 42
+  y: -8
+  sound_radius: 24
+  rules:
+  - 夜间无照明，注意脚下
+  extras:
+  - fragment: 散步的同学
+    rarity: common
+    knowledge_notes: 河堤的台阶与黄昏人流
+    weight: 3
+  - fragment: 钓鱼的大叔
+    rarity: common
+    knowledge_notes: 河水的脾气、哪年涨过水
+    weight: 2
+  - fragment: 住家属院的老人
+    rarity: rare
+    knowledge_notes: 2013 年台风夜家属院地下室进水的亲历（公开记忆：哨子一响人就齐）
+    weight: 1
+- id: 陈默家
+  x: -20
+  y: 10
+  sound_radius: 6
+  rules:
+  - 远程地点：仅电话/消息可达
+  remote: true
+actors:
+- id: 陈默
+  location: 男生宿舍
+  role: mc
+  inventory:
+  - 2013年邻居许可证
+  - 空白纸
+  known_contacts:
+  - 林瑶
+  - 唐小岚
+  - 陈默妈
+  - 班长
+- id: 林瑶
+  location: 女生宿舍
+  role: mc
+  inventory: []
+  known_contacts:
+  - 陈默
+  - 唐小岚
+  - 班长
+  - 辅导员
+- id: 唐小岚
+  location: 半坡咖啡馆
+  role: mc
+  inventory: []
+  known_contacts:
+  - 陈默
+  - 林瑶
+  - 班长
+- id: 宿管阿姨
+  location: 女生宿舍
+  role: npc
+  known_contacts:
+  - 林瑶
+  - 陈默
+- id: 食堂大妈
+  location: 食堂
+  role: npc
+  known_contacts:
+  - 陈默
+  - 林瑶
+- id: 辅导员
+  location: 教学楼
+  role: npc
+  known_contacts:
+  - 林瑶
+  - 班长
+- id: 班长
+  location: 教学楼
+  role: npc
+  known_contacts:
+  - 陈默
+  - 林瑶
+  - 辅导员
+- id: 陈默妈
+  location: 陈默家
+  role: npc
+  known_contacts:
+  - 陈默
+- id: 林瑶室友
+  location: 女生宿舍
+  role: npc
+  known_contacts:
+  - 林瑶
+  - 唐小岚
+- id: 下棋大爷
+  location: 中庭
+  role: npc
+  known_contacts:
+  - 陈默
+items:
+- id: 红色哨子
+  location: null
+- id: 空白纸
+  location: null
+- id: 裂纹马克杯
+  location: 半坡咖啡馆
+documents:
+- id: 2013年邻居许可证
+  title: 2013年邻居许可证
+  location: null
+  reading_seconds: 40
+  content: 一张泛黄的许可证表格，落款是老街坊代表的手写签名，页边空白处有一条铅笔画的窄窄洪水路线旁注，旁注末尾拖着一个没写完的箭头。
+- id: 2013年台风台账
+  title: 2013年台风台账
+  location: 校史档案室
+  reading_seconds: 90
+  content: 纸质台账，按时间登记台风夜的呼入电话与器材借用：21:40 接到小学地下室进水的电话，22:05 器材室借出两台抽水泵（经手人签名潦草），共三通呼入记录。最后一行是半句没写完的目击记录："地下室外站着一个老人，手里……"，纸面到此为止。
+- id: 导出原件
+  title: 导出原件
+  location: 校史档案室
+  reading_seconds: 55
+  content: 档案室后来用机器导出的存档目录，格式整齐：呼入记录只有两通，器材借出时间印作 23:30，目击记录一行完全缺失。导出件的时间戳与纸质台账对不上。
+- id: 学生会审计包
+  title: 学生会审计包
+  location: 学生会办公室
+  reading_seconds: 70
+  content: 一沓报销单据和一张汇总表：行项目齐全，但汇总表上有两个总额没有标注用途，旁边一处手写更正没有署名。可见的行项目对不上这两个总额，底层的报销凭证不在这包里。
+- id: 校报草稿
+  title: 校报草稿
+  location: 半坡咖啡馆
+  reading_seconds: 50
+  content: 一份校报的打印草稿，讲一件涉及报销争议的旧闻：引用了不愿具名的信源，多处句子下画着"待核实"的铅笔线，页眉写着编辑的催稿批注。
+routes:
+- from: 男生宿舍
+  to: 女生宿舍
+  duration_seconds: 240
+- from: 女生宿舍
+  to: 男生宿舍
+  duration_seconds: 240
+- from: 男生宿舍
+  to: 中庭
+  duration_seconds: 480
+- from: 中庭
+  to: 男生宿舍
+  duration_seconds: 480
+- from: 女生宿舍
+  to: 中庭
+  duration_seconds: 480
+- from: 中庭
+  to: 女生宿舍
+  duration_seconds: 480
+- from: 男生宿舍
+  to: 食堂
+  duration_seconds: 420
+- from: 食堂
+  to: 男生宿舍
+  duration_seconds: 420
+- from: 女生宿舍
+  to: 食堂
+  duration_seconds: 420
+- from: 食堂
+  to: 女生宿舍
+  duration_seconds: 420
+- from: 男生宿舍
+  to: 教学楼
+  duration_seconds: 600
+- from: 教学楼
+  to: 男生宿舍
+  duration_seconds: 600
+- from: 女生宿舍
+  to: 教学楼
+  duration_seconds: 600
+- from: 教学楼
+  to: 女生宿舍
+  duration_seconds: 600
+- from: 女生宿舍
+  to: 学生会办公室
+  duration_seconds: 660
+- from: 学生会办公室
+  to: 女生宿舍
+  duration_seconds: 660
+- from: 中庭
+  to: 校史档案室
+  duration_seconds: 480
+- from: 校史档案室
+  to: 中庭
+  duration_seconds: 480
+- from: 中庭
+  to: 操场
+  duration_seconds: 420
+- from: 操场
+  to: 中庭
+  duration_seconds: 420
+- from: 中庭
+  to: 小卖部
+  duration_seconds: 420
+- from: 小卖部
+  to: 中庭
+  duration_seconds: 420
+- from: 中庭
+  to: 半坡咖啡馆
+  duration_seconds: 720
+- from: 半坡咖啡馆
+  to: 中庭
+  duration_seconds: 720
+- from: 中庭
+  to: 图书馆
+  duration_seconds: 540
+- from: 图书馆
+  to: 中庭
+  duration_seconds: 540
+- from: 中庭
+  to: 教学楼
+  duration_seconds: 600
+- from: 教学楼
+  to: 中庭
+  duration_seconds: 600
+- from: 中庭
+  to: 食堂
+  duration_seconds: 540
+- from: 食堂
+  to: 中庭
+  duration_seconds: 540
+- from: 中庭
+  to: 河堤
+  duration_seconds: 900
+- from: 河堤
+  to: 中庭
+  duration_seconds: 900
+- from: 校史档案室
+  to: 图书馆
+  duration_seconds: 480
+- from: 图书馆
+  to: 校史档案室
+  duration_seconds: 480
+- from: 校史档案室
+  to: 教学楼
+  duration_seconds: 720
+- from: 教学楼
+  to: 校史档案室
+  duration_seconds: 720
+- from: 校史档案室
+  to: 半坡咖啡馆
+  duration_seconds: 600
+- from: 半坡咖啡馆
+  to: 校史档案室
+  duration_seconds: 600
+- from: 校史档案室
+  to: 学生会办公室
+  duration_seconds: 840
+- from: 学生会办公室
+  to: 校史档案室
+  duration_seconds: 840
+- from: 学生会办公室
+  to: 半坡咖啡馆
+  duration_seconds: 600
+- from: 半坡咖啡馆
+  to: 学生会办公室
+  duration_seconds: 600
+- from: 学生会办公室
+  to: 食堂
+  duration_seconds: 600
+- from: 食堂
+  to: 学生会办公室
+  duration_seconds: 600
+- from: 图书馆
+  to: 教学楼
+  duration_seconds: 480
+- from: 教学楼
+  to: 图书馆
+  duration_seconds: 480
+- from: 图书馆
+  to: 半坡咖啡馆
+  duration_seconds: 660
+- from: 半坡咖啡馆
+  to: 图书馆
+  duration_seconds: 660
+- from: 食堂
+  to: 小卖部
+  duration_seconds: 540
+- from: 小卖部
+  to: 食堂
+  duration_seconds: 540
+- from: 小卖部
+  to: 半坡咖啡馆
+  duration_seconds: 420
+- from: 半坡咖啡馆
+  to: 小卖部
+  duration_seconds: 420
+- from: 小卖部
+  to: 夜市
+  duration_seconds: 780
+- from: 夜市
+  to: 小卖部
+  duration_seconds: 780
+- from: 小卖部
+  to: 操场
+  duration_seconds: 660
+- from: 操场
+  to: 小卖部
+  duration_seconds: 660
+- from: 夜市
+  to: 操场
+  duration_seconds: 600
+- from: 操场
+  to: 夜市
+  duration_seconds: 600
+- from: 操场
+  to: 河堤
+  duration_seconds: 660
+- from: 河堤
+  to: 操场
+  duration_seconds: 660
+barriers:
+- from: 男生宿舍
+  to: 校史档案室
+  loss: 12
+- from: 女生宿舍
+  to: 学生会办公室
+  loss: 10
+- from: 校史档案室
+  to: 半坡咖啡馆
+  loss: 8
+- from: 校史档案室
+  to: 中庭
+  loss: 6
+- from: 半坡咖啡馆
+  to: 中庭
+  loss: 5
+- from: 图书馆
+  to: 中庭
+  loss: 12
+- from: 女生宿舍
+  to: 半坡咖啡馆
+  loss: 9
+scheduled:
+- event: mom_call
+  time: '2026-03-16T07:35:00+08:00'
+  target: 陈默
+  notice: 手机震动，是妈妈的电话。你没接住，紧接着进来一条六十秒的语音和一条文字消息：'周末回家一趟吧，隔壁李阿姨给她儿子相亲了个姑娘……对了，钱够不够花？'
+- event: morning_class_bell
+  time: '2026-03-16T08:00:00+08:00'
+  notice: 教学楼那边上课铃响了，中庭和河堤一下子空了下来。
+- event: breakfast_rush
+  time: '2026-03-16T07:10:00+08:00'
+  notice: 食堂开门。豆浆和包子的蒸汽从后厨涌出来，早八前的队伍排到了门口。
+- event: 校史档案室_shift
+  time: '2026-03-16T08:10:00+08:00'
+  target: 陈默
+  notice: 你在档案室的上午班开始了。签到本在门口桌上，管理员今天不在，值班的学生只有你。
+- event: accessibility_check
+  time: '2026-03-16T09:30:00+08:00'
+  target: 林瑶
+  notice: 无障碍改造核查今天上午要交台账依据，2013 年那批旧记录也许用得上。
+- event: audit_notice
+  time: '2026-03-16T10:00:00+08:00'
+  notice: 学生会公告栏贴出一张新通知：审计包须于今日 16:00 前完成核对，并附书面说明。
+- event: lunch_rush
+  time: '2026-03-16T11:40:00+08:00'
+  notice: 下课铃一响，食堂的队伍从窗口排到了门口。今天二楼有糖醋排骨，整个楼层都知道。
+- event: rain_start
+  time: '2026-03-16T12:00:00+08:00'
+  notice: 下雨了。不大，但足够让中庭的人跑进屋檐下，咖啡馆里慢慢坐满了躲雨的人。
+- event: afternoon_class
+  time: '2026-03-16T14:00:00+08:00'
+  notice: 下午课的铃声把教学楼填满，走廊里都是赶去占座的人。
+- event: route_evidence_missing
+  time: '2026-03-16T14:30:00+08:00'
+  target: 林瑶
+  notice: 无障碍路线方案缺一段原始依据：2013 年洪水路线的走向，纸上找不到现成结论，得找见过旧记录的人问。
+- event: typhoon_anniversary_notice
+  time: '2026-03-16T15:00:00+08:00'
+  notice: 公告栏又多了一张通知：下周日在中庭举行'3·16 台风纪念活动'，招募学生志愿者整理老照片和旧记录，报名找班长。
+- event: audit_deadline
+  time: '2026-03-16T16:00:00+08:00'
+  notice: 16:00 到了。学生会办公室门缝下塞出一张催办单：审计核对仍未完成，说明最迟明早交。
+- event: dinner_rush
+  time: '2026-03-16T17:30:00+08:00'
+  notice: 晚饭点的食堂比中午松一些，一楼改卖面条，队伍短了一半。
+- event: rain_stops
+  time: '2026-03-16T18:30:00+08:00'
+  notice: 雨停了。晚风把咖啡馆的人带走了一半，剩下的人开始收拾东西。
+- event: 半坡咖啡馆_closing
+  time: '2026-03-16T21:30:00+08:00'
+  target: 唐小岚
+  notice: 打烊前最后一小时。椅子倒扣上桌之前，是盘点今天听来的东西的时候。
+- event: world_stops
+  time: '2026-03-16T22:00:00+08:00'
+kb:
+  陈默:
+  - fields: {person: 陈默, self: true}
+    id: identity
+    desc: 我，陈默，二十一岁，统计系学生，在校史档案室做上午班的兼职，钱不多。我擅长发现缺了什么，却总是在说完"我来处理"之后才发现自己不知道怎么处理；我不跟人正面冲突，然后用拖延制造出更大的冲突。
+  - fields: {todo: true}
+    id: permit-signer
+    desc: 弄清2013年邻居许可证上签名的那个人现在在哪。
+  - fields: {todo: true}
+    id: ledger-borrow-record
+    desc: 查清2013年台风台账的借出记录为什么被改动。
+  - fields: {location: 校史档案室}
+    id: archive-shift
+    desc: 上午班一般只有我一个人，登记本压在进门左手的抽屉里。
+  - fields: {reminder: 3/16(周一) 08:30}
+    id: archive-shift-reminder
+    desc: 档案室上午班，别迟到。
+  林瑶:
+  - fields: {person: 林瑶, self: true}
+    id: identity
+    desc: 我，林瑶，二十一岁，绿荫校园社无障碍改造项目的负责人。我精确，会看细节，说话永远有依据；被人说"太较真"的时候只是点头，然后继续较真。
+  - fields: {todo: true}
+    id: retrofit-acceptance
+    desc: 推进绿荫校园社无障碍改造项目的验收材料。
+  - fields: {todo: true}
+    id: archive-duty-roster
+    desc: 搞清楚档案室值班表这周为什么换了人。
+  - fields: {location: 校史档案室}
+    id: archive-corner
+    desc: 档案室角落的桌位光线最好，下午人少。
+  - fields: {reminder: 3/16(周一) 12:30}
+    id: student-union-form
+    desc: 中午去学生会交无障碍改造的场地申请表。
+  唐小岚:
+  - fields: {person: 唐小岚, self: true}
+    id: identity
+    desc: 我，唐小岚，二十三岁，半坡咖啡馆的咖啡师，干了四个月，还在试用期。常客的口味、座位、上一位同桌是谁我都记得；吧台是全校消息最灵的位置。
+  - fields: {todo: true}
+    id: draft-claim
+    desc: 弄清吧台上那份校报草稿是谁放的。
+  - fields: {todo: true}
+    id: regulars-ledger
+    desc: 把这周常客里谁手头紧的事记在心里，别台账一样摆出来。
+  - fields: {location: 半坡咖啡馆}
+    id: bar-map
+    desc: 吧台正对门口，进门的人我先看见；老位子靠窗第二桌。
+  - fields: {reminder: 3/16(周一) 15:00}
+    id: bread-run
+    desc: 交接班前去后街糕点铺帮老板娘带话。
+  宿管阿姨:
+  - fields: {person: 宿管阿姨, self: true}
+    id: identity
+    desc: 我，桂阿姨，五十三岁，在女生宿舍看了十二年门。登记本上的字比学生的工整，谁的快递、谁半夜哭着回来，我全有数；查寝表是我的法，热水壶是我的情。
+  - fields: {location: 女生宿舍}
+    id: duty-desk
+    desc: 一楼大厅值班台后面就是我的岗位，访客都要登记。
+  食堂大妈:
+  - fields: {person: 食堂大妈, self: true}
+    id: identity
+    desc: 我，食堂一楼三号窗口的打菜阿姨，五十岁上下。打菜有分寸：熟人多半勺，生人一整勺，插队的扣半勺；我记得谁不吃香菜、谁的饭卡月底总刷空。
+  - fields: {location: 食堂}
+    id: window-three
+    desc: 三号窗口是我一天里最亮的时段，学生们隔着玻璃喊我阿姨。
+  辅导员:
+  - fields: {person: 辅导员, self: true}
+    id: identity
+    desc: 我，方老师，三十二岁，带这个年级的辅导员，办公室在教学楼三层走廊尽头。我说话有行政腔，但记得每个学生的名字和难处；最累的是在"按制度"和"帮到底"之间找那条线。
+  班长:
+  - fields: {person: 班长, self: true}
+    id: identity
+    desc: 我，纪风，大二，班长，群消息里 @全体成员 的那个人。我手里永远有几张表，热心、可靠、略微有点官瘾；把班长的责任当成一种被选中的证明。
+  陈默妈:
+  - fields: {person: 陈默妈, self: true}
+    id: identity
+    desc: 我，陈默的妈妈，四十九岁，在老家县城。每周日晚我给儿子打电话，开场三句话固定：吃饭没有、钱够不够、隔壁李阿姨家孩子相亲了；第六句开始才是我真正想说的。
+  林瑶室友:
+  - fields: {person: 林瑶室友, self: true}
+    id: identity
+    desc: 我，小满，大三，睡林瑶对铺。追剧和嗑糖是主业，宿舍夜谈是副业；表面没心没肺，其实整栋楼数我最先发现"瑶姐最近不太对"。
+  - fields: {person: 林瑶}
+    id: roommate-note
+    desc: 瑶姐这学期去档案室的次数比去食堂多，我一个字没跟她提过。
+  下棋大爷:
+  - fields: {person: 下棋大爷, self: true}
+    id: identity
+    desc: 我，老周，六十八岁，退休校工，中庭石桌的常客。我棋品好，话密，记性挑着坏——三十年前的人名记得一清二楚，昨天早饭吃什么要想半天。
+  - fields: {location: 中庭}
+    id: chess-table
+    desc: 中庭石桌是我的棋摊，下午常有人来杀两盘。

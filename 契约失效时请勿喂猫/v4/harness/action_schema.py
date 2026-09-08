@@ -8,6 +8,12 @@ from the schema, instead of hand-written per-action strings. Semantic checks
 
 The rejections deliberately name the expected key and the key actually
 provided, so an agent that guesses an argument name can self-correct.
+
+V4-AGENT-INTERFACE §2 is the design truth this file mirrors: ``sleep`` is
+merged into ``wait`` and the memory tools (think / update_memory / recall /
+flashback) are declared here and consumed by the engine, never by the world
+kernel. ``TOOLS`` is the static full-declaration tool array (cache-safe:
+never add or remove tools mid-run) sent with every provider call.
 """
 
 from __future__ import annotations
@@ -34,8 +40,32 @@ def _schema(**properties: Any) -> dict[str, Any]:
 
 
 SCHEMAS: dict[str, dict[str, Any]] = {
+    # Memory tools (V4-AGENT-INTERFACE §2): no world-time cost, but every
+    # turn still costs at least one tick — enforced by the engine, not here.
+    "think": {"type": "object", "required": ["inner"],
+              "properties": {"inner": {"type": "string", "minLength": 1}},
+              "additionalProperties": False},
+    "update_memory": {"type": "object", "required": ["rows"],
+                      "properties": {"rows": {"type": "array", "minItems": 1,
+                                              "items": {"type": "object",
+                                                        "required": ["fields", "id", "op"],
+                                                        "properties": {"fields": {"type": "object"},
+                                                                       "id": _STR,
+                                                                       "op": {"type": "string",
+                                                                              "enum": ["open", "edit", "close"]},
+                                                                       "desc": _STR},
+                                                        "additionalProperties": False}}},
+                      "additionalProperties": False},
+    "recall": {"type": "object",
+               "properties": {"kinds": {"type": "array", "items": _STR},
+                              "ids": {"type": "array", "items": _STR},
+                              "closed": {"type": "boolean"},
+                              "limit": {"type": "integer"}},
+               "additionalProperties": False},
+    "flashback": {"type": "object", "required": ["entity"],
+                  "properties": {"entity": _STR},
+                  "additionalProperties": False},
     "wait": _schema(duration_seconds=_INT),
-    "sleep": _schema(duration_seconds=_INT),
     # volume: whisper needs the co-located "to" list (kernel validates it).
     # Both volume and to are optional; only text is required.
     "speak": {"type": "object", "required": ["text"],
@@ -76,6 +106,46 @@ SCHEMAS: dict[str, dict[str, Any]] = {
                  "additionalProperties": False},
     "compare": _schema(first=_STR, second=_STR),
 }
+
+# One-line Chinese descriptions, one per tool, from V4-AGENT-INTERFACE §2.
+_TOOL_DESCRIPTIONS: dict[str, str] = {
+    "think": "inner 心声；保留在会话历史中；无世界事件、无世界状态效果",
+    "update_memory": "私人记事本行补丁：rows=[{fields,id,op,desc?}]；部分成功，失败逐行报错",
+    "recall": "标记请求：下一轮 #knowledge 显式包含指定的类型/条目（closed 行需 closed=true）",
+    "flashback": "手动闪回：重显某地点/物品/人物相关的已播历史",
+    "wait": "唯一的时间流逝工具；时长向上取整到 tick 倍数；等待期间事件照常投递",
+    "speak": "当面说话；volume=normal 全地点听得见，whisper 仅 to 指定的在场者听得见文本",
+    "send_message": "发消息（电话），异步，1 tick 后送达",
+    "move": "走向 target；时长由引擎按路线图计算，不用填",
+    "read": "读一份在手边的文档；内容只有你能看到",
+    "copy": "复印一份文档（需要复印材料）",
+    "label": "给文档贴上你自己的一句话标签",
+    "annotate": "在文档上写批注，后续读者都能看见",
+    "compare": "比对两份都在手边的文档内容是否一致",
+    "take": "拿起一件在这里的物品",
+    "drop": "放下你拿着的一件物品",
+    "give": "把一件物品递给在场的某人",
+    "inspect": "细看一件物品（这里有的或你拿着的）",
+    "search": "搜一搜当前地点",
+    "knock": "敲一个地点的门",
+    "interact": "与一个邻近地点互动（verb + parameters）",
+    "open": "打开当前地点（需可控）",
+    "close": "关闭当前地点（需可控）",
+    "observe": "主动重看：下一回合消息强制全量回放场景状态与描述",
+    "ask_stranger": "搭话在场的匿名路人",
+    "continue_action": "无损继续被打断的动作",
+    "abandon_action": "放弃被打断的动作（作废）",
+}
+
+TOOLS: list[dict[str, Any]] = [
+    {"type": "function",
+     "function": {"name": kind, "description": _TOOL_DESCRIPTIONS[kind],
+                  "parameters": SCHEMAS[kind]}}
+    for kind in SCHEMAS
+]
+
+SPEAK_TOOLS: list[dict[str, Any]] = [tool for tool in TOOLS
+                                     if tool["function"]["name"] == "speak"]
 
 _VALIDATORS: dict[str, Draft202012Validator] = {
     kind: Draft202012Validator(schema) for kind, schema in SCHEMAS.items()}
