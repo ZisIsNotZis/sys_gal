@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterator, Mapping
+import hashlib
 import math
 import re
 
@@ -142,7 +143,52 @@ def load_world_pack(root: str | Path) -> WorldPack:
     _validate_descriptions(fields, descriptions)
     actor_ids = {str(row["id"]) for row in fields["actors"]}
     kb = _validate_kb(manifest["kb"], actors=actor_ids)
+    kb = _expand_entity_rows(kb, fields, descriptions)
     return WorldPack(root, manifest, descriptions, **fields, system=dict(manifest.get("system", {})), kb=kb)
+
+
+def _plain_description(markdown: str) -> str:
+    """Strip the '# 标题' heading and join the first paragraph — the KB row
+    carries the plain description, not the markdown wrapper."""
+    lines = [line.strip() for line in markdown.strip().splitlines()]
+    body = [line for line in lines if line and not line.startswith("#")]
+    return ("\n".join(body).split("\n\n")[0] or markdown.strip()).strip()
+
+
+def _expand_entity_rows(kb: dict[str, list[dict[str, Any]]],
+                        fields: dict[str, Any],
+                        descriptions: dict[str, DescriptionCatalog]
+                        ) -> dict[str, list[dict[str, Any]]]:
+    """V4-AGENT-INTERFACE §6: world item/document descriptions auto-expand
+    into per-actor item/document KB rows (per known_to when present, else
+    every actor) so the first-turn flood shows what is in hand or in view.
+    Manual rows win: an existing row with the same field+id is not duplicated."""
+    entity_rows: list[tuple[str, str, str]] = []  # (field, entity_id, desc)
+    for kind in ("items", "documents"):
+        for row in fields[kind]:
+            entity_id = str(row["id"])
+            markdown = descriptions[kind].get(entity_id, "")
+            if not markdown:
+                continue
+            entity_rows.append((kind[:-1], entity_id, _plain_description(markdown)))
+    for actor, rows in kb.items():
+        existing = {(next(iter(r["fields"])), r["id"]) for r in rows}
+        for field, entity_id, desc in entity_rows:
+            # Entity ids are Chinese; auto-expanded row ids must stay ASCII
+            # kebab (docs M2) — derive them deterministically from the pair.
+            digest = hashlib.md5(f"{field}:{entity_id}".encode("utf-8")).hexdigest()[:8]
+            row = {"fields": {field: entity_id}, "id": f"kb-auto-{digest}", "desc": desc}
+            if (field, row["id"]) in existing:
+                continue
+            known_to = None
+            for src in fields["items"] + fields["documents"]:
+                if str(src["id"]) == entity_id:
+                    known_to = src.get("known_to")
+                    break
+            if known_to is not None and actor not in known_to:
+                continue
+            rows.append(row)
+    return kb
 
 
 def _load_descriptions(root: Path) -> dict[str, DescriptionCatalog]:
