@@ -23,7 +23,7 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 ```
 你是一个活生生的人，活在一个真实的世界里。绝不提 agent、提示词、模拟、作者或剧情。只追你自己的知识、欲望、责任、恐惧和关系；不为故事或主角服务；不优化故事，不制造浪漫，不满足任何作者意图。
 
-世界每回合给你一条消息：几点、你在哪、身边有谁、身上有什么、可以互动什么、发生了什么、你记事本里到期的事。你用工具行动：一回合可以连续调用多个工具；世界动作消耗真实时间（按序累加，向上取整到 tick 的倍数），think/update_memory/recall/flashback 不额外消耗（但每回合最少一个 tick）。一回合没有任何世界动作，等于发了一会儿呆（时间照走最少一个 tick）。
+世界每回合给你一条消息：几点、你在哪、身边有谁、身上有什么、发生了什么、你记事本里到期的事。你用工具行动：一回合可以连续调用多个工具；世界动作消耗真实时间（按序累加，向上取整到 tick 的倍数），think/update_memory/recall/flashback 不额外消耗（但每回合最少一个 tick）。一回合没有任何世界动作，等于发了一会儿呆（时间照走最少一个 tick）。行动前永远先用 think 写心声——此刻的感受、打算做什么、为什么；让 think 成为你每个回合的第一个调用。
 
 【常识】一条消息从发出到送到要 1 分钟；说话当场就能听见，所以当面说话最省时间。等待随时可行，不必等谁批准；要睡一大觉，找个有床的地方、通常在夜里。陌生人凑近耳语会显得可疑；耳语（whisper）只对亲近的人用。消息里时间写作 9/16(周三) 7:00。
 
@@ -32,11 +32,11 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 
 ## 2. 工具（tools 参数，静态全量声明）
 
-一次性声明全部工具，永不增删（cache 安全）。当回合是否可用由世界消息 `# actions` 表达；非法调用被引擎拒绝并在下一轮 `# error` 给出原因。`harness/action_schema.py` 与本表一一对应。
+一次性声明全部工具，永不增删（cache 安全）。当回合是否可用由世界消息 `# actions` 表达；每次调用的结果（ok 或具体错误）由引擎以 role:"tool" 消息回填会话。`harness/action_schema.py` 与本表一一对应。
 
 | 工具 | 消耗时间 | 说明 |
 |---|---|---|
-| think | ≥0（回合最少 1 tick） | inner 心声；保留在会话历史中（compaction 时按记忆折叠），镜像入 trace（私有）；无世界事件、无世界状态效果 |
+| think | ≥0（回合最少 1 tick） | inner 心声；保留在会话历史中（compaction 时按记忆折叠），镜像入 trace（私有）；无世界事件、无世界状态效果；每个回合的第一个调用 |
 | update_memory | 同上 | KB 行补丁：rows[{fields,id,op:open/edit/close,desc?}]；部分成功，失败逐行报错 |
 | recall | 同上 | 标记请求：下一轮 #knowledge 显式包含指定的类型/条目（含 closed，需 closed:true + limit + start/end，按创建游戏时刻倒序） |
 | flashback | 同上 | 手动闪回：重显某地点/物品/人物相关的已播历史；刷新 LRU |
@@ -55,18 +55,12 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 
 ## 3. 每回合 user 消息（世界消息）
 
-按固定块序渲染；空块省略；表头与 actions 永在。所有动态内容只追加在尾部。**全部事件行为第三人称客观编年体**（见 §0 模板纪律），逐条全时间戳。**NPC 与 MC 的消息结构完全一致**（NPC 唤醒回合额外多一个置顶的 `[director]` 块，见 §5）。
+按固定块序渲染；空块省略；表头与 actions 永在。所有动态内容只追加在尾部。**全部事件行为第三人称客观编年体**（见 §0 模板纪律），逐条全时间戳。**NPC 与 MC 的消息结构完全一致**（NPC 唤醒回合额外多一个置顶的 `[director]` 块，见 §5）。`#actions` 中同类动作合并为一行，候选值用 、 连接（如 `[drop] item=X、Y`；`[speak] volume=normal/whisper`，在场者列为 whisper 的 to= 候选；无人在场时 speak 标注自言自语）。
 
 ```
 9/16(周三) 7:00 @半坡咖啡馆
 在场：唐小岚(you)，陈默
 身上：空白纸
-可互动：校报草稿（吧台上）
-
-# error
-speak: 'text' should be non-empty
-memory: [item=x,id=y] no match
-
 # flashback
 9/14(周一) 9:00 陈默 进入 半坡咖啡馆
 9/14(周一) 9:22 陈默 说："豆浆，双份。今天店里就你一个？"
@@ -91,11 +85,11 @@ memory: [item=x,id=y] no match
 
 块规则：
 
-- **表头**（恒在，无计时器）：时间 @地点、在场（self 标 `(you)`）、身上、可互动。这些是**当前感知**（永远为真），每回合机械重渲，永不遗漏——位置与在场是持续感知，不是记忆。
-- **#error**：上回合全部工具调用错误的**英文原文**（无转译）；成功零反馈。
+- **表头**（恒在，无计时器）：时间 @地点、在场（self 标 `(you)`）、身上。这些是**当前感知**（永远为真），每回合机械重渲，永不遗漏——位置与在场是持续感知，不是记忆。可做的事由 `#actions` 表达，不在表头重复。
+- **tool 结果**：不存在 #error 块。每次工具调用的结果（成功 ok，失败为具体错误原文）由引擎以 role:"tool" 消息回填会话：n 条 tool_call = n 条 tool 结果 + 下一条 user 世界消息。
 - **#flashback**：**逐字重放**自己已播过的事件行——原渲染、原时间戳，不翻译不改写不摘要；LRU 上限 `flashback_limit=5`，且只取超过 `flashback_horizon_rounds` 的（"可能忘了"）。从未投递过的事件与它无关（走 #events 长轮询）。
 - **#events**（长轮询）：自上次同步以来所有**未投递且可投递**的定向事件。可投递 = 电话/远程定向事件（无距离限制、录下后在醒时投递，非 force-interrupt）或发生时在场的公共事件。**不存在 asleep 过滤**——等待/睡眠期间在场的公共事件照常投递。
-- **#knowledge**：到期行（`now - last_shown ≥ 该行 interval`）按类型排序注入，每回合上限 8 行。**提及集（M7 裁决）**= 本回合表头结构化实体（在场者/身上/可互动）∪ 本回合 #events 事件的 structured payload 实体（一跳，不递归、不解析自由文本）——行字段命中提及集且计时到期则回放；仅 id 的行无条件按期回放。**溢出行优先于新到期行**（顺延队列先清）。**KB 行的重逢不强制重放**——重挂全量回放仅作用于表头状态行。**compaction：全部 last_shown 清零**（下一轮全量重放；closed 行除外——永不回放）。update_memory 的 open/edit 刷新该行 last_shown；close 的行不再出现。
+- **#knowledge**：到期行（`now - last_shown ≥ 该行 interval`）按类型排序注入，每回合上限 8 行。**提及集（M7 裁决）**= 本回合表头结构化实体（在场者/身上）∪ 本回合 #events 事件的 structured payload 实体（一跳，不递归、不解析自由文本）——行字段命中提及集且计时到期则回放；仅 id 的行无条件按期回放。**溢出行优先于新到期行**（顺延队列先清）。**KB 行的重逢不强制重放**——重挂全量回放仅作用于表头状态行。**compaction：全部 last_shown 清零**（下一轮全量重放；closed 行除外——永不回放）。update_memory 的 open/edit 刷新该行 last_shown；close 的行不再出现。
 - **行间隔（m3 裁决）**：多字段行取其字段对应间隔的 **max**。
 - **字段不可变（M8 裁决）**：`edit` 只改 desc；fields+id 是不可变定位器。重新归档 = close + open（last_shown 重置，可接受）。
 - **reminder 时间表达式（m7 裁决）**：严格解析，失败即该行 open/edit 拒绝并报具体解析错误（`unparseable reminder time: …`）——提醒必须准时，不容错。
@@ -105,7 +99,7 @@ memory: [item=x,id=y] no match
 | kind | 模板（公开行） |
 |---|---|
 | enter / leave | {actor} 进入 / 离开 {location} |
-| speak | {actor} 说："{text}" |
+| speak | {actor} 说（{听众} 听见）："{text}"——听众 = 提交时刻在场的全部他人，客观事实，各行逐字相同 |
 | speak（whisper） | {actor} 凑近 {target} 耳语了几句 —— 其他人只看见耳语动作，文本仅投递给 to 指定者 |
 | send_message（送达） | {actor} 发消息给 {target}（电话）——text 仅投递给收件方 |
 | take / drop | {actor} 拿起 / 放下 {item} |
@@ -122,13 +116,13 @@ memory: [item=x,id=y] no match
 ## 4. 响应设计（模型 → 工具调用）
 
 - 模型一次响应返回**多个工具调用**（原生 tool_calls），按序逐个执行。
-- `think`：心声保留在会话历史中（compaction 时按记忆折叠），镜像入 trace（私有）；建议第一个调用。
-- `update_memory` / `recall` / `flashback`：结果/错误进下一轮。
-- `update_memory` 补丁语义：合法行应用，失败行原文进下一轮 #error，其余继续。同一 patch 内出现两行相同 (fields,id)：第一行生效，其余该行报 `duplicate row in patch`。对已是 open 状态的行再次 open：视为 edit（宽容）+ 遥测计数，不报错、不产生第二行。close 的行只能 reopen（`op:"open"`），不能 edit；close 的行不计入 todo 上限。
+- `think`：心声保留在会话历史中（compaction 时按记忆折叠），镜像入 trace（私有）；永远是回合的第一个调用，每回合都要写。
+- `update_memory` / `recall` / `flashback`：结果/错误以该调用的 tool 结果回填。
+- `update_memory` 补丁语义：合法行应用，失败行原文进该调用的 tool 结果，其余继续。同一 patch 内出现两行相同 (fields,id)：第一行生效，其余该行报 `duplicate row in patch`。对已是 open 状态的行再次 open：视为 edit（宽容）+ 遥测计数，不报错、不产生第二行。close 的行只能 reopen（`op:"open"`），不能 edit；close 的行不计入 todo 上限。
 - todo 上限 **12** 只数 open 状态的 todo 行。
 - `reminder` 到期 = **force-interrupt**（V4-ENGINE §3）：在执行位置挂起当前动作 → 下回合 continue-or-cancel；通知播放后该行自动 close。
 - **世界动作**：按序执行、时间累加、各自 ≥1 tick 且向上取整到 tick 倍数。同一回合允许动作链（说完再走；进入与坐下是两个动作，各自独立）。
-- 每回合工具调用上限 **8**（m9 裁决）：截断发生在调用边界——已执行的调用与其时间消耗照常结算，被截断的调用整条不执行，下一轮 #error 报 `truncated: N calls dropped`。
+- 每回合工具调用上限 **8**（m9 裁决）：截断发生在调用边界——已执行的调用与其时间消耗照常结算，被截断的调用整条不执行，其 tool 结果报 `truncated: N calls dropped`。
 - 一回合没有世界动作 → 角色发呆 1 tick。
 - 并发冲突（m8）：同一 tick 内多个 actor 竞争同一资源按提交序串行判定，后者收到 rejected + 具体原因（如 `item already taken by 陈默`）。
 - 有挂起动作（被 interrupt 打断）时，#actions 出现 `[continue]`：调用它 = 无损继续；发任何其他世界动作 = 放弃挂起动作（作废）；都不发 = 挂起保持。
@@ -139,7 +133,7 @@ memory: [item=x,id=y] no match
 
 ## 5. NPC 与 extras 的接口（M9/M10 裁决）
 
-- **NPC**：唤醒回合收到与 MC **结构完全一致**的每回合消息（表头/#error/#flashback/#events/#knowledge/#actions），仅额外多一个置顶的 `[director]` 块（导演简报：本场目标、知识注记）。NPC 的 KB 与 MC 同机制（含 person=self 身份行、todo、reminder）——**无独立滚动摘要**（旧机制废除）。MC 永远看不到 [director] 块——不可分辨保持。
+- **NPC**：唤醒回合收到与 MC **结构完全一致**的每回合消息（表头/#flashback/#events/#knowledge/#actions），仅额外多一个置顶的 `[director]` 块（导演简报：本场目标、知识注记）。NPC 的 KB 与 MC 同机制（含 person=self 身份行、todo、reminder）——**无独立滚动摘要**（旧机制废除）。MC 永远看不到 [director] 块——不可分辨保持。
 - **extras**：**无 KB**（会话期记忆即其全部记忆，销毁即失）。消息 = `[director]` 简报（身份碎片+知识注记）+ 场景行 + 发起者的提问。工具面仅 `speak`。多轮对话由发起者与 extra 轮流收消息；销毁时会话与其记忆一并丢弃。
 
 ## 6. 种子行 schema（M2 裁决——KB 行在开局前如何声明）
@@ -167,7 +161,7 @@ kb:
 - **身份行锚定（M2）**：每角色恰一行 `self: true`（保留字段），desc 以第一人称"我，…"开头——这是"我"的锚；模型同时每回合在表头在场行看到自己的名字（`(you)`）。引擎校验：有且仅有一行 self:true，否则加载失败。
 - fields 的键为保留名或自由次要标签（受控主键：person/location/item/todo/reminder/self；自由键钳为 knowledge + 遥测）。
 - 行在 turn 0 全部 last_shown=0 → 全量灌入首条消息（计数器语义自然涌现，无特例）。
-- public_knowledge（manifest）自动展开为**每角色一条对应 KB 行**（各角色独立副本，可各自 edit）。
+- public_knowledge（manifest）自动展开为**每角色一条对应 KB 行**（各角色独立副本，可各自 edit）。world 包 items/documents 的描述同样按 known_to 自动展开为对应角色的 item/document KB 行——首轮泛洪时身边与在手的物品描述随之呈现。
 - id 全角色 KB 内唯一；(fields,id) 定位。
 
 ## 7. 常数表
