@@ -72,9 +72,8 @@ class RepetitionMonitorTests(unittest.TestCase):
              "situational_notice": "You have sent b 4 messages in a row without a reply."},
             [{"kind": "wait", "duration_seconds": 900}])
         self.assertIn("messages in a row", text)
-        # The notice is a frontier line before the action shapes, and the
-        # existing fixed lines (time/location) are unchanged.
-        self.assertTrue(text.index("messages in a row") > text.index("现在是"))
+        # The notice is a frontier line before the action shapes.
+        self.assertTrue(text.index("messages in a row") < text.index("# actions"))
 
 
 if __name__ == "__main__":
