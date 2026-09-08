@@ -338,3 +338,66 @@ class V4ProtocolTests(unittest.TestCase):
                        and e.payload.get("by") == "reminder"]
         self.assertTrue(interrupted, "due reminder must force-interrupt the wait")
         self.assertIn("该动了", agent.seen_messages[-1] + agent.seen_messages[-2])
+
+
+class RenderSemanticsTests(unittest.TestCase):
+    """docs §3 修订（2026-09-08 用户评审）：heard-by 模板、#actions 同类合并、
+    solo 自言自语、volume=normal/whisper 合并、无 #error 块、无 可互动 表头行。"""
+
+    def _world(self):
+        from harness.tests.test_engine import START
+        return World(start=START,
+                     actors=[ActorState("a", "room"), ActorState("b", "room"),
+                             ActorState("c", "alone")],
+                     locations=[LocationState("room"), LocationState("alone")],
+                     routes={("room", "alone"): 60, ("alone", "room"): 60})
+
+    def test_speech_carries_heard_by_audience(self):
+        from harness.prompt import render_world_message
+        world = self._world()
+        world.submit(Intention("a", "speak", {"text": "你们好"}, world.version))
+        world.advance()
+        perception = world.poll("b")
+        text = render_world_message(perception, world.affordances("b"), observer="b")
+        self.assertIn("a 说（b 听见）：\"你们好\"", text)
+        # the line is observer-independent (same words for a)
+        text_a = render_world_message(world.poll("a"), world.affordances("a"), observer="a")
+        self.assertIn("a 说（b 听见）：\"你们好\"", text_a)
+
+    def test_whisper_public_line_names_target_and_text_is_private(self):
+        from harness.prompt import render_world_message
+        world = self._world()
+        world.submit(Intention("a", "speak",
+                               {"text": "悄悄话", "volume": "whisper", "to": ["b"]},
+                               world.version))
+        world.advance()
+        world_b = render_world_message(world.poll("b"), world.affordances("b"),
+                                       observer="b")
+        self.assertIn("a 凑近 b 耳语了几句", world_b)
+        self.assertIn("耳语内容：\"悄悄话\"", world_b)
+
+    def test_actions_merge_same_kind_and_show_whisper_candidates(self):
+        from harness.prompt import render_world_message
+        world = self._world()
+        world.item_locations.update({"pen": "room", "paper": "room"})
+        affordances = world.affordances("a")
+        text = render_world_message({"observer": "a", "time": world.now.isoformat(),
+                                     "location": "room", "events": [],
+                                     "nearby_actors": ["b"], "inventory": []},
+                                    affordances, observer="a")
+        self.assertIn("[take] item=pen、paper", text)
+        self.assertIn("[speak] volume=normal/whisper, to=a、b".replace("a、b", "b"), text)
+        self.assertNotIn("可互动：", text)
+        self.assertNotIn("# error", text)
+
+    def test_solo_speak_when_nobody_present(self):
+        from harness.prompt import render_world_message
+        world = self._world()
+        affordances = world.affordances("c")
+        speak = [x for x in affordances if x.get("kind") == "speak"][0]
+        self.assertTrue(speak.get("solo"))
+        text = render_world_message({"observer": "c", "time": world.now.isoformat(),
+                                     "location": "alone", "events": [],
+                                     "nearby_actors": [], "inventory": []},
+                                    affordances, observer="c")
+        self.assertIn("[speak] volume=normal（自言自语）", text)
