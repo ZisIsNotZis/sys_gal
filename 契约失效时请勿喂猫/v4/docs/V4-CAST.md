@@ -1,7 +1,7 @@
 # v4 两层演员制：MC / NPC / 匿名路人
 
 Design truth for the two-tier cast and the enriched world. Decided 2026-09-04.
-Nothing here is implemented yet. 阻塞/唤醒/心跳的引擎语义 SSOT 见 `V4-ENGINE.md` §3。
+阻塞/唤醒/心跳的引擎语义 SSOT 见 `V4-ENGINE.md` §3。
 
 ## 1. 角色分层
 

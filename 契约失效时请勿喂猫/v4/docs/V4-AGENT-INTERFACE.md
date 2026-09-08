@@ -1,6 +1,6 @@
 # v4 Agent 接口规范：prompt 与响应
 
-SSOT：v4 角色-引擎接口的全部设计。**本文是实现的输入规范**；当前 harness 尚未按本文迁移（sleep 仍在 schema、四个记忆工具未建、world 包无 `kb:` 段——迁移随实现完成，见 §6 尾注），迁移完成前以本文为目标、旧代码为准跑存量测试。评审记录：`V4-AGENT-INTERFACE-REVIEW.md`、`-REVIEW-2.md`（共 54 项发现，均已裁决，裁决以本文为准）。配合：`V4-DESIGN.md`、`V4-ENGINE.md`（引擎时序/并发/冻结 SSOT）、`harness/action_schema.py`（迁移完成后为工具 schema 的代码级 SSOT）。
+SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；与本文的偏差是缺陷。配合：`V4-DESIGN.md`、`V4-ENGINE.md`（引擎时序/并发/冻结 SSOT）、`harness/action_schema.py`（工具 schema 的代码级 SSOT，与本文 §2 一致）。
 
 ## 0. 原则
 
@@ -32,7 +32,7 @@ SSOT：v4 角色-引擎接口的全部设计。**本文是实现的输入规范*
 
 ## 2. 工具（tools 参数，静态全量声明）
 
-一次性声明全部工具，永不增删（cache 安全）。当回合是否可用由世界消息 `# actions` 表达；非法调用被引擎拒绝并在下一轮 `# error` 给出原因。**迁移注**：当前 harness 的 action_schema 尚含 sleep、缺 think/update_memory/recall/flashback——按本表迁移后，schema 代码成为 SSOT。
+一次性声明全部工具，永不增删（cache 安全）。当回合是否可用由世界消息 `# actions` 表达；非法调用被引擎拒绝并在下一轮 `# error` 给出原因。`harness/action_schema.py` 与本表一一对应。
 
 | 工具 | 消耗时间 | 说明 |
 |---|---|---|
@@ -144,7 +144,7 @@ memory: [item=x,id=y] no match
 
 ## 6. 种子行 schema（M2 裁决——KB 行在开局前如何声明）
 
-种子包中每角色一个 KB 初始行列表（**实现时 manifest 集中声明 `kb:` 段**——当前 world 包为旧格式无此段，迁移随实现；迁移前旧格式包按旧规则加载）：
+种子包中每角色一个 KB 初始行列表（manifest 集中声明 `kb:` 段，世界加载器校验）：
 
 ```
 kb:

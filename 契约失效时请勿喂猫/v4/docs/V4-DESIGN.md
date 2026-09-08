@@ -1,4 +1,4 @@
-# v4 Design: social immersion (planned, not implemented)
+# v4 Design: social immersion
 
 > **SSOT 指针**：agent 接口（system prompt 逐字文本、工具清单、每回合消息
 > 骨架、响应语义、KB 行模型与回放常数）的最新定稿在 `V4-AGENT-INTERFACE.md`
@@ -150,4 +150,4 @@ granularity or the realtime knob (V4-ENGINE §5).
 ## 7. 两层演员制与世界加厚
 
 MC/NPC/匿名路人的分层、唤醒触发器、知识边界、导演简报、NPC 班底与世界加厚
-清单已独立成文：`V4-CAST.md`（2026-09-04 定稿，未实现）。
+清单已独立成文：`V4-CAST.md`（2026-09-04 定稿）。

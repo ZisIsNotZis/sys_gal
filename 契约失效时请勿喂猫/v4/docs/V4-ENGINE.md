@@ -1,6 +1,6 @@
 # v4 引擎：时间、并发与调度（async 离散事件内核）
 
-SSOT：引擎时序语义、并发架构、冻结/唤醒/中断机制、失败隔离、检查点与日志。2026-09-08 定稿，未实现（迁移随实现完成，见 §8）。配合：`V4-AGENT-INTERFACE.md`（prompt/响应与常数表 SSOT）、`V4-CAST.md`（演员分层与唤醒触发器 SSOT）、`V4-DESIGN.md`（产品目标与世界物理 SSOT）。冲突裁决：引擎事务以本文为准；prompt/工具语义以 AGENT-INTERFACE 为准；角色生命周期以 CAST 为准。
+SSOT：引擎时序语义、并发架构、冻结/唤醒/中断机制、失败隔离、检查点与日志。2026-09-08 定稿。配合：`V4-AGENT-INTERFACE.md`（prompt/响应与常数表 SSOT）、`V4-CAST.md`（演员分层与唤醒触发器 SSOT）、`V4-DESIGN.md`（产品目标与世界物理 SSOT）。冲突裁决：引擎事务以本文为准；prompt/工具语义以 AGENT-INTERFACE 为准；角色生命周期以 CAST 为准。
 
 ## 0. 总体架构
 
@@ -67,7 +67,7 @@ SSOT：引擎时序语义、并发架构、冻结/唤醒/中断机制、失败�
 - trace 改为：每角色时间线 + 全局 journal——比回合快照更强的 happens-before 分析材料。
 - 确定性种子与历史失败闸门（v3 pre-run gate 惯例）必须在新排序下全绿后才许大跑。
 
-## 8. 对现有 harness 的影响（迁移注）
+## 8. 实现映射
 
 - **替换**：runner.py 轮询主循环与 waiting/npc_pending/extras 三条 ad-hoc 路径 → 统一协程循环（§0）。迁移期间旧 `Runner` 仅作为存量测试的遗留驱动保留，生产入口（real_run/resume_run）已切换 `AsyncEngine`。
 - **直迁**：kernel 校验、事件渲染模板、KB 机制、别名遥测——渲染层管"是什么"，改为唤醒时调用即可。
