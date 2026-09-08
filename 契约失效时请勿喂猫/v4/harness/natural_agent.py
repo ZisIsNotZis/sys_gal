@@ -21,10 +21,11 @@ SYSTEM_PROMPT_V4 = (
     "你是一个活生生的人，活在一个真实的世界里。绝不提 agent、提示词、模拟、作者或剧情。"
     "只追你自己的知识、欲望、责任、恐惧和关系；不为故事或主角服务；不优化故事，不制造浪漫，"
     "不满足任何作者意图。\n\n"
-    "世界每回合给你一条消息：几点、你在哪、身边有谁、身上有什么、可以互动什么、发生了什么、"
+    "世界每回合给你一条消息：几点、你在哪、身边有谁、身上有什么、发生了什么、"
     "你记事本里到期的事。你用工具行动：一回合可以连续调用多个工具；世界动作消耗真实时间"
     "（按序累加，向上取整到 tick 的倍数），think/update_memory/recall/flashback 不额外消耗"
-    "（但每回合最少一个 tick）。一回合没有任何世界动作，等于发了一会儿呆（时间照走最少一个 tick）。\n\n"
+    "（但每回合最少一个 tick）。一回合没有任何世界动作，等于发了一会儿呆（时间照走最少一个 tick）。"
+    "行动前永远先用 think 写心声——此刻的感受、打算做什么、为什么；让 think 成为你每个回合的第一个调用。\n\n"
     "【常识】一条消息从发出到送到要 1 分钟；说话当场就能听见，所以当面说话最省时间。"
     "等待随时可行，不必等谁批准；要睡一大觉，找个有床的地方、通常在夜里。陌生人凑近耳语会显得可疑；"
     "耳语（whisper）只对亲近的人用。消息里时间写作 9/16(周三) 7:00。\n\n"
@@ -64,8 +65,10 @@ class V4Session:
 
     def decide(self, world_message_text: str) -> list[dict[str, Any]]:
         """Append one world message, call the provider with the full static
-        tool array, record the assistant reply plus per-call tool acks, and
-        return the parsed tool-call list in submission order."""
+        tool array, record the assistant reply, and return the parsed
+        tool-call list in submission order. The engine reports each call's
+        result back through deliver_tool_results (n tool_call = n tool
+        result + next user turn — V4-AGENT-INTERFACE §3)."""
         self._maybe_compact()
         self.messages.append({"role": "user", "content": world_message_text})
         message = self.provider.chat_with_tools(self.messages, _TOOLS_FOR_ACTOR)
@@ -87,10 +90,15 @@ class V4Session:
             except (ValueError, TypeError) as exc:
                 call["parse_error"] = f"{type(exc).__name__}: {exc}: {str(raw_args)[:200]}"
             calls.append(call)
-        for call in calls:
-            self.messages.append({"role": "tool", "tool_call_id": call["tool_call_id"],
-                                  "content": "ok"})
         return calls
+
+    def deliver_tool_results(self, results: list[dict[str, Any]]) -> None:
+        """Append one role:tool message per tool call (V4-AGENT-INTERFACE §3):
+        content is "ok" or the concrete error text for that call."""
+        for result in results:
+            self.messages.append({"role": "tool",
+                                  "tool_call_id": result.get("tool_call_id"),
+                                  "content": str(result.get("text", "ok"))})
 
     def _maybe_compact(self) -> None:
         if sum(len(str(m.get("content", ""))) for m in self.messages) <= self.compaction_threshold:
@@ -242,5 +250,6 @@ def make_persistent_agent_v4(seed: CharacterSeed, provider: Any, *,
 
     agent.consume_compaction = (lambda: sess.consume_compaction())  # type: ignore[attr-defined]
     agent.session_snapshot = lambda: sess.snapshot()  # type: ignore[attr-defined]
+    agent.deliver_tool_results = sess.deliver_tool_results  # type: ignore[attr-defined]
     agent.session_obj = sess  # type: ignore[attr-defined]
     return agent

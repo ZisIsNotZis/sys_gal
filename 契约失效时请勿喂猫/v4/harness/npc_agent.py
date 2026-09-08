@@ -250,6 +250,7 @@ def make_npc_agent_v4(seed: CharacterSeed, provider: Any, *,
 
     agent.consume_compaction = (lambda: sess.consume_compaction())  # type: ignore[attr-defined]
     agent.session_snapshot = lambda: sess.snapshot()  # type: ignore[attr-defined]
+    agent.deliver_tool_results = sess.deliver_tool_results  # type: ignore[attr-defined]
     agent.session_obj = sess  # type: ignore[attr-defined]
     return agent
 

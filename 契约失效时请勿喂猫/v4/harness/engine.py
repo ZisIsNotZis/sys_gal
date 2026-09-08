@@ -106,7 +106,6 @@ class AsyncEngine:
         self._kb_seeds = dict(kb_seeds or {})
         self.director_brief = director_brief
         self.flashback_horizon_minutes = int(flashback_horizon_minutes)
-        self._pending_errors: dict[str, list[str]] = {}
         self._recall_lines: dict[str, list[str]] = {}
         self._flashback_display: dict[str, list[str]] = {}
         self._flashback_pool: dict[str, list[tuple[datetime, str, frozenset[str]]]] = {}
@@ -440,12 +439,11 @@ class AsyncEngine:
         if v4:
             knowledge_lines = self._knowledge_lines(actor_id, perception, affordances)
             flashback_lines = self._flashback_display.pop(actor_id, [])
-            errors = self._pending_errors.pop(actor_id, [])
             director = (self.director_brief(actor_id)
                         if self.director_brief and self._role(actor_id) == "npc" and npc_reason
                         else None)
             text = render_world_message(perception, affordances, observer=actor_id,
-                                        errors=errors, knowledge_lines=knowledge_lines,
+                                        knowledge_lines=knowledge_lines,
                                         flashback_lines=flashback_lines, director=director)
             decide_task = loop.create_task(asyncio.to_thread(
                 self._decide_v4, actor_id, text))
@@ -560,27 +558,37 @@ class AsyncEngine:
         world action = 发呆 1 tick; more than 8 calls truncate at the call
         boundary ("truncated: N calls dropped")."""
         world = self.world
-        errors: list[str] = []
+        results: list[dict[str, Any]] = []
+        failures: list[str] = []
         world_actions = 0
         calls = list(calls or [])
-        if len(calls) > 8:
-            errors.append(f"truncated: {len(calls) - 8} calls dropped")
+        truncated = max(0, len(calls) - 8)
+        if truncated:
             calls = calls[:8]
         a = world.actors[actor_id]
+
+        def fail(call: dict[str, Any], text: str) -> None:
+            results.append({"tool_call_id": call.get("tool_call_id"), "ok": False, "text": text})
+            failures.append(f"{call.get('name')}: {text}")
+
         for call in calls:
             name = str(call.get("name", ""))
             args = call.get("arguments") or {}
             if call.get("parse_error"):
-                errors.append(f"{name}: unparseable arguments")
+                fail(call, f"unparseable arguments: {call['parse_error']}")
                 continue
             if name == "think":
+                results.append({"tool_call_id": call.get("tool_call_id"), "ok": True, "text": "ok"})
                 continue  # inner stays in the session history; no world effect
             if name == "update_memory":
                 if actor_id in self._kb:
                     errs, _tel = self._kb[actor_id].apply_ops(args.get("rows") or [], world.now)
-                    errors.extend(f"memory: {e}" for e in errs)
+                    if errs:
+                        fail(call, "; ".join(errs))
+                    else:
+                        results.append({"tool_call_id": call.get("tool_call_id"), "ok": True, "text": "ok"})
                 else:
-                    errors.append("memory: no notebook seeded for this actor")
+                    fail(call, "no notebook seeded for this actor")
                 continue
             if name == "recall":
                 if actor_id in self._kb:
@@ -588,14 +596,17 @@ class AsyncEngine:
                         self._kb[actor_id].force_recall(
                             args.get("kinds"), args.get("ids"),
                             bool(args.get("closed")), int(args.get("limit") or 8)))
+                results.append({"tool_call_id": call.get("tool_call_id"), "ok": True, "text": "ok"})
                 continue
             if name == "flashback":
                 self._flashback_display[actor_id] = self._flashback_query(
                     actor_id, str(args.get("entity") or ""))
+                results.append({"tool_call_id": call.get("tool_call_id"), "ok": True, "text": "ok"})
                 continue
             try:
                 world.submit(Intention(actor_id, name, dict(args), world.version))
                 world_actions += 1
+                results.append({"tool_call_id": call.get("tool_call_id"), "ok": True, "text": "ok"})
                 if a.busy_until and a.busy_until > world.now:
                     # The chain's own committed time: advance to the action's
                     # completion so the next call starts after it — clamped to
@@ -607,16 +618,23 @@ class AsyncEngine:
                     if limit > world.now:
                         world.advance(until=limit)
                 if a.busy_until and self._stop_horizon is not None and a.busy_until > self._stop_horizon:
+                    results.append({"tool_call_id": None, "ok": False,
+                                    "text": f"truncated: {truncated} calls dropped"})
                     break  # the run's endpoint cut this chain short
             except ActionRejected as exc:
-                errors.append(f"{name}: {exc}")
+                fail(call, str(exc))
             except Exception as exc:
-                errors.append(f"{name}: {type(exc).__name__}: {exc}")
+                fail(call, f"{type(exc).__name__}: {exc}")
             if a.pending is not None:
                 # A reminder (or another force interrupt) suspended the chain:
                 # the actor must answer continue-or-cancel before anything else.
-                errors.append(f"{name}: interrupted by reminder; choose continue_action or abandon_action")
+                for rest in calls[calls.index(call) + 1:]:
+                    results.append({"tool_call_id": rest.get("tool_call_id"), "ok": False,
+                                    "text": "interrupted; not executed"})
                 break
+        if truncated:
+            results.append({"tool_call_id": None, "ok": False,
+                            "text": f"truncated: {truncated} calls dropped"})
         if not world_actions:
             # 一回合没有任何世界动作 = 发呆 1 tick (V4-AGENT-INTERFACE §0/§4).
             try:
@@ -625,9 +643,10 @@ class AsyncEngine:
                                        world.version))
             except ActionRejected:
                 pass
+        deliver = getattr(self.agents[actor_id], "deliver_tool_results", None)
+        if deliver is not None:
+            deliver(results)
         self._remember_lines(actor_id, perception)
-        if errors:
-            self._pending_errors[actor_id] = errors
         result = "submitted" if (world_actions or calls) else "none"
         self._repetition.note_turn(actor_id, None, result)
         recorded = (Intention(actor_id, str(calls[0].get("name", "think")),
@@ -637,7 +656,7 @@ class AsyncEngine:
                     if calls else None)
         self.trace.record_agent(state=self.states[actor_id], perception=perception,
                                 affordances=affordances, intention=recorded,
-                                result=result, error="; ".join(errors) or None,
+                                result=result, error="; ".join(failures) or None,
                                 version_before=version_before,
                                 version_after=world.version, event_ids=[],
                                 role=self._role(actor_id))
@@ -1012,7 +1031,6 @@ class AsyncEngine:
                 "last_speech": {k: t.isoformat() for k, t in self._last_speech.items()},
                 "heartbeat_jobs": dict(self._heartbeat_jobs),
                 "kb": {actor: kb.snapshot() for actor, kb in self._kb.items()},
-                "pending_errors": {k: list(v) for k, v in self._pending_errors.items()},
                 "recall_lines": {k: list(v) for k, v in self._recall_lines.items()},
                 "flashback_display": {k: list(v) for k, v in self._flashback_display.items()},
                 "flashback_pool": {actor: [[t.isoformat(), line, sorted(entities)]
@@ -1038,7 +1056,6 @@ class AsyncEngine:
         self._heartbeat_jobs = {k: int(v) for k, v in state.get("heartbeat_jobs", {}).items()}
         self._extras = {name: {**x, "last_active": _dt.fromisoformat(x["last_active"])}
                         for name, x in state.get("extras", {}).items()}
-        self._pending_errors = {k: list(v) for k, v in state.get("pending_errors", {}).items()}
         self._recall_lines = {k: list(v) for k, v in state.get("recall_lines", {}).items()}
         self._flashback_display = {k: list(v) for k, v in state.get("flashback_display", {}).items()}
         self._flashback_pool = {

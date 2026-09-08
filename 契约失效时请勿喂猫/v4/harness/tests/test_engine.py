@@ -254,10 +254,14 @@ class FakeV4Agent:
     def __init__(self, script):
         self.script = script
         self.seen_messages = []
+        self.delivered = []
 
     def __call__(self, world_message_text, state):
         self.seen_messages.append(world_message_text)
         return self.script.pop(0) if self.script else []
+
+    def deliver_tool_results(self, results):
+        self.delivered.extend(results)
 
     def consume_compaction(self):
         return False
@@ -289,10 +293,9 @@ class V4ProtocolTests(unittest.TestCase):
         agent = FakeV4Agent([calls])
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
         engine.run(stop_at=START + timedelta(seconds=200), max_turns=30)
-        # the queued #error is consumed by the next turn's message; the trace
-        # keeps the turn-level error line
-        turn_errors = " ".join(str(t.get("error") or "") for t in engine.trace.agent_turns)
-        self.assertIn("truncated: 2 calls dropped", turn_errors)
+        # per-call tool results carry the truncation notice (docs §3)
+        texts = " ".join(str(r.get("text")) for r in agent.delivered)
+        self.assertIn("truncated: 2 calls dropped", texts)
 
     def test_no_world_action_chain_idles_one_tick(self):
         world = _world()
