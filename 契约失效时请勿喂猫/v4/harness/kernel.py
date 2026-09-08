@@ -496,11 +496,18 @@ class World:
         if a.busy_until and a.busy_until > self.now:
             return [{"kind": "wait", "duration_seconds": 900}]
         controllable = self.locations[a.location].controllable
+        others_here = sorted(other.id for other in self.actors.values()
+                             if other.id != a.id and other.location == a.location)
+        # docs §3：有其他在场者 → normal/whisper（whisper 的 to 候选 = 在场他人）；
+        # 无人在场 → 自言自语。
+        speak_option = ({"kind": "speak", "volume": "normal/whisper", "to": others_here}
+                        if others_here else
+                        {"kind": "speak", "volume": "normal", "solo": True})
         options: list[dict[str, Any]] = [
             {"kind": "observe"},
             {"kind": "ask_stranger"},
             {"kind": "wait"},
-            {"kind": "speak", "text": "", "volume": "normal"},
+            speak_option,
             *({"kind": "send_message", "target": other} for other in self._message_targets(a)),
             *({"kind": "move", "target": target}
               for (source, target), duration in self.routes.items() if source == a.location),
@@ -602,6 +609,15 @@ class World:
         if intention.kind == "speak":
             speech_payload = {"text": intention.args["text"],
                               "volume": intention.args.get("volume", "normal")}
+            # docs §3：heard = 提交时刻在场的全部他人（normal）；whisper 仅
+            # 记 to 指定者。客观事实，进事件日志供 heard-by 模板渲染。
+            here = [other.id for other in self.actors.values()
+                    if other.id != a.id and other.location == a.location]
+            if intention.args.get("volume") == "whisper":
+                speech_payload["heard"] = [t for t in (intention.args.get("to") or [])
+                                            if t in here]
+            else:
+                speech_payload["heard"] = here
             # 点名对象无论音量都记录（可见性不变：normal 仍全地点可闻）；
             # 唤醒与起哄逻辑需要知道话是对谁说的。
             if intention.args.get("to"):

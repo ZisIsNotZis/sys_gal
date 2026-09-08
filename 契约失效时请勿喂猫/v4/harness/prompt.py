@@ -58,23 +58,13 @@ def render_world_message(perception: Mapping[str, Any], affordances: list[Mappin
     inventory = sorted(str(x) for x in perception.get("inventory", []))
     if inventory:
         lines.append("身上：" + "、".join(inventory))
-    interactable = _interactable_summary(affordances)
-    if interactable:
-        lines.append("可互动：" + "、".join(interactable))
     notice = perception.get("situational_notice")
     if notice:
         lines.append(str(notice))
 
-    error_block = list(errors or [])
-    if errors is None:
-        # 旧协议兼容：operational_facts 即上一轮的工具调用错误。
-        for fact in perception.get("operational_facts", []):
-            action = fact.get("action", {})
-            error_block.append(f"{action.get('kind', '?')}: {fact.get('reason', '')}")
-    if error_block:
-        lines.append("")
-        lines.append("# error")
-        lines.extend(error_block)
+    error_block = list(errors or []) if errors is not None else []
+    # docs §3 修订：#error 块废除——每次工具调用的结果以 role:"tool" 消息回填
+    # 会话。errors 形参仅为旧调用方兼容保留，不再渲染。
 
     if flashback_lines:
         lines.append("")
@@ -99,9 +89,44 @@ def render_world_message(perception: Mapping[str, Any], affordances: list[Mappin
 
     lines.append("")
     lines.append("# actions")
-    lines.extend(f"[{_action_line(x)}]" if not _action_args(x) else
-                 f"[{x.get('kind', '?')}] {_action_args(x)}" for x in affordances)
+    lines.extend(_merged_action_lines(affordances))
     return "\n".join(lines)
+
+
+def _merged_action_lines(affordances: list[Mapping[str, Any]]) -> list[str]:
+    """docs §3：同类动作合并为一行——按 (kind, 参数键集合) 分组，同组对应值
+    用 、 连接（[drop] item=X、Y）。speak 的 volume/to 由 affordance 自身
+    表达（normal/whisper、在场者候选、无人在场时自言自语）。"""
+    groups: dict[tuple, dict[str, list[str]]] = {}
+    order: list[tuple] = []
+    for option in affordances:
+        kind = str(option.get("kind", "?"))
+        args = {k: v for k, v in option.items() if k != "kind" and v not in (None, "", {})}
+        key = (kind, tuple(sorted(args)))
+        if key not in groups:
+            groups[key] = {k: [] for k in args}
+            order.append(key)
+        for k, v in args.items():
+            items = v if isinstance(v, (list, tuple)) else [v]
+            for item in items:
+                text = str(item)
+                if text not in groups[key][k]:
+                    groups[key][k].append(text)
+    lines: list[str] = []
+    for key in order:
+        kind, arg_keys = key
+        solo = bool(groups[key].get("solo"))
+        rendered_keys = [k for k in arg_keys if k != "solo"]
+        rendered_keys.sort(key=lambda k: (k != "volume", k))  # volume 首位
+        if not rendered_keys:
+            lines.append(f"[{kind}]{'（自言自语）' if solo else ''}")
+            continue
+        parts = [f"{k}={'、'.join(groups[key][k])}" for k in rendered_keys]
+        line = f"[{kind}] {', '.join(parts)}"
+        if solo:
+            line += "（自言自语）"
+        lines.append(line)
+    return lines
 
 
 def _action_args(option: Mapping[str, Any]) -> str:
@@ -113,25 +138,8 @@ def _action_args(option: Mapping[str, Any]) -> str:
     return ", ".join(parts)
 
 
-def _action_line(option: Mapping[str, Any]) -> str:
-    return str(option.get("kind", "?"))
-
-
-def _interactable_summary(affordances: list[Mapping[str, Any]]) -> list[str]:
-    """表头可互动：affordances 指向的实体名，去重保序。"""
-    seen: list[str] = []
-    for option in affordances:
-        kind = option.get("kind")
-        key = {"read": "document", "copy": "document", "label": "document",
-               "annotate": "document", "compare": None, "inspect": "item",
-               "take": "item", "give": "item", "interact": "target",
-               "knock": "target"}.get(kind)
-        if key is None:
-            continue
-        value = str(option.get(key, ""))
-        if value and value not in seen:
-            seen.append(value)
-    return seen
+def _affordance_sentence(option: Mapping[str, Any]) -> str:
+    return _action_args(option)
 
 
 def _event_lines(perception: Mapping[str, Any], observer: str) -> list[str]:
@@ -161,7 +169,9 @@ def _event_sentence(event: Mapping[str, Any], location: str = "") -> str | None:
         if payload.get("volume") == "whisper":
             targets = "、".join(str(t) for t in payload.get("to", []) or [])
             return f"{who} 凑近 {targets} 耳语了几句"
-        return f"{who} 说：\"{payload.get('text')}\""
+        heard = [str(x) for x in payload.get("heard", []) or []]
+        audience = f"（{'、'.join(heard)} 听见）" if heard else ""
+        return f"{who} 说{audience}：\"{payload.get('text')}\""
     if kind == "enter":
         return f"{who} 进入 {payload.get('location')}"
     if kind == "leave":
