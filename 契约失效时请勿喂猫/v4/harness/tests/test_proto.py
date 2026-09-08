@@ -149,12 +149,20 @@ class V4SessionTests(unittest.TestCase):
         # World message appended as user.
         self.assertEqual(request_messages[1]["role"], "user")
         self.assertIn("@半坡咖啡馆", request_messages[1]["content"])
-        # After the reply: assistant message plus one tool ack per call
-        # (provider protocol requirement; real errors arrive via #error).
+        # After the reply: assistant message only — the engine reports each
+        # call's result via deliver_tool_results (docs §3 tool-result rule).
+        self.assertEqual([m["role"] for m in session_messages(agent)][2:],
+                         ["assistant"])
+        agent.deliver_tool_results([
+            {"tool_call_id": "t1", "ok": True, "text": "ok"},
+            {"tool_call_id": "t2", "ok": False, "text": "speak: unparseable arguments"},
+        ])
         self.assertEqual([m["role"] for m in session_messages(agent)][2:],
                          ["assistant", "tool", "tool"])
         self.assertEqual(session_messages(agent)[3]["tool_call_id"], "t1")
         self.assertEqual(session_messages(agent)[3]["content"], "ok")
+        self.assertEqual(session_messages(agent)[4]["tool_call_id"], "t2")
+        self.assertIn("unparseable", session_messages(agent)[4]["content"])
         # Structurally parsed calls; malformed arguments carry parse_error.
         self.assertEqual(calls[0], {"name": "think", "arguments": {"inner": "先想想"},
                                     "tool_call_id": "t1"})
