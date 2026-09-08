@@ -563,8 +563,12 @@ class RunnerTests(unittest.TestCase):
 
         self.assertEqual(world.actors["陈默"].location, "女生宿舍")
         self.assertGreaterEqual(calls["陈默"], 2)
+        # Movement is now public via the discrete enter event (V4 multi-hop
+        # move semantics); the move completion itself is the mover's private
+        # bookkeeping.
         completion_turns = [turn for turn in trace.agent_turns if any(
-            event["kind"] == "action_completed" and event["actor"] == "陈默"
+            event["kind"] == "enter" and event["actor"] == "陈默"
+            and event["payload"].get("location") == "女生宿舍"
             for event in turn["perception"]["events"])]
         self.assertTrue(completion_turns)
         self.assertTrue(any(turn["actor"] == "林瑶" for turn in completion_turns))

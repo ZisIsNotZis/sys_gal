@@ -57,7 +57,7 @@ def tick_ceil(seconds: float) -> int:
 
 WAKE_EVENT_KINDS = frozenset({"speech", "message_delivered", "knock", "interaction",
                               "item_given", "extra_arrived", "extra_removed",
-                              "action_interrupted"})
+                              "action_interrupted", "enter"})
 """Ambient social events that end a light ``wait`` early (V4-ENGINE §3 wake
 class). Movement/observation events only queue for the next turn."""
 
@@ -357,14 +357,82 @@ class World:
         times = [job.time for job in self._queue if job.kind == "world_event"]
         return min(times) if times else None
 
-    def _same_tick_social_event(self, actor: ActorState) -> bool:
+    def _unseen_social_event(self, actor: ActorState) -> bool:
+        """True when a wake-class event the actor has not yet perceived
+        (committed after its last poll cursor) is visible to it."""
+        cursor = self._cursor.get(actor.id, 0)
         for event in reversed(self.event_log):
-            if event.time < self.now:
+            if event.id <= cursor:
                 break
             if (event.kind in WAKE_EVENT_KINDS and event.actor != actor.id
                     and actor.id in event.visible_to):
                 return True
         return False
+
+    def _route_path(self, source: str, target: str) -> tuple[list[str], list[int]] | None:
+        """Shortest walk (by seeded route seconds) as (locations, hop_seconds).
+        V4-ENGINE §2: the walk time is the map's physical fact; multi-hop
+        routes are found by the engine, never requested by the actor."""
+        best = {source: 0}
+        prev: dict[str, str] = {}
+        pq = [(0, source)]
+        while pq:
+            cost, node = heapq.heappop(pq)
+            if node == target:
+                break
+            if cost > best.get(node, cost):
+                continue
+            for (src, dst), secs in self.routes.items():
+                if src != node:
+                    continue
+                next_cost = cost + int(secs)
+                if next_cost < best.get(dst, next_cost + 1):
+                    best[dst] = next_cost
+                    prev[dst] = node
+                    heapq.heappush(pq, (next_cost, dst))
+        if target not in best:
+            return None
+        path = [target]
+        while path[-1] != source:
+            path.append(prev[path[-1]])
+        path.reverse()
+        hops = [best[b] - best[a] for a, b in zip(path, path[1:])]
+        return path, hops
+
+    def _move_hop(self, job: "Any") -> None:
+        """Fire one hop boundary: enter the reached location, and (unless it
+        is the destination) leave it again immediately — the discrete event
+        sequence leave A / enter B / leave B / enter C (V4-ENGINE §2.1).
+        Visibility: everyone at the location touched, plus the mover."""
+        actor_id = job.actor
+        if actor_id not in self.actors:
+            return  # a despawned extra's leftover hop must not crash the clock
+        a = self.actors[actor_id]
+        path, index = job.payload["path"], int(job.payload["index"])
+        new = str(path[index])
+        if a.location == new:
+            return
+        a.location = new
+        self._commit("enter", actor_id, {"location": new}, None)
+        if index < len(path) - 1:
+            self._commit("leave", actor_id, {"location": new}, None)
+
+    def _schedule_move_hops(self, actor_id: str, path: list[str],
+                            hop_seconds: list[int], duration_seconds: int,
+                            cause: int | None) -> list[int]:
+        """Schedule the per-hop boundary jobs for a move; returns their queue
+        sequences so an interrupt can cancel the remaining hops."""
+        total_raw = sum(hop_seconds)
+        sequences = []
+        elapsed = 0
+        for index in range(1, len(path)):
+            elapsed += hop_seconds[index - 1]
+            when = self.now + timedelta(
+                seconds=round(duration_seconds * elapsed / total_raw))
+            sequences.append(self._schedule(
+                when, "move_hop", actor_id,
+                {"path": list(path), "index": index}, cause).sequence)
+        return sequences
 
     def wake_waiter(self, actor_id: str) -> bool:
         """V4-ENGINE §3 wake semantics: an ambient social event ends a light
@@ -480,12 +548,21 @@ class World:
             self._commit("stranger_asked", a.id, {"question": question}, None)
             # 打听花一个 tick：答案以在场路人的 speech 事件出现。
         duration = self._duration(a, intention)
-        if intention.kind == "wait" and self._same_tick_social_event(a):
-            # V4-ENGINE §3: a waiter does not sleep through a social act
-            # happening in the same tick it starts waiting; the wait is a
+        if intention.kind == "wait" and self._unseen_social_event(a):
+            # V4-ENGINE §3: a waiter does not sleep through a social act it
+            # has not yet perceived (committed after its last poll — the
+            # race where deliberation spans a tick boundary); the wait is a
             # no-op and the event delivers on the actor's next poll.
             return ()
         action_payload = {"action": intention.kind, **dict(intention.args)}
+        move_path: list[str] | None = None
+        move_hops: list[int] | None = None
+        if intention.kind == "move":
+            found = self._route_path(a.location, str(intention.args["target"]))
+            assert found is not None  # _duration already validated reachability
+            move_path, move_hops = found
+            action_payload["path"] = list(move_path)
+            action_payload["hop_seconds"] = list(move_hops)
         if intention.kind == "copy":
             source = str(action_payload["document"])
             action_payload["copy"] = f"{source}-copy-{self.version + 1}"
@@ -501,6 +578,10 @@ class World:
             if intention.interrupt:
                 started = self._commit("interrupt_requested", a.id, {
                     "targets": list(intention.interrupt)}, started.id)
+            if move_path is not None:
+                # Departure broadcasts immediately: the origin location sees
+                # the actor leave at t0 (V4 multi-hop move semantics).
+                self._commit("leave", a.id, {"location": a.location}, None)
         if intention.kind == "speak":
             speech_payload = {"text": intention.args["text"],
                               "volume": intention.args.get("volume", "normal")}
@@ -513,7 +594,15 @@ class World:
         elif intention.kind == "send_message":
             self._commit("message_sent", a.id, {"target": str(intention.args["target"])},
                          started.id if started else None)
+        hop_sequences: list[int] = []
         if duration:
+            # Hop boundaries must be scheduled BEFORE the completion job so
+            # the final enter fires at the same timestamp but lower sequence
+            # (the completion's location mutation would otherwise swallow it).
+            if move_path is not None:
+                hop_sequences = self._schedule_move_hops(
+                    a.id, move_path, move_hops or [],
+                    int(duration.total_seconds()), started.id if started else None)
             job = self._schedule(self.now + duration, "action_completed", a.id,
                                  action_payload, started.id if started else None)
             sequence = job.sequence
@@ -524,6 +613,7 @@ class World:
         a.sleeping = intention.kind == "sleep"
         if duration:
             a.current_action = {"payload": dict(action_payload), "sequence": sequence,
+                                "hop_sequences": hop_sequences,
                                 "uninterruptable": bool(uninterruptable)}
         self._apply_interrupts(a, intention)
         return (started,) if started else ()
@@ -551,13 +641,25 @@ class World:
             sequence = current.get("sequence")
             if sequence is not None:
                 self._cancelled.add(int(sequence))
+            for hop_sequence in current.get("hop_sequences", ()) or ():
+                self._cancelled.add(int(hop_sequence))
+            payload = dict(current.get("payload", {}))
+            pending = {"payload": payload, "remaining_seconds": remaining,
+                       "interrupted_by": actor.id}
+            if payload.get("action") == "move" and target.location != payload.get("target"):
+                # Multi-hop move: the remaining walk resumes from the last
+                # entered location (V4 multi-hop move semantics).
+                path = [str(x) for x in payload.get("path", ())]
+                hops = [int(x) for x in payload.get("hop_seconds", ())]
+                if target.location in path and hops:
+                    index = path.index(target.location)
+                    pending["remaining_hops"] = hops[index:]
+                    pending["remaining_path"] = path[index:]
             self._commit("action_interrupted", target_id, {
-                "action": current.get("payload", {}).get("action"),
+                "action": payload.get("action"),
                 "remaining_seconds": remaining, "by": actor.id,
             }, None)
-            target.pending = {"payload": dict(current.get("payload", {})),
-                              "remaining_seconds": remaining,
-                              "interrupted_by": actor.id}
+            target.pending = pending
             target.busy_until = None
             target.current_action = None
             target.sleeping = False
@@ -568,13 +670,20 @@ class World:
             raise ActionRejected("你没有被打断的动作。")
         remaining = tick_ceil(pending["remaining_seconds"])
         payload = dict(pending["payload"])
-        job = self._schedule(self.now + timedelta(seconds=remaining),
-                             "action_completed", a.id, payload, None)
         event = self._commit("action_resumed", a.id, {
             "action": payload.get("action"), "remaining_seconds": remaining}, None)
+        hop_sequences: list[int] = []
+        if payload.get("action") == "move" and pending.get("remaining_path"):
+            remaining_path = [str(x) for x in pending["remaining_path"]]
+            remaining_hops = [int(x) for x in pending.get("remaining_hops", ())]
+            hop_sequences = self._schedule_move_hops(
+                a.id, remaining_path, remaining_hops, remaining, event.id)
+        job = self._schedule(self.now + timedelta(seconds=remaining),
+                             "action_completed", a.id, payload, event.id)
         a.pending = None
         a.busy_until = self.now + timedelta(seconds=remaining)
         a.current_action = {"payload": payload, "sequence": job.sequence,
+                            "hop_sequences": hop_sequences,
                             "uninterruptable": False}
         return (event,)
 
@@ -601,6 +710,11 @@ class World:
                 self.now = job.time
                 continue
             self.now = job.time
+            if job.kind == "move_hop":
+                # A hop boundary commits its own enter/leave events (and no
+                # raw move_hop event reaches the log).
+                self._move_hop(job)
+                continue
             event = self._commit(job.kind, job.actor, self._public_payload(job.payload), job.cause)
             out.append(event)
             if job.kind == "action_completed" and job.actor:
@@ -831,16 +945,17 @@ class World:
                     f"「{target}」现在关着，进不去。",
                     alternatives=[f"move to {neighbor} (open)" for neighbor in open_neighbors],
                     context={"target": target, "open": False})
-            duration = self.routes.get((a.location, target))
-            if duration is None:
+            # V4-DESIGN §5.6 + multi-hop move: the actor states intent; the
+            # engine finds the shortest walk and its duration is the map's
+            # physical fact, never an actor-supplied argument.
+            found = self._route_path(a.location, target)
+            if found is None:
                 reachable = self._reachable(a)
                 raise ActionRejected(
-                    f"从{a.location}没有直通「{target}」的路。",
+                    f"从{a.location}走到「{target}」没有可用的路。",
                     alternatives=[f"move to {n}" for n in reachable],
                     context={"from": a.location, "target": target})
-            # V4-DESIGN §5.6: the actor states intent; the walk time is the
-            # map's physical fact, never an actor-supplied argument.
-            return timedelta(seconds=duration)
+            return timedelta(seconds=sum(found[1]))
         if i.kind in {"open", "close"}:
             if not self.locations[a.location].controllable:
                 raise ActionRejected(
@@ -1076,6 +1191,14 @@ class World:
         if kind == "world_event" and payload.get("target"):
             targets = payload["target"] if isinstance(payload["target"], (list, tuple)) else [payload["target"]]
             return {str(target) for target in targets}
+        if kind == "leave" or kind == "enter":
+            # Movement visibility: everyone at the location being touched,
+            # plus the mover (who sees its own whole route).
+            return self._co_located(str(actor))
+        if kind in {"action_started", "action_completed"} and payload.get("action") == "move":
+            # The discrete leave/enter events carry the public movement
+            # information; started/completed are the mover's private bookkeeping.
+            return {str(actor)}
         if kind == "action_started" and payload.get("action") == "send_message":
             return {str(actor)}
         if kind == "action_started" and payload.get("action") == "speak":
@@ -1100,13 +1223,7 @@ class World:
         if kind in {"extra_arrived", "extra_removed"}:
             return self._co_located(str(actor))
         if actor is None: return set(self.actors)
-        visible = self._co_located(str(actor))
-        # Completion is committed before the state mutation, so an arrival
-        # must also be visible to actors already at the destination.
-        if kind == "action_completed" and payload.get("action") == "move":
-            target = str(payload.get("target"))
-            visible.update(x.id for x in self.actors.values() if x.location == target)
-        return visible
+        return self._co_located(str(actor))
 
     def _co_located(self, actor_id: str) -> set[str]:
         """Everyone at the actor's location, plus the actor."""

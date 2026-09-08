@@ -394,7 +394,9 @@ class WorldTests(unittest.TestCase):
                   routes={("start", "finish"): 60})
         w.submit(Intention("a", "move", {"target": "finish"}, w.version))
         w.advance()
-        self.assertTrue(any(e["kind"] == "action_completed" and e["actor"] == "a"
+        # Destination visibility now rides the discrete enter event (V4
+        # multi-hop move semantics); the completion itself is mover-private.
+        self.assertTrue(any(e["kind"] == "enter" and e["actor"] == "a"
                             for e in w.poll("b")["events"]))
 
     def test_closed_source_does_not_project_speech(self):
@@ -501,8 +503,8 @@ class WorldTests(unittest.TestCase):
     def test_world_message_spells_out_self_move_completion(self):
         from harness.prompt import render_world_message
         text = render_world_message({"observer": "a", "time": "now", "location": "finish",
-                                     "events": [{"kind": "action_completed", "actor": "a",
-                                                 "payload": {"action": "move", "target": "finish"}}]}, [])
+                                     "events": [{"kind": "enter", "actor": "a",
+                                                 "payload": {"location": "finish"}}]}, [])
         self.assertIn("你到了finish", text)
 
     def test_replay_log_verifier_rejects_truncation_and_accepts_real_log(self):
