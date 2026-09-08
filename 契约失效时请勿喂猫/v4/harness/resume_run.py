@@ -64,8 +64,13 @@ def resume(checkpoint_path: Path, *, out: Path | None = None,
     else:
         provider = call
         gm = None
-    states = {actor: PrivateState.from_snapshot(cp["states"][actor])
-              for actor in world.actors}
+    states = {}
+    for actor in world.actors:
+        if world.actors[actor].role == "extra":
+            continue  # extras have no durable state (V4-CAST §1 zero-memory)
+        snapshot = cp.get("states", {}).get(actor)
+        states[actor] = (PrivateState.from_snapshot(snapshot) if snapshot
+                         else PrivateState(actor))
     # 两层演员制：MC 恢复持久会话；NPC 恢复滚动记忆并走导演简报；extras
     # 由引擎管理，不配 agent（V4-CAST §1）。
     primer = world_primer(pack)

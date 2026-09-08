@@ -55,8 +55,11 @@ class AsyncEngine:
                  cold_ticks: int = 6, npc_wake_budget: int = 12,
                  stall_budget_ratio: float = 0.25,
                  max_transient_failures: int = 3) -> None:
-        if set(agents) != set(world.actors) or set(states) != set(world.actors):
-            raise ValueError("one agent and private state are required for every actor")
+        # Extras restored from a checkpoint have no agent/state of their own
+        # (they run on extra_call with session-local memory, V4-CAST §1).
+        required = {actor for actor in world.actors if world.actors[actor].role != "extra"}
+        if set(agents) != required or set(states) != required:
+            raise ValueError("one agent and private state are required for every non-extra actor")
         self.world, self.agents, self.states, self.trace, self.system = world, agents, states, trace, system
         self.extra_call = extra_call
         self.decision_timeout = float(decision_timeout)
@@ -298,21 +301,36 @@ class AsyncEngine:
     async def _actor_loop(self, actor_id: str) -> None:
         event = self._wake_events[actor_id]
         while self.stop_reason is None:
-            hung = self._hung.pop(actor_id, None)
-            if hung is not None:
-                try:
-                    await hung  # a timed-out call must finish before the next turn
-                except Exception:
-                    pass
-            while not self._ready_now(actor_id):
+            try:
+                hung = self._hung.pop(actor_id, None)
+                if hung is not None:
+                    try:
+                        await hung  # a timed-out call must finish before the next turn
+                    except Exception:
+                        pass
+                while not self._ready_now(actor_id):
+                    if self.stop_reason:
+                        return
+                    await event.wait()
+                    event.clear()
+                event.clear()
                 if self.stop_reason:
                     return
-                await event.wait()
-                event.clear()
-            event.clear()
-            if self.stop_reason:
-                return
-            await self._take_turn(actor_id)
+                await self._take_turn(actor_id)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                # A dead actor task must never wedge the engine silently —
+                # it would stay "ready" forever and block quiescence.
+                print(f"[engine] actor task {actor_id} crashed: "
+                      f"{type(exc).__name__}: {exc}", flush=True)
+                self.trace.record_system({"kind": "actor_task_crash"},
+                                         {"actor": actor_id,
+                                          "error": f"{type(exc).__name__}: {exc}"})
+                self._force_turn.discard(actor_id)
+                self._inflight.pop(actor_id, None)
+                self._scheduler_wake.set()
+                await asyncio.sleep(0.1)
 
     async def _take_turn(self, actor_id: str) -> None:
         world = self.world
