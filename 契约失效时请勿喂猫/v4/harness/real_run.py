@@ -29,15 +29,13 @@ def main() -> None:
         raise RuntimeError(f"seed/character mismatch: {set(world.actors) ^ set(seeds)}")
     states = {actor: PrivateState(actor, goals=(seeds[actor].goals or "pursue ordinary personal interests",))
               for actor in world.actors}
-    # A turn may need compaction, format retries, and a GM interpretation.
+    # A turn may need compaction retries; the v4 protocol needs no GM judge
+    # (V4-AGENT-INTERFACE §0) and no persona primer (KB rows carry identity).
     provider = provider_from_env(
         max_concurrency=min(len(world.actors), int(os.environ.get("V3_PROVIDER_CONCURRENCY", "8"))))
-    # Include five possible compaction/character calls and two GM calls.
     decision_timeout = provider.worst_case_seconds() * 8 + 5.0
     if decision_timeout <= provider.worst_case_seconds() * 8:
         raise RuntimeError("provider decision budget is not bounded")
-    gm = make_provider_gm(provider)
-    primer = world_primer(pack)
     # V4-CAST §1/§3: MCs get full persistent sessions; NPCs get event-driven
     # director-briefed agents (world knowledge + public MC digest per wake).
     # Both run the V4-AGENT-INTERFACE protocol: verbatim system prompt,

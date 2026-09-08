@@ -122,6 +122,7 @@ class AsyncEngine:
 
     async def _run(self, stop_at: datetime | None) -> str:
         loop = asyncio.get_running_loop()
+        self._stop_horizon = stop_at
         self._wake_events = {actor: asyncio.Event() for actor in self.world.actors}
         self._scheduler_wake = asyncio.Event()
         self._wall_started = time.monotonic()
@@ -597,8 +598,16 @@ class AsyncEngine:
                 world_actions += 1
                 if a.busy_until and a.busy_until > world.now:
                     # The chain's own committed time: advance to the action's
-                    # completion so the next call starts after it.
-                    world.advance(until=a.busy_until)
+                    # completion so the next call starts after it — clamped to
+                    # the run's stop horizon so a chain never crosses the
+                    # endpoint the completion gate checks.
+                    limit = a.busy_until
+                    if self._stop_horizon is not None:
+                        limit = min(limit, self._stop_horizon)
+                    if limit > world.now:
+                        world.advance(until=limit)
+                if a.busy_until and self._stop_horizon is not None and a.busy_until > self._stop_horizon:
+                    break  # the run's endpoint cut this chain short
             except ActionRejected as exc:
                 errors.append(f"{name}: {exc}")
             except Exception as exc:
