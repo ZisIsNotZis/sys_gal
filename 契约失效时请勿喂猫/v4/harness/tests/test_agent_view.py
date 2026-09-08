@@ -160,7 +160,7 @@ class AgentViewTests(unittest.TestCase):
                           turn["perception"], events=[]))]}
         view = render_history_view(trajectory, "陈默")
         # Own wait completion is visible; another actor's wait is not an event.
-        self.assertIn("[07:00:00] 你等了15分钟", view)
+        self.assertIn("[07:00:00] 等了15分钟", view)
         self.assertNotIn("林瑶", view.split("[assistant]")[0])
         # Constant description and knowledge appear exactly once across turns.
         self.assertEqual(view.count("A small 宿舍 room."), 1)

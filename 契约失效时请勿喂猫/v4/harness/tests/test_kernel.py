@@ -483,9 +483,9 @@ class WorldTests(unittest.TestCase):
             {"time": "now", "location": "room", "observer": "a", "inbox": [], "events": []},
             [{"kind": "inspect", "item": "folder"}, {"kind": "search"}, {"kind": "knock", "target": "office"}],
         )
-        self.assertIn("inspect（item=folder", text)
-        self.assertIn("search（搜一搜这里）", text)
-        self.assertIn("interact（target=office", text)
+        self.assertIn("[inspect] item=folder", text)
+        self.assertIn("[search]", text)
+        self.assertIn("[knock] target=office", text)
 
     def test_prompt_renders_inspection_and_transfer_results_explicitly(self):
         from harness.prompt import render_world_message
@@ -497,15 +497,15 @@ class WorldTests(unittest.TestCase):
                  "payload": {"item": "folder", "from": "a", "to": "b"}},
             ]}, [],
         )
-        self.assertIn("你细看了folder", text)
-        self.assertIn("你把folder交给了b", text)
+        self.assertIn("a 检查了 folder", text)
+        self.assertIn("a 把 folder 交给 b", text)
 
     def test_world_message_spells_out_self_move_completion(self):
         from harness.prompt import render_world_message
         text = render_world_message({"observer": "a", "time": "now", "location": "finish",
                                      "events": [{"kind": "enter", "actor": "a",
                                                  "payload": {"location": "finish"}}]}, [])
-        self.assertIn("你到了finish", text)
+        self.assertIn("a 进入 finish", text)
 
     def test_replay_log_verifier_rejects_truncation_and_accepts_real_log(self):
         w = self.world(); w.submit(Intention("a", "send_message", {"target": "b", "text": "hi"}, w.version)); w.advance()
