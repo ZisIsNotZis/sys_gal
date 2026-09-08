@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterator, Mapping
 import math
+import re
 
 import yaml
 
@@ -67,6 +68,7 @@ class WorldPack:
     barriers: tuple[dict[str, Any], ...]
     scheduled: tuple[dict[str, Any], ...]
     system: dict[str, Any]
+    kb: dict[str, list[dict[str, Any]]]
 
     def build_world(self) -> World:
         locations = [LocationState(
@@ -131,12 +133,16 @@ def load_world_pack(root: str | Path) -> WorldPack:
     for required in ("clock", "locations", "actors", "items", "documents", "routes", "barriers", "scheduled"):
         if required not in manifest or not isinstance(manifest[required], list if required not in {"clock"} else dict):
             raise ValueError(f"manifest field {required!r} has the wrong shape")
+    if "kb" not in manifest:
+        raise ValueError("manifest is missing the kb: section (V4-AGENT-INTERFACE §6: identity/KB rows must be seeded)")
     descriptions = _load_descriptions(root)
     fields = {name: tuple(dict(row) for row in manifest[name]) for name in
               ("locations", "actors", "items", "documents", "routes", "barriers", "scheduled")}
     _validate(fields, manifest)
     _validate_descriptions(fields, descriptions)
-    return WorldPack(root, manifest, descriptions, **fields, system=dict(manifest.get("system", {})))
+    actor_ids = {str(row["id"]) for row in fields["actors"]}
+    kb = _validate_kb(manifest["kb"], actors=actor_ids)
+    return WorldPack(root, manifest, descriptions, **fields, system=dict(manifest.get("system", {})), kb=kb)
 
 
 def _load_descriptions(root: Path) -> dict[str, DescriptionCatalog]:
@@ -253,6 +259,77 @@ def _validate(fields: dict[str, tuple[dict[str, Any], ...]], manifest: dict[str,
             raise ValueError(f"unknown copy material item {item}")
     if actors & items or actors & documents or items & documents:
         raise ValueError("actor, item, and document ids must be disjoint")
+
+
+_REMINDER_RE = re.compile(r"^\d{1,2}/\d{1,2}\(周[一二三四五六日]\) \d{1,2}:\d{2}$")
+_RESERVED_KB_FIELDS = frozenset({"person", "location", "item", "todo", "reminder", "self"})
+
+
+def _reminder_time_ok(value: Any) -> bool:
+    """Strict reminder times: 'M/D(周X) HH:MM' or an ISO datetime (docs §4 m7)."""
+    text = str(value).strip()
+    if _REMINDER_RE.match(text):
+        return True
+    try:
+        datetime.fromisoformat(text)
+        return True
+    except ValueError:
+        return False
+
+
+def _validate_kb(kb: Any, actors: set[str]) -> dict[str, list[dict[str, Any]]]:
+    """Validate the manifest kb: section (V4-AGENT-INTERFACE §6/M2)."""
+    if not isinstance(kb, dict):
+        raise ValueError("kb: section must be a mapping of actor id to row list")
+    missing = sorted(set(actors) - set(kb))
+    unknown = sorted(set(kb) - actors)
+    if missing:
+        raise ValueError(f"kb: section is missing rows for actors: {', '.join(missing)}")
+    if unknown:
+        raise ValueError(f"kb: section references unknown actors: {', '.join(unknown)}")
+    result: dict[str, list[dict[str, Any]]] = {}
+    for actor_id, rows in kb.items():
+        if not isinstance(rows, list) or not rows:
+            raise ValueError(f"kb rows for {actor_id} must be a non-empty list")
+        seen_ids: set[str] = set()
+        self_rows = 0
+        normalized: list[dict[str, Any]] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                raise ValueError(f"kb rows for {actor_id} must be mappings")
+            fields = row.get("fields")
+            if not isinstance(fields, dict) or not fields:
+                raise ValueError(f"kb row for {actor_id} needs a non-empty fields mapping")
+            for key in fields:
+                if not isinstance(key, str) or not key:
+                    raise ValueError(f"kb row for {actor_id} has an invalid field key: {key!r}")
+            if any(not isinstance(fields[key], (str, int, bool)) for key in fields):
+                raise ValueError(f"kb row for {actor_id} has a non-scalar field value")
+            row_id = row.get("id")
+            if not isinstance(row_id, str) or not re.match(r"^[a-z0-9-]+$", row_id):
+                raise ValueError(
+                    f"kb row for {actor_id} needs an id of lowercase letters/digits/hyphens: {row_id!r}")
+            if row_id in seen_ids:
+                raise ValueError(f"kb row id {row_id!r} is duplicated for actor {actor_id}")
+            seen_ids.add(row_id)
+            desc = row.get("desc")
+            if not isinstance(desc, str) or not desc.strip():
+                raise ValueError(f"kb row {row_id!r} for {actor_id} needs a non-empty desc")
+            if fields.get("self") is True:
+                self_rows += 1
+                if not str(desc).startswith("我，"):
+                    raise ValueError(
+                        f"identity row {row_id!r} for {actor_id} must start with first-person '我，'")
+            if "reminder" in fields and not _reminder_time_ok(fields["reminder"]):
+                raise ValueError(
+                    f"kb row {row_id!r} for {actor_id} has an unparseable reminder time: "
+                    f"{fields['reminder']!r}")
+            normalized.append({"fields": dict(fields), "id": row_id, "desc": str(desc)})
+        if self_rows != 1:
+            raise ValueError(
+                f"actor {actor_id} must have exactly one self:true kb row, found {self_rows} (docs §6/M2)")
+        result[str(actor_id)] = normalized
+    return result
 
 
 def _validate_descriptions(fields: dict[str, tuple[dict[str, Any], ...]],
