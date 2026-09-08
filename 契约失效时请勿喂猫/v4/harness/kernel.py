@@ -399,6 +399,24 @@ class World:
         hops = [best[b] - best[a] for a, b in zip(path, path[1:])]
         return path, hops
 
+    def schedule_reminder(self, actor_id: str, when: datetime, row_id: str,
+                          desc: str, rendered: str) -> int:
+        """Schedule a reminder fire (V4-AGENT-INTERFACE §4): at `when` the
+        kernel commits a private reminder_due event (the notice) and force-
+        interrupts the actor's in-progress action. Queue-level firing makes
+        the reminder robust against DES time jumps."""
+        return self._schedule(when, "reminder_due", actor_id,
+                              {"row_id": row_id, "desc": desc, "rendered": rendered},
+                              None).sequence
+
+    def _fire_reminder(self, job: Any) -> None:
+        actor_id = job.actor
+        if actor_id not in self.actors:
+            return
+        payload = dict(job.payload)
+        self._commit("reminder_due", actor_id, payload, None)
+        self.force_interrupt(actor_id, "reminder")
+
     def _move_hop(self, job: "Any") -> None:
         """Fire one hop boundary: enter the reached location, and (unless it
         is the destination) leave it again immediately — the discrete event
@@ -752,6 +770,10 @@ class World:
                 # A hop boundary commits its own enter/leave events (and no
                 # raw move_hop event reaches the log).
                 self._move_hop(job)
+                continue
+            if job.kind == "reminder_due":
+                self.now = job.time
+                self._fire_reminder(job)
                 continue
             event = self._commit(job.kind, job.actor, self._public_payload(job.payload), job.cause)
             out.append(event)
@@ -1200,7 +1222,7 @@ class World:
         and receiver, and another actor's wait/sleep is not a sight."""
         if kind.startswith("system_"):
             return {str(actor)} if actor is not None else set()
-        if kind in {"wait_woken", "private_wake"}:
+        if kind in {"wait_woken", "private_wake", "reminder_due"}:
             return {str(actor)} if actor is not None else set()
         if kind == "document_read":
             # Content privacy: only the reader sees the text.

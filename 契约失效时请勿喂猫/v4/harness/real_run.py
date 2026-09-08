@@ -8,12 +8,11 @@ import os
 from .agent_state import PrivateState
 from .character_loader import load_story_characters
 from .checkpoint import save_checkpoint
-from .natural_agent import make_persistent_agent, make_provider_gm
-from .npc_agent import make_npc_agent, public_mc_digest, schedule_digest
+from .natural_agent import make_persistent_agent_v4
+from .npc_agent import make_npc_agent_v4, public_mc_digest, schedule_digest
 from .provider import OpenAICompatible, provider_from_env
 from .engine import AsyncEngine
 from .seed import create_world, load_story_pack
-from .world_loader import world_primer
 from .system import Ledger
 from .trace import Trace, new_run_id
 from .tuning import apply_idle_wait, effective_clock_stop
@@ -41,22 +40,25 @@ def main() -> None:
     primer = world_primer(pack)
     # V4-CAST §1/§3: MCs get full persistent sessions; NPCs get event-driven
     # director-briefed agents (world knowledge + public MC digest per wake).
+    # Both run the V4-AGENT-INTERFACE protocol: verbatim system prompt,
+    # native tool calls, KB rows rendered by the engine.
     schedule_text = schedule_digest(pack.scheduled, now=world.now)
     npc_director_notes = pack.manifest.get("npc_director_notes", {})
 
-    def npc_context(actor_id: str, _perception) -> dict[str, str]:
-        return {"mc_digest": public_mc_digest(world),
-                "schedule_text": schedule_text,
-                "beat_goal": str(npc_director_notes.get("beat_goals", {}).get(actor_id, ""))}
+    def director_brief(actor_id: str) -> str | None:
+        goal = str(npc_director_notes.get("beat_goals", {}).get(actor_id, ""))
+        if not goal:
+            return None
+        return (f"[导演] 本场目标：{goal}\n"
+                f"主角近况（公开信息）：{public_mc_digest(world)[:400]}\n"
+                f"排程背景（不许剧透）：{schedule_text[:300]}")
 
     agents = {}
     for actor_id, actor in world.actors.items():
         if actor.role == "npc":
-            agents[actor_id] = make_npc_agent(seeds[actor_id], provider, npc_context,
-                                              director_notes=str(npc_director_notes.get(actor_id, "")))
+            agents[actor_id] = make_npc_agent_v4(seeds[actor_id], provider)
         else:
-            agents[actor_id] = make_persistent_agent(seeds[actor_id], provider, gm,
-                                                     world_primer=primer)
+            agents[actor_id] = make_persistent_agent_v4(seeds[actor_id], provider)
     run_id = new_run_id("real")
     trace = Trace("v3", run_id)
     ledger = Ledger(pack.system.get("facts", {}), pack.system)
@@ -85,7 +87,8 @@ def main() -> None:
                          max_wall_seconds=max_wall,
                          mc_idle_heartbeat=int(os.environ.get("V4_MC_IDLE_HEARTBEAT", "1800")),
                          stall_budget_ratio=float(os.environ.get("V4_STALL_BUDGET_RATIO", "0.25")),
-                         checkpoint=checkpoint, extra_call=provider)
+                         checkpoint=checkpoint, extra_call=provider,
+                         kb_seeds=pack.kb, director_brief=director_brief)
     holder["runner"] = runner
     try:
         reason = runner.run(stop_at=endpoint, max_turns=20_000)
