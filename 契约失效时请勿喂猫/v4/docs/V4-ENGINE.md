@@ -26,7 +26,7 @@ SSOT：引擎时序语义、并发架构、冻结/唤醒/中断机制、失败�
 
 1. **连续时间戳**。引擎内部一律存真实时间点，绝不存 tick 序号。tick（默认 1 分钟，config）只是四种东西的单位：世界动作最短时长与取整格、send_message 投递延迟、决策视界单位、角色间常识预算单位。r>0 时时间戳离格（§5）——一切"≡0 mod tick"的代码假设都禁止。
 2. **全局光锥（最大信息流假设）**。事件在 T 提交 → 任何角色最早 T+1 tick 感知（随其下一条世界消息渲染）。依据：电话（1 tick 投递）+ 传言中转使逐对传播延迟不可计算——任何在场第三者都是潜在传话人，闲聊正是信息扩散泵；引擎取保守上界（人人 ≤1 tick）。错冻结的代价是短暂停顿，错光锥的代价是穿帮（impossible knowledge）。`known_contacts` 仅是动作层门控（能否对某人 send_message），在因果与物理层零角色。
-3. **全局决策视界（冻结规则）**。在途意图的 deadline = 唤醒（或中断投递、超时到期）时刻 + 1 tick。引擎只处理时间 ≤ `oldest_pending_deadline + 1 tick` 的事件（他人链条完成、投递、reminder、导演拍点都只是事件）；第一个超界事件是**冻结点**——全钟暂停，直到意图落地或静默弃权（§3）。时钟永不跳过未清的 pending deadline；**禁止回填**（backdating）：迟到意图按当前钟提交。对比旧串行 runner 零回归：只是限制了能提前流水线的工作量。
+3. **全局决策视界（冻结规则）**。在途意图的 deadline 即其唤醒（或中断投递、超时到期）时刻。引擎只处理时间 ≤ `oldest_pending_deadline + 1 tick` 的事件（即：任一决策在途时，世界至多漂移 1 tick）（他人链条完成、投递、reminder、导演拍点都只是事件）；第一个超界事件是**冻结点**——全钟暂停，直到意图落地或静默弃权（§3）。时钟永不跳过未清的 pending deadline；**禁止回填**（backdating）：迟到意图按当前钟提交。对比旧串行 runner 零回归：只是限制了能提前流水线的工作量。
 4. **同 tick 排序 = 意图到达序**。同 tick 多个意图按 wall 到达序执行，资源竞争按提交序串行判定（AGENT-INTERFACE m8）。含义：同 tick 竞争不可种子复现——种子调度不得制造其结果依赖的同 tick 竞争；journal 逐字记录实际发生序，回放不受影响（§7）。
 5. **中断绑定于执行位置**。意图链按计划提交、按事件**惰性执行**（busy_until/current_action 机制）。中断在执行位置生效：走 12 分钟第 3 分钟被敲门 → 挂起，剩 9 分钟，continue-or-cancel；中断到达时角色尚在思考（无已提交链）→ 等意图落地后在第一个可中断点生效。链"批量预执行"会静默杀死本条——评审重点盯。
 
@@ -69,7 +69,7 @@ SSOT：引擎时序语义、并发架构、冻结/唤醒/中断机制、失败�
 
 ## 8. 对现有 harness 的影响（迁移注）
 
-- **替换**：runner.py 轮询主循环与 waiting/npc_pending/extras 三条 ad-hoc 路径 → 统一协程循环（§0）。
+- **替换**：runner.py 轮询主循环与 waiting/npc_pending/extras 三条 ad-hoc 路径 → 统一协程循环（§0）。迁移期间旧 `Runner` 仅作为存量测试的遗留驱动保留，生产入口（real_run/resume_run）已切换 `AsyncEngine`。
 - **直迁**：kernel 校验、事件渲染模板、KB 机制、别名遥测——渲染层管"是什么"，改为唤醒时调用即可。
 - **常数迁移**：`*_rounds`（poll 计数）→ `*_minutes`（模拟时间；AGENT-INTERFACE §7 已更新）；迁移时 last_shown 语义一次性核定。
 - **语义变化**：`batch_persistent_failure`（§6）、`idle_slice`（=1 tick）、`decision_timeout`（= 静默弃权触发器）。
