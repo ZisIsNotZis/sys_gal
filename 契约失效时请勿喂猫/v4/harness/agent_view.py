@@ -63,7 +63,10 @@ def _history_perception(perception: Mapping[str, Any], affordances: list[Mapping
                 and payload.get("action") in {"wait", "sleep"}):
             continue
         stamp = str(event.get("time", ""))[11:19]
-        sentence = _event_sentence(event, observer, str(perception.get("location", "")))
+        sentence = _event_sentence(event, str(perception.get("location", "")))
+        if not sentence:
+            from .prompt import _private_line
+            sentence = _private_line(event, observer)
         if sentence:
             lines.append(f"[{stamp}] {sentence}")
     first_desc = True

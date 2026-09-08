@@ -321,7 +321,7 @@ class CharacterSessionTests(unittest.TestCase):
         from harness.prompt import render_world_message
         text = render_world_message({"time":"now", "location":"room", "inbox":[], "events":[]},
                                     [{"kind":"wait", "duration_seconds":900}])
-        self.assertIn("现在是now", text)
+        self.assertIn("now @room", text)
         self.assertIn("wait", text)
         self.assertNotIn('"time"', text)
 

@@ -152,11 +152,12 @@ class HistoricalFailureGates(unittest.TestCase):
                             for t in trace.agent_turns if t["actor"] == "陈默")
         self.assertTrue(all("no immediate physical change" not in m for m in feedback))
         self.assertIn("等了1分钟", rendered)      # wait outcome
-        self.assertIn("你搜了", rendered)         # search result
-        self.assertIn("放下了", rendered)         # drop consequence
-        self.assertIn("送到了", rendered)         # message delivery
-        self.assertIn("读完了", rendered)         # document read
-        self.assertIn("你到了", rendered)         # move arrival（中庭，与男生宿舍直连）
+        self.assertIn("搜索了男生宿舍", rendered)  # search action (F3)
+        self.assertIn("没什么新发现", rendered)    # search result (F3)
+        self.assertIn("放下", rendered)           # drop consequence
+        self.assertIn("发消息给 林瑶（电话）", rendered)  # message delivery
+        self.assertIn("读了 2013年邻居许可证", rendered)  # document read
+        self.assertIn("进入 中庭", rendered)      # move arrival（中庭，与男生宿舍直连）
 
     def test_rejected_loop_is_safe_and_instructive(self):
         """F5/P2: a stubborn agent keeps rejecting with actionable reasons,
