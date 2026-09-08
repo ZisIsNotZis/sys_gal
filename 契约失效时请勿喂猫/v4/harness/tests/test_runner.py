@@ -781,7 +781,7 @@ class RunnerTests(unittest.TestCase):
                 stop_at=datetime.fromisoformat("2026-01-01T00:02:00+00:00"), max_turns=20)
             return " ".join(feedback + perceived)
 
-        self.assertIn("里面有人应声", run_case(True))
+        self.assertIn("有人应声", run_case(True))
         self.assertIn("没有人回应", run_case(False))
 
     def test_idle_actor_is_not_polled_for_unrelated_private_events(self):

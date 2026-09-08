@@ -1,16 +1,31 @@
-"""中文沉浸叙事：把角色可见的感知差量渲染成第二人称、现在时的世界文本。
+"""世界消息渲染（V4-AGENT-INTERFACE.md §3 块结构）。
 
-设计真理：v4/docs/V4-DESIGN.md §2——世界文本是 GM 旁白，不是状态机回执；
-时间戳嵌在事件行里；协议指令只出现在最末尾。
+事件行 = 第三人称客观编年体、观察者无关：同一事件对所有可见者逐字相同，
+"谁看到了"由投递表达（出现在谁的消息里=谁观察到了），绝不出现第二人称。
+私有投递（读到的内容、耳语文本、消息文本）以缩进行只出现在收件人消息里。
+每种事件 kind 恰好一个固定模板；未知 kind 一律跳过，绝不即兴。
 """
 
 from typing import Any, Mapping
 from .agent_state import PrivateState
 
+_WEEKDAY = "一二三四五六日"
+
 
 def _clock(iso: str) -> str:
-    """ISO 时间 → 叙事时间（MM 月 DD 日 HH:MM）。"""
-    return iso[5:16].replace("T", "日 ") if len(iso) >= 16 else iso
+    """ISO 时间 → 世界时间 9/16(周三) 7:00（docs §1 常识格式）。"""
+    text = str(iso)
+    try:
+        from datetime import datetime
+        moment = datetime.fromisoformat(text)
+        return (f"{moment.month}/{moment.day}({_WEEKDAY[moment.weekday()]}) "
+                f"{moment.hour}:{moment.minute:02d}")
+    except ValueError:
+        return text
+
+
+def _stamp(iso: str) -> str:
+    return _clock(iso)
 
 
 def _clean_description(description: str) -> str:
@@ -22,163 +37,244 @@ def _clean_description(description: str) -> str:
     return body.strip()
 
 
-def render_world_message(perception: Mapping[str, Any], affordances: list[Mapping[str, Any]]) -> str:
-    """只渲染角色可见的感知差量（V4-DESIGN §2/§5.2）。"""
-    lines = [f"现在是{_clock(str(perception.get('time', '')))}，你在{perception.get('location')}。"]
-    if perception.get("busy_until"):
-        lines.append(f"你手上的事还没完，要忙到{str(perception['busy_until'])[11:16]}。")
-    pending = perception.get("pending")
-    if pending:
-        lines.append(f"你正做着的「{pending.get('action')}」被打断了（剩约 "
-                     f"{int(pending.get('remaining_seconds', 0)) // 60} 分钟，打断你的人："
-                     f"{pending.get('interrupted_by')}）。你可以选择继续做完，或者就此作罢。")
-    for message in perception.get("inbox", []):
-        lines.append(f"你收到一条来自{message.get('from')}的消息：{message.get('text')}")
-    for fact in perception.get("operational_facts", []):
-        action = fact.get("action", {})
-        line = (f"你刚才想做的「{action.get('kind')}」没有成功，什么也没改变。"
-                f"原因：{fact.get('reason')}。")
-        alternatives = fact.get("alternatives")
-        if alternatives:
-            line += "或许可以：" + "；".join(str(a) for a in alternatives) + "。"
-        lines.append(line)
-    for event in perception.get("events", []):
-        stamp = str(event.get("time", ""))[11:16]
-        sentence = _event_sentence(event, str(perception.get("observer", "")),
-                                   str(perception.get("location", "")))
-        if sentence:
-            lines.append(f"[{stamp}] {sentence}")
-    first_desc = True
-    for entity, description in perception.get("descriptions", {}).items():
-        if first_desc:
-            first_desc = False
-        else:
-            lines.append("")
-        lines.append(f"{entity}：{_clean_description(description)}")
+def render_world_message(perception: Mapping[str, Any], affordances: list[Mapping[str, Any]],
+                         *, observer: str | None = None, errors: list[str] | None = None,
+                         knowledge_lines: list[str] | None = None,
+                         flashback_lines: list[str] | None = None,
+                         director: str | None = None) -> str:
+    """V4-AGENT-INTERFACE §3：表头恒在，#error/#flashback/#events/#knowledge
+    空块省略，#actions 恒在；director 非 None 时置顶 [director] 块（NPC 简报）。
+    observer 缺省取 perception["observer"]（旧调用方兼容）。"""
+    who = str(observer if observer is not None else perception.get("observer", ""))
+    lines: list[str] = []
+    if director is not None:
+        lines.append("[director]")
+        lines.append(str(director))
+        lines.append("")
+    lines.append(f"{_clock(str(perception.get('time', '')))} @{perception.get('location')}")
+    presence = [f"{who}(you)"] + sorted(
+        str(x) for x in perception.get("nearby_actors", []) if str(x) != who)
+    lines.append("在场：" + "，".join(presence))
+    inventory = sorted(str(x) for x in perception.get("inventory", []))
+    if inventory:
+        lines.append("身上：" + "、".join(inventory))
+    interactable = _interactable_summary(affordances)
+    if interactable:
+        lines.append("可互动：" + "、".join(interactable))
     notice = perception.get("situational_notice")
     if notice:
         lines.append(str(notice))
-    if affordances:
-        lines.append("你现在可以具体地：")
-        lines.extend(f"  - {_affordance_sentence(x)}" for x in affordances)
+
+    error_block = list(errors or [])
+    if errors is None:
+        # 旧协议兼容：operational_facts 即上一轮的工具调用错误。
+        for fact in perception.get("operational_facts", []):
+            action = fact.get("action", {})
+            error_block.append(f"{action.get('kind', '?')}: {fact.get('reason', '')}")
+    if error_block:
+        lines.append("")
+        lines.append("# error")
+        lines.extend(error_block)
+
+    if flashback_lines:
+        lines.append("")
+        lines.append("# flashback")
+        lines.extend(flashback_lines)
+
+    event_lines = _event_lines(perception, who)
+    if event_lines:
+        lines.append("")
+        lines.append("# events")
+        lines.extend(event_lines)
+
+    knowledge = list(knowledge_lines or [])
+    if knowledge_lines is None:
+        # 旧协议兼容：场景/条目描述即知识块。
+        for entity, description in perception.get("descriptions", {}).items():
+            knowledge.append(f"[{entity}]: {_clean_description(description)}")
+    if knowledge:
+        lines.append("")
+        lines.append("# knowledge")
+        lines.extend(knowledge)
+
+    lines.append("")
+    lines.append("# actions")
+    lines.extend(f"[{_action_line(x)}]" if not _action_args(x) else
+                 f"[{x.get('kind', '?')}] {_action_args(x)}" for x in affordances)
     return "\n".join(lines)
 
 
-def _event_sentence(event: Mapping[str, Any], observer: str = "", location: str = "") -> str:
+def _action_args(option: Mapping[str, Any]) -> str:
+    parts = []
+    for key, value in option.items():
+        if key == "kind" or value is None or value == "" or value == {}:
+            continue
+        parts.append(f"{key}={value}")
+    return ", ".join(parts)
+
+
+def _action_line(option: Mapping[str, Any]) -> str:
+    return str(option.get("kind", "?"))
+
+
+def _interactable_summary(affordances: list[Mapping[str, Any]]) -> list[str]:
+    """表头可互动：affordances 指向的实体名，去重保序。"""
+    seen: list[str] = []
+    for option in affordances:
+        kind = option.get("kind")
+        key = {"read": "document", "copy": "document", "label": "document",
+               "annotate": "document", "compare": None, "inspect": "item",
+               "take": "item", "give": "item", "interact": "target",
+               "knock": "target"}.get(kind)
+        if key is None:
+            continue
+        value = str(option.get(key, ""))
+        if value and value not in seen:
+            seen.append(value)
+    return seen
+
+
+def _event_lines(perception: Mapping[str, Any], observer: str) -> list[str]:
+    lines: list[str] = []
+    location = str(perception.get("location", ""))
+    for event in perception.get("events", []):
+        sentence = _event_sentence(event, location)
+        private = _private_line(event, observer)
+        if not sentence and not private:
+            continue
+        if sentence:
+            lines.append(f"{_stamp(str(event.get('time', '')))} {sentence}")
+            if private:
+                lines.append(f"  └ {private}")
+        else:
+            # 仅私有投递（如自己的 wait/sleep 完成，V4-DESIGN §5.7）。
+            lines.append(f"{_stamp(str(event.get('time', '')))} {private}")
+    return lines
+
+
+def _event_sentence(event: Mapping[str, Any], location: str = "") -> str | None:
+    """第三人称编年体：同一事件对所有可见者逐字相同（docs §0/§3）。"""
     payload = event.get("payload", {})
     kind = event.get("kind")
     who = str(event.get("actor", ""))
     if kind == "speech":
-        return f"{who}说：「{payload.get('text')}」"
+        if payload.get("volume") == "whisper":
+            targets = "、".join(str(t) for t in payload.get("to", []) or [])
+            return f"{who} 凑近 {targets} 耳语了几句"
+        return f"{who} 说：\"{payload.get('text')}\""
     if kind == "enter":
-        if who == observer:
-            return f"你到了{payload.get('location')}。"
-        return f"{who}进入了{payload.get('location')}。"
+        return f"{who} 进入 {payload.get('location')}"
     if kind == "leave":
-        if who == observer:
-            return f"你离开了{payload.get('location')}。"
-        return f"{who}离开了{payload.get('location')}。"
-    if kind == "world_event":
-        event_name = payload.get("event", "事件")
-        notice = payload.get("notice")
-        if notice:
-            return f"{notice}"
-        return f"发生了一件事：{event_name}。"
-    if kind == "item_inspected":
-        held = "它正在你手里" if payload.get("held") else f"它放在{payload.get('location')}"
-        return f"你细看了{payload.get('item')}；{held}。"
-    if kind == "location_searched":
-        if who == observer:
-            found = "、".join(payload.get("items", []) or [])
-            return f"你搜了{location or '这里'}一圈：{found or '没什么新发现'}。"
-        return f"{who}在{location or '这里'}翻了翻。"
-    if kind == "item_inspected":
-        pass  # handled above
-    if kind == "knock":
-        responded = "里面有人应声。" if payload.get("responded") else "没有人回应。"
-        return f"你敲了敲{payload.get('target')}的门。{responded}"
-    if kind == "interaction":
-        responded = "里面有人听见了。" if payload.get("responded") else "没有人回应。"
-        return f"你和{payload.get('target')}互动（{payload.get('verb')}）。{responded}"
-    if kind == "item_given":
-        if str(payload.get("from")) == observer:
-            return f"你把{payload.get('item')}交给了{payload.get('to')}。"
-        return f"{payload.get('from')}把{payload.get('item')}交给了你。"
-    if kind == "document_read":
-        line = f"你读完了{payload.get('title')}：{payload.get('content')}"
-        annotations = payload.get("annotations")
-        if annotations:
-            notes = "；".join(
-                f"{entry.get('by')}批注：{entry.get('text')}" for entry in annotations)
-            line += f"（记录上还有：{notes}）"
-        return line
-    if kind == "document_annotated":
-        return f"{who}在{payload.get('document')}上写了一条批注。"
-    if kind == "document_copied":
-        if who == observer:
-            return f"你把{payload.get('document')}复印了一份，编号{payload.get('copy')}。"
-        return f"{who}复印了一份{payload.get('document')}。"
-    if kind == "documents_compared":
-        if who == observer:
-            result = "一致" if payload.get("same_content") else "不一致"
-            return f"你比对了{payload.get('first')}和{payload.get('second')}：内容{result}。"
-        return f"{who}比对了{payload.get('first')}和{payload.get('second')}。"
-    if kind == "document_labeled":
-        return f"{who}给{payload.get('document')}贴了标签：「{payload.get('label')}」。"
+        return f"{who} 离开 {payload.get('location')}"
     if kind == "message_delivered":
-        if str(event.get("actor")) == observer:
-            return f"你发给{payload.get('target')}的消息送到了。"
-        return f"你的手机震了一下，一条消息进来。"
+        return f"{who} 发消息给 {payload.get('target')}（电话）"
+    if kind == "take":
+        return f"{who} 拿起 {payload.get('item')}"
+    if kind == "drop":
+        return f"{who} 放下 {payload.get('item')}"
+    if kind == "give":
+        return f"{who} 把 {payload.get('item')} 交给 {payload.get('target')}"
+    if kind == "item_given":
+        return f"{payload.get('from')} 把 {payload.get('item')} 交给 {payload.get('to')}"
+    if kind == "document_read":
+        return f"{who} 读了 {payload.get('document')}"
+    if kind == "document_copied":
+        return f"{who} 复制 {payload.get('document')} 为 {payload.get('copy')}"
+    if kind == "document_labeled":
+        return f"{who} 把 {payload.get('document')} 标记为 {payload.get('label')}"
+    if kind == "document_annotated":
+        return f"{who} 在 {payload.get('document')} 上留下批注"
+    if kind == "documents_compared":
+        return f"{who} 比对 {payload.get('first')} 与 {payload.get('second')}"
+    if kind == "item_inspected":
+        return f"{who} 检查了 {payload.get('item')}"
+    if kind == "location_searched":
+        return f"{who} 搜索了{location or '这里'}"
+    if kind == "knock":
+        return f"{who} 敲了 {payload.get('target')} 的门"
+    if kind == "interaction":
+        return f"{who} 与 {payload.get('target')} 互动（{payload.get('verb')}）"
     if kind == "action_completed":
         action = payload.get("action")
-        if who == observer:
-            if action == "move":
-                return None  # enter 事件已报告到达
-            if action == "wait":
-                seconds = int(payload.get("duration_seconds", 0))
-                return f"你等了{seconds // 60}分钟，现在空下来了。"
-            if action == "sleep":
-                return "你睡了一觉，醒了。"
-            if action == "open":
-                return f"你把{location or '这里'}打开了，现在谁都能进。"
-            if action == "close":
-                return f"你把{location or '这里'}关上了。"
-            if action == "take":
-                return f"你拿起了{payload.get('item')}。"
-            if action == "drop":
-                return f"你放下了{payload.get('item')}。"
-            if action == "send_message":
-                return f"你发给{payload.get('target')}的消息已经送出。"
-            if action == "speak":
-                return "你说完了那段话。"
-        else:
-            if action == "move":
-                return None  # enter/leave 事件已承载到达与离开
-            if action in {"send_message", "speak"}:
-                return None  # 私事，不进入他人感知叙述
-            if action in {"read", "copy", "label", "compare", "annotate"}:
-                return f"{who}在翻看{payload.get('document', '文件')}。"
-        return None
-    if kind == "action_started":
-        if who == observer:
-            return f"你开始{payload.get('action')}了。"
-        if payload.get("action") == "speak":
-            return None  # speech 事件本身会带话音
+        if action in {"wait", "sleep"}:
+            return None  #  own completion 走私有投递行（V4-DESIGN §5.7）
+        if action == "move":
+            return None  # enter/leave 已承载
+        if action in {"send_message", "speak", "read", "copy", "label",
+                      "compare", "annotate"}:
+            return None  # 专用事件已承载
+        if action == "open":
+            return f"{who} 把{location or '这里'}打开了"
+        if action == "close":
+            return f"{who} 把{location or '这里'}关上了"
+        if action == "take":
+            return f"{who} 拿起 {payload.get('item')}"
+        if action == "drop":
+            return f"{who} 放下 {payload.get('item')}"
         return None
     if kind == "action_interrupted":
-        return (f"{who}手上的「{payload.get('action')}」被打断了"
-                f"（{payload.get('by')}叫住了他）。")
+        return f"{who} 的「{payload.get('action')}」被 {payload.get('by')} 打断了"
     if kind == "action_resumed":
-        return f"{who}回去继续做「{payload.get('action')}」了。"
+        return f"{who} 继续做「{payload.get('action')}」"
     if kind == "action_abandoned":
-        return f"{who}放弃了手头的「{payload.get('action')}」。"
+        return f"{who} 放弃了「{payload.get('action')}」"
+    if kind == "world_event":
+        notice = payload.get("notice")
+        return str(notice) if notice else f"发生了一件事：{payload.get('event', '事件')}。"
+    if kind == "extra_arrived":
+        return f"{who} 出现了"
+    if kind == "extra_removed":
+        return f"{who} 走了"
     if kind.startswith("system_"):
         return _system_sentence(kind, payload)
+    # move 的 started/completed（enter/leave 已承载）、wait/sleep 完成、
+    # 私有簿记（message_sent/interrupt_requested/wait_woken/private_wake/
+    # time_advanced）与未知 kind：一律不渲染。
+    return None
+
+
+def _private_line(event: Mapping[str, Any], observer: str) -> str | None:
+    """私有投递：只出现在收件人/读者本人的消息里（docs §3）。"""
+    payload = event.get("payload", {})
+    kind = event.get("kind")
+    who = str(event.get("actor", ""))
+    if kind == "speech" and payload.get("volume") == "whisper":
+        if observer in [str(t) for t in payload.get("to", []) or []]:
+            return f"耳语内容：\"{payload.get('text')}\""
+        return None
+    if kind == "message_delivered" and observer == str(payload.get("target")):
+        return f"消息内容：\"{payload.get('text')}\""
+    if kind == "document_read" and observer == who:
+        content = str(payload.get("content", ""))
+        annotations = payload.get("annotations") or []
+        if annotations:
+            notes = "；".join(f"{e.get('by')}批注：{e.get('text')}" for e in annotations)
+            content = f"{content}（记录上还有：{notes}）" if content else f"（记录上还有：{notes}）"
+        return f"内容：{content}" if content else None
+    if kind == "documents_compared" and observer == who:
+        return f"比对结果：{'一致' if payload.get('same_content') else '不一致'}"
+    if kind == "knock" and observer == who:
+        return "有人应声。" if payload.get("responded") else "没有人回应。"
+    if kind == "interaction" and observer == who:
+        return "里面有人听见了。" if payload.get("responded") else "没有人回应。"
+    if kind == "location_searched" and observer == who:
+        found = "、".join(str(x) for x in payload.get("items", []) or [])
+        return f"搜到：{found}" if found else "没什么新发现"
+    if kind == "item_inspected" and observer == who:
+        if payload.get("held"):
+            return "它正在你手里"
+        return f"它放在{payload.get('location')}"
+    if kind == "action_completed" and observer == who:
+        if payload.get("action") == "wait":
+            seconds = int(payload.get("duration_seconds", 0) or 0)
+            return f"等了{seconds // 60}分钟，现在空下来了。"
+        if payload.get("action") == "sleep":
+            return "睡了一觉，醒了。"
     return None
 
 
 def _system_sentence(kind: str, payload: Mapping[str, Any]) -> str:
-    """System 事件的世界语气叙述；名字来自世界包配置。"""
+    """System 事件叙述：system_* 事件仅对受约束角色可见，属私有投递。"""
     name = str(payload.get("system_name", "台账"))
     if kind == "system_case_accepted":
         terms = "、".join(str(t) for t in payload.get("terms", []))
@@ -194,51 +290,7 @@ def _system_sentence(kind: str, payload: Mapping[str, Any]) -> str:
 
 
 def _affordance_sentence(option: Mapping[str, Any]) -> str:
-    kind = option.get("kind")
-    if kind == "search":
-        return "search（搜一搜这里）"
-    if kind == "observe":
-        return "observe（重新打量四周，刷新一处详述）"
-    if kind == "inspect":
-        return f"inspect（item={option.get('item')}，细看那样东西）"
-    if kind == "knock":
-        return f"interact（target={option.get('target')}，verb=knock，敲敲门）"
-    if kind == "interact":
-        return (f"interact（target={option.get('target')}，verb={option.get('verb')}，"
-                f"parameters={option.get('parameters', {})})")
-    if kind == "give":
-        return f"give（item={option.get('item')}，target={option.get('target')}，递给对方）"
-    if kind == "read":
-        return f"read（document={option.get('document')}，读）"
-    if kind == "copy":
-        return f"copy（document={option.get('document')}，复印）"
-    if kind == "compare":
-        return f"compare（first={option.get('first')}，second={option.get('second')}，比对两份）"
-    if kind == "label":
-        return "label（document=…，label=你自己的一句话，贴标签）"
-    if kind == "annotate":
-        return "annotate（document=…，text=你的批注，写在记录上，谁读谁看见）"
-    if kind == "wait":
-        return "wait（duration_seconds=秒数，等一会儿；一次最多 15 分钟）"
-    if kind == "sleep":
-        return f"sleep（duration_seconds={option.get('duration_seconds')}，睡一觉）"
-    if kind == "move":
-        return f"move（target={option.get('target')}，走过去，路上要一阵子）"
-    if kind == "send_message":
-        return f"send_message（target={option.get('target')}，text=你的原话；五分钟后送达）"
-    if kind == "speak":
-        return "speak（text=你说的话，volume=normal 全场听得见 / whisper 仅 to 指定的人听见）"
-    if kind in {"open", "close"}:
-        return f"{kind}（把这里{'打开' if kind == 'open' else '关上'}）"
-    if kind == "continue_action":
-        return "continue_action（继续做完被打断的事）"
-    if kind == "abandon_action":
-        return "abandon_action（就此作罢，记作没做成）"
-    if kind.startswith("system_"):
-        details = ", ".join(f"{key}={value}" for key, value in option.items() if key != "kind")
-        return f"{kind}（{details}）" if details else kind
-    details = ", ".join(f"{k}={v}" for k, v in option.items() if k != "kind")
-    return kind if not details else f"{kind}（{details}）"
+    return _action_args(option)
 
 
 def build_prompt(*, identity: str, private_seed: str, state: PrivateState,
