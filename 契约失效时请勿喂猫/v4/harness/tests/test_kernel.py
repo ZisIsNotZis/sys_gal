@@ -790,11 +790,18 @@ class V4PhysicsTests(unittest.TestCase):
         self.assertIn({"kind": "continue_action"}, w.affordances("a"))
         w.submit(parse_decision("a", '{"type":"continue_action"}', None)[0])
         self.assertEqual((a.busy_until - w.now).total_seconds(), 900)
-        # sleep defaults to uninterruptable
+        # M1: sleep is merged into wait and no action defaults to
+        # uninterruptable any more — waits are interruptible like any action;
+        # protection exists only via the actor's own declaration.
         w4 = self._world()
-        w4.submit(parse_decision("a", '{"type":"sleep","args":{"duration_seconds":3600}}', None)[0])
+        w4.submit(parse_decision("a", '{"type":"wait","args":{"duration_seconds":3600}}', None)[0])
         w4.submit(parse_decision("b", '{"type":"speak","args":{"text":"醒醒","interrupt":["a"]}}', None)[0])
-        self.assertIsNone(w4.actors["a"].pending)
+        self.assertIsNotNone(w4.actors["a"].pending)
+        w5 = self._world()
+        w5.submit(Intention("a", "wait", {"duration_seconds": 3600},
+                            w5.version, uninterruptable=True))
+        w5.submit(parse_decision("b", '{"type":"speak","args":{"text":"醒醒","interrupt":["a"]}}', None)[0])
+        self.assertIsNone(w5.actors["a"].pending)
 
     def test_abandon_marks_action_failed(self):
         from harness.adapter import parse_decision

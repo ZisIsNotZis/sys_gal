@@ -38,6 +38,7 @@ from .kernel import (ActionRejected, Intention, TICK_SECONDS,
                      WAKE_EVENT_KINDS, World)
 from .npc_agent import (build_extra_briefing, build_extra_system_prompt,
                         generate_stranger_name, sample_extra)
+from .prompt import render_world_message, _event_sentence
 from .repetition import RepetitionMonitor
 
 AgentFn = Callable[[PrivateState, dict, list[dict]], Any]
@@ -54,7 +55,10 @@ class AsyncEngine:
                  extra_idle_seconds: int = 600,
                  cold_ticks: int = 6, npc_wake_budget: int = 12,
                  stall_budget_ratio: float = 0.25,
-                 max_transient_failures: int = 3) -> None:
+                 max_transient_failures: int = 3,
+                 kb_seeds: Mapping[str, list[dict]] | None = None,
+                 director_brief: Callable[[str], str | None] | None = None,
+                 flashback_horizon_minutes: int = 120) -> None:
         # Extras restored from a checkpoint have no agent/state of their own
         # (they run on extra_call with session-local memory, V4-CAST §1).
         required = {actor for actor in world.actors if world.actors[actor].role != "extra"}
@@ -96,6 +100,16 @@ class AsyncEngine:
         self._hung: dict[str, asyncio.Task] = {}
         self._heartbeat_jobs: dict[str, int] = {}
         self._force_turn: set[str] = set()
+        # V4-AGENT-INTERFACE wiring: per-actor KB, tool-call error queue for
+        # the next #error block, recall queue, flashback pool/display.
+        self._kb: dict[str, Any] = {}
+        self._kb_seeds = dict(kb_seeds or {})
+        self.director_brief = director_brief
+        self.flashback_horizon_minutes = int(flashback_horizon_minutes)
+        self._pending_errors: dict[str, list[str]] = {}
+        self._recall_lines: dict[str, list[str]] = {}
+        self._flashback_display: dict[str, list[str]] = {}
+        self._flashback_pool: dict[str, list[tuple[datetime, str, frozenset[str]]]] = {}
 
     # ------------------------------------------------------------------ run
 
@@ -121,6 +135,7 @@ class AsyncEngine:
                 self._rearm_heartbeat(actor)
                 self._force_turn.add(actor)
                 self._wake_events[actor].set()
+        self._init_kb(self.world.now)
         for name in list(self._extras):
             self._wake_events[name] = asyncio.Event()
             self._extra_tasks[name] = loop.create_task(self._extra_loop(name, ""))
@@ -135,6 +150,16 @@ class AsyncEngine:
         if self.checkpoint is not None:
             self.checkpoint()
         return self.stop_reason or "stopped"
+
+    def _init_kb(self, now: datetime) -> None:
+        """V4-AGENT-INTERFACE §6: build each actor's KB from the manifest's
+        kb: seed rows (engine-owned memory; the session never carries it)."""
+        if not self._kb_seeds:
+            return
+        from .kb import ActorKB
+        for actor, rows in self._kb_seeds.items():
+            if actor in self.world.actors:
+                self._kb[actor] = ActorKB(actor, rows, now)
 
     def _persistent_actors(self) -> list[str]:
         return [actor for actor, a in self.world.actors.items() if a.role != "extra"]
@@ -355,8 +380,22 @@ class AsyncEngine:
         version_before = world.version
         self._inflight[actor_id] = world.now
         loop = asyncio.get_running_loop()
-        decide_task = loop.create_task(asyncio.to_thread(
-            self._decide, actor_id, perception, affordances))
+        v4 = hasattr(self.agents[actor_id], "session_obj")
+        if v4:
+            knowledge_lines = self._knowledge_lines(actor_id, perception, affordances)
+            flashback_lines = self._flashback_display.pop(actor_id, [])
+            errors = self._pending_errors.pop(actor_id, [])
+            director = (self.director_brief(actor_id)
+                        if self.director_brief and self._role(actor_id) == "npc" and npc_reason
+                        else None)
+            text = render_world_message(perception, affordances, observer=actor_id,
+                                        errors=errors, knowledge_lines=knowledge_lines,
+                                        flashback_lines=flashback_lines, director=director)
+            decide_task = loop.create_task(asyncio.to_thread(
+                self._decide_v4, actor_id, text))
+        else:
+            decide_task = loop.create_task(asyncio.to_thread(
+                self._decide, actor_id, perception, affordances))
         intention, result, error = None, "none", None
         try:
             decision = await asyncio.wait_for(asyncio.shield(decide_task),
@@ -366,7 +405,6 @@ class AsyncEngine:
                 intention, updates = decision
             else:
                 intention = decision
-            # updates are no longer part of the protocol (V4-DESIGN §2).
             result, error = "decided", None
         except asyncio.TimeoutError:
             result, error = "decision_timeout", "agent decision exceeded the deadline"
@@ -387,11 +425,159 @@ class AsyncEngine:
         self._inflight.pop(actor_id, None)
         self._failures[actor_id] = 0
         self._scheduler_wake.set()
-        self._submit(actor_id, perception, affordances, intention, version_before)
+        if v4:
+            self._execute_chain(actor_id, intention or [], perception,
+                                affordances, version_before)
+        else:
+            self._submit(actor_id, perception, affordances, intention, version_before)
         self._rearm_heartbeat(actor_id)
+
+    def _decide_v4(self, actor_id: str, world_message_text: str):
+        return self.agents[actor_id](world_message_text, self.states[actor_id])
 
     def _decide(self, actor_id: str, perception: dict, affordances: list[dict]):
         return self.agents[actor_id](self.states[actor_id], perception, affordances)
+
+    # ------------------------------------------------- v4 chain execution
+
+    def _knowledge_lines(self, actor_id: str, perception: dict,
+                         affordances: list[dict]) -> list[str]:
+        """#knowledge block: due KB rows under the M7 mention set, plus due
+        reminder notices (auto-closed after notification, §4)."""
+        if actor_id not in self._kb:
+            return []
+        mention = set(perception.get("nearby_actors", [])) | set(perception.get("inventory", []))
+        for option in affordances:
+            for key in ("item", "document", "target"):
+                value = option.get(key)
+                if isinstance(value, str):
+                    mention.add(value)
+        for event in perception.get("events", []):
+            payload = event.get("payload", {})
+            for key in ("document", "item", "target", "first", "second", "from", "to"):
+                value = payload.get(key)
+                if isinstance(value, str):
+                    mention.add(value)
+        kb = self._kb[actor_id]
+        lines = list(kb.due_lines(self.world.now, mention))
+        lines.extend(self._recall_lines.pop(actor_id, []))
+        for reminder in kb.due_reminders(self.world.now):
+            kb.close_reminder(reminder["id"])
+            lines.append(f"[reminder={reminder['time']}]: {reminder['desc']}（到期）")
+            self.world.force_interrupt(actor_id, "reminder")
+        return lines
+
+    def _flashback_query(self, actor_id: str, entity: str) -> list[str]:
+        """flashback tool: re-display the actor's own delivered history lines
+        related to an entity, older than the horizon, LRU-capped (§3)."""
+        horizon = self.world.now - timedelta(minutes=self.flashback_horizon_minutes)
+        matches = [(t, line) for (t, line, entities) in self._flashback_pool.get(actor_id, [])
+                   if t <= horizon and (not entity or entity in entities)]
+        return [line for _, line in matches[-5:]]
+
+    def _remember_lines(self, actor_id: str, perception: dict) -> None:
+        """Feed the actor's flashback pool with its delivered public lines."""
+        from .prompt import _event_sentence
+        pool = self._flashback_pool.setdefault(actor_id, [])
+        for event in perception.get("events", []):
+            line = _event_sentence(event, observer=actor_id,
+                                   location=perception.get("location", ""))
+            if not line:
+                continue
+            payload = event.get("payload", {})
+            entities = {str(event.get("actor"))} if event.get("actor") else set()
+            for key in ("document", "item", "target", "location", "first", "second", "from", "to"):
+                value = payload.get(key)
+                if isinstance(value, str):
+                    entities.add(value)
+            pool.append((self.world.now, line, frozenset(entities)))
+        del pool[:-50]
+
+    def _execute_chain(self, actor_id: str, calls: Any, perception: dict,
+                       affordances: list[dict], version_before: int) -> None:
+        """V4-AGENT-INTERFACE §4: execute the turn's tool calls in order —
+        memory tools are engine-side and free; world actions submit through
+        the kernel with time accumulating between calls; a chain with no
+        world action = 发呆 1 tick; more than 8 calls truncate at the call
+        boundary ("truncated: N calls dropped")."""
+        world = self.world
+        errors: list[str] = []
+        world_actions = 0
+        calls = list(calls or [])
+        if len(calls) > 8:
+            errors.append(f"truncated: {len(calls) - 8} calls dropped")
+            calls = calls[:8]
+        a = world.actors[actor_id]
+        for call in calls:
+            name = str(call.get("name", ""))
+            args = call.get("arguments") or {}
+            if call.get("parse_error"):
+                errors.append(f"{name}: unparseable arguments")
+                continue
+            if name == "think":
+                continue  # inner stays in the session history; no world effect
+            if name == "update_memory":
+                if actor_id in self._kb:
+                    errs, _tel = self._kb[actor_id].apply_ops(args.get("rows") or [], world.now)
+                    errors.extend(f"memory: {e}" for e in errs)
+                else:
+                    errors.append("memory: no notebook seeded for this actor")
+                continue
+            if name == "recall":
+                if actor_id in self._kb:
+                    self._recall_lines.setdefault(actor_id, []).extend(
+                        self._kb[actor_id].force_recall(
+                            args.get("kinds"), args.get("ids"),
+                            bool(args.get("closed")), int(args.get("limit") or 8)))
+                continue
+            if name == "flashback":
+                self._flashback_display[actor_id] = self._flashback_query(
+                    actor_id, str(args.get("entity") or ""))
+                continue
+            try:
+                world.submit(Intention(actor_id, name, dict(args), world.version))
+                world_actions += 1
+                if a.busy_until and a.busy_until > world.now:
+                    # The chain's own committed time: advance to the action's
+                    # completion so the next call starts after it.
+                    world.advance(until=a.busy_until)
+            except ActionRejected as exc:
+                errors.append(f"{name}: {exc}")
+            except Exception as exc:
+                errors.append(f"{name}: {type(exc).__name__}: {exc}")
+        if not world_actions:
+            # 一回合没有任何世界动作 = 发呆 1 tick (V4-AGENT-INTERFACE §0/§4).
+            try:
+                world.submit(Intention(actor_id, "wait",
+                                       {"duration_seconds": TICK_SECONDS},
+                                       world.version))
+            except ActionRejected:
+                pass
+        self._remember_lines(actor_id, perception)
+        if errors:
+            self._pending_errors[actor_id] = errors
+        synthetic = {"kind": (calls[0].get("name") if calls else "none"),
+                     "args": {"calls": [{"name": c.get("name"),
+                                          "args": c.get("arguments") or {}}
+                                         for c in calls]}}
+        result = "submitted" if (world_actions or calls) else "none"
+        self._repetition.note_turn(actor_id, None, result)
+        self.trace.record_agent(state=self.states[actor_id], perception=perception,
+                                affordances=affordances, intention=synthetic,
+                                result=result, error="; ".join(errors) or None,
+                                version_before=version_before,
+                                version_after=world.version, event_ids=[],
+                                role=self._role(actor_id))
+        consume = getattr(self.agents[actor_id], "consume_compaction", None)
+        if consume is not None and consume():
+            if actor_id in self._kb:
+                self._kb[actor_id].on_compaction()
+            world.notify_compaction(actor_id)
+            self.trace.record_compaction(actor_id, perception.get("_turn_id"))
+        snapshot = getattr(self.agents[actor_id], "session_snapshot", None)
+        if snapshot is not None and snapshot() is not None:
+            self.trace.record_session(actor_id, snapshot())
+        self._scheduler_wake.set()
 
     def _all_failed(self) -> bool:
         live = [self._failures.get(actor, 0) for actor in self._persistent_actors()]
@@ -692,20 +878,33 @@ class AsyncEngine:
         system = build_extra_system_prompt(info["fragment"], info["knowledge_notes"], location)
         briefing = build_extra_briefing(fragment=info["fragment"], location=location,
                                         question=question, transcript=transcript)
-        intention, result, error = None, "agent_error", ""
+        intention_calls: list[dict[str, Any]] = []
+        result, error = "agent_error", ""
         try:
-            raw = await asyncio.to_thread(
-                self.extra_call, [{"role": "system", "content": system},
-                                  {"role": "user", "content": briefing}])
-            intention, _ = parse_decision(name, raw, self.world.version)
-            if intention is not None:
-                self.world.submit(Intention(name, intention.kind, intention.args,
-                                            self.world.version,
-                                            inner=intention.inner,
-                                            interrupt=intention.interrupt,
-                                            uninterruptable=intention.uninterruptable))
-                result = "submitted"
+            if hasattr(self.extra_call, "chat_with_tools"):
+                from .npc_agent import extra_tool_calls
+                intention_calls = await asyncio.to_thread(
+                    extra_tool_calls, self.extra_call,
+                    [{"role": "system", "content": system}["content"]], briefing)
+            else:
+                raw = await asyncio.to_thread(
+                    self.extra_call, [{"role": "system", "content": system},
+                                      {"role": "user", "content": briefing}])
+                intention, _ = parse_decision(name, raw, self.world.version)
+                if intention is not None:
+                    intention_calls = [{"name": intention.kind,
+                                        "arguments": dict(intention.args)}]
+            spoke = False
+            for call in intention_calls:
+                call_name = str(call.get("name", ""))
+                if call_name != "speak":
+                    continue  # extras' tool surface is speak-only (§5)
+                args = call.get("arguments") or {}
+                self.world.submit(Intention(name, "speak", dict(args),
+                                            self.world.version))
+                spoke = True
                 info["last_active"] = self.world.now
+            result = "submitted" if spoke else ("none" if intention_calls else "agent_error")
         except ActionRejected as exc:
             result, error = "rejected", str(exc)
         except Exception as exc:
@@ -714,11 +913,9 @@ class AsyncEngine:
                                 perception={"observer": name, "time": self.world.now.isoformat(),
                                             "location": location, "events": [], "inbox": [],
                                             "nearby_actors": [], "nearby_items": []},
-                                affordances=[], intention=intention, result=result,
+                                affordances=[], intention={"kind": "speak", "args": {"calls": intention_calls}},
+                                result=result,
                                 error=error or None, role="extra")
-        if intention is not None and intention.kind == "move":
-            # A stranger who walks away ends the conversation (V4-CAST §1).
-            self._despawn(name, "left")
         self._scheduler_wake.set()
 
     # ------------------------------------------------------------ checkpoint
@@ -740,7 +937,14 @@ class AsyncEngine:
                            for name, x in self._extras.items()},
                 "wake_times": [t.isoformat() for t in self._wake_times],
                 "last_speech": {k: t.isoformat() for k, t in self._last_speech.items()},
-                "heartbeat_jobs": dict(self._heartbeat_jobs)}
+                "heartbeat_jobs": dict(self._heartbeat_jobs),
+                "kb": {actor: kb.snapshot() for actor, kb in self._kb.items()},
+                "pending_errors": {k: list(v) for k, v in self._pending_errors.items()},
+                "recall_lines": {k: list(v) for k, v in self._recall_lines.items()},
+                "flashback_display": {k: list(v) for k, v in self._flashback_display.items()},
+                "flashback_pool": {actor: [[t.isoformat(), line, sorted(entities)]
+                                            for (t, line, entities) in pool]
+                                    for actor, pool in self._flashback_pool.items()}}
 
     def restore_checkpoint(self, state: dict[str, Any]) -> None:
         from datetime import datetime as _dt
@@ -761,3 +965,15 @@ class AsyncEngine:
         self._heartbeat_jobs = {k: int(v) for k, v in state.get("heartbeat_jobs", {}).items()}
         self._extras = {name: {**x, "last_active": _dt.fromisoformat(x["last_active"])}
                         for name, x in state.get("extras", {}).items()}
+        self._pending_errors = {k: list(v) for k, v in state.get("pending_errors", {}).items()}
+        self._recall_lines = {k: list(v) for k, v in state.get("recall_lines", {}).items()}
+        self._flashback_display = {k: list(v) for k, v in state.get("flashback_display", {}).items()}
+        self._flashback_pool = {
+            actor: [(_dt.fromisoformat(row[0]), row[1], frozenset(row[2]))
+                    for row in pool]
+            for actor, pool in state.get("flashback_pool", {}).items()}
+        if state.get("kb"):
+            from .kb import ActorKB
+            for actor, snap in state["kb"].items():
+                if actor in self.world.actors:
+                    self._kb[actor] = ActorKB.from_snapshot(snap, self.world.now)

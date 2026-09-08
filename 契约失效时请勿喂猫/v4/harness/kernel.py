@@ -177,7 +177,7 @@ class World:
     """Authoritative, deterministic, event-sourced physical/social world."""
 
     ACTIONS = {"wait", "speak", "send_message", "move", "open", "close",
-               "take", "drop", "sleep", "inspect", "search", "interact", "knock", "give",
+               "take", "drop", "inspect", "search", "interact", "knock", "give",
                "read", "copy", "label", "annotate", "compare",
                "observe", "continue_action", "abandon_action", "ask_stranger"}
 
@@ -488,7 +488,6 @@ class World:
               for (source, target), duration in self.routes.items() if source == a.location),
             *([{"kind": "open" if not self.locations[a.location].open else "close"}]
               if controllable else []),
-            {"kind": "sleep", "duration_seconds": 6 * 60 * 60},
         ]
         options += [{"kind": "take", "item": item} for item, loc in self.item_locations.items() if loc == a.location]
         options += [{"kind": "inspect", "item": item} for item, loc in self.item_locations.items() if loc == a.location]
@@ -568,7 +567,7 @@ class World:
             action_payload["copy"] = f"{source}-copy-{self.version + 1}"
         uninterruptable = intention.uninterruptable
         if uninterruptable is None:
-            uninterruptable = intention.kind == "sleep"
+            uninterruptable = False
         started: Event | None = None
         sequence: int | None = None
         if duration:
@@ -610,7 +609,7 @@ class World:
             self._schedule(self.now, "action_completed", a.id, action_payload, None)
             self.advance(until=self.now)
         a.busy_until = self.now + duration if duration else None
-        a.sleeping = intention.kind == "sleep"
+        a.sleeping = False
         if duration:
             a.current_action = {"payload": dict(action_payload), "sequence": sequence,
                                 "hop_sequences": hop_sequences,
@@ -663,6 +662,45 @@ class World:
             target.busy_until = None
             target.current_action = None
             target.sleeping = False
+
+    def force_interrupt(self, actor_id: str, by: str) -> bool:
+        """Engine-side force interrupt (reminder 到期, V4-AGENT-INTERFACE §4):
+        suspend the actor's in-progress action at its execution position with
+        continue-or-cancel semantics. Returns True when suspended. An actor
+        that is idle or already suspended is unaffected."""
+        a = self._actor(actor_id)
+        if a.pending is not None:
+            return False
+        if not a.busy_until or a.busy_until <= self.now:
+            return False
+        current = a.current_action or {}
+        if current.get("uninterruptable"):
+            return False
+        remaining = int((a.busy_until - self.now).total_seconds())
+        sequence = current.get("sequence")
+        if sequence is not None:
+            self._cancelled.add(int(sequence))
+        for hop_sequence in current.get("hop_sequences", ()) or ():
+            self._cancelled.add(int(hop_sequence))
+        payload = dict(current.get("payload", {}))
+        pending = {"payload": payload, "remaining_seconds": remaining,
+                   "interrupted_by": by}
+        if payload.get("action") == "move" and a.location != payload.get("target"):
+            path = [str(x) for x in payload.get("path", ())]
+            hops = [int(x) for x in payload.get("hop_seconds", ())]
+            if a.location in path and hops:
+                index = path.index(a.location)
+                pending["remaining_hops"] = hops[index:]
+                pending["remaining_path"] = path[index:]
+        self._commit("action_interrupted", actor_id, {
+            "action": payload.get("action"),
+            "remaining_seconds": remaining, "by": by,
+        }, None)
+        a.pending = pending
+        a.busy_until = None
+        a.current_action = None
+        a.sleeping = False
+        return True
 
     def _resume(self, a: ActorState) -> tuple[Event, ...]:
         pending = a.pending
