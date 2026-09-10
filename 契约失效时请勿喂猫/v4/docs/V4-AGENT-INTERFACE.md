@@ -34,12 +34,12 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 |---|---|---|
 | update_memory | 同上 | 把事实或要紧的事写进私人记事本（引擎保管，只有你能看）：rows[{fields,id,op:open/edit/close,desc?}]；字段是保留名 person:/location:/item:/todo:true/reminder:"M/D(周X) HH:MM" 或自由标签，id 用英文短横线小写；op：open 新建/重开、edit 改 desc、close 翻篇（recall 指名可找回）；只写事实和要紧的事——发生的事世界会自动重现。**鼓励：每获得值得记住的新信息就 update_memory。**部分成功，失败逐行报错 |
 | recall | 同上 | 想立刻翻看记事本：下一轮 #knowledge 显式包含指定的类型/条目（含 closed，需 closed:true + limit，按最久未看倒序） |
-| flashback | 同上 | 手动闪回：重显某地点/物品/人物相关的已播历史（你亲历过的）；刷新 LRU |
+| flashback | 同上 | 手动闪回：与 entity 相关的、你亲历过的已播历史逐字回进该调用的 tool 结果（无匹配则明确说明） |
 | wait | 是 | 唯一的时间流逝工具（已并入 sleep）；时长向上取整到 tick 倍数；等待期间事件照常长轮询投递（无 asleep 过滤） |
 | speak | 是 | volume: whisper（仅 to 指定的在场者听得见内容；在场其他人看见耳语动作，听不见文本）/ normal（全地点听得见）；text 必填非空 |
 | send_message | 是 | 异步，1 tick 后送达；电话/远程事件无距离限制、录下后在对方醒来时可见 |
 | move | 是 | target 必须有路线；**时长由引擎按 world pack 路线图计算（物理，模型不可改）**；KB 中的地图行是信念，无物理效果 |
-| read / copy / annotate / compare | 是 | 内容型物品的动作；copy 复制出实体副本（原件留手，副本可交人）；compare 需两份都在手，判定在 tool 结果里 |
+| read / annotate / compare | 是 | 内容型物品的动作；compare 需两份都在手，判定在 tool 结果里 |
 | take / drop / give | 是 | 物品动作 |
 | knock | 是 | 敲关闭地点的门；可带 interrupt=[在场的目标] |
 | open / close | 是 | 场所开关 |
@@ -54,10 +54,6 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 9/16(周三) 7:00 @半坡咖啡馆
 在场：唐小岚(you)，陈默
 身上：空白纸
-# flashback
-9/14(周一) 9:00 陈默 进入 半坡咖啡馆
-9/14(周一) 9:22 陈默 说："豆浆，双份。今天店里就你一个？"
-
 # events
 9/16(周三) 7:15 陈默 进入 半坡咖啡馆
 9/16(周三) 7:16 陈默 说："豆浆，双份。今天店里就你一个？"
@@ -79,8 +75,7 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 块规则：
 
 - **表头**（恒在，无计时器）：时间 @地点、在场（self 标 `(you)`）、身上、附近（本地点可见但不在手上的物品）。这些是**当前感知**（永远为真），每回合机械重渲，永不遗漏——位置与在场是持续感知，不是记忆。可做的事由 `#actions` 表达，不在表头重复。
-- **tool 结果**：不存在 #error 块。每次工具调用的结果由引擎以 role:"tool" 消息回填会话：n 条 tool_call = n 条 tool 结果 + 下一条 user 世界消息。成功时 read 回投文档正文（含批注）、compare 回投一致性判定，其余动作回 ok；失败为具体错误原文。世界侧私有投递（耳语文本、消息正文）不属于 tool 结果，以 └ 私有投递行仅收件人可见——└ 是唯一的私有投递语法。
-- **#flashback**：**逐字重放**自己已播过的事件行——原渲染、原时间戳，不翻译不改写不摘要；LRU 上限 `flashback_limit=5`，且只取超过 `flashback_horizon_rounds` 的（"可能忘了"）。从未投递过的事件与它无关（走 #events 长轮询）。
+- **tool 结果**：不存在 #error 块。每次工具调用的结果由引擎以 role:"tool" 消息回填会话：n 条 tool_call = n 条 tool 结果 + 下一条 user 世界消息。成功时 read 回投文档正文（含批注）、compare 回投一致性判定、flashback 回投匹配的已播历史，其余动作回 ok；失败为具体错误原文（机制类错误为英文：未知动作、缺参数等）。世界侧私有投递（耳语文本、消息正文）不属于 tool 结果，以 └ 私有投递行仅收件人可见——└ 是唯一的私有投递语法。
 - **#events**（长轮询）：自上次同步以来所有**未投递且可投递**的定向事件。可投递 = 电话/远程定向事件（无距离限制、录下后在醒时投递，非 force-interrupt）或发生时在场的公共事件。**不存在 asleep 过滤**——等待/睡眠期间在场的公共事件照常投递。
 - **#knowledge**：到期行（`now - last_shown ≥ 该行 interval`）按类型排序注入，每回合上限 8 行。**提及集（M7 裁决）**= 本回合表头结构化实体（在场者/身上）∪ 本回合 #events 事件的 structured payload 实体（一跳，不递归、不解析自由文本）——行字段命中提及集且计时到期则回放；仅 id 的行无条件按期回放。**溢出行优先于新到期行**（顺延队列先清）。**KB 行的重逢不强制重放**——重挂全量回放仅作用于表头状态行。**compaction：全部 last_shown 清零**（下一轮全量重放；closed 行除外——永不回放）。update_memory 的 open/edit 刷新该行 last_shown；close 的行不再出现。
 - **行间隔（m3 裁决）**：多字段行取其字段对应间隔的 **max**。
@@ -98,7 +93,6 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 | take / drop | {actor} 拿起 / 放下 {item} |
 | give | {actor} 把 {item} 交给 {target} |
 | read | {actor} 读了 {document} —— **内容不进公开行**；content 仅私有投递给读者本人 |
-| copy | {actor} 复制 {document} 为 {copy} |
 | annotate | {actor} 在 {document} 上留下批注 —— 批注文本不进公开行；后续任何人 read 该文档时按种子原文看见批注 |
 | compare | {actor} 比对 {first} 与 {second}——判定经该调用的 tool 结果投递 |
 | move（到达） | {actor} 到达 {location} |
@@ -126,7 +120,7 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 
 ## 5. NPC 与 extras 的接口（M9/M10 裁决）
 
-- **NPC**：唤醒回合收到与 MC **结构完全一致**的每回合消息（表头/#flashback/#events/#knowledge/#actions），仅额外多一个置顶的 `[director]` 块（导演简报：本场目标、知识注记）。NPC 的 KB 与 MC 同机制（含 person=self 身份行、todo、reminder）——**无独立滚动摘要**（旧机制废除）。MC 永远看不到 [director] 块——不可分辨保持。
+- **NPC**：唤醒回合收到与 MC **结构完全一致**的每回合消息（表头/#events/#knowledge/#actions），仅额外多一个置顶的 `[director]` 块（导演简报：本场目标、知识注记）。NPC 的 KB 与 MC 同机制（含 person=self 身份行、todo、reminder）——**无独立滚动摘要**（旧机制废除）。MC 永远看不到 [director] 块——不可分辨保持。
 - **extras**：**无 KB**（会话期记忆即其全部记忆，销毁即失）。消息 = `[director]` 简报（身份碎片+知识注记）+ 场景行 + 发起者的提问。工具面仅 `speak`。多轮对话由发起者与 extra 轮流收消息；销毁时会话与其记忆一并丢弃。
 
 ## 6. 种子行 schema（M2 裁决——KB 行在开局前如何声明）

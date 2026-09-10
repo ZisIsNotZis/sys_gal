@@ -38,12 +38,11 @@ def _clean_description(description: str) -> str:
 
 
 def render_world_message(perception: Mapping[str, Any], affordances: Sequence[Mapping[str, Any]],
-                         *, observer: str | None = None, errors: list[str] | None = None,
+                         *, observer: str | None = None,
                          knowledge_lines: list[str] | None = None,
-                         flashback_lines: list[str] | None = None,
                          director: str | None = None) -> str:
-    """V4-AGENT-INTERFACE §3：表头恒在，#error/#flashback/#events/#knowledge
-    空块省略，#actions 恒在；director 非 None 时置顶 [director] 块（NPC 简报）。
+    """V4-AGENT-INTERFACE §3：表头恒在，#events/#knowledge 空块省略，
+    #actions 恒在；director 非 None 时置顶 [director] 块（NPC 简报）。
     observer 缺省取 perception["observer"]（旧调用方兼容）。"""
     who = str(observer if observer is not None else perception.get("observer", ""))
     lines: list[str] = []
@@ -61,15 +60,6 @@ def render_world_message(perception: Mapping[str, Any], affordances: Sequence[Ma
     notice = perception.get("situational_notice")
     if notice:
         lines.append(str(notice))
-
-    error_block = list(errors or []) if errors is not None else []
-    # docs §3 修订：#error 块废除——每次工具调用的结果以 role:"tool" 消息回填
-    # 会话。errors 形参仅为旧调用方兼容保留，不再渲染。
-
-    if flashback_lines:
-        lines.append("")
-        lines.append("# flashback")
-        lines.extend(flashback_lines)
 
     event_lines = _event_lines(perception, who)
     if event_lines:

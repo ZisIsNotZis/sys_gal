@@ -108,7 +108,6 @@ class WorldPack:
             actors=actors, locations=locations, item_locations=item_locations,
             routes=routes, sound_barriers=barriers, scheduled=self.scheduled,
             document_defs=document_defs,
-            copy_material_items=set(self.manifest.get("copy_material_items", ())),
             entity_descriptions=DescriptionStore({name: self.descriptions[name] for name in
                                                    ("locations", "items", "documents")}),
             entity_access={str(row["id"]): row.get("known_to", ()) for row in self.items + self.documents
@@ -297,9 +296,6 @@ def _validate(fields: dict[str, tuple[dict[str, Any], ...]], manifest: dict[str,
             else:
                 raise ValueError(f"scheduled effect has unknown op: {op or '<missing>'}")
     defined = items | documents
-    for item in manifest.get("copy_material_items", ()):
-        if item not in defined:
-            raise ValueError(f"unknown copy material item {item}")
     if actors & items or actors & documents or items & documents:
         raise ValueError("actor, item, and document ids must be disjoint")
 

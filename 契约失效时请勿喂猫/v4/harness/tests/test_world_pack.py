@@ -273,30 +273,6 @@ class DocumentInteractionTests(unittest.TestCase):
         self.assertEqual(event["payload"]["content"], "same text")
         self.assertFalse(any(e["kind"] == "document_read" for e in b["events"]))
 
-    def test_copy_creates_a_provenance_link_and_consumes_material(self):
-        world = self.world()
-        world.submit(Intention("a", "copy", {"item": "ledger"}, world.version))
-        world.advance()
-        copied = next(e for e in world.poll("a")["events"] if e["kind"] == "document_copied")
-        new_id = copied["payload"]["copy"]
-        self.assertNotIn("空白纸", world.actors["a"].inventory)
-        self.assertEqual(world.document_defs[new_id]["copied_from"], "ledger")
-        self.assertEqual(world.item_locations[new_id], "room")
-        copied_event = next(e for e in world.event_log if e.kind == "document_copied")
-        self.assertEqual(copied_event.payload["copy"], new_id)
-
-    def test_copy_replay_reconstructs_inventory_and_provenance(self):
-        from harness.replay import replay_world
-        initial = self.world()
-        world = self.world()
-        world.submit(Intention("a", "copy", {"item": "ledger"}, world.version))
-        world.advance()
-        replayed = replay_world(initial, world.replayable_log())
-        self.assertEqual(replayed.actors["a"].inventory, world.actors["a"].inventory)
-        copied = next(e for e in world.event_log if e.kind == "document_copied")
-        copy_id = copied.payload["copy"]
-        self.assertEqual(replayed.document_defs[copy_id]["copied_from"], "ledger")
-
     def test_compare_and_label_never_allow_unavailable_document(self):
         world = self.world()
         world.item_locations["other"] = "elsewhere"
