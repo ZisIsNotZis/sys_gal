@@ -125,6 +125,7 @@ class AsyncEngine:
         self._flashback_pool: dict[str, list[tuple[datetime, str, frozenset[str]]]] = {}
         self._pending_notices: dict[str, list[str]] = {}
         self._reminder_jobs: dict[tuple[str, str], int] = {}
+        self._think_retries: dict[str, int] = {}
 
     # ------------------------------------------------------------------ run
 
@@ -600,6 +601,35 @@ class AsyncEngine:
         world_actions = 0
         calls = list(calls or [])
         truncated = max(0, len(calls) - 8)
+        # think-first enforcement (V4-AGENT-INTERFACE §4): a chain that does
+        # not open with think is rejected whole; the actor re-thinks at zero
+        # sim-time cost. 3 consecutive misses open the valve (execute anyway,
+        # telemetry notes it) so a broken model cannot loop forever.
+        if calls and str(calls[0].get("name", "")) != "think":
+            misses = self._think_retries.get(actor_id, 0)
+            if misses < 3:
+                self._think_retries[actor_id] = misses + 1
+                for call in calls:
+                    results.append({"tool_call_id": call.get("tool_call_id"),
+                                    "ok": False,
+                                    "text": "think first: 你每回合的第一个调用必须是 "
+                                            "think（先写心声，再行动）"})
+                deliver = getattr(self.agents[actor_id], "deliver_tool_results", None)
+                if deliver is not None:
+                    deliver(results)
+                self._failures[actor_id] = self._failures.get(actor_id, 0) + 1
+                self._repetition.note_turn(actor_id, None, "think_first_rejected")
+                self.trace.record_agent(
+                    state=self.states[actor_id], perception=perception,
+                    affordances=affordances,
+                    intention=Intention(actor_id, "think_first_rejected", {}),
+                    result="think_first_rejected", error=None,
+                    version_before=version_before, version_after=world.version,
+                    event_ids=[], role=self._role(actor_id))
+                self._force_turn.add(actor_id)
+                self._scheduler_wake.set()
+                return
+        self._think_retries[actor_id] = 0
         if truncated:
             calls = calls[:8]
         a = world.actors[actor_id]

@@ -278,7 +278,8 @@ class V4ProtocolTests(unittest.TestCase):
     def test_chain_executes_in_order_and_accumulates_time(self):
         world = _world()
         agent = FakeV4Agent([
-            [{"name": "speak", "arguments": {"text": "先说"}},
+            [{"name": "think", "arguments": {"inner": "先说再走"}},
+             {"name": "speak", "arguments": {"text": "先说"}},
              {"name": "move", "arguments": {"target": "far"}}],
         ])
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
@@ -289,7 +290,8 @@ class V4ProtocolTests(unittest.TestCase):
 
     def test_more_than_eight_calls_truncate_with_error(self):
         world = _world()
-        calls = [{"name": "wait", "arguments": {"duration_seconds": 60}} for _ in range(10)]
+        calls = ([{"name": "think", "arguments": {"inner": "等"}}]
+                 + [{"name": "wait", "arguments": {"duration_seconds": 60}} for _ in range(9)])
         agent = FakeV4Agent([calls])
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
         engine.run(stop_at=START + timedelta(seconds=200), max_turns=30)
@@ -306,13 +308,34 @@ class V4ProtocolTests(unittest.TestCase):
                  and e.actor == "a" and e.payload.get("action") == "wait"]
         self.assertTrue(waits, "no-world-action chain must idle one tick")
 
+    def test_non_think_first_chain_is_rejected_then_executed_on_retry(self):
+        # docs §4 (engine-enforced): a chain not opening with think is
+        # rejected whole ("think first: …" in every tool result); the actor
+        # re-thinks immediately at zero sim cost; 3 misses open the valve.
+        world = _world()
+        agent = FakeV4Agent([
+            [{"name": "speak", "arguments": {"text": "不说think"}}],
+            [{"name": "think", "arguments": {"inner": "好"}},
+             {"name": "speak", "arguments": {"text": "这次对了"}}],
+        ])
+        engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
+        engine.run(stop_at=START + timedelta(seconds=300), max_turns=30)
+        rejected = [r for r in agent.delivered if not r.get("ok")]
+        self.assertTrue(all("think first" in r["text"] for r in rejected))
+        self.assertTrue(rejected, "non-compliant chain was not rejected")
+        speeches = [e for e in world.event_log if e.kind == "speech" and e.actor == "a"]
+        self.assertEqual(len(speeches), 1, "the retry must speak exactly once")
+        # after compliance the counter resets: no valve needed
+        self.assertEqual(engine._think_retries.get("a", 0), 0)
+
     def test_kb_seed_renders_knowledge_and_update_memory_queues_errors(self):
         world = _world()
         rows = [{"fields": {"person": "陈默", "self": True}, "id": "identity",
                  "desc": "我，测试角色。"},
                 {"fields": {"todo": True}, "id": "check", "desc": "查一下台账"}]
         agent = FakeV4Agent([
-            [{"name": "update_memory",
+            [{"name": "think", "arguments": {"inner": "开工"}},
+             {"name": "update_memory",
               "arguments": {"rows": [{"id": "check", "op": "edit", "desc": "改了"}]}},
              {"name": "speak", "arguments": {"text": "开工"}}],
         ])
@@ -330,8 +353,10 @@ class V4ProtocolTests(unittest.TestCase):
                  "desc": "我，测试角色。"},
                 {"fields": {"reminder": "1/1(周四) 00:03"}, "id": "ring", "desc": "该动了"}]
         agent = FakeV4Agent([
-            [{"name": "wait", "arguments": {"duration_seconds": 60}}],
-            [{"name": "wait", "arguments": {"duration_seconds": 180}}],
+            [{"name": "think", "arguments": {"inner": "等一会"}},
+             {"name": "wait", "arguments": {"duration_seconds": 60}}],
+            [{"name": "think", "arguments": {"inner": "再等"}},
+             {"name": "wait", "arguments": {"duration_seconds": 180}}],
             [{"name": "continue_action", "arguments": {}}],
         ])
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])},
