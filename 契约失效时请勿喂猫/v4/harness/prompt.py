@@ -254,15 +254,9 @@ def _private_line(event: Mapping[str, Any], observer: str) -> str | None:
         return None
     if kind == "message_delivered" and observer == str(payload.get("target")):
         return f"消息内容：\"{payload.get('text')}\""
-    if kind == "document_read" and observer == who:
-        content = str(payload.get("content", ""))
-        annotations = payload.get("annotations") or []
-        if annotations:
-            notes = "；".join(f"{e.get('by')}批注：{e.get('text')}" for e in annotations)
-            content = f"{content}（记录上还有：{notes}）" if content else f"（记录上还有：{notes}）"
-        return f"内容：{content}" if content else None
-    if kind == "documents_compared" and observer == who:
-        return f"比对结果：{'一致' if payload.get('same_content') else '不一致'}"
+    # document_read 的 content 不在这里投递——它是 read 调用的 tool 结果
+    # （V4-AGENT-INTERFACE §3）：公开行只描述事实。
+    # documents_compared 的判定在 compare 调用的 tool 结果里。
     if kind == "knock" and observer == who:
         return "有人应声。" if payload.get("responded") else "没有人回应。"
     if kind == "interaction" and observer == who:

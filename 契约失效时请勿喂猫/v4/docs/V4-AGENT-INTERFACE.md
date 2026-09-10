@@ -86,7 +86,7 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 块规则：
 
 - **表头**（恒在，无计时器）：时间 @地点、在场（self 标 `(you)`）、身上。这些是**当前感知**（永远为真），每回合机械重渲，永不遗漏——位置与在场是持续感知，不是记忆。可做的事由 `#actions` 表达，不在表头重复。
-- **tool 结果**：不存在 #error 块。每次工具调用的结果（成功 ok，失败为具体错误原文）由引擎以 role:"tool" 消息回填会话：n 条 tool_call = n 条 tool 结果 + 下一条 user 世界消息。
+- **tool 结果**：不存在 #error 块。每次工具调用的结果由引擎以 role:"tool" 消息回填会话：n 条 tool_call = n 条 tool 结果 + 下一条 user 世界消息。成功时 read 回投文档正文（含批注）、compare 回投一致性判定，其余动作回 ok；失败为具体错误原文。世界侧私有投递（耳语文本、消息正文）不属于 tool 结果，以 └ 私有投递行仅收件人可见——└ 是唯一的私有投递语法。
 - **#flashback**：**逐字重放**自己已播过的事件行——原渲染、原时间戳，不翻译不改写不摘要；LRU 上限 `flashback_limit=5`，且只取超过 `flashback_horizon_rounds` 的（"可能忘了"）。从未投递过的事件与它无关（走 #events 长轮询）。
 - **#events**（长轮询）：自上次同步以来所有**未投递且可投递**的定向事件。可投递 = 电话/远程定向事件（无距离限制、录下后在醒时投递，非 force-interrupt）或发生时在场的公共事件。**不存在 asleep 过滤**——等待/睡眠期间在场的公共事件照常投递。
 - **#knowledge**：到期行（`now - last_shown ≥ 该行 interval`）按类型排序注入，每回合上限 8 行。**提及集（M7 裁决）**= 本回合表头结构化实体（在场者/身上）∪ 本回合 #events 事件的 structured payload 实体（一跳，不递归、不解析自由文本）——行字段命中提及集且计时到期则回放；仅 id 的行无条件按期回放。**溢出行优先于新到期行**（顺延队列先清）。**KB 行的重逢不强制重放**——重挂全量回放仅作用于表头状态行。**compaction：全部 last_shown 清零**（下一轮全量重放；closed 行除外——永不回放）。update_memory 的 open/edit 刷新该行 last_shown；close 的行不再出现。
@@ -107,7 +107,7 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 | read | {actor} 读了 {document} —— **内容不进公开行**；content 仅私有投递给读者本人 |
 | copy / label | {actor} 复制 {document} 为 {copy} / 把 {document} 标记为 {label} |
 | annotate | {actor} 在 {document} 上留下批注 —— 批注文本不进公开行；后续任何人 read 该文档时按种子原文看见批注 |
-| compare | {actor} 比对 {first} 与 {second}（结果仅参与者可见） |
+| compare | {actor} 比对 {first} 与 {second}——判定经该调用的 tool 结果投递 |
 | move（到达） | {actor} 到达 {location} |
 | item 增减 | {item} 出现在 {location} / 从 {location} 消失 |
 
