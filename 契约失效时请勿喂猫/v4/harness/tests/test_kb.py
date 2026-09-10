@@ -33,18 +33,23 @@ class SeedValidationTests(unittest.TestCase):
             ActorKB("唐小岚", seed_rows() + [seed_rows()[0]], T0)
 
     def test_turn_zero_rows_flood_first_message(self):
-        # docs §6: 行在 turn 0 全部 last_shown=0 → 全量灌入首条消息
+        # docs §6 (修订): turn-0 泛洪只覆盖无条件行（self/todo/reminder）；
+        # 实体行（person/location/item）永远提及集门控——未提及的实体
+        # （如不在场的哨子）不得在首轮浮现（用户裁决 2026-09-08）。
         kb = ActorKB("唐小岚", seed_rows(), T0)
         lines = kb.due_lines(T0, set(), limit=8)
-        self.assertEqual(len(lines), 5)
+        self.assertEqual(len(lines), 3)
         self.assertIn("[person=唐小岚]: 我，唐小岚，咖啡师。", lines)
         self.assertIn("[todo=true]: 弄清草稿是谁放的", lines)
-        self.assertIn("[location=半坡咖啡馆]: 校门口的独立咖啡馆", lines)
+        self.assertTrue(any(line.startswith("[reminder=") for line in lines))
+        self.assertNotIn("[location=半坡咖啡馆]", str(lines))
+        self.assertNotIn("[person=陈默]", str(lines))
 
 
 class ReminderParsingTests(unittest.TestCase):
     def test_canonical_format_parses_and_checks_weekday(self):
         when = parse_reminder_time("3/16(周一) 08:30", T0)
+        assert when is not None
         self.assertEqual(when, T0.replace(hour=8, minute=30))
         self.assertEqual(format_reminder_time(when), "3/16(周一) 08:30")
 
@@ -164,9 +169,11 @@ class ReplayTests(unittest.TestCase):
         self.assertIn("[todo=true]: 弄清草稿是谁放的", lines)
 
     def test_mention_set_gates_entity_rows(self):
-        # close the time-driven rows so only entity-gated rows remain
+        # close the time-driven rows (and the unconditional identity row) so
+        # only entity-gated rows remain
         self.kb.apply_ops([{"op": "close", "id": "bread_run"},
-                           {"op": "close", "id": "draft_claim"}], T0)
+                           {"op": "close", "id": "draft_claim"},
+                           {"op": "close", "id": "identity"}], T0)
         now = T0 + timedelta(minutes=KNOWLEDGE_REPLAY_MINUTES + 1)
         self.assertEqual(self.kb.due_lines(now, set()), [])
         self.assertEqual(self.kb.due_lines(now, {"陈默"}),
@@ -191,7 +198,10 @@ class ReplayTests(unittest.TestCase):
         # (entity rows are mention-gated, docs M7) — the overflowed todo
         # clears first next turn, before any newly due row would.
         nxt = self.kb.due_lines(now + timedelta(minutes=1), set(), limit=8)
-        self.assertEqual(nxt, ["[todo=true]: 弄清草稿是谁放的"],
+        # the overflowed todo clears first; the identity row (120min interval,
+        # unconditional) is newly due and follows it
+        self.assertEqual(nxt, ["[todo=true]: 弄清草稿是谁放的",
+                               "[person=唐小岚]: 我，唐小岚，咖啡师。"],
                          "overflowed line must clear before new due rows")
 
     def test_due_reminders_and_auto_close(self):
@@ -256,7 +266,7 @@ class CompactionTests(unittest.TestCase):
         kb.apply_ops([{"op": "open", "id": "n1", "fields": {"person": "陈默"},
                        "desc": "a"}, {"op": "close", "id": "n1"}], T0)
         kb.on_compaction()
-        lines = kb.due_lines(T0, set())
+        lines = kb.due_lines(T0, {"唐小岚", "半坡咖啡馆", "陈默"})
         self.assertEqual(len(lines), 5)
         self.assertNotIn("n1", str(lines))
 

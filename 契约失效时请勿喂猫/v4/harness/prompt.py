@@ -6,7 +6,7 @@
 每种事件 kind 恰好一个固定模板；未知 kind 一律跳过，绝不即兴。
 """
 
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 from .agent_state import PrivateState
 
 _WEEKDAY = "一二三四五六日"
@@ -37,7 +37,7 @@ def _clean_description(description: str) -> str:
     return body.strip()
 
 
-def render_world_message(perception: Mapping[str, Any], affordances: list[Mapping[str, Any]],
+def render_world_message(perception: Mapping[str, Any], affordances: Sequence[Mapping[str, Any]],
                          *, observer: str | None = None, errors: list[str] | None = None,
                          knowledge_lines: list[str] | None = None,
                          flashback_lines: list[str] | None = None,
@@ -93,7 +93,7 @@ def render_world_message(perception: Mapping[str, Any], affordances: list[Mappin
     return "\n".join(lines)
 
 
-def _merged_action_lines(affordances: list[Mapping[str, Any]]) -> list[str]:
+def _merged_action_lines(affordances: Sequence[Mapping[str, Any]]) -> list[str]:
     """docs §3：同类动作合并为一行——按 (kind, 参数键集合) 分组，同组对应值
     用 、 连接（[drop] item=X、Y）。speak 的 volume/to 由 affordance 自身
     表达（normal/whisper、在场者候选、无人在场时自言自语）。"""
@@ -136,10 +136,6 @@ def _action_args(option: Mapping[str, Any]) -> str:
             continue
         parts.append(f"{key}={value}")
     return ", ".join(parts)
-
-
-def _affordance_sentence(option: Mapping[str, Any]) -> str:
-    return _action_args(option)
 
 
 def _event_lines(perception: Mapping[str, Any], observer: str) -> list[str]:
@@ -235,7 +231,7 @@ def _event_sentence(event: Mapping[str, Any], location: str = "") -> str | None:
         return f"{who} 出现了"
     if kind == "extra_removed":
         return f"{who} 走了"
-    if kind.startswith("system_"):
+    if kind and kind.startswith("system_"):
         return _system_sentence(kind, payload)
     # move 的 started/completed（enter/leave 已承载）、wait/sleep 完成、
     # 私有簿记（message_sent/interrupt_requested/wait_woken/private_wake/
@@ -268,12 +264,6 @@ def _private_line(event: Mapping[str, Any], observer: str) -> str | None:
         if payload.get("held"):
             return "它正在你手里"
         return f"它放在{payload.get('location')}"
-    if kind == "action_completed" and observer == who:
-        if payload.get("action") == "wait":
-            seconds = int(payload.get("duration_seconds", 0) or 0)
-            return f"等了{seconds // 60}分钟，现在空下来了。"
-        if payload.get("action") == "sleep":
-            return "睡了一觉，醒了。"
     return None
 
 
@@ -298,7 +288,7 @@ def _affordance_sentence(option: Mapping[str, Any]) -> str:
 
 
 def build_prompt(*, identity: str, private_seed: str, state: PrivateState,
-                 perception: Mapping[str, Any], affordances: list[Mapping[str, Any]]) -> str:
+                 perception: Mapping[str, Any], affordances: Sequence[Mapping[str, Any]]) -> str:
     """完整的一次性角色输入（无隐藏世界或作者数据）。协议压缩在末尾。"""
     return "\n".join((
         "你就是下面描述的这个人。把这个世界当作真的。",

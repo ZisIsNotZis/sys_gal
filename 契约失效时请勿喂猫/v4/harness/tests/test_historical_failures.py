@@ -48,14 +48,14 @@ from tempfile import TemporaryDirectory
 from harness.agent_state import PrivateState
 from harness.engine import AsyncEngine
 from harness.kernel import Intention
-from harness.runner import Runner
+from harness.runner import AgentFn, Runner
 from harness.seed import load_story_pack
 from harness.system import Ledger
 from harness.trace import Trace, verify_event_log
 from harness.replay import replay_world
 
 
-def _lean_wait_agents(world):
+def _lean_wait_agents(world) -> "dict[str, AgentFn]":
     """Deterministic agents that accept the System once, then wait."""
     def agent(state, perception, affordances):
         offered = {str(option.get("kind")) for option in affordances}
@@ -139,9 +139,9 @@ class HistoricalFailureGates(unittest.TestCase):
         def record_world_result(message):
             feedback.append(message)
 
-        recorder.record_world_result = record_world_result
-        agents = {actor: (recorder if actor == "陈默" else agent)
-                  for actor in world.actors}
+        setattr(recorder, "record_world_result", record_world_result)
+        agents: dict[str, AgentFn] = {actor: (recorder if actor == "陈默" else agent)
+                                      for actor in world.actors}
         trace = Trace("v4-test", "historical-gate-feedback")
         Runner(world, agents, states, trace).run(
             stop_at=datetime.fromisoformat("2026-03-16T20:00:00+08:00"), max_turns=1000)
@@ -151,7 +151,7 @@ class HistoricalFailureGates(unittest.TestCase):
         rendered = " ".join(render_world_message(t["perception"], [])
                             for t in trace.agent_turns if t["actor"] == "陈默")
         self.assertTrue(all("no immediate physical change" not in m for m in feedback))
-        self.assertIn("等了1分钟", rendered)      # wait outcome
+        self.assertIn("7:01", rendered)      # wait outcome shows as time advanced
         self.assertIn("搜索了男生宿舍", rendered)  # search action (F3)
         self.assertIn("没什么新发现", rendered)    # search result (F3)
         self.assertIn("放下", rendered)           # drop consequence
@@ -251,7 +251,7 @@ class HistoricalFailureGates(unittest.TestCase):
         self.assertIn("target", str(ctx.exception))
 
     def test_document_action_with_wrong_key_is_helpful(self):
-        """P8: read/copy/label/annotate submitted with the wrong argument key
+        """P8: read/copy/annotate submitted with the wrong argument key
         (e.g. ``item`` instead of ``document``) must reject with a
         schema-derived reason naming the required ``document`` key, never the
         opaque 'None is not available' seen across the 2-day run."""
@@ -262,8 +262,8 @@ class HistoricalFailureGates(unittest.TestCase):
                       document_defs={"ledger": {"title": "Ledger", "content": "x",
                                                 "reading_seconds": 2}},
                       item_locations={"ledger": "room"})
-        for kind in ("read", "copy", "label", "annotate"):
-            args = {"item": "ledger"} if kind in ("read", "copy") else {"item": "ledger", "label": "x"}
+        for kind in ("read", "copy", "annotate"):
+            args = {"item": "ledger"} if kind in ("read", "copy") else {"item": "ledger", "text": "x"}
             with self.assertRaises(ActionRejected) as ctx:
                 world.submit(Intention("a", kind, args, world.version))
             self.assertIn("document", str(ctx.exception), kind)

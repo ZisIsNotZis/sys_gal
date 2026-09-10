@@ -96,10 +96,6 @@ SCHEMAS: dict[str, dict[str, Any]] = {
     "give": _schema(target=_STR, item=_STR),
     "read": _ONE_DOC,
     "copy": _ONE_DOC,
-    "label": {"type": "object", "required": ["document", "label"],
-              "properties": {"document": _STR,
-                             "label": {"type": "string", "minLength": 1}},
-              "additionalProperties": False},
     "annotate": {"type": "object", "required": ["document", "text"],
                  "properties": {"document": _STR,
                                 "text": {"type": "string", "minLength": 1}},
@@ -110,16 +106,20 @@ SCHEMAS: dict[str, dict[str, Any]] = {
 # One-line Chinese descriptions, one per tool, from V4-AGENT-INTERFACE §2.
 _TOOL_DESCRIPTIONS: dict[str, str] = {
     "think": "inner 心声；保留在会话历史中；无世界事件、无世界状态效果",
-    "update_memory": "私人记事本行补丁：rows=[{fields,id,op,desc?}]；部分成功，失败逐行报错",
-    "recall": "标记请求：下一轮 #knowledge 显式包含指定的类型/条目（closed 行需 closed=true）",
-    "flashback": "手动闪回：重显某地点/物品/人物相关的已播历史",
+    "update_memory":
+    "把事实或要紧的事写进你的私人记事本（引擎保管，只有你能看）：rows=[{fields,id,op,desc?}]。"
+    + "fields 是保留名 person:/location:/item:/todo:true/reminder:\"M/D(周X) HH:MM\" 或自由标签；id 用英文短横线小写。"
+    + "op：open 新建/重开、edit 改 desc、close 翻篇（recall 指名可找回）。只写事实和要紧的事——发生的事世界会自动重现，此刻的感受用 think；部分成功，失败逐行报错",
+    "recall":
+    "想立刻翻看记事本：下一轮 #knowledge 显式包含指定的类型/条目（closed 行需 closed=true）",
+    "flashback":
+    "手动闪回：重显某地点/物品/人物相关的、你亲历过的历史",
     "wait": "唯一的时间流逝工具；时长向上取整到 tick 倍数；等待期间事件照常投递",
     "speak": "当面说话；volume=normal 全地点听得见，whisper 仅 to 指定的在场者听得见文本",
     "send_message": "发消息（电话），异步，1 tick 后送达",
     "move": "走向 target；时长由引擎按路线图计算，不用填",
     "read": "读一份在手边的文档；内容只有你能看到",
     "copy": "复印一份文档（需要复印材料）",
-    "label": "给文档贴上你自己的一句话标签",
     "annotate": "在文档上写批注，后续读者都能看见",
     "compare": "比对两份都在手边的文档内容是否一致",
     "take": "拿起一件在这里的物品",

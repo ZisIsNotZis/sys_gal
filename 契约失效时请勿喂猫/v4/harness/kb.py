@@ -20,8 +20,10 @@ KNOWLEDGE_REPLAY_MINUTES = 120
 TODO_OPEN_LIMIT = 12
 
 RESERVED_FIELDS = {"person", "location", "item", "todo", "reminder", "self"}
-# Fields whose values participate in the mention set (M7).
-_MENTION_FIELDS = ("person", "location", "item")
+# Fields whose values participate in the mention set (M7). document joins
+# because world document descriptions auto-expand into document rows (§6):
+# without it they would fall into the unconditional branch.
+_MENTION_FIELDS = ("person", "location", "item", "document")
 _WEEKDAY = {"一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "日": 6}
 _WEEKDAY_CHAR = {v: k for k, v in _WEEKDAY.items()}
 _REMINDER_RE = re.compile(r"^(\d{1,2})/(\d{1,2})\((周[一二三四五六日])\) (\d{1,2}):(\d{2})$")
@@ -90,7 +92,7 @@ class _Row:
     shown_seq: int = 0  # monotonic per-KB surfacing order (recall tie-break)
 
     def render(self) -> str:
-        if self.fields.get("self") is True and "person" in self.fields:
+        if self.fields.get("self") and "person" in self.fields:
             # docs §3 sample: the identity row renders as [person=<own name>]
             return f"[person={self.fields['person']}]: {self.desc}"
         key, value = _main_field(self.fields)
@@ -125,7 +127,7 @@ class ActorKB:
                     raise ValueError(f"[{actor_id}] seed row {row_id}: "
                                      f"unparseable reminder time: {fields['reminder']}")
                 fields["reminder"] = when
-            if fields.get("self") is True:
+            if fields.get("self"):
                 self_rows += 1
             self._rows[row_id] = _Row(row_id, fields, str(row.get("desc", "")))
         if self_rows != 1:
@@ -176,7 +178,7 @@ class ActorKB:
             # New row.
             if not isinstance(fields, dict) or not fields:
                 return f"[id={row_id}] missing fields"
-            if fields.get("todo") is True and self._open_todos() >= TODO_OPEN_LIMIT:
+            if fields.get("todo") and self._open_todos() >= TODO_OPEN_LIMIT:
                 return f"[id={row_id}] todo limit reached ({TODO_OPEN_LIMIT})"
             for key in fields:
                 if key not in RESERVED_FIELDS:
@@ -238,7 +240,7 @@ class ActorKB:
 
     def _open_todos(self) -> int:
         return sum(1 for r in self._rows.values()
-                   if r.status == "open" and r.fields.get("todo") is True)
+                   if r.status == "open" and r.fields.get("todo"))
 
     def close_reminder(self, row_id: str) -> None:
         row = self._rows.get(row_id)
@@ -257,15 +259,19 @@ class ActorKB:
         return (now - row.last_shown).total_seconds() >= _interval_minutes(row.fields) * 60
 
     def _mention_hit(self, row: _Row, mention_set: set[str]) -> bool:
-        if row.last_shown is None:
-            # Turn-0 semantics (docs §6): never-shown rows flood the first
-            # message regardless of the mention set.
+        # Entity rows (person/location/item) are mention-gated ALWAYS —
+        # including turn 0: an unmentioned entity's description must not
+        # surface before the entity enters the actor's perception (user
+        # ruling 2026-09-08: [item=红色哨子] must not pop up unmentioned).
+        # Unconditional rows (self/todo/reminder/free) flood on turn 0 and
+        # replay on their interval timers; the identity anchor (self:true)
+        # is always unconditional.
+        if row.fields.get("self"):
             return True
         hits = [key for key in _MENTION_FIELDS
                 if key in row.fields and row.fields[key] in mention_set]
         if hits:
             return True
-        # Rows without any mentionable field replay unconditionally when due.
         return not any(key in row.fields for key in _MENTION_FIELDS)
 
     def _category(self, row: _Row) -> tuple[int, float]:
@@ -335,14 +341,14 @@ class ActorKB:
         #knowledge block. Rows are queued (rendered again next turn even if
         not yet due) and returned immediately for the engine's use; closed
         rows only when ``closed`` is true. Ordering: oldest last_shown first."""
-        kinds = set(kinds or ())
-        ids = set(ids or ())
-        if not kinds and not ids:
+        kind_set = set(kinds or ())
+        id_set = set(ids or ())
+        if not kind_set and not id_set:
             return []
         matches = [row for row in self._rows.values()
                    if row.status == "open" or closed]
         matches = [row for row in matches
-                   if (row.id in ids) or (bool(kinds & set(row.fields)))]
+                   if (row.id in id_set) or (bool(kind_set & set(row.fields)))]
         matches.sort(key=lambda r: (r.last_shown.timestamp() if r.last_shown else -1.0,
                                     r.shown_seq))
         picked = matches[:limit]
@@ -384,7 +390,10 @@ class ActorKB:
         kb = cls.__new__(cls)
         kb.actor_id = str(state["actor_id"])
         kb._now = now
-        kb._shown_seq = itertools.count(int(state.get("shown_seq", 1)))
+        try:
+            kb._shown_seq = itertools.count(int(state.get("shown_seq", 1)))
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"invalid kb snapshot shown_seq: {exc}") from exc
         kb._rows = {}
         for row in state["rows"]:
             fields = dict(row["fields"])
@@ -392,10 +401,14 @@ class ActorKB:
                 fields["reminder"] = (parse_reminder_time(fields["reminder"], now)
                                       or fields["reminder"])
             last = row.get("last_shown")
+            try:
+                shown = datetime.fromisoformat(last) if last else None
+                seq = int(row.get("shown_seq", 0))
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"invalid kb snapshot row {row.get('id')}: {exc}") from exc
             kb._rows[str(row["id"])] = _Row(str(row["id"]), fields,
                                             str(row["desc"]), str(row.get("status", "open")),
-                                            datetime.fromisoformat(last) if last else None,
-                                            int(row.get("shown_seq", 0)))
+                                            shown, seq)
         kb._overflow = [str(x) for x in state.get("overflow", ())]
         kb._pending_recall = [str(x) for x in state.get("pending_recall", ())]
         return kb

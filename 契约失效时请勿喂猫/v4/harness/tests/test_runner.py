@@ -48,11 +48,11 @@ class RunnerTests(unittest.TestCase):
         states = {actor: PrivateState(actor) for actor in world.actors}
         def broken_agent(state, perception, affordances):
             error = RuntimeError("provider retry budget exhausted")
-            error.retryable = True
-            error.retry_exhausted = True
+            setattr(error, "retryable", True)
+            setattr(error, "retry_exhausted", True)
             raise error
         trace = Trace("v3-test", "terminal-provider")
-        reason = Runner(world, {actor: broken_agent for actor in world.actors}, states, trace,
+        reason = Runner(world, {actor: broken_agent for actor in world.actors}, states, trace,  # type: ignore[arg-type]
                         decision_timeout=1, fail_fast=True).run(max_turns=20)
         self.assertEqual(reason, "agent_failure")
         self.assertTrue(all(t["error"].startswith("retry-exhausted:")
@@ -69,7 +69,7 @@ class RunnerTests(unittest.TestCase):
         agents = {actor: make_persistent_agent(seeds[actor], model, malformed_gm)
                   for actor in world.actors}
         trace = Trace("v2-test", "gm-audit")
-        Runner(world, agents, states, trace, decision_timeout=1).run(
+        Runner(world, agents, states, trace, decision_timeout=1).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T07:01:00+08:00"), max_turns=20)
         self.assertTrue(trace.gm_turns)
         self.assertTrue(all(turn["result"] == "none" for turn in trace.agent_turns))
@@ -90,7 +90,7 @@ class RunnerTests(unittest.TestCase):
         trace = Trace("v2-test", "timeout")
         checkpoints = []
         started = time.monotonic()
-        Runner(world, {actor: slow_agent for actor in world.actors}, states, trace,
+        Runner(world, {actor: slow_agent for actor in world.actors}, states, trace,  # type: ignore[arg-type]
                decision_timeout=0.05, checkpoint=lambda: checkpoints.append(True)).run(
                    stop_at=datetime.fromisoformat("2026-03-16T07:01:00+08:00"), max_turns=20)
         elapsed = time.monotonic() - started
@@ -106,7 +106,7 @@ class RunnerTests(unittest.TestCase):
             time.sleep(0.2)
             return None
         trace = Trace("v3-test", "timeout-stop-boundary")
-        reason = Runner(world, {actor: slow for actor in world.actors}, states, trace,
+        reason = Runner(world, {actor: slow for actor in world.actors}, states, trace,  # type: ignore[arg-type]
                         decision_timeout=0.01, fail_fast=True).run(
                             stop_at=datetime.fromisoformat("2026-03-16T08:00:00+08:00"))
         self.assertEqual(reason, "agent_failure")
@@ -121,7 +121,7 @@ class RunnerTests(unittest.TestCase):
             time.sleep(0.2)
             return None
         trace = Trace("v3-test", "timeout-no-overlap")
-        Runner(world, {actor: slow for actor in world.actors}, states, trace,
+        Runner(world, {actor: slow for actor in world.actors}, states, trace,  # type: ignore[arg-type]
                 decision_timeout=0.01, fail_fast=True).run(max_turns=100)
         self.assertEqual(calls, {actor: (1 if world.actors[actor].role == "mc" else 0)
                                  for actor in world.actors})
@@ -134,7 +134,7 @@ class RunnerTests(unittest.TestCase):
             return None
         trace = Trace("v2-test", "concurrency")
         started = time.monotonic()
-        Runner(world, {actor: slow_agent for actor in world.actors}, states, trace,
+        Runner(world, {actor: slow_agent for actor in world.actors}, states, trace,  # type: ignore[arg-type]
                decision_timeout=1).run(stop_at=datetime.fromisoformat("2026-03-16T07:01:00+08:00"), max_turns=20)
         self.assertLess(time.monotonic() - started, 0.25)
 
@@ -145,7 +145,7 @@ class RunnerTests(unittest.TestCase):
             raise ValueError("malformed model response")
         trace = Trace("v2-test", "fail-fast")
         checkpoints = []
-        reason = Runner(world, {actor: broken_agent for actor in world.actors}, states, trace,
+        reason = Runner(world, {actor: broken_agent for actor in world.actors}, states, trace,  # type: ignore[arg-type]
                         decision_timeout=0.2, checkpoint=lambda: checkpoints.append(True),
                         fail_fast=True).run(stop_at=datetime.fromisoformat("2026-03-16T08:00:00+08:00"))
         self.assertEqual(reason, "agent_failure")
@@ -157,11 +157,11 @@ class RunnerTests(unittest.TestCase):
         states = {actor: PrivateState(actor) for actor in world.actors}
         def broken_agent(state, perception, affordances):
             error = RuntimeError("provider retry budget exhausted")
-            error.retryable = True
-            error.retry_exhausted = True
+            setattr(error, "retryable", True)
+            setattr(error, "retry_exhausted", True)
             raise error
         trace = Trace("v3-test", "retry-exhausted")
-        reason = Runner(world, {actor: broken_agent for actor in world.actors}, states, trace,
+        reason = Runner(world, {actor: broken_agent for actor in world.actors}, states, trace,  # type: ignore[arg-type]
                         decision_timeout=0.2, fail_fast=True).run(
                             stop_at=datetime.fromisoformat("2026-03-16T08:00:00+08:00"))
         self.assertEqual(reason, "agent_failure")
@@ -176,11 +176,11 @@ class RunnerTests(unittest.TestCase):
             attempts[state.actor_id] += 1
             if state.actor_id == "陈默" and attempts[state.actor_id] == 1:
                 error = RuntimeError("temporary upstream failure")
-                error.retryable = True
+                setattr(error, "retryable", True)
                 raise error
             return None
         trace = Trace("v2-test", "retryable-agent-failure")
-        reason = Runner(world, {actor: agent for actor in world.actors}, states, trace,
+        reason = Runner(world, {actor: agent for actor in world.actors}, states, trace,  # type: ignore[arg-type]
                         decision_timeout=1, fail_fast=False, max_transient_failures=2).run(
                             stop_at=datetime.fromisoformat("2026-03-16T08:20:00+08:00"), max_turns=100)
         self.assertEqual(reason, "stop_at_reached")
@@ -195,15 +195,15 @@ class RunnerTests(unittest.TestCase):
             attempts[state.actor_id] += 1
             if state.actor_id == "陈默" and attempts[state.actor_id] <= 2:
                 error = RuntimeError("provider HTTP 502 after bounded retries")
-                error.retryable = True
-                error.retry_exhausted = True
-                error.runner_retryable = True
+                setattr(error, "retryable", True)
+                setattr(error, "retry_exhausted", True)
+                setattr(error, "runner_retryable", True)
                 raise error
             return Intention(state.actor_id, "wait", {"duration_seconds": 60},
                              perception["world_version"])
 
         trace = Trace("v3-test", "runner-provider-recovery")
-        reason = Runner(world, {actor: agent for actor in world.actors}, states, trace,
+        reason = Runner(world, {actor: agent for actor in world.actors}, states, trace,  # type: ignore[arg-type]
                         decision_timeout=1, fail_fast=False, max_transient_failures=3).run(
                             stop_at=datetime.fromisoformat("2026-03-16T08:20:00+00:00"),
                             max_turns=10000)
@@ -220,12 +220,12 @@ class RunnerTests(unittest.TestCase):
             attempts[state.actor_id] += 1
             if state.actor_id == "陈默" and attempts[state.actor_id] == 1:
                 error = RuntimeError("temporary provider failure")
-                error.retryable = True
-                error.runner_retryable = True
+                setattr(error, "retryable", True)
+                setattr(error, "runner_retryable", True)
                 raise error
             return None
         trace = Trace("v3-test", "runner-retry-delay")
-        reason = Runner(world, {actor: agent for actor in world.actors}, states, trace,
+        reason = Runner(world, {actor: agent for actor in world.actors}, states, trace,  # type: ignore[arg-type]
                         retry_delay_seconds=300).run(
                             stop_at=datetime.fromisoformat("2026-03-16T07:10:00+00:00"),
                             max_turns=100)
@@ -239,14 +239,14 @@ class RunnerTests(unittest.TestCase):
 
         def permanently_broken(state, perception, affordances):
             error = RuntimeError("upstream empty response")
-            error.retryable = True
-            error.runner_retryable = True
+            setattr(error, "retryable", True)
+            setattr(error, "runner_retryable", True)
             raise error
 
         trace = Trace("v3-test", "wall-deadline")
         checkpoints = []
         started = time.monotonic()
-        reason = Runner(world, {actor: permanently_broken for actor in world.actors}, states,
+        reason = Runner(world, {actor: permanently_broken for actor in world.actors}, states,  # type: ignore[arg-type]
                         trace, decision_timeout=1, fail_fast=False,
                         max_transient_failures=100, retry_delay_seconds=1,
                         max_wall_seconds=0.25,
@@ -281,7 +281,7 @@ class RunnerTests(unittest.TestCase):
                                inner="先等一分钟再说。"),
                     {"memories": [42]})
         trace = Trace("v2-test", "bad-memory")
-        reason = Runner(world, {actor: malformed for actor in world.actors}, states, trace,
+        reason = Runner(world, {actor: malformed for actor in world.actors}, states, trace,  # type: ignore[arg-type]
                         fail_fast=True, checkpoint=lambda: None).run(
                             stop_at=datetime.fromisoformat("2026-03-16T08:00:00+08:00"))
         self.assertEqual(reason, "stop_at_reached")
@@ -301,7 +301,7 @@ class RunnerTests(unittest.TestCase):
 
         trace = Trace("v2-test", "runner")
         ledger = Ledger({"Where is the red whistle?": "old neighborhood basement"})
-        Runner(world, {actor: agent for actor in world.actors}, states, trace, ledger).run(
+        Runner(world, {actor: agent for actor in world.actors}, states, trace, ledger).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T08:00:00+08:00"), max_turns=1000)
         self.assertEqual(world.now.isoformat(), "2026-03-16T08:00:00+08:00")
         self.assertGreaterEqual(len(trace.agent_turns), len(world.actors))
@@ -317,7 +317,7 @@ class RunnerTests(unittest.TestCase):
                 return Intention("陈默", "system_accept", {"case": "ambiguous-obligations"}, perception["world_version"])
             return None
         trace = Trace("v2-test", "system")
-        Runner(world, {actor: agent for actor in world.actors}, states, trace, Ledger()).run(
+        Runner(world, {actor: agent for actor in world.actors}, states, trace, Ledger()).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T07:01:00+08:00"), max_turns=20)
         self.assertTrue(any(e.kind == "system_case_accepted" for e in world.event_log))
         with self.assertRaises(Exception):
@@ -344,7 +344,7 @@ class RunnerTests(unittest.TestCase):
 
         agents = {actor: (Recorder() if actor == "陈默" else agent) for actor in world.actors}
         trace = Trace("v2-test", "system-reward-feedback")
-        Runner(world, agents, states, trace,
+        Runner(world, agents, states, trace,  # type: ignore[arg-type]
                Ledger({"Where is the red whistle?": "old neighborhood basement"})).run(
                    stop_at=datetime.fromisoformat("2026-03-16T07:01:00+00:00"), max_turns=20)
         # v4 (V4-DESIGN §2): system outcomes are not receipts either - they
@@ -377,7 +377,7 @@ class RunnerTests(unittest.TestCase):
             return Intention(state.actor_id, "wait", {"duration_seconds": 60},
                              perception["world_version"])
 
-        Runner(world, {actor: agent for actor in world.actors}, states,
+        Runner(world, {actor: agent for actor in world.actors}, states,  # type: ignore[arg-type]
                Trace("v3-test", "durable-system-status"), Ledger()).run(
                    stop_at=datetime.fromisoformat("2026-03-16T07:03:00+00:00"), max_turns=100)
         self.assertEqual([kind for _, offered in choices for kind in ("system_accept",)
@@ -401,7 +401,7 @@ class RunnerTests(unittest.TestCase):
 
         agents = {actor: (Recorder() if actor == "陈默" else agent) for actor in world.actors}
         trace = Trace("v2-test", "system-penalty-feedback")
-        Runner(world, agents, states, trace, Ledger()).run(
+        Runner(world, agents, states, trace, Ledger()).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T07:01:00+00:00"), max_turns=20)
         # v4: penalty narrates through perception events.
         from harness.prompt import render_world_message
@@ -434,7 +434,7 @@ class RunnerTests(unittest.TestCase):
                              "case_id": "ambiguous-obligations",
                              "terms": ["x"], "reward": "a clue", "query_limit": 1})
         trace = Trace("v3-test", "system-name")
-        Runner(world, agents, states, trace, ledger).run(
+        Runner(world, agents, states, trace, ledger).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T07:40:00+08:00"), max_turns=20)
         # v4: the configured name surfaces in narration, not receipts.
         from harness.prompt import render_world_message
@@ -452,7 +452,7 @@ class RunnerTests(unittest.TestCase):
                         {"private_notes": ["decided to wait"]})
             return None
         trace = Trace("v2-test", "metadata")
-        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(
+        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T07:01:00+08:00"), max_turns=20)
         turn = next(x for x in trace.agent_turns if x["actor"] == "陈默")
         self.assertTrue(turn["event_ids"])
@@ -493,7 +493,7 @@ class RunnerTests(unittest.TestCase):
         agents = {actor: (Recorder() if actor == "陈默" else agent)
                   for actor in world.actors}
         trace = Trace("v2-test", "move-feedback")
-        Runner(world, agents, states, trace).run(
+        Runner(world, agents, states, trace).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T08:00:00+08:00"), max_turns=1000)
 
         # v4 (V4-DESIGN §2): an accepted action produces NO receipt. The
@@ -510,7 +510,7 @@ class RunnerTests(unittest.TestCase):
             calls[state.actor_id] += 1
             return None
         trace = Trace("v2-test", "wake")
-        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(
+        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T07:10:00+08:00"), max_turns=100)
         # V4-CAST §1: idle NPCs are never clock-polled; only the three MCs.
         self.assertEqual(sum(calls[a] for a in calls if world.actors[a].role == "mc"), 3)
@@ -526,7 +526,7 @@ class RunnerTests(unittest.TestCase):
             return None
 
         trace = Trace("v2-test", "targeted-wake")
-        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(
+        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T08:20:00+08:00"), max_turns=100)
 
         # schedule after ticket 10 (probe-verified): initial turn +
@@ -558,7 +558,7 @@ class RunnerTests(unittest.TestCase):
             return None
 
         trace = Trace("v2-test", "completion-wake")
-        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(
+        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T07:16:00+08:00"), max_turns=100)
 
         self.assertEqual(world.actors["陈默"].location, "女生宿舍")
@@ -588,7 +588,7 @@ class RunnerTests(unittest.TestCase):
             return None
 
         trace = Trace("v2-test", "rejected-action-memory")
-        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(
+        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T08:20:00+08:00"), max_turns=100)
 
         rejected_turn = next(turn for turn in trace.agent_turns if turn["actor"] == "陈默")
@@ -614,7 +614,7 @@ class RunnerTests(unittest.TestCase):
                 }, perception["world_version"])
             return None
 
-        Runner(world, {actor: agent for actor in world.actors}, states, Trace("v2-test", "private-rejection")).run(
+        Runner(world, {actor: agent for actor in world.actors}, states, Trace("v2-test", "private-rejection")).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T08:20:00+08:00"), max_turns=100)
 
         self.assertTrue(any(seen["陈默"][1]["operational_facts"]))
@@ -636,7 +636,7 @@ class RunnerTests(unittest.TestCase):
             return None
 
         trace = Trace("v2-test", "bounded-rejection-retry")
-        reason = Runner(world, {actor: agent for actor in world.actors}, states, trace).run(
+        reason = Runner(world, {actor: agent for actor in world.actors}, states, trace).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T07:05:00+08:00"), max_turns=20)
 
         self.assertEqual(reason, "stop_at_reached")
@@ -656,7 +656,7 @@ class RunnerTests(unittest.TestCase):
                         perception["world_version"])
             return None
         trace = Trace("v3-test", "rejection-feedback-once")
-        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(
+        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T07:05:00+00:00"), max_turns=20)
         facts = seen[1].get("operational_facts", [])
         self.assertEqual(len(facts), 1)
@@ -689,7 +689,7 @@ class RunnerTests(unittest.TestCase):
 
         agents = {actor: (Recorder() if actor == "陈默" else agent)
                   for actor in world.actors}
-        Runner(world, agents, states, Trace("v3-test", "rejection-alternatives")).run(
+        Runner(world, agents, states, Trace("v3-test", "rejection-alternatives")).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T08:20:00+08:00"), max_turns=100)
         fact = perceptions[1]["operational_facts"][0]
         self.assertIn("不是一个你知道的地方", fact["reason"])
@@ -732,11 +732,13 @@ class RunnerTests(unittest.TestCase):
 
         agents = {actor: (Recorder(actor) if actor == "陈默" else agent)
                   for actor in world.actors}
-        Runner(world, agents, states, Trace("v3-test", "action-consequence-feedback")).run(
+        Runner(world, agents, states, Trace("v3-test", "action-consequence-feedback")).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T08:30:00+08:00"), max_turns=1000)
         combined = " ".join(feedback["陈默"] + perceived["陈默"])
-        # v4: accepted actions narrate through perception (no receipts).
-        self.assertIn("等了1分钟", combined)
+        # v4: accepted actions narrate through perception (no receipts); the
+        # wait completion itself is private bookkeeping, never narrated
+        # (auditor F2 — the header's clock already shows the elapsed time).
+        self.assertNotIn("等了", combined)
         self.assertIn("搜了" in combined or "搜索" in combined, combined) if False else None
         self.assertTrue(any("搜" in text for text in perceived["陈默"]))
         self.assertIn("2013年邻居许可证", combined)
@@ -777,7 +779,7 @@ class RunnerTests(unittest.TestCase):
 
             agents = {actor: (Recorder() if actor == "a" else agent)
                       for actor in world.actors}
-            Runner(world, agents, states, Trace("v3-test", "knock-feedback")).run(
+            Runner(world, agents, states, Trace("v3-test", "knock-feedback")).run(  # type: ignore[arg-type]
                 stop_at=datetime.fromisoformat("2026-01-01T00:02:00+00:00"), max_turns=20)
             return " ".join(feedback + perceived)
 
@@ -800,7 +802,7 @@ class RunnerTests(unittest.TestCase):
             return None
 
         trace = Trace("v2-test", "private-wake-filter")
-        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(
+        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T08:20:00+08:00"), max_turns=100)
 
         # schedule after ticket 10: 陈默 wakes for breakfast_rush (07:10),
@@ -820,7 +822,7 @@ class RunnerTests(unittest.TestCase):
             return None
 
         trace = Trace("v2-test", "stop-boundary")
-        reason = Runner(world, {actor: agent for actor in world.actors}, states, trace).run(
+        reason = Runner(world, {actor: agent for actor in world.actors}, states, trace).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T07:05:00+08:00"), max_turns=100)
 
         self.assertEqual(reason, "stop_at_reached")
@@ -840,7 +842,7 @@ class RunnerTests(unittest.TestCase):
             return None
 
         trace = Trace("v2-test", "queue-drain")
-        reason = Runner(world, {actor: agent for actor in world.actors}, states, trace).run(max_turns=100)
+        reason = Runner(world, {actor: agent for actor in world.actors}, states, trace).run(max_turns=100)  # type: ignore[arg-type]
 
         self.assertEqual(reason, "queue_drained")
         self.assertGreaterEqual(sum(calls.values()), len(world.actors))
@@ -854,7 +856,7 @@ class RunnerTests(unittest.TestCase):
                 return Intention("林瑶", "send_message", {"target": "陈默", "text": "forged"}, perception["world_version"])
             return None
         trace = Trace("v2-test", "boundary")
-        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(
+        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T07:01:00+08:00"), max_turns=20)
         turn = next(x for x in trace.agent_turns if x["actor"] == "陈默")
         self.assertEqual(turn["result"], "rejected")
@@ -876,7 +878,7 @@ class RunnerTests(unittest.TestCase):
                                  uninterruptable=True)
             return None
         trace = Trace("v2-test", "inner-rebase")
-        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(
+        Runner(world, {actor: agent for actor in world.actors}, states, trace).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T07:01:00+08:00"), max_turns=20)
         turn = next(x for x in trace.agent_turns if x["actor"] == "陈默"
                     and x.get("inner"))
@@ -903,7 +905,7 @@ class RunnerTests(unittest.TestCase):
                           else (lambda state, perception, affordances: None))
                   for actor in world.actors}
         trace = Trace("v2-test", "inner-telemetry")
-        Runner(world, agents, states, trace).run(
+        Runner(world, agents, states, trace).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T07:11:00+08:00"), max_turns=100)
         reminders = [m for m in feedback if "没有写心声" in m]
         self.assertEqual(len(reminders), 1)
@@ -918,7 +920,7 @@ class RunnerTests(unittest.TestCase):
         def agent(state, perception, affordances):
             return Intention(state.actor_id, "wait", {"duration_seconds": 60}, perception["world_version"])
         trace = Trace("v2-test", "truncated")
-        runner = Runner(world, {actor: agent for actor in world.actors}, states, trace)
+        runner = Runner(world, {actor: agent for actor in world.actors}, states, trace)  # type: ignore[arg-type]
         self.assertEqual(runner.run(max_turns=1), "max_turns_reached")
         self.assertEqual(runner.stop_reason, "max_turns_reached")
 
@@ -926,7 +928,7 @@ class RunnerTests(unittest.TestCase):
         world = create_world()
         states = {actor: PrivateState(actor) for actor in world.actors}
         trace = Trace("v2-test", "complete")
-        Runner(world, {actor: (lambda state, perception, affordances: None) for actor in world.actors}, states, trace).run(
+        Runner(world, {actor: (lambda state, perception, affordances: None) for actor in world.actors}, states, trace).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T08:00:00+08:00"), max_turns=20)
         with self.assertRaises(ValueError):
             trace.verify_complete(world, endpoint="2026-03-27T21:30:00+08:00", stop_event="world_stops")
