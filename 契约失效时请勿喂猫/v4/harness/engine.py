@@ -656,6 +656,9 @@ class AsyncEngine:
                     fail(call, "no notebook seeded for this actor")
                 continue
             if name == "recall":
+                if not (args.get("kinds") or args.get("ids")):
+                    fail(call, "recall needs 'kinds' or 'ids' to select rows")
+                    continue
                 if actor_id in self._kb:
                     lines = self._kb[actor_id].force_recall(
                         args.get("kinds"), args.get("ids"),

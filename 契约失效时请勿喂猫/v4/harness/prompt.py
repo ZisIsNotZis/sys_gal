@@ -91,7 +91,9 @@ def _merged_action_lines(affordances: Sequence[Mapping[str, Any]]) -> list[str]:
     order: list[tuple] = []
     for option in affordances:
         kind = str(option.get("kind", "?"))
-        args = {k: v for k, v in option.items() if k != "kind" and v not in (None, "", {})}
+        # 空值参数保留参数名（agent 填空）：question="" → [system_query] question=…
+        args = {k: v for k, v in option.items()
+                if k != "kind" and v is not None and v != {}}
         key = (kind, tuple(sorted(args)))
         if key not in groups:
             groups[key] = {k: [] for k in args}
@@ -182,10 +184,6 @@ def _event_sentence(event: Mapping[str, Any], location: str = "") -> str | None:
         return f"{who} 在 {payload.get('document')} 上留下批注"
     if kind == "documents_compared":
         return f"{who} 比对 {payload.get('first')} 与 {payload.get('second')}"
-    if kind == "item_inspected":
-        return f"{who} 检查了 {payload.get('item')}"
-    if kind == "location_searched":
-        return f"{who} 搜索了{location or '这里'}"
     if kind == "knock":
         return f"{who} 敲了 {payload.get('target')} 的门"
     if kind == "interaction":
@@ -247,13 +245,6 @@ def _private_line(event: Mapping[str, Any], observer: str) -> str | None:
         return "有人应声。" if payload.get("responded") else "没有人回应。"
     if kind == "interaction" and observer == who:
         return "里面有人听见了。" if payload.get("responded") else "没有人回应。"
-    if kind == "location_searched" and observer == who:
-        found = "、".join(str(x) for x in payload.get("items", []) or [])
-        return f"搜到：{found}" if found else "没什么新发现"
-    if kind == "item_inspected" and observer == who:
-        if payload.get("held"):
-            return "它正在你手里"
-        return f"它放在{payload.get('location')}"
     return None
 
 

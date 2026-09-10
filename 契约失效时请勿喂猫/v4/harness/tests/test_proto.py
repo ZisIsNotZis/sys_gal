@@ -31,7 +31,7 @@ class ToolsTests(unittest.TestCase):
     def test_tools_cover_the_doc_table_without_sleep(self):
         names = {tool["function"]["name"] for tool in TOOLS}
         expected = {"update_memory", "recall", "flashback", "wait", "speak",
-                    "send_message", "move", "read", "copy", "annotate",
+                    "send_message", "move", "read", "annotate",
                     "compare", "take", "drop", "give", "knock",
                     "open", "close", "ask_stranger",
                     "continue_action", "abandon_action",

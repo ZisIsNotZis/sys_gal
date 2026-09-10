@@ -61,8 +61,8 @@ SCHEMAS: dict[str, dict[str, Any]] = {
     "recall": {"type": "object",
                "required": ["inner"],
                "properties": {"inner": _INNER,
-                              "kinds": {"type": "array", "items": _STR},
-                              "ids": {"type": "array", "items": _STR},
+                              "kinds": {"type": "array", "minItems": 1, "items": _STR},
+                              "ids": {"type": "array", "minItems": 1, "items": _STR},
                               "closed": {"type": "boolean"},
                               "limit": {"type": "integer"}},
                "additionalProperties": False},
@@ -98,7 +98,6 @@ SCHEMAS: dict[str, dict[str, Any]] = {
     "knock": _ONE_TARGET,
     "give": _schema(target=_STR, item=_STR),
     "read": _ONE_ITEM_CONTENT,
-    "copy": _ONE_ITEM_CONTENT,
     "annotate": {"type": "object", "required": ["inner", "item", "text"],
                  "properties": {"inner": _INNER, "item": _STR,
                                 "text": {"type": "string", "minLength": 1}},
@@ -119,8 +118,9 @@ _TOOL_DESCRIPTIONS: dict[str, str] = {
         "reminder:\"M/D(周X) HH:MM\" 或自由标签，id 可省略（fields 唯一匹配时自动定位）；"
         "op：open 新建（必须带 desc）/edit 改 desc/close 翻篇。部分成功，失败逐行报错",
     "recall":
-        "立刻翻看记事本：匹配的行逐字回进这个调用的 tool 结果（closed 行需 closed=true）。"
-        "平时不必用——到期的事会自动回到你眼前",
+        "立刻翻看记事本：用 kinds（行类型列表）或 ids（行 id 列表）选择要看的行，"
+        "匹配的行逐字回进这个调用的 tool 结果（closed 行需 closed=true）。"
+        "两者都不填是无效调用。平时不必用——到期的事会自动回到你眼前",
     "flashback":
         "手动闪回：重显某地点/物品/人物相关的、你亲历过的历史。想不起某段经历的具体细节时用",
     "wait": "唯一的时间流逝工具；时长向上取整到 tick 倍数；等待期间事件照常投递。想干等或边等边想时用",
@@ -129,7 +129,6 @@ _TOOL_DESCRIPTIONS: dict[str, str] = {
     "send_message": "发消息（电话），异步，1 tick 后送达；收信人必须是熟人或在场的对象",
     "move": "走向 target；时长由引擎按路线图计算，不用填。离开时在场者会看见你离开",
     "read": "读一份在手边的内容型物品；正文和已有批注只在 tool 结果里给你自己看。他人只看见你在读",
-    "copy": "复印一份内容型物品（需要复印材料）：原件留手，副本可交人或另存",
     "annotate": "在内容型物品上写批注——后续任何读它的人都会看见你的批注",
     "compare": "比对两份都在手边的物品内容是否一致；判定只在 tool 结果里给你自己看",
     "take": "拿起一件在这里的物品",

@@ -59,7 +59,7 @@ class Ledger:
         # 案件默认已接下（用户裁决）：无 accept/decline 仪式，引擎在启动时
         # 自动接案并提交 system_case_accepted 事件。
         if self.status == "accepted" and self.queries_used < self.case.query_limit:
-            return [{"kind": "system_query", "question": ""}]
+            return [{"kind": "system_query", "question": ""}]  # affordance 行带参数名，参数值由 agent 填
         return []
 
     def auto_accept(self, world: World) -> None:
