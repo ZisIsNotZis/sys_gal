@@ -637,8 +637,10 @@ class AsyncEngine:
                     if limit > world.now:
                         world.advance(until=limit)
                 if a.busy_until and self._stop_horizon is not None and a.busy_until > self._stop_horizon:
+                    remaining = len(calls) - calls.index(call) - 1
                     results.append({"tool_call_id": None, "ok": False,
-                                    "text": f"truncated: {truncated} calls dropped"})
+                                    "text": (f"endpoint reached: {remaining} calls dropped"
+                                             if remaining else "endpoint reached")})
                     break  # the run's endpoint cut this chain short
             except ActionRejected as exc:
                 fail(call, str(exc))
