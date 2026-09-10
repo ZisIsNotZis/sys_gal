@@ -558,7 +558,7 @@ class AsyncEngine:
         most actions yield nothing beyond the world's reaction; read and
         compare carry their content/verdict in the tool result."""
         if name == "read":
-            document = world.document_defs.get(str(args.get("document")), {})
+            document = world.document_defs.get(str(args.get("item")), {})
             content = str(document.get("content", ""))
             annotations = document.get("annotations") or []
             if annotations:
@@ -729,7 +729,7 @@ class AsyncEngine:
         self._remember_lines(actor_id, perception)
         result = "submitted" if (world_actions or calls) else "none"
         self._repetition.note_turn(actor_id, None, result)
-        recorded = (Intention(actor_id, str(calls[0].get("name", "think")),
+        recorded = (Intention(actor_id, str(calls[0].get("name", "unknown")),
                               {"calls": [{"name": c.get("name"),
                                            "args": c.get("arguments") or {}}
                                           for c in calls]})

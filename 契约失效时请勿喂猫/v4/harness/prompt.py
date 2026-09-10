@@ -86,7 +86,7 @@ def render_world_message(perception: Mapping[str, Any], affordances: Sequence[Ma
 def _merged_action_lines(affordances: Sequence[Mapping[str, Any]]) -> list[str]:
     """docs §3：同类动作合并为一行——按 (kind, 参数键集合) 分组，同组对应值
     用 、 连接（[drop] item=X、Y）。speak 的 volume/to 由 affordance 自身
-    表达（normal/whisper、在场者候选、无人在场时自言自语）。"""
+    表达（normal/whisper、在场者候选）；空值参数保留参数名（agent 填空）。"""
     groups: dict[tuple, dict[str, list[str]]] = {}
     order: list[tuple] = []
     for option in affordances:
@@ -107,17 +107,13 @@ def _merged_action_lines(affordances: Sequence[Mapping[str, Any]]) -> list[str]:
     lines: list[str] = []
     for key in order:
         kind, arg_keys = key
-        solo = bool(groups[key].get("solo"))
-        rendered_keys = [k for k in arg_keys if k != "solo"]
+        rendered_keys = list(arg_keys)
         rendered_keys.sort(key=lambda k: (k != "volume", k))  # volume 首位
         if not rendered_keys:
-            lines.append(f"[{kind}]{'（自言自语）' if solo else ''}")
+            lines.append(f"[{kind}]")
             continue
         parts = [f"{k}={'、'.join(groups[key][k])}" for k in rendered_keys]
-        line = f"[{kind}] {', '.join(parts)}"
-        if solo:
-            line += "（自言自语）"
-        lines.append(line)
+        lines.append(f"[{kind}] {', '.join(parts)}")
     return lines
 
 
@@ -176,10 +172,6 @@ def _event_sentence(event: Mapping[str, Any], location: str = "") -> str | None:
         return f"{payload.get('from')} 把 {payload.get('item')} 交给 {payload.get('to')}"
     if kind == "document_read":
         return f"{who} 读了 {payload.get('document')}"
-    if kind == "document_copied":
-        return f"{who} 复制 {payload.get('document')} 为 {payload.get('copy')}"
-    if kind == "document_labeled":
-        return f"{who} 把 {payload.get('document')} 标记为 {payload.get('label')}"
     if kind == "document_annotated":
         return f"{who} 在 {payload.get('document')} 上留下批注"
     if kind == "documents_compared":
@@ -286,9 +278,9 @@ def build_prompt(*, identity: str, private_seed: str, state: PrivateState,
         f"LEGAL ACTION SHAPES:\n{[dict(x) for x in affordances]}",
         "只输出一个 JSON 对象，先想后动，inner 永远在最前："
         '{"inner":"你的第一人称心声，几句话","type":"动作名","args":{...},"updates":{...}}。'
-        "type 必须是上面列出的动作之一；参数名照抄供给列表：inspect 用 item；read/copy/label/"
-        "annotate 用 document；compare 用 first 和 second；move 用 target；send_message 和 "
-        "give 用 target；wait/sleep 用 duration_seconds。speak 可带 volume（whisper 时必须带 "
+        "type 必须是上面列出的动作之一；参数名照抄供给列表：take/drop/give/read/annotate "
+        "用 item；compare 用 first 和 second；move 用 target；send_message 和 "
+        "give 用 target；wait 用 duration_seconds。speak 可带 volume（whisper 时必须带 "
         "to=[在场的听众]）。updates 只放你私人的 goals/beliefs/memories/interpretations/"
         "private_notes，没有就省略。无法成形的意图，就用自然语言描述（不要 JSON）。",
     ))

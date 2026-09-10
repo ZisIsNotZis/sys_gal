@@ -67,20 +67,6 @@ def _apply_consequence(world: World, event: Event) -> None:
         # Seeded world events may carry objective effects; replay them so the
         # reconstructed world matches the authoritative run.
         apply_world_effects(world, event.payload)
-    elif event.kind == "document_copied":
-        source = str(event.payload["document"])
-        copy_id = str(event.payload["copy"])
-        if event.actor:
-            actor = world.actors[event.actor]
-            material = sorted(item for item in world.copy_material_items if item in actor.inventory)
-            if material:
-                actor.inventory.remove(material[0])
-        world.document_defs[copy_id] = {**world.document_defs[source], "copied_from": source}
-        world.item_locations[copy_id] = str(event.payload["location"])
-    elif event.kind == "document_labeled":
-        document = str(event.payload["document"])
-        world.document_defs.setdefault(document, {}).setdefault("labels", []).append(
-            str(event.payload["label"]))
     elif event.kind == "document_annotated":
         document = str(event.payload["document"])
         world.document_defs.setdefault(document, {}).setdefault("annotations", []).append({
