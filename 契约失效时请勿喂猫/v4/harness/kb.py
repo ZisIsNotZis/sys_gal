@@ -20,9 +20,9 @@ KNOWLEDGE_REPLAY_MINUTES = 120
 TODO_OPEN_LIMIT = 12
 
 RESERVED_FIELDS = {"person", "location", "item", "todo", "reminder", "self"}
-# Fields whose values participate in the mention set (M7). document joins
-# because world document descriptions auto-expand into document rows (§6):
-# without it they would fall into the unconditional branch.
+# Fields whose values participate in the mention set (M7). "document" stays
+# because legacy event payloads/replays may still carry document= keys; current
+# KB rows are emitted as item= (docs §6).
 _MENTION_FIELDS = ("person", "location", "item", "document")
 _WEEKDAY = {"一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "日": 6}
 _WEEKDAY_CHAR = {v: k for k, v in _WEEKDAY.items()}

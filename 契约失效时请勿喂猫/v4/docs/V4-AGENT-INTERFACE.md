@@ -36,7 +36,7 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 | recall | 同上 | 立刻翻看记事本：匹配的行（含 closed 需 closed:true）逐字回进该调用的 tool 结果（无匹配则明确说明） |
 | flashback | 同上 | 手动闪回：与 entity 相关的、你亲历过的已播历史逐字回进该调用的 tool 结果（无匹配则明确说明） |
 | wait | 是 | 唯一的时间流逝工具（已并入 sleep）；时长向上取整到 tick 倍数；等待期间事件照常长轮询投递（无 asleep 过滤） |
-| speak | 是 | volume: whisper（仅 to 指定的在场者听得见内容；在场其他人看见耳语动作，听不见文本）/ normal（全地点听得见）；text 必填非空 |
+| speak | 是 | volume: whisper（仅 to 指定的在场者听得见内容；在场其他人看见耳语动作，听不见文本）/ normal（全地点听得见）；text 必填非空。**在场无他人时不可用**（没人听得见——等待或移动去找人） |
 | send_message | 是 | 异步，1 tick 后送达；电话/远程事件无距离限制、录下后在对方醒来时可见 |
 | move | 是 | target 必须有路线；**时长由引擎按 world pack 路线图计算（物理，模型不可改）**；KB 中的地图行是信念，无物理效果 |
 | read / annotate / compare | 是 | 内容型物品的动作；compare 需两份都在手，判定在 tool 结果里 |
@@ -68,7 +68,7 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 # actions
 [speak] target=陈默, text=…
 [move] target=后街糕点铺
-[read] document=校报草稿
+[read] item=校报草稿
 [continue]
 ```
 

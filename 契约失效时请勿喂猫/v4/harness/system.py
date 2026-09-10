@@ -64,13 +64,16 @@ class Ledger:
 
     def auto_accept(self, world: World) -> None:
         """案件默认已接下（用户裁决 2026-09-10）：台账提出即生效，无仪式；
-        提交 system_case_accepted 事件供叙事。"""
+        提交 system_case_accepted 事件供叙事。payload 与 accept() 一致——
+        缺 terms/reward_offer 会在渲染里出现字面 None（评审 #1）。"""
         if self.status == "offered":
             self.status = "accepted"
             self.accepted = True
             world.commit_external("system_case_accepted", self.bound_actor, {
-                "system_name": self.name, "case": self.case.id,
-                "condition": "auto-accepted on offer",
+                "system_name": self.name,
+                "case": self.case.id, "terms": list(self.case.terms),
+                "condition": "correct objective fact query",
+                "reward_offer": self.case.reward,
             }, None)
 
     def accept(self, world: World, actor_id: str, case_id: str) -> Event:
@@ -108,7 +111,10 @@ class Ledger:
             raise ActionRejected("query must be concise")
         answer = self.facts.get(question.strip())
         if answer is None:
-            raise ActionRejected("question is outside the Ledger's objective fact table")
+            raise ActionRejected(
+                "question is outside the Ledger's objective fact table; "
+                "the question must match a fact-table entry verbatim "
+                f"(queries used: {self.queries_used}/{self.case.query_limit})")
         self.queries_used += 1
         answer_event = world.commit_external("system_answer", actor_id, {
             "system_name": self.name,

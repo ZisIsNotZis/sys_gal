@@ -505,10 +505,9 @@ class World:
         controllable = self.locations[a.location].controllable
         others_here = sorted(other.id for other in self.actors.values()
                              if other.id != a.id and other.location == a.location)
-        # docs §3：有其他在场者 → normal/whisper（whisper 的 to 候选 = 在场他人）；
-        # 无人在场 → 自言自语。
-        # docs §3: solo speak is always-doable — a static tool, never listed
-        # in #actions (the model knows it from the tool list).
+        # docs §3（修订）: speak 仅在有其他在场者时列出（whisper 的 to 候选 =
+        # 在场他人）；无人在场时引擎拒绝 speak（没人听得见）——模型用 wait 或
+        # move 去找人。
         speak_option = ({"kind": "speak", "volume": "normal/whisper", "to": others_here}
                         if others_here else None)
         options: list[dict[str, Any]] = [
@@ -944,16 +943,6 @@ class World:
             return timedelta(seconds=TICK_SECONDS)
         if i.kind in {"read", "annotate", "compare"}:
             return self._document_duration(a, i)
-        if i.kind == "inspect":
-            item = str(x.get("item"))
-            here, held = self._present_items(a)
-            if self.item_locations.get(item) != a.location and item not in a.inventory:
-                raise ActionRejected(
-                    f"「{item}」不在这里。这里有的：{', '.join(here) or '没有'}。"
-                    f"你拿着的：{', '.join(held) or '没有'}。",
-                    alternatives=[f"inspect {present}" for present in here],
-                    context={"item": item})
-            return timedelta(0)
         if i.kind == "knock":
             target = str(x.get("target"))
             if target not in self.locations or (a.location, target) not in self.routes:
@@ -1106,7 +1095,7 @@ class World:
                             self._interaction_payload(actor, payload), cause)
 
     def _interaction_event(self, kind: str) -> str:
-        return {"inspect": "item_inspected", "search": "location_searched", "knock": "knock", "interact": "interaction", "give": "item_given",
+        return {"knock": "knock", "give": "item_given",
                 "read": "document_read", "annotate": "document_annotated",
                 "compare": "documents_compared"}[kind]
 

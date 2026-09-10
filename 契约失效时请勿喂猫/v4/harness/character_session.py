@@ -281,12 +281,11 @@ class CharacterSession:
             "每次行动，输出恰好一个 JSON 对象，先想后动，inner 永远放在最前：\n"
             '{"inner":"你的第一人称心声，三五句话，谁也听不见","name":"动作名","arguments":{...}}\n'
             "inner 是你心里没说出口的话——写它，然后照着它行动。name 必须是供给列表里的动作；"
-            "参数名照抄供给列表（inspect 用 item；read/copy/label/annotate 用 document；compare "
-            "用 first 和 second；move 用 target；wait/sleep 用 duration_seconds；send_message "
+            "参数名照抄供给列表（take/drop/give/read/annotate 用 item；compare "
+            "用 first 和 second；move 用 target；wait 用 duration_seconds；send_message "
             "和 give 用 target；speak 可带 volume，whisper 时必须带 to=[在场的听众]）。move 不用"
-            "填时长，路有多远世界说了算。打断和不可打断也放在 arguments 里：speak/knock/interact/give "
-            "可带 interrupt=[你要叫住的人]，仅限在场的；sleep/wait/move/read 这类耗时动作可带 "
-            "uninterruptable=true，表示做的时候不想被打断。意图无法用动作表达时，直接用自然语言"
+            "填时长，路有多远世界说了算。打断参数 interrupt=[你要叫住的人] 放在 arguments 里，"
+            "仅限在场的。意图无法用动作表达时，直接用自然语言"
             "描述它，不要硬凑 JSON。消息发出后五分钟才送到，别把话浪费在废话上。"
         )
         return "".join(parts)
