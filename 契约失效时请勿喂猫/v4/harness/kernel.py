@@ -46,11 +46,18 @@ budgeting. Timestamps stay continuous — never assume a time is a tick
 multiple, always round durations up with :func:`tick_ceil`."""
 
 
+def _as_int(value, what="value"):
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"invalid {what}: {value!r}") from exc
+
+
 def tick_ceil(seconds: float) -> int:
     """Round a raw duration up to whole ticks, minimum one tick
     (V4-ENGINE §2.1: every world action, even a query-like one, costs at
     least one tick)."""
-    whole = int(seconds)
+    whole = _as_int(seconds, 'seconds')
     ticks = -(-whole // TICK_SECONDS) if whole > 0 else 1
     return max(1, ticks) * TICK_SECONDS
 
@@ -178,7 +185,7 @@ class World:
 
     ACTIONS = {"wait", "speak", "send_message", "move", "open", "close",
                "take", "drop", "knock", "give",
-               "read", "copy", "annotate", "compare",
+               "read", "annotate", "compare",
                "continue_action", "abandon_action", "ask_stranger"}
 
     def __init__(self, *, start: datetime, actors: Iterable[ActorState],
@@ -197,7 +204,7 @@ class World:
         actor_list = list(actors)
         self.now = start
         self.version = 0
-        self.longest_wait_seconds = int(longest_wait_seconds)
+        self.longest_wait_seconds = _as_int(longest_wait_seconds, 'longest_wait_seconds')
         self.actors = {a.id: a for a in actor_list}
         self.locations = {x.id: x for x in locations}
         self.item_locations = dict(item_locations or {})
@@ -291,7 +298,7 @@ class World:
         restored.restore_checkpoint(state, base=base)
         return restored
 
-    def restore_checkpoint(self, state: Mapping[str, Any], *, base: "World" | None = None) -> None:
+    def restore_checkpoint(self, state: Mapping[str, Any], *, base: "World | None" = None) -> None:
         try:
             if state.get("format") not in {"v3-world-checkpoint-1", "v4-world-checkpoint-1"}:
                 raise CheckpointError("unsupported world checkpoint format")
@@ -385,7 +392,7 @@ class World:
             for (src, dst), secs in self.routes.items():
                 if src != node:
                     continue
-                next_cost = cost + int(secs)
+                next_cost = cost + _as_int(secs, 'route seconds')
                 if next_cost < best.get(dst, next_cost + 1):
                     best[dst] = next_cost
                     prev[dst] = node
@@ -426,7 +433,7 @@ class World:
         if actor_id not in self.actors:
             return  # a despawned extra's leftover hop must not crash the clock
         a = self.actors[actor_id]
-        path, index = job.payload["path"], int(job.payload["index"])
+        path, index = job.payload["path"], _as_int(job.payload["index"], "hop index")
         new = str(path[index])
         if a.location == new:
             return
@@ -464,7 +471,7 @@ class World:
             return False
         sequence = a.current_action.get("sequence")
         if sequence is not None:
-            self._cancelled.add(int(sequence))
+            self._cancelled.add(_as_int(sequence, 'sequence'))
         self._commit("wait_woken", actor_id, {}, None)
         a.busy_until = None
         a.current_action = None
@@ -477,7 +484,7 @@ class World:
         return self._schedule(when, "private_wake", actor_id, {}, None).sequence
 
     def cancel_scheduled(self, sequence: int) -> None:
-        self._cancelled.add(int(sequence))
+        self._cancelled.add(_as_int(sequence, 'sequence'))
 
     def has_wakeup(self, actor_id: str) -> bool:
         """Return whether an idle actor has observable work to poll."""
@@ -527,9 +534,6 @@ class World:
         options += [{"kind": "compare", "first": first, "second": second}
                     for index, first in enumerate(sorted(available_documents))
                     for second in sorted(available_documents)[index + 1:]]
-        options += [{"kind": "copy", "item": document}
-                    for document in sorted(available_documents)
-                    if any(item in a.inventory for item in self.copy_material_items)]
         options += [{"kind": "annotate", "item": document, "text": ""}
                     for document in sorted(available_documents)]
         return options
@@ -539,7 +543,12 @@ class World:
         if intention.expected_version is not None and intention.expected_version != self.version:
             raise ActionRejected("世界已发生变化，请重新观察后再行动（stale world version）")
         if intention.kind not in self.ACTIONS:
-            raise ActionRejected(f"未知动作 '{intention.kind}'。可用动作见你收到的动作列表。")
+            if intention.kind == "think":
+                raise ActionRejected(
+                    "unknown action 'think' (retired): put your inner voice in the "
+                    "'inner' argument of every call")
+            raise ActionRejected(f"unknown action '{intention.kind}'; "
+                                 "see #actions for what you can do here")
         # inner is an agent-protocol field (V4-AGENT-INTERFACE §2) enforced by
         # the ENGINE; the kernel validates only the world-physics shape.
         probe_args = dict(intention.args)
@@ -577,9 +586,6 @@ class World:
             move_path, move_hops = found
             action_payload["path"] = list(move_path)
             action_payload["hop_seconds"] = list(move_hops)
-        if intention.kind == "copy":
-            source = str(action_payload["item"])
-            action_payload["copy"] = f"{source}-copy-{self.version + 1}"
         uninterruptable = intention.uninterruptable
         if uninterruptable is None:
             uninterruptable = False
@@ -625,7 +631,7 @@ class World:
             if move_path is not None:
                 hop_sequences = self._schedule_move_hops(
                     a.id, move_path, move_hops or [],
-                    int(duration.total_seconds()), started.id if started else None)
+                    _as_int(duration.total_seconds(), 'duration'), started.id if started else None)
             job = self._schedule(self.now + duration, "action_completed", a.id,
                                  action_payload, started.id if started else None)
             sequence = job.sequence
@@ -660,12 +666,12 @@ class World:
             current = target.current_action or {}
             if current.get("uninterruptable"):
                 continue
-            remaining = int((target.busy_until - self.now).total_seconds())
+            remaining = _as_int((target.busy_until - self.now).total_seconds(), 'remaining')
             sequence = current.get("sequence")
             if sequence is not None:
-                self._cancelled.add(int(sequence))
+                self._cancelled.add(_as_int(sequence, 'sequence'))
             for hop_sequence in current.get("hop_sequences", ()) or ():
-                self._cancelled.add(int(hop_sequence))
+                self._cancelled.add(_as_int(hop_sequence, 'hop sequence'))
             payload = dict(current.get("payload", {}))
             pending = {"payload": payload, "remaining_seconds": remaining,
                        "interrupted_by": actor.id}
@@ -673,7 +679,7 @@ class World:
                 # Multi-hop move: the remaining walk resumes from the last
                 # entered location (V4 multi-hop move semantics).
                 path = [str(x) for x in payload.get("path", ())]
-                hops = [int(x) for x in payload.get("hop_seconds", ())]
+                hops = [_as_int(x, 'hop seconds') for x in payload.get("hop_seconds", ())]
                 if target.location in path and hops:
                     index = path.index(target.location)
                     pending["remaining_hops"] = hops[index:]
@@ -700,18 +706,18 @@ class World:
         current = a.current_action or {}
         if current.get("uninterruptable"):
             return False
-        remaining = int((a.busy_until - self.now).total_seconds())
+        remaining = _as_int((a.busy_until - self.now).total_seconds(), 'remaining')
         sequence = current.get("sequence")
         if sequence is not None:
-            self._cancelled.add(int(sequence))
+            self._cancelled.add(_as_int(sequence, 'sequence'))
         for hop_sequence in current.get("hop_sequences", ()) or ():
-            self._cancelled.add(int(hop_sequence))
+            self._cancelled.add(_as_int(hop_sequence, 'hop sequence'))
         payload = dict(current.get("payload", {}))
         pending = {"payload": payload, "remaining_seconds": remaining,
                    "interrupted_by": by}
         if payload.get("action") == "move" and a.location != payload.get("target"):
             path = [str(x) for x in payload.get("path", ())]
-            hops = [int(x) for x in payload.get("hop_seconds", ())]
+            hops = [_as_int(x, 'hop seconds') for x in payload.get("hop_seconds", ())]
             if a.location in path and hops:
                 index = path.index(a.location)
                 pending["remaining_hops"] = hops[index:]
@@ -737,7 +743,7 @@ class World:
         hop_sequences: list[int] = []
         if payload.get("action") == "move" and pending.get("remaining_path"):
             remaining_path = [str(x) for x in pending["remaining_path"]]
-            remaining_hops = [int(x) for x in pending.get("remaining_hops", ())]
+            remaining_hops = [_as_int(x, 'remaining hops') for x in pending.get("remaining_hops", ())]
             hop_sequences = self._schedule_move_hops(
                 a.id, remaining_path, remaining_hops, remaining, event.id)
         job = self._schedule(self.now + timedelta(seconds=remaining),
@@ -793,7 +799,7 @@ class World:
                     out.append(self._commit("message_delivered", job.actor, {
                         "target": str(job.payload["target"]), "text": str(job.payload["text"])
                     }, event.id))
-                if job.payload["action"] in {"read", "copy", "annotate", "compare"}:
+                if job.payload["action"] in {"read", "annotate", "compare"}:
                     out.append(self._commit_interaction(job.actor, job.payload, event.id))
             elif job.kind == "world_event":
                 # Seeded world events may carry story-neutral objective
@@ -936,7 +942,7 @@ class World:
             # tick to arrive, common knowledge, so sending words has a real
             # time cost.
             return timedelta(seconds=TICK_SECONDS)
-        if i.kind in {"read", "copy", "annotate", "compare"}:
+        if i.kind in {"read", "annotate", "compare"}:
             return self._document_duration(a, i)
         if i.kind == "inspect":
             item = str(x.get("item"))
@@ -1058,18 +1064,12 @@ class World:
                 f"「{document}」现在不在你手边。你能读的：{', '.join(available) or '无'}。",
                 alternatives=[f"read {present}" for present in available],
                 context={"document": document})
-        if kind == "copy":
-            if not any(item in actor.inventory for item in self.copy_material_items):
-                raise ActionRejected(
-                    f"复印需要复印材料。你有：{', '.join(sorted(actor.inventory)) or '没有'}。",
-                    context={"copy_material": sorted(self.copy_material_items)})
-            return timedelta(seconds=int(self.document_defs[document].get("reading_seconds", 30)) + 15)
         if kind == "annotate":
             text = intention.args.get("text")
             if not isinstance(text, str) or not text.strip():
                 raise ActionRejected("annotate 需要非空文本。")
             return timedelta(seconds=3)
-        return timedelta(seconds=int(self.document_defs[document].get("reading_seconds", 30)))
+        return timedelta(seconds=_as_int(self.document_defs[document].get("reading_seconds", 30), "reading_seconds"))
 
     def _complete(self, actor_id: str, payload: Mapping[str, Any]) -> None:
         if actor_id not in self.actors:
@@ -1093,13 +1093,6 @@ class World:
         elif kind == "give":
             item = str(payload["item"]); target = self._actor(str(payload["target"]))
             a.inventory.remove(item); target.inventory.add(item)
-        elif kind == "copy":
-            material = sorted(item for item in self.copy_material_items if item in a.inventory)[0]
-            a.inventory.remove(material)
-            source = str(payload["item"])
-            copy_id = str(payload.get("copy") or f"{source}-copy-{self.version + 1}")
-            self.document_defs[copy_id] = {**self.document_defs[source], "copied_from": source}
-            self.item_locations[copy_id] = a.location
         elif kind in {"open", "close"}:
             _set_location_open(self, a.location, kind == "open")
         elif kind == "sleep": a.sleeping = False
@@ -1114,7 +1107,7 @@ class World:
 
     def _interaction_event(self, kind: str) -> str:
         return {"inspect": "item_inspected", "search": "location_searched", "knock": "knock", "interact": "interaction", "give": "item_given",
-                "read": "document_read", "copy": "document_copied", "annotate": "document_annotated",
+                "read": "document_read", "annotate": "document_annotated",
                 "compare": "documents_compared"}[kind]
 
     def _interaction_payload(self, actor: ActorState, intention: Mapping[str, Any]) -> dict[str, Any]:
@@ -1132,13 +1125,6 @@ class World:
                           "time": self.now.isoformat()}
             self.document_defs[document].setdefault("annotations", []).append(annotation)
             return {"document": document, "annotation": str(intention.get("text")), "by": actor.id}
-        if kind == "copy":
-            source = str(intention["item"])
-            # The scheduled action already owns the deterministic copy ID.
-            # Recomputing it here races the event-version counter and breaks
-            # the public completion event and replay provenance.
-            copy = str(intention.get("copy") or f"{source}-copy-{self.version + 1}")
-            return {"document": source, "copy": copy, "copied_from": source, "location": actor.location}
         if kind == "compare":
             first, second = str(intention["first"]), str(intention["second"])
             return {"first": first, "second": second,
@@ -1201,11 +1187,11 @@ class World:
         if kind == "documents_compared":
             # The equality verdict is the actor's private analysis.
             return {str(actor)}
-        if kind in {"document_copied", "document_annotated"}:
+        if kind == "document_annotated":
             # Visible facts on the physical record.
             return self._co_located(str(actor))
         if kind in {"action_started", "action_completed"} and payload.get("action") in {
-                "read", "copy", "compare", "annotate"}:
+                "read", "compare", "annotate"}:
             # The fact is public; the content never is (carried only by the
             # private document_read event above).
             return self._co_located(str(actor))

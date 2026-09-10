@@ -1,0 +1,4 @@
+[real_run] max_wall_seconds=14400.0 decision_timeout=5045
+[engine] stop: stop_at_reached
+note: 10 agent errors survived as lost turns
+/home/z/vibe/sys_gal/契约失效时请勿喂猫/v4/runs/real-20260908T145714+0800-1794461-691971812.json reason=stop_at_reached events=2607 turns=1024 time=2026-03-16T22:00:00+08:00

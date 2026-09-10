@@ -121,7 +121,6 @@ class AsyncEngine:
         self.director_brief = director_brief
         self.flashback_horizon_minutes = _as_int(flashback_horizon_minutes, 'flashback_horizon_minutes')
         self._recall_lines: dict[str, list[str]] = {}
-        self._flashback_display: dict[str, list[str]] = {}
         self._flashback_pool: dict[str, list[tuple[datetime, str, frozenset[str]]]] = {}
         self._pending_notices: dict[str, list[str]] = {}
         self._reminder_jobs: dict[tuple[str, str], int] = {}
@@ -453,13 +452,11 @@ class AsyncEngine:
         v4 = hasattr(self.agents[actor_id], "session_obj")
         if v4:
             knowledge_lines = self._knowledge_lines(actor_id, perception, affordances)
-            flashback_lines = self._flashback_display.pop(actor_id, [])
             director = (self.director_brief(actor_id)
                         if self.director_brief and self._role(actor_id) == "npc" and npc_reason
                         else None)
             text = render_world_message(perception, affordances, observer=actor_id,
-                                        knowledge_lines=knowledge_lines,
-                                        flashback_lines=flashback_lines, director=director)
+                                        knowledge_lines=knowledge_lines, director=director)
             decide_task = loop.create_task(asyncio.to_thread(
                 self._decide_v4, actor_id, text))
         else:
@@ -476,7 +473,7 @@ class AsyncEngine:
             elif isinstance(decision, tuple):
                 intention, updates = decision
             else:
-                intention = decision
+                intention = decision if not isinstance(decision, list) else None
             result, error = "decided", None
         except asyncio.TimeoutError:
             result, error = "decision_timeout", "agent decision exceeded the deadline"
@@ -615,6 +612,12 @@ class AsyncEngine:
             if call.get("parse_error"):
                 fail(call, f"unparseable arguments: {call['parse_error']}")
                 continue
+            if name == "think":
+                # retired tool (docs §2): the inner argument replaced it —
+                # teach the model instead of failing silently.
+                fail(call, "unknown action 'think' (retired): put your inner "
+                           "voice in the 'inner' argument of every call")
+                continue
             # inner is mandatory on EVERY call (V4-AGENT-INTERFACE §2):
             # missing/empty → the call does not execute.
             inner = args.pop("inner", None)
@@ -622,6 +625,25 @@ class AsyncEngine:
                 fail(call, "inner missing: 每个调用都要带上非空 inner——这一动作当下的心声")
                 continue
             inner = inner.strip()
+            if name in {"system_accept", "system_decline", "system_query"}:
+                if self.system is None:
+                    fail(call, "no ledger bound in this world")
+                    continue
+                before = len(world.event_log)
+                try:
+                    if name == "system_accept":
+                        event = self.system.accept(world, actor_id, str(args.get("case")))
+                    elif name == "system_decline":
+                        event = self.system.decline(world, actor_id)
+                    else:
+                        event = self.system.ask(world, actor_id, str(args.get("question")))
+                    results.append({"tool_call_id": call.get("tool_call_id"),
+                                    "ok": True, "text": "ok"})
+                except ActionRejected as exc:
+                    fail(call, str(exc))
+                except Exception as exc:
+                    fail(call, f"{type(exc).__name__}: {exc}")
+                continue
             if name == "update_memory":
                 if actor_id in self._kb:
                     errs, _tel = self._kb[actor_id].apply_ops(args.get("rows") or [], world.now)
@@ -641,10 +663,16 @@ class AsyncEngine:
                 results.append({"tool_call_id": call.get("tool_call_id"), "ok": True, "text": "ok"})
                 continue
             if name == "flashback":
-                self._flashback_display[actor_id] = self._flashback_query(
-                    actor_id, str(args.get("entity") or ""))
-                results.append({"tool_call_id": call.get("tool_call_id"), "ok": True, "text": "ok"})
+                lines = self._flashback_query(actor_id, str(args.get("entity") or ""))
+                results.append({"tool_call_id": call.get("tool_call_id"), "ok": True,
+                                "text": "\n".join(lines) or "（没有与你经历相关的可回放历史。）"})
                 continue
+            if name == "speak":
+                co = [x.id for x in world.actors.values()
+                      if x.id != actor_id and x.location == world.actors[actor_id].location]
+                if not co:
+                    fail(call, "这里没有别人，说话没人听得见。等待、移动，或找到人再说。")
+                    continue
             try:
                 world.submit(Intention(actor_id, name, args, world.version,
                                        inner=inner))
@@ -1084,7 +1112,6 @@ class AsyncEngine:
                 "heartbeat_jobs": dict(self._heartbeat_jobs),
                 "kb": {actor: kb.snapshot() for actor, kb in self._kb.items()},
                 "recall_lines": {k: list(v) for k, v in self._recall_lines.items()},
-                "flashback_display": {k: list(v) for k, v in self._flashback_display.items()},
                 "flashback_pool": {actor: [[t.isoformat(), line, sorted(entities)]
                                             for (t, line, entities) in pool]
                                     for actor, pool in self._flashback_pool.items()}}
@@ -1109,7 +1136,6 @@ class AsyncEngine:
         self._extras = {name: {**x, "last_active": _dt.fromisoformat(x["last_active"])}
                         for name, x in state.get("extras", {}).items()}
         self._recall_lines = {k: list(v) for k, v in state.get("recall_lines", {}).items()}
-        self._flashback_display = {k: list(v) for k, v in state.get("flashback_display", {}).items()}
         self._flashback_pool = {
             actor: [(_dt.fromisoformat(row[0]), row[1], frozenset(row[2]))
                     for row in pool]

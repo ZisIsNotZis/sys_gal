@@ -1,0 +1,6954 @@
+{
+  "format": "v3-trajectory-1",
+  "seed_version": "v3",
+  "run_id": "preflight-20260907T094707+0800-1363033-519492125",
+  "agent_turns": [
+    {
+      "actor": "唐小岚",
+      "perception": {
+        "observer": "唐小岚",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "半坡咖啡馆",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "校报草稿",
+          "裂纹马克杯"
+        ],
+        "inbox": [],
+        "events": [],
+        "knowledge": {},
+        "descriptions": {
+          "裂纹马克杯": "# 裂纹马克杯\n\n一只缺口的咖啡馆杯子，属于这家店，不属于把它捡走的人。",
+          "校报草稿": "# 校报草稿\n\n半坡咖啡馆桌上一份打印草稿，用胳膊圈着写的那种。它属于一位不常露面的记\n者；草稿的来路与信源，世界不替任何人回答。",
+          "半坡咖啡馆": "# 半坡咖啡馆\n\n校门口的独立咖啡馆，门面窄，进深长。吧台正对大门，磨豆机响的时候，吧台\n三步之内才听得清说话；磨豆机一停，全店的低语都浮上来。雨天的下午玻璃上\n全是雾气，躲雨的人和赶作业的人挤在一起，谁进来都先被咖啡师看见。"
+        },
+        "_turn_id": "turn-1"
+      },
+      "private_state": {
+        "actor_id": "唐小岚",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "校史档案室"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "move",
+          "target": "图书馆"
+        },
+        {
+          "kind": "move",
+          "target": "小卖部"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "take",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "inspect",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "inspect",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "校报草稿"
+        },
+        {
+          "kind": "label",
+          "document": "校报草稿",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "校报草稿",
+          "text": ""
+        }
+      ],
+      "intention": {
+        "actor": "唐小岚",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 0
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "林瑶",
+      "perception": {
+        "observer": "林瑶",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "女生宿舍",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "宿管阿姨",
+          "林瑶室友"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [],
+        "knowledge": {},
+        "descriptions": {
+          "女生宿舍": "# 女生宿舍\n\n和男生宿舍隔一条小路，楼却新一些。一楼大厅有宿管阿姨的值班台，台上的登记\n本永远摊开在当天那一页。公告栏贴着查寝表和一张已经褪色的\"文明寝室\"奖状。\n三楼及以上，男生止步。\n\n林瑶住 305，靠门的上铺，桌上一盏绿罩台灯。"
+        },
+        "_turn_id": "turn-2"
+      },
+      "private_state": {
+        "actor_id": "林瑶",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "宿管阿姨"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶室友"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "辅导员"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "男生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": {
+        "actor": "林瑶",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 0
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "陈默",
+      "perception": {
+        "observer": "陈默",
+        "time": "2026-03-16T07:00:00+08:00",
+        "world_version": 0,
+        "location": "男生宿舍",
+        "inventory": [
+          "2013年邻居许可证",
+          "空白纸"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [],
+        "knowledge": {},
+        "descriptions": {
+          "2013年邻居许可证": "# 2013年邻居许可证\n\n一张泛黄的许可证表格。可读内容以世界包里的登记文本为准；它目前在谁手里、\n被谁见过，世界不做任何暗示。",
+          "空白纸": "# 空白纸\n\n普通的空白纸，适合当誊抄材料。",
+          "男生宿舍": "# 男生宿舍\n\n标准四人间加一条长走廊，隔音靠运气。走廊尽头有投币洗衣机，谁半夜洗衣服，\n整层都听得见。门口值班墙上钉着电费单和一张手写的\"晚归登记\"纸，纸角已经卷\n了。楼道里常年混着泡面和洗衣粉的味道。\n\n陈默住 302，靠窗的下铺。"
+        },
+        "_turn_id": "turn-3"
+      },
+      "private_state": {
+        "actor_id": "陈默",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默妈"
+        },
+        {
+          "kind": "move",
+          "target": "女生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "inspect",
+          "item": "空白纸"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "drop",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "drop",
+          "item": "空白纸"
+        },
+        {
+          "kind": "read",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "copy",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "label",
+          "document": "2013年邻居许可证",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "2013年邻居许可证",
+          "text": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": {
+        "actor": "陈默",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 0
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 0,
+      "version_after": 0,
+      "event_ids": []
+    },
+    {
+      "actor": "唐小岚",
+      "perception": {
+        "observer": "唐小岚",
+        "time": "2026-03-16T07:10:00+08:00",
+        "world_version": 1,
+        "location": "半坡咖啡馆",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "校报草稿",
+          "裂纹马克杯"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 1,
+            "time": "2026-03-16T07:10:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "breakfast_rush",
+              "time": "2026-03-16T07:10:00+08:00",
+              "notice": "食堂开门。豆浆和包子的蒸汽从后厨涌出来，早八前的队伍排到了门口。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-唐小岚-1",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-4"
+      },
+      "private_state": {
+        "actor_id": "唐小岚",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "校史档案室"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "move",
+          "target": "图书馆"
+        },
+        {
+          "kind": "move",
+          "target": "小卖部"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "take",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "inspect",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "inspect",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "校报草稿"
+        },
+        {
+          "kind": "label",
+          "document": "校报草稿",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "校报草稿",
+          "text": ""
+        }
+      ],
+      "intention": {
+        "actor": "唐小岚",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 1
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 1,
+      "version_after": 1,
+      "event_ids": []
+    },
+    {
+      "actor": "林瑶",
+      "perception": {
+        "observer": "林瑶",
+        "time": "2026-03-16T07:10:00+08:00",
+        "world_version": 1,
+        "location": "女生宿舍",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "宿管阿姨",
+          "林瑶室友"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 1,
+            "time": "2026-03-16T07:10:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "breakfast_rush",
+              "time": "2026-03-16T07:10:00+08:00",
+              "notice": "食堂开门。豆浆和包子的蒸汽从后厨涌出来，早八前的队伍排到了门口。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-林瑶-2",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-5"
+      },
+      "private_state": {
+        "actor_id": "林瑶",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "宿管阿姨"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶室友"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "辅导员"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "男生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": {
+        "actor": "林瑶",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 1
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 1,
+      "version_after": 1,
+      "event_ids": []
+    },
+    {
+      "actor": "陈默",
+      "perception": {
+        "observer": "陈默",
+        "time": "2026-03-16T07:10:00+08:00",
+        "world_version": 1,
+        "location": "男生宿舍",
+        "inventory": [
+          "2013年邻居许可证",
+          "空白纸"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 1,
+            "time": "2026-03-16T07:10:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "breakfast_rush",
+              "time": "2026-03-16T07:10:00+08:00",
+              "notice": "食堂开门。豆浆和包子的蒸汽从后厨涌出来，早八前的队伍排到了门口。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-陈默-3",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-6"
+      },
+      "private_state": {
+        "actor_id": "陈默",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默妈"
+        },
+        {
+          "kind": "move",
+          "target": "女生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "inspect",
+          "item": "空白纸"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "drop",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "drop",
+          "item": "空白纸"
+        },
+        {
+          "kind": "read",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "copy",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "label",
+          "document": "2013年邻居许可证",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "2013年邻居许可证",
+          "text": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": {
+        "actor": "陈默",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 1
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 1,
+      "version_after": 1,
+      "event_ids": []
+    },
+    {
+      "actor": "陈默",
+      "perception": {
+        "observer": "陈默",
+        "time": "2026-03-16T07:35:00+08:00",
+        "world_version": 2,
+        "location": "男生宿舍",
+        "inventory": [
+          "2013年邻居许可证",
+          "空白纸"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 2,
+            "time": "2026-03-16T07:35:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "mom_call",
+              "time": "2026-03-16T07:35:00+08:00",
+              "target": "陈默",
+              "notice": "手机震动，是妈妈的电话。你没接住，紧接着进来一条六十秒的语音和一条文字消息：'周末回家一趟吧，隔壁李阿姨给她儿子相亲了个姑娘……对了，钱够不够花？'"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-陈默-6",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-7"
+      },
+      "private_state": {
+        "actor_id": "陈默",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默妈"
+        },
+        {
+          "kind": "move",
+          "target": "女生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "inspect",
+          "item": "空白纸"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "drop",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "drop",
+          "item": "空白纸"
+        },
+        {
+          "kind": "read",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "copy",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "label",
+          "document": "2013年邻居许可证",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "2013年邻居许可证",
+          "text": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": {
+        "actor": "陈默",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 2
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 2,
+      "version_after": 2,
+      "event_ids": []
+    },
+    {
+      "actor": "唐小岚",
+      "perception": {
+        "observer": "唐小岚",
+        "time": "2026-03-16T08:00:00+08:00",
+        "world_version": 3,
+        "location": "半坡咖啡馆",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "校报草稿",
+          "裂纹马克杯"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 3,
+            "time": "2026-03-16T08:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "morning_class_bell",
+              "time": "2026-03-16T08:00:00+08:00",
+              "notice": "教学楼那边上课铃响了，中庭和河堤一下子空了下来。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-唐小岚-4",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-8"
+      },
+      "private_state": {
+        "actor_id": "唐小岚",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "校史档案室"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "move",
+          "target": "图书馆"
+        },
+        {
+          "kind": "move",
+          "target": "小卖部"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "take",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "inspect",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "inspect",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "校报草稿"
+        },
+        {
+          "kind": "label",
+          "document": "校报草稿",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "校报草稿",
+          "text": ""
+        }
+      ],
+      "intention": {
+        "actor": "唐小岚",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 3
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 3,
+      "version_after": 3,
+      "event_ids": []
+    },
+    {
+      "actor": "林瑶",
+      "perception": {
+        "observer": "林瑶",
+        "time": "2026-03-16T08:00:00+08:00",
+        "world_version": 3,
+        "location": "女生宿舍",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "宿管阿姨",
+          "林瑶室友"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 3,
+            "time": "2026-03-16T08:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "morning_class_bell",
+              "time": "2026-03-16T08:00:00+08:00",
+              "notice": "教学楼那边上课铃响了，中庭和河堤一下子空了下来。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-林瑶-5",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-9"
+      },
+      "private_state": {
+        "actor_id": "林瑶",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "宿管阿姨"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶室友"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "辅导员"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "男生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": {
+        "actor": "林瑶",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 3
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 3,
+      "version_after": 3,
+      "event_ids": []
+    },
+    {
+      "actor": "陈默",
+      "perception": {
+        "observer": "陈默",
+        "time": "2026-03-16T08:00:00+08:00",
+        "world_version": 3,
+        "location": "男生宿舍",
+        "inventory": [
+          "2013年邻居许可证",
+          "空白纸"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 3,
+            "time": "2026-03-16T08:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "morning_class_bell",
+              "time": "2026-03-16T08:00:00+08:00",
+              "notice": "教学楼那边上课铃响了，中庭和河堤一下子空了下来。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-陈默-7",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-10"
+      },
+      "private_state": {
+        "actor_id": "陈默",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默妈"
+        },
+        {
+          "kind": "move",
+          "target": "女生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "inspect",
+          "item": "空白纸"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "drop",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "drop",
+          "item": "空白纸"
+        },
+        {
+          "kind": "read",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "copy",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "label",
+          "document": "2013年邻居许可证",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "2013年邻居许可证",
+          "text": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": {
+        "actor": "陈默",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 3
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 3,
+      "version_after": 3,
+      "event_ids": []
+    },
+    {
+      "actor": "陈默",
+      "perception": {
+        "observer": "陈默",
+        "time": "2026-03-16T08:10:00+08:00",
+        "world_version": 4,
+        "location": "男生宿舍",
+        "inventory": [
+          "2013年邻居许可证",
+          "空白纸"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 4,
+            "time": "2026-03-16T08:10:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "校史档案室_shift",
+              "time": "2026-03-16T08:10:00+08:00",
+              "target": "陈默",
+              "notice": "你在档案室的上午班开始了。签到本在门口桌上，管理员今天不在，值班的学生只有你。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-陈默-10",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-11"
+      },
+      "private_state": {
+        "actor_id": "陈默",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默妈"
+        },
+        {
+          "kind": "move",
+          "target": "女生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "inspect",
+          "item": "空白纸"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "drop",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "drop",
+          "item": "空白纸"
+        },
+        {
+          "kind": "read",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "copy",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "label",
+          "document": "2013年邻居许可证",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "2013年邻居许可证",
+          "text": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": {
+        "actor": "陈默",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 4
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 4,
+      "version_after": 4,
+      "event_ids": []
+    },
+    {
+      "actor": "宿管阿姨",
+      "perception": {
+        "observer": "宿管阿姨",
+        "time": "2026-03-16T09:30:00+08:00",
+        "world_version": 5,
+        "location": "女生宿舍",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "林瑶",
+          "林瑶室友"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 1,
+            "time": "2026-03-16T07:10:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "breakfast_rush",
+              "time": "2026-03-16T07:10:00+08:00",
+              "notice": "食堂开门。豆浆和包子的蒸汽从后厨涌出来，早八前的队伍排到了门口。"
+            },
+            "cause": null
+          },
+          {
+            "id": 3,
+            "time": "2026-03-16T08:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "morning_class_bell",
+              "time": "2026-03-16T08:00:00+08:00",
+              "notice": "教学楼那边上课铃响了，中庭和河堤一下子空了下来。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "descriptions": {
+          "女生宿舍": "# 女生宿舍\n\n和男生宿舍隔一条小路，楼却新一些。一楼大厅有宿管阿姨的值班台，台上的登记\n本永远摊开在当天那一页。公告栏贴着查寝表和一张已经褪色的\"文明寝室\"奖状。\n三楼及以上，男生止步。\n\n林瑶住 305，靠门的上铺，桌上一盏绿罩台灯。"
+        },
+        "_turn_id": "turn-12"
+      },
+      "private_state": {
+        "actor_id": "宿管阿姨",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶室友"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "男生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": {
+        "actor": "宿管阿姨",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 5
+      },
+      "inner": null,
+      "private": true,
+      "role": "npc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 5,
+      "version_after": 5,
+      "event_ids": []
+    },
+    {
+      "actor": "林瑶",
+      "perception": {
+        "observer": "林瑶",
+        "time": "2026-03-16T09:30:00+08:00",
+        "world_version": 5,
+        "location": "女生宿舍",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "宿管阿姨",
+          "林瑶室友"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 5,
+            "time": "2026-03-16T09:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "accessibility_check",
+              "time": "2026-03-16T09:30:00+08:00",
+              "target": "林瑶",
+              "notice": "无障碍改造核查今天上午要交台账依据，2013 年那批旧记录也许用得上。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-林瑶-9",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-13"
+      },
+      "private_state": {
+        "actor_id": "林瑶",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "宿管阿姨"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶室友"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "辅导员"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "男生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": {
+        "actor": "林瑶",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 5
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 5,
+      "version_after": 5,
+      "event_ids": []
+    },
+    {
+      "actor": "班长",
+      "perception": {
+        "observer": "班长",
+        "time": "2026-03-16T09:30:00+08:00",
+        "world_version": 5,
+        "location": "教学楼",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "辅导员"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 1,
+            "time": "2026-03-16T07:10:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "breakfast_rush",
+              "time": "2026-03-16T07:10:00+08:00",
+              "notice": "食堂开门。豆浆和包子的蒸汽从后厨涌出来，早八前的队伍排到了门口。"
+            },
+            "cause": null
+          },
+          {
+            "id": 3,
+            "time": "2026-03-16T08:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "morning_class_bell",
+              "time": "2026-03-16T08:00:00+08:00",
+              "notice": "教学楼那边上课铃响了，中庭和河堤一下子空了下来。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "descriptions": {
+          "教学楼": "# 教学楼\n\n三层板楼，上下课铃慢半拍。走廊尽头是辅导员的办公室，门上贴着作息表和一\n张手写条：\"开会中，有事留言\"。公告栏在正门内侧，学生会和教务处的通知挤在\n一起，最新的那张永远比旧的醒目。"
+        },
+        "_turn_id": "turn-14"
+      },
+      "private_state": {
+        "actor_id": "班长",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "辅导员"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "男生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "女生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "校史档案室"
+        },
+        {
+          "kind": "move",
+          "target": "图书馆"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": {
+        "actor": "班长",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 5
+      },
+      "inner": null,
+      "private": true,
+      "role": "npc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 5,
+      "version_after": 5,
+      "event_ids": []
+    },
+    {
+      "actor": "唐小岚",
+      "perception": {
+        "observer": "唐小岚",
+        "time": "2026-03-16T10:00:00+08:00",
+        "world_version": 6,
+        "location": "半坡咖啡馆",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "校报草稿",
+          "裂纹马克杯"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 6,
+            "time": "2026-03-16T10:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "audit_notice",
+              "time": "2026-03-16T10:00:00+08:00",
+              "notice": "学生会公告栏贴出一张新通知：审计包须于今日 16:00 前完成核对，并附书面说明。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-唐小岚-8",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-15"
+      },
+      "private_state": {
+        "actor_id": "唐小岚",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "校史档案室"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "move",
+          "target": "图书馆"
+        },
+        {
+          "kind": "move",
+          "target": "小卖部"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "take",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "inspect",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "inspect",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "校报草稿"
+        },
+        {
+          "kind": "label",
+          "document": "校报草稿",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "校报草稿",
+          "text": ""
+        }
+      ],
+      "intention": {
+        "actor": "唐小岚",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 6
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 6,
+      "version_after": 6,
+      "event_ids": []
+    },
+    {
+      "actor": "林瑶",
+      "perception": {
+        "observer": "林瑶",
+        "time": "2026-03-16T10:00:00+08:00",
+        "world_version": 6,
+        "location": "女生宿舍",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "宿管阿姨",
+          "林瑶室友"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 6,
+            "time": "2026-03-16T10:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "audit_notice",
+              "time": "2026-03-16T10:00:00+08:00",
+              "notice": "学生会公告栏贴出一张新通知：审计包须于今日 16:00 前完成核对，并附书面说明。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-林瑶-13",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-16"
+      },
+      "private_state": {
+        "actor_id": "林瑶",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "宿管阿姨"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶室友"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "辅导员"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "男生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": {
+        "actor": "林瑶",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 6
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 6,
+      "version_after": 6,
+      "event_ids": []
+    },
+    {
+      "actor": "陈默",
+      "perception": {
+        "observer": "陈默",
+        "time": "2026-03-16T10:00:00+08:00",
+        "world_version": 6,
+        "location": "男生宿舍",
+        "inventory": [
+          "2013年邻居许可证",
+          "空白纸"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 6,
+            "time": "2026-03-16T10:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "audit_notice",
+              "time": "2026-03-16T10:00:00+08:00",
+              "notice": "学生会公告栏贴出一张新通知：审计包须于今日 16:00 前完成核对，并附书面说明。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-陈默-11",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-17"
+      },
+      "private_state": {
+        "actor_id": "陈默",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默妈"
+        },
+        {
+          "kind": "move",
+          "target": "女生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "inspect",
+          "item": "空白纸"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "drop",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "drop",
+          "item": "空白纸"
+        },
+        {
+          "kind": "read",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "copy",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "label",
+          "document": "2013年邻居许可证",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "2013年邻居许可证",
+          "text": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": {
+        "actor": "陈默",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 6
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 6,
+      "version_after": 6,
+      "event_ids": []
+    },
+    {
+      "actor": "唐小岚",
+      "perception": {
+        "observer": "唐小岚",
+        "time": "2026-03-16T11:40:00+08:00",
+        "world_version": 7,
+        "location": "半坡咖啡馆",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "校报草稿",
+          "裂纹马克杯"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 7,
+            "time": "2026-03-16T11:40:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "lunch_rush",
+              "time": "2026-03-16T11:40:00+08:00",
+              "notice": "下课铃一响，食堂的队伍从窗口排到了门口。今天二楼有糖醋排骨，整个楼层都知道。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-唐小岚-15",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-18"
+      },
+      "private_state": {
+        "actor_id": "唐小岚",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "校史档案室"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "move",
+          "target": "图书馆"
+        },
+        {
+          "kind": "move",
+          "target": "小卖部"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "take",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "inspect",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "inspect",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "校报草稿"
+        },
+        {
+          "kind": "label",
+          "document": "校报草稿",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "校报草稿",
+          "text": ""
+        }
+      ],
+      "intention": {
+        "actor": "唐小岚",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 7
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 7,
+      "version_after": 7,
+      "event_ids": []
+    },
+    {
+      "actor": "林瑶",
+      "perception": {
+        "observer": "林瑶",
+        "time": "2026-03-16T11:40:00+08:00",
+        "world_version": 7,
+        "location": "女生宿舍",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "宿管阿姨",
+          "林瑶室友"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 7,
+            "time": "2026-03-16T11:40:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "lunch_rush",
+              "time": "2026-03-16T11:40:00+08:00",
+              "notice": "下课铃一响，食堂的队伍从窗口排到了门口。今天二楼有糖醋排骨，整个楼层都知道。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-林瑶-16",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-19"
+      },
+      "private_state": {
+        "actor_id": "林瑶",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "宿管阿姨"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶室友"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "辅导员"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "男生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": {
+        "actor": "林瑶",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 7
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 7,
+      "version_after": 7,
+      "event_ids": []
+    },
+    {
+      "actor": "陈默",
+      "perception": {
+        "observer": "陈默",
+        "time": "2026-03-16T11:40:00+08:00",
+        "world_version": 7,
+        "location": "男生宿舍",
+        "inventory": [
+          "2013年邻居许可证",
+          "空白纸"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 7,
+            "time": "2026-03-16T11:40:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "lunch_rush",
+              "time": "2026-03-16T11:40:00+08:00",
+              "notice": "下课铃一响，食堂的队伍从窗口排到了门口。今天二楼有糖醋排骨，整个楼层都知道。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-陈默-17",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-20"
+      },
+      "private_state": {
+        "actor_id": "陈默",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默妈"
+        },
+        {
+          "kind": "move",
+          "target": "女生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "inspect",
+          "item": "空白纸"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "drop",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "drop",
+          "item": "空白纸"
+        },
+        {
+          "kind": "read",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "copy",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "label",
+          "document": "2013年邻居许可证",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "2013年邻居许可证",
+          "text": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": {
+        "actor": "陈默",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 7
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 7,
+      "version_after": 7,
+      "event_ids": []
+    },
+    {
+      "actor": "唐小岚",
+      "perception": {
+        "observer": "唐小岚",
+        "time": "2026-03-16T12:00:00+08:00",
+        "world_version": 8,
+        "location": "半坡咖啡馆",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "校报草稿",
+          "裂纹马克杯"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 8,
+            "time": "2026-03-16T12:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "rain_start",
+              "time": "2026-03-16T12:00:00+08:00",
+              "notice": "下雨了。不大，但足够让中庭的人跑进屋檐下，咖啡馆里慢慢坐满了躲雨的人。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-唐小岚-18",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-21"
+      },
+      "private_state": {
+        "actor_id": "唐小岚",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "校史档案室"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "move",
+          "target": "图书馆"
+        },
+        {
+          "kind": "move",
+          "target": "小卖部"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "take",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "inspect",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "inspect",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "校报草稿"
+        },
+        {
+          "kind": "label",
+          "document": "校报草稿",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "校报草稿",
+          "text": ""
+        }
+      ],
+      "intention": {
+        "actor": "唐小岚",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 8
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 8,
+      "version_after": 8,
+      "event_ids": []
+    },
+    {
+      "actor": "林瑶",
+      "perception": {
+        "observer": "林瑶",
+        "time": "2026-03-16T12:00:00+08:00",
+        "world_version": 8,
+        "location": "女生宿舍",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "宿管阿姨",
+          "林瑶室友"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 8,
+            "time": "2026-03-16T12:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "rain_start",
+              "time": "2026-03-16T12:00:00+08:00",
+              "notice": "下雨了。不大，但足够让中庭的人跑进屋檐下，咖啡馆里慢慢坐满了躲雨的人。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-林瑶-19",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-22"
+      },
+      "private_state": {
+        "actor_id": "林瑶",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "宿管阿姨"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶室友"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "辅导员"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "男生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": {
+        "actor": "林瑶",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 8
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 8,
+      "version_after": 8,
+      "event_ids": []
+    },
+    {
+      "actor": "陈默",
+      "perception": {
+        "observer": "陈默",
+        "time": "2026-03-16T12:00:00+08:00",
+        "world_version": 8,
+        "location": "男生宿舍",
+        "inventory": [
+          "2013年邻居许可证",
+          "空白纸"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 8,
+            "time": "2026-03-16T12:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "rain_start",
+              "time": "2026-03-16T12:00:00+08:00",
+              "notice": "下雨了。不大，但足够让中庭的人跑进屋檐下，咖啡馆里慢慢坐满了躲雨的人。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-陈默-20",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-23"
+      },
+      "private_state": {
+        "actor_id": "陈默",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默妈"
+        },
+        {
+          "kind": "move",
+          "target": "女生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "inspect",
+          "item": "空白纸"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "drop",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "drop",
+          "item": "空白纸"
+        },
+        {
+          "kind": "read",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "copy",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "label",
+          "document": "2013年邻居许可证",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "2013年邻居许可证",
+          "text": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": {
+        "actor": "陈默",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 8
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 8,
+      "version_after": 8,
+      "event_ids": []
+    },
+    {
+      "actor": "唐小岚",
+      "perception": {
+        "observer": "唐小岚",
+        "time": "2026-03-16T14:00:00+08:00",
+        "world_version": 9,
+        "location": "半坡咖啡馆",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "校报草稿",
+          "裂纹马克杯"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 9,
+            "time": "2026-03-16T14:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "afternoon_class",
+              "time": "2026-03-16T14:00:00+08:00",
+              "notice": "下午课的铃声把教学楼填满，走廊里都是赶去占座的人。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-唐小岚-21",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-24"
+      },
+      "private_state": {
+        "actor_id": "唐小岚",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "校史档案室"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "move",
+          "target": "图书馆"
+        },
+        {
+          "kind": "move",
+          "target": "小卖部"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "take",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "inspect",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "inspect",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "校报草稿"
+        },
+        {
+          "kind": "label",
+          "document": "校报草稿",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "校报草稿",
+          "text": ""
+        }
+      ],
+      "intention": {
+        "actor": "唐小岚",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 9
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 9,
+      "version_after": 9,
+      "event_ids": []
+    },
+    {
+      "actor": "林瑶",
+      "perception": {
+        "observer": "林瑶",
+        "time": "2026-03-16T14:00:00+08:00",
+        "world_version": 9,
+        "location": "女生宿舍",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "宿管阿姨",
+          "林瑶室友"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 9,
+            "time": "2026-03-16T14:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "afternoon_class",
+              "time": "2026-03-16T14:00:00+08:00",
+              "notice": "下午课的铃声把教学楼填满，走廊里都是赶去占座的人。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-林瑶-22",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-25"
+      },
+      "private_state": {
+        "actor_id": "林瑶",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "宿管阿姨"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶室友"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "辅导员"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "男生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": {
+        "actor": "林瑶",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 9
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 9,
+      "version_after": 9,
+      "event_ids": []
+    },
+    {
+      "actor": "陈默",
+      "perception": {
+        "observer": "陈默",
+        "time": "2026-03-16T14:00:00+08:00",
+        "world_version": 9,
+        "location": "男生宿舍",
+        "inventory": [
+          "2013年邻居许可证",
+          "空白纸"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 9,
+            "time": "2026-03-16T14:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "afternoon_class",
+              "time": "2026-03-16T14:00:00+08:00",
+              "notice": "下午课的铃声把教学楼填满，走廊里都是赶去占座的人。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-陈默-23",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-26"
+      },
+      "private_state": {
+        "actor_id": "陈默",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默妈"
+        },
+        {
+          "kind": "move",
+          "target": "女生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "inspect",
+          "item": "空白纸"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "drop",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "drop",
+          "item": "空白纸"
+        },
+        {
+          "kind": "read",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "copy",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "label",
+          "document": "2013年邻居许可证",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "2013年邻居许可证",
+          "text": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": {
+        "actor": "陈默",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 9
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 9,
+      "version_after": 9,
+      "event_ids": []
+    },
+    {
+      "actor": "林瑶",
+      "perception": {
+        "observer": "林瑶",
+        "time": "2026-03-16T14:30:00+08:00",
+        "world_version": 10,
+        "location": "女生宿舍",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "宿管阿姨",
+          "林瑶室友"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 10,
+            "time": "2026-03-16T14:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "route_evidence_missing",
+              "time": "2026-03-16T14:30:00+08:00",
+              "target": "林瑶",
+              "notice": "无障碍路线方案缺一段原始依据：2013 年洪水路线的走向，纸上找不到现成结论，得找见过旧记录的人问。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-林瑶-25",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-27"
+      },
+      "private_state": {
+        "actor_id": "林瑶",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "宿管阿姨"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶室友"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "辅导员"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "男生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": {
+        "actor": "林瑶",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 10
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 10,
+      "version_after": 10,
+      "event_ids": []
+    },
+    {
+      "actor": "唐小岚",
+      "perception": {
+        "observer": "唐小岚",
+        "time": "2026-03-16T15:00:00+08:00",
+        "world_version": 11,
+        "location": "半坡咖啡馆",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "校报草稿",
+          "裂纹马克杯"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 11,
+            "time": "2026-03-16T15:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "typhoon_anniversary_notice",
+              "time": "2026-03-16T15:00:00+08:00",
+              "notice": "公告栏又多了一张通知：下周日在中庭举行'3·16 台风纪念活动'，招募学生志愿者整理老照片和旧记录，报名找班长。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-唐小岚-24",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-28"
+      },
+      "private_state": {
+        "actor_id": "唐小岚",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "校史档案室"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "move",
+          "target": "图书馆"
+        },
+        {
+          "kind": "move",
+          "target": "小卖部"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "take",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "inspect",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "inspect",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "校报草稿"
+        },
+        {
+          "kind": "label",
+          "document": "校报草稿",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "校报草稿",
+          "text": ""
+        }
+      ],
+      "intention": {
+        "actor": "唐小岚",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 11
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 11,
+      "version_after": 11,
+      "event_ids": []
+    },
+    {
+      "actor": "林瑶",
+      "perception": {
+        "observer": "林瑶",
+        "time": "2026-03-16T15:00:00+08:00",
+        "world_version": 11,
+        "location": "女生宿舍",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "宿管阿姨",
+          "林瑶室友"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 11,
+            "time": "2026-03-16T15:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "typhoon_anniversary_notice",
+              "time": "2026-03-16T15:00:00+08:00",
+              "notice": "公告栏又多了一张通知：下周日在中庭举行'3·16 台风纪念活动'，招募学生志愿者整理老照片和旧记录，报名找班长。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-林瑶-27",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-29"
+      },
+      "private_state": {
+        "actor_id": "林瑶",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "宿管阿姨"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶室友"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "辅导员"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "男生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": {
+        "actor": "林瑶",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 11
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 11,
+      "version_after": 11,
+      "event_ids": []
+    },
+    {
+      "actor": "陈默",
+      "perception": {
+        "observer": "陈默",
+        "time": "2026-03-16T15:00:00+08:00",
+        "world_version": 11,
+        "location": "男生宿舍",
+        "inventory": [
+          "2013年邻居许可证",
+          "空白纸"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 11,
+            "time": "2026-03-16T15:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "typhoon_anniversary_notice",
+              "time": "2026-03-16T15:00:00+08:00",
+              "notice": "公告栏又多了一张通知：下周日在中庭举行'3·16 台风纪念活动'，招募学生志愿者整理老照片和旧记录，报名找班长。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-陈默-26",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-30"
+      },
+      "private_state": {
+        "actor_id": "陈默",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默妈"
+        },
+        {
+          "kind": "move",
+          "target": "女生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "inspect",
+          "item": "空白纸"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "drop",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "drop",
+          "item": "空白纸"
+        },
+        {
+          "kind": "read",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "copy",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "label",
+          "document": "2013年邻居许可证",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "2013年邻居许可证",
+          "text": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": {
+        "actor": "陈默",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 11
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 11,
+      "version_after": 11,
+      "event_ids": []
+    },
+    {
+      "actor": "唐小岚",
+      "perception": {
+        "observer": "唐小岚",
+        "time": "2026-03-16T16:00:00+08:00",
+        "world_version": 12,
+        "location": "半坡咖啡馆",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "校报草稿",
+          "裂纹马克杯"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 12,
+            "time": "2026-03-16T16:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "audit_deadline",
+              "time": "2026-03-16T16:00:00+08:00",
+              "notice": "16:00 到了。学生会办公室门缝下塞出一张催办单：审计核对仍未完成，说明最迟明早交。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-唐小岚-28",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-31"
+      },
+      "private_state": {
+        "actor_id": "唐小岚",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "校史档案室"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "move",
+          "target": "图书馆"
+        },
+        {
+          "kind": "move",
+          "target": "小卖部"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "take",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "inspect",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "inspect",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "校报草稿"
+        },
+        {
+          "kind": "label",
+          "document": "校报草稿",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "校报草稿",
+          "text": ""
+        }
+      ],
+      "intention": {
+        "actor": "唐小岚",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 12
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 12,
+      "version_after": 12,
+      "event_ids": []
+    },
+    {
+      "actor": "林瑶",
+      "perception": {
+        "observer": "林瑶",
+        "time": "2026-03-16T16:00:00+08:00",
+        "world_version": 12,
+        "location": "女生宿舍",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "宿管阿姨",
+          "林瑶室友"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 12,
+            "time": "2026-03-16T16:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "audit_deadline",
+              "time": "2026-03-16T16:00:00+08:00",
+              "notice": "16:00 到了。学生会办公室门缝下塞出一张催办单：审计核对仍未完成，说明最迟明早交。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-林瑶-29",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-32"
+      },
+      "private_state": {
+        "actor_id": "林瑶",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "宿管阿姨"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶室友"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "辅导员"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "男生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": {
+        "actor": "林瑶",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 12
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 12,
+      "version_after": 12,
+      "event_ids": []
+    },
+    {
+      "actor": "陈默",
+      "perception": {
+        "observer": "陈默",
+        "time": "2026-03-16T16:00:00+08:00",
+        "world_version": 12,
+        "location": "男生宿舍",
+        "inventory": [
+          "2013年邻居许可证",
+          "空白纸"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 12,
+            "time": "2026-03-16T16:00:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "audit_deadline",
+              "time": "2026-03-16T16:00:00+08:00",
+              "notice": "16:00 到了。学生会办公室门缝下塞出一张催办单：审计核对仍未完成，说明最迟明早交。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-陈默-30",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-33"
+      },
+      "private_state": {
+        "actor_id": "陈默",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默妈"
+        },
+        {
+          "kind": "move",
+          "target": "女生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "inspect",
+          "item": "空白纸"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "drop",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "drop",
+          "item": "空白纸"
+        },
+        {
+          "kind": "read",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "copy",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "label",
+          "document": "2013年邻居许可证",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "2013年邻居许可证",
+          "text": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": {
+        "actor": "陈默",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 12
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 12,
+      "version_after": 12,
+      "event_ids": []
+    },
+    {
+      "actor": "唐小岚",
+      "perception": {
+        "observer": "唐小岚",
+        "time": "2026-03-16T17:30:00+08:00",
+        "world_version": 13,
+        "location": "半坡咖啡馆",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "校报草稿",
+          "裂纹马克杯"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 13,
+            "time": "2026-03-16T17:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "dinner_rush",
+              "time": "2026-03-16T17:30:00+08:00",
+              "notice": "晚饭点的食堂比中午松一些，一楼改卖面条，队伍短了一半。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-唐小岚-31",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-34"
+      },
+      "private_state": {
+        "actor_id": "唐小岚",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "校史档案室"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "move",
+          "target": "图书馆"
+        },
+        {
+          "kind": "move",
+          "target": "小卖部"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "take",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "inspect",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "inspect",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "校报草稿"
+        },
+        {
+          "kind": "label",
+          "document": "校报草稿",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "校报草稿",
+          "text": ""
+        }
+      ],
+      "intention": {
+        "actor": "唐小岚",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 13
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 13,
+      "version_after": 13,
+      "event_ids": []
+    },
+    {
+      "actor": "林瑶",
+      "perception": {
+        "observer": "林瑶",
+        "time": "2026-03-16T17:30:00+08:00",
+        "world_version": 13,
+        "location": "女生宿舍",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "宿管阿姨",
+          "林瑶室友"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 13,
+            "time": "2026-03-16T17:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "dinner_rush",
+              "time": "2026-03-16T17:30:00+08:00",
+              "notice": "晚饭点的食堂比中午松一些，一楼改卖面条，队伍短了一半。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-林瑶-32",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-35"
+      },
+      "private_state": {
+        "actor_id": "林瑶",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "宿管阿姨"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶室友"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "辅导员"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "男生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": {
+        "actor": "林瑶",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 13
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 13,
+      "version_after": 13,
+      "event_ids": []
+    },
+    {
+      "actor": "陈默",
+      "perception": {
+        "observer": "陈默",
+        "time": "2026-03-16T17:30:00+08:00",
+        "world_version": 13,
+        "location": "男生宿舍",
+        "inventory": [
+          "2013年邻居许可证",
+          "空白纸"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 13,
+            "time": "2026-03-16T17:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "dinner_rush",
+              "time": "2026-03-16T17:30:00+08:00",
+              "notice": "晚饭点的食堂比中午松一些，一楼改卖面条，队伍短了一半。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-陈默-33",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-36"
+      },
+      "private_state": {
+        "actor_id": "陈默",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默妈"
+        },
+        {
+          "kind": "move",
+          "target": "女生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "inspect",
+          "item": "空白纸"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "drop",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "drop",
+          "item": "空白纸"
+        },
+        {
+          "kind": "read",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "copy",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "label",
+          "document": "2013年邻居许可证",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "2013年邻居许可证",
+          "text": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": {
+        "actor": "陈默",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 13
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 13,
+      "version_after": 13,
+      "event_ids": []
+    },
+    {
+      "actor": "唐小岚",
+      "perception": {
+        "observer": "唐小岚",
+        "time": "2026-03-16T18:30:00+08:00",
+        "world_version": 14,
+        "location": "半坡咖啡馆",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "校报草稿",
+          "裂纹马克杯"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 14,
+            "time": "2026-03-16T18:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "rain_stops",
+              "time": "2026-03-16T18:30:00+08:00",
+              "notice": "雨停了。晚风把咖啡馆的人带走了一半，剩下的人开始收拾东西。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-唐小岚-34",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-37"
+      },
+      "private_state": {
+        "actor_id": "唐小岚",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "校史档案室"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "move",
+          "target": "图书馆"
+        },
+        {
+          "kind": "move",
+          "target": "小卖部"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "take",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "inspect",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "inspect",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "校报草稿"
+        },
+        {
+          "kind": "label",
+          "document": "校报草稿",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "校报草稿",
+          "text": ""
+        }
+      ],
+      "intention": {
+        "actor": "唐小岚",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 14
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 14,
+      "version_after": 14,
+      "event_ids": []
+    },
+    {
+      "actor": "林瑶",
+      "perception": {
+        "observer": "林瑶",
+        "time": "2026-03-16T18:30:00+08:00",
+        "world_version": 14,
+        "location": "女生宿舍",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [
+          "宿管阿姨",
+          "林瑶室友"
+        ],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 14,
+            "time": "2026-03-16T18:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "rain_stops",
+              "time": "2026-03-16T18:30:00+08:00",
+              "notice": "雨停了。晚风把咖啡馆的人带走了一半，剩下的人开始收拾东西。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-林瑶-35",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-38"
+      },
+      "private_state": {
+        "actor_id": "林瑶",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "宿管阿姨"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶室友"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "辅导员"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "男生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "search"
+        }
+      ],
+      "intention": {
+        "actor": "林瑶",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 14
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 14,
+      "version_after": 14,
+      "event_ids": []
+    },
+    {
+      "actor": "陈默",
+      "perception": {
+        "observer": "陈默",
+        "time": "2026-03-16T18:30:00+08:00",
+        "world_version": 14,
+        "location": "男生宿舍",
+        "inventory": [
+          "2013年邻居许可证",
+          "空白纸"
+        ],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [],
+        "inbox": [],
+        "events": [
+          {
+            "id": 14,
+            "time": "2026-03-16T18:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "rain_stops",
+              "time": "2026-03-16T18:30:00+08:00",
+              "notice": "雨停了。晚风把咖啡馆的人带走了一半，剩下的人开始收拾东西。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-陈默-36",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-39"
+      },
+      "private_state": {
+        "actor_id": "陈默",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "唐小岚"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默妈"
+        },
+        {
+          "kind": "move",
+          "target": "女生宿舍"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "食堂"
+        },
+        {
+          "kind": "move",
+          "target": "教学楼"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "inspect",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "inspect",
+          "item": "空白纸"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "drop",
+          "item": "2013年邻居许可证"
+        },
+        {
+          "kind": "drop",
+          "item": "空白纸"
+        },
+        {
+          "kind": "read",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "copy",
+          "document": "2013年邻居许可证"
+        },
+        {
+          "kind": "label",
+          "document": "2013年邻居许可证",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "2013年邻居许可证",
+          "text": ""
+        },
+        {
+          "kind": "system_accept",
+          "case": "ambiguous-obligations"
+        },
+        {
+          "kind": "system_decline",
+          "case": "ambiguous-obligations"
+        }
+      ],
+      "intention": {
+        "actor": "陈默",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 14
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 14,
+      "version_after": 14,
+      "event_ids": []
+    },
+    {
+      "actor": "唐小岚",
+      "perception": {
+        "observer": "唐小岚",
+        "time": "2026-03-16T21:30:00+08:00",
+        "world_version": 15,
+        "location": "半坡咖啡馆",
+        "inventory": [],
+        "sleeping": false,
+        "busy_until": null,
+        "nearby_actors": [],
+        "nearby_items": [
+          "校报草稿",
+          "裂纹马克杯"
+        ],
+        "inbox": [],
+        "events": [
+          {
+            "id": 15,
+            "time": "2026-03-16T21:30:00+08:00",
+            "kind": "world_event",
+            "actor": null,
+            "payload": {
+              "event": "半坡咖啡馆_closing",
+              "time": "2026-03-16T21:30:00+08:00",
+              "target": "唐小岚",
+              "notice": "打烊前最后一小时。椅子倒扣上桌之前，是盘点今天听来的东西的时候。"
+            },
+            "cause": null
+          }
+        ],
+        "knowledge": {},
+        "operational_facts": [
+          {
+            "type": "rejected_action",
+            "feedback_id": "rejection-唐小岚-37",
+            "action": {
+              "kind": "wait",
+              "args": {
+                "duration_seconds": 3600
+              }
+            },
+            "reason": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+            "alternatives": [],
+            "must_change_before_retry": true,
+            "delivered": false
+          }
+        ],
+        "_turn_id": "turn-40"
+      },
+      "private_state": {
+        "actor_id": "唐小岚",
+        "goals": [
+          "continue ordinary life"
+        ],
+        "beliefs": {},
+        "memories": [],
+        "interpretations": [],
+        "private_notes": []
+      },
+      "affordances": [
+        {
+          "kind": "observe"
+        },
+        {
+          "kind": "ask_stranger"
+        },
+        {
+          "kind": "wait"
+        },
+        {
+          "kind": "speak",
+          "text": "",
+          "volume": "normal"
+        },
+        {
+          "kind": "send_message",
+          "target": "林瑶"
+        },
+        {
+          "kind": "send_message",
+          "target": "班长"
+        },
+        {
+          "kind": "send_message",
+          "target": "陈默"
+        },
+        {
+          "kind": "move",
+          "target": "中庭"
+        },
+        {
+          "kind": "move",
+          "target": "校史档案室"
+        },
+        {
+          "kind": "move",
+          "target": "学生会办公室"
+        },
+        {
+          "kind": "move",
+          "target": "图书馆"
+        },
+        {
+          "kind": "move",
+          "target": "小卖部"
+        },
+        {
+          "kind": "sleep",
+          "duration_seconds": 21600
+        },
+        {
+          "kind": "take",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "take",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "inspect",
+          "item": "裂纹马克杯"
+        },
+        {
+          "kind": "inspect",
+          "item": "校报草稿"
+        },
+        {
+          "kind": "search"
+        },
+        {
+          "kind": "read",
+          "document": "校报草稿"
+        },
+        {
+          "kind": "label",
+          "document": "校报草稿",
+          "label": ""
+        },
+        {
+          "kind": "annotate",
+          "document": "校报草稿",
+          "text": ""
+        }
+      ],
+      "intention": {
+        "actor": "唐小岚",
+        "kind": "wait",
+        "args": {
+          "duration_seconds": 3600
+        },
+        "expected_version": 15
+      },
+      "inner": null,
+      "private": true,
+      "role": "mc",
+      "result": "rejected",
+      "error": "单次等待不能超过 900 秒；如需更久，请分几次等待。",
+      "version_before": 15,
+      "version_after": 15,
+      "event_ids": []
+    }
+  ],
+  "system_turns": [
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 1
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 2
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 3
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 4
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 5
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 6
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 7
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 8
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 9
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 10
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 11
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 12
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 13
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 14
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 15
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 16
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 17
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 18
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 19
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 20
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 21
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 22
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 23
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 24
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 25
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 26
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 27
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 28
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 29
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 30
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 31
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 32
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 33
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 34
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 35
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 36
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 37
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 38
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 39
+      }
+    },
+    {
+      "request": {
+        "kind": "inner_telemetry"
+      },
+      "result": {
+        "missing": 40
+      }
+    }
+  ],
+  "gm_turns": [],
+  "sessions": {},
+  "outcome": {
+    "reason": "seed schedule drained to its objective stop event",
+    "time": "2026-03-16T22:00:00+08:00",
+    "world_version": 16
+  },
+  "world_events": [
+    {
+      "id": 1,
+      "time": "2026-03-16T07:10:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "breakfast_rush",
+        "time": "2026-03-16T07:10:00+08:00",
+        "notice": "食堂开门。豆浆和包子的蒸汽从后厨涌出来，早八前的队伍排到了门口。"
+      },
+      "cause": null,
+      "visible_to": [
+        "下棋大爷",
+        "唐小岚",
+        "宿管阿姨",
+        "林瑶",
+        "林瑶室友",
+        "班长",
+        "辅导员",
+        "陈默",
+        "陈默妈",
+        "食堂大妈"
+      ],
+      "world_version": 1
+    },
+    {
+      "id": 2,
+      "time": "2026-03-16T07:35:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "mom_call",
+        "time": "2026-03-16T07:35:00+08:00",
+        "target": "陈默",
+        "notice": "手机震动，是妈妈的电话。你没接住，紧接着进来一条六十秒的语音和一条文字消息：'周末回家一趟吧，隔壁李阿姨给她儿子相亲了个姑娘……对了，钱够不够花？'"
+      },
+      "cause": null,
+      "visible_to": [
+        "陈默"
+      ],
+      "world_version": 2
+    },
+    {
+      "id": 3,
+      "time": "2026-03-16T08:00:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "morning_class_bell",
+        "time": "2026-03-16T08:00:00+08:00",
+        "notice": "教学楼那边上课铃响了，中庭和河堤一下子空了下来。"
+      },
+      "cause": null,
+      "visible_to": [
+        "下棋大爷",
+        "唐小岚",
+        "宿管阿姨",
+        "林瑶",
+        "林瑶室友",
+        "班长",
+        "辅导员",
+        "陈默",
+        "陈默妈",
+        "食堂大妈"
+      ],
+      "world_version": 3
+    },
+    {
+      "id": 4,
+      "time": "2026-03-16T08:10:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "校史档案室_shift",
+        "time": "2026-03-16T08:10:00+08:00",
+        "target": "陈默",
+        "notice": "你在档案室的上午班开始了。签到本在门口桌上，管理员今天不在，值班的学生只有你。"
+      },
+      "cause": null,
+      "visible_to": [
+        "陈默"
+      ],
+      "world_version": 4
+    },
+    {
+      "id": 5,
+      "time": "2026-03-16T09:30:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "accessibility_check",
+        "time": "2026-03-16T09:30:00+08:00",
+        "target": "林瑶",
+        "notice": "无障碍改造核查今天上午要交台账依据，2013 年那批旧记录也许用得上。"
+      },
+      "cause": null,
+      "visible_to": [
+        "林瑶"
+      ],
+      "world_version": 5
+    },
+    {
+      "id": 6,
+      "time": "2026-03-16T10:00:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "audit_notice",
+        "time": "2026-03-16T10:00:00+08:00",
+        "notice": "学生会公告栏贴出一张新通知：审计包须于今日 16:00 前完成核对，并附书面说明。"
+      },
+      "cause": null,
+      "visible_to": [
+        "下棋大爷",
+        "唐小岚",
+        "宿管阿姨",
+        "林瑶",
+        "林瑶室友",
+        "班长",
+        "辅导员",
+        "陈默",
+        "陈默妈",
+        "食堂大妈"
+      ],
+      "world_version": 6
+    },
+    {
+      "id": 7,
+      "time": "2026-03-16T11:40:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "lunch_rush",
+        "time": "2026-03-16T11:40:00+08:00",
+        "notice": "下课铃一响，食堂的队伍从窗口排到了门口。今天二楼有糖醋排骨，整个楼层都知道。"
+      },
+      "cause": null,
+      "visible_to": [
+        "下棋大爷",
+        "唐小岚",
+        "宿管阿姨",
+        "林瑶",
+        "林瑶室友",
+        "班长",
+        "辅导员",
+        "陈默",
+        "陈默妈",
+        "食堂大妈"
+      ],
+      "world_version": 7
+    },
+    {
+      "id": 8,
+      "time": "2026-03-16T12:00:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "rain_start",
+        "time": "2026-03-16T12:00:00+08:00",
+        "notice": "下雨了。不大，但足够让中庭的人跑进屋檐下，咖啡馆里慢慢坐满了躲雨的人。"
+      },
+      "cause": null,
+      "visible_to": [
+        "下棋大爷",
+        "唐小岚",
+        "宿管阿姨",
+        "林瑶",
+        "林瑶室友",
+        "班长",
+        "辅导员",
+        "陈默",
+        "陈默妈",
+        "食堂大妈"
+      ],
+      "world_version": 8
+    },
+    {
+      "id": 9,
+      "time": "2026-03-16T14:00:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "afternoon_class",
+        "time": "2026-03-16T14:00:00+08:00",
+        "notice": "下午课的铃声把教学楼填满，走廊里都是赶去占座的人。"
+      },
+      "cause": null,
+      "visible_to": [
+        "下棋大爷",
+        "唐小岚",
+        "宿管阿姨",
+        "林瑶",
+        "林瑶室友",
+        "班长",
+        "辅导员",
+        "陈默",
+        "陈默妈",
+        "食堂大妈"
+      ],
+      "world_version": 9
+    },
+    {
+      "id": 10,
+      "time": "2026-03-16T14:30:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "route_evidence_missing",
+        "time": "2026-03-16T14:30:00+08:00",
+        "target": "林瑶",
+        "notice": "无障碍路线方案缺一段原始依据：2013 年洪水路线的走向，纸上找不到现成结论，得找见过旧记录的人问。"
+      },
+      "cause": null,
+      "visible_to": [
+        "林瑶"
+      ],
+      "world_version": 10
+    },
+    {
+      "id": 11,
+      "time": "2026-03-16T15:00:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "typhoon_anniversary_notice",
+        "time": "2026-03-16T15:00:00+08:00",
+        "notice": "公告栏又多了一张通知：下周日在中庭举行'3·16 台风纪念活动'，招募学生志愿者整理老照片和旧记录，报名找班长。"
+      },
+      "cause": null,
+      "visible_to": [
+        "下棋大爷",
+        "唐小岚",
+        "宿管阿姨",
+        "林瑶",
+        "林瑶室友",
+        "班长",
+        "辅导员",
+        "陈默",
+        "陈默妈",
+        "食堂大妈"
+      ],
+      "world_version": 11
+    },
+    {
+      "id": 12,
+      "time": "2026-03-16T16:00:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "audit_deadline",
+        "time": "2026-03-16T16:00:00+08:00",
+        "notice": "16:00 到了。学生会办公室门缝下塞出一张催办单：审计核对仍未完成，说明最迟明早交。"
+      },
+      "cause": null,
+      "visible_to": [
+        "下棋大爷",
+        "唐小岚",
+        "宿管阿姨",
+        "林瑶",
+        "林瑶室友",
+        "班长",
+        "辅导员",
+        "陈默",
+        "陈默妈",
+        "食堂大妈"
+      ],
+      "world_version": 12
+    },
+    {
+      "id": 13,
+      "time": "2026-03-16T17:30:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "dinner_rush",
+        "time": "2026-03-16T17:30:00+08:00",
+        "notice": "晚饭点的食堂比中午松一些，一楼改卖面条，队伍短了一半。"
+      },
+      "cause": null,
+      "visible_to": [
+        "下棋大爷",
+        "唐小岚",
+        "宿管阿姨",
+        "林瑶",
+        "林瑶室友",
+        "班长",
+        "辅导员",
+        "陈默",
+        "陈默妈",
+        "食堂大妈"
+      ],
+      "world_version": 13
+    },
+    {
+      "id": 14,
+      "time": "2026-03-16T18:30:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "rain_stops",
+        "time": "2026-03-16T18:30:00+08:00",
+        "notice": "雨停了。晚风把咖啡馆的人带走了一半，剩下的人开始收拾东西。"
+      },
+      "cause": null,
+      "visible_to": [
+        "下棋大爷",
+        "唐小岚",
+        "宿管阿姨",
+        "林瑶",
+        "林瑶室友",
+        "班长",
+        "辅导员",
+        "陈默",
+        "陈默妈",
+        "食堂大妈"
+      ],
+      "world_version": 14
+    },
+    {
+      "id": 15,
+      "time": "2026-03-16T21:30:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "半坡咖啡馆_closing",
+        "time": "2026-03-16T21:30:00+08:00",
+        "target": "唐小岚",
+        "notice": "打烊前最后一小时。椅子倒扣上桌之前，是盘点今天听来的东西的时候。"
+      },
+      "cause": null,
+      "visible_to": [
+        "唐小岚"
+      ],
+      "world_version": 15
+    },
+    {
+      "id": 16,
+      "time": "2026-03-16T22:00:00+08:00",
+      "kind": "world_event",
+      "actor": null,
+      "payload": {
+        "event": "world_stops",
+        "time": "2026-03-16T22:00:00+08:00"
+      },
+      "cause": null,
+      "visible_to": [
+        "下棋大爷",
+        "唐小岚",
+        "宿管阿姨",
+        "林瑶",
+        "林瑶室友",
+        "班长",
+        "辅导员",
+        "陈默",
+        "陈默妈",
+        "食堂大妈"
+      ],
+      "world_version": 16
+    }
+  ],
+  "replay": {
+    "event_count": 16,
+    "contiguous": true,
+    "world_versions_contiguous": true,
+    "first_time": "2026-03-16T07:10:00+08:00",
+    "last_time": "2026-03-16T22:00:00+08:00",
+    "last_event_id": 16,
+    "active_actors": [
+      "下棋大爷",
+      "唐小岚",
+      "宿管阿姨",
+      "林瑶",
+      "林瑶室友",
+      "班长",
+      "辅导员",
+      "陈默",
+      "陈默妈",
+      "食堂大妈"
+    ],
+    "actors_with_turns": [
+      "唐小岚",
+      "宿管阿姨",
+      "林瑶",
+      "班长",
+      "陈默"
+    ]
+  }
+}

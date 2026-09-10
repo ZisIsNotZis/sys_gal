@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v4/harness/real_run.py", line 111, in <module>
+    main()
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v4/harness/real_run.py", line 58, in main
+    agents[actor.id] = make_persistent_agent(seeds[actor.id], provider, gm,
+                                                   ^^^^^^^^
+AttributeError: 'str' object has no attribute 'id'

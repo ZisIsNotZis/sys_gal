@@ -1,0 +1,25 @@
+0.00.848.391 E get_repo_commit: error: GET failed (404): Sorry, we can't find the page you are looking for.
+0.00.848.417 W get_repo_files: failed to resolve commit for unsloth/Qwen3.8-27B-GGUF
+0.00.853.364 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.853.804 W srv  llama_server: -----------------
+0.00.853.807 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.853.807 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.853.807 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.853.807 W srv  llama_server: -----------------
+0.00.855.530 I srv    load_model: loading model 'unsloth/Qwen3.8-27B-GGUF:IQ4_XS'
+0.32.778.951 I cmn          init: llama threadpool init, n_threads = 6
+0.33.575.641 I common_speculative_init_result: creating MTP draft context against the target model '/home/z/hf/models--unsloth--Qwen3.8-27B-GGUF/snapshots/4ca720788d1e01f1bff70c033e0d0028fd02e502/Qwen3.8-27B-UD-IQ4_XS.gguf'
+0.34.399.022 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 24576, kv_unified = 'false'
+0.34.468.767 W srv          init: chat template supports preserving reasoning, it is enabled by default (may use more tokens, disable via --no-reasoning-preserve)
+0.34.468.949 I srv  llama_server: model loaded
+0.34.468.957 I srv  llama_server: listening on http://127.0.0.1:8491
+1.28.388.283 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+1.28.388.354 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+1.45.166.730 I slot print_timing: id  3 | task 0 | n_gen =    101, tg =   6.67 t/s, tg_3s =   6.74 t/s
+1.45.678.242 I slot print_timing: id  3 | task 0 | prompt eval time =    1789.19 ms /    67 tokens (   26.70 ms per token,    37.45 tokens per second)
+1.45.678.246 I slot print_timing: id  3 | task 0 |        eval time =   15500.63 ms /   107 tokens (  146.23 ms per token,     6.84 tokens per second)
+1.45.678.247 I slot print_timing: id  3 | task 0 |       total time =   17289.82 ms /   174 tokens
+1.45.678.252 I slot print_timing: id  3 | task 0 |    graphs reused =         58
+1.45.678.256 I slot print_timing: id  3 | task 0 | draft acceptance = 0.41379 (   48 accepted /   116 generated), mean len =  1.83
+1.45.678.317 I slot      release: id  3 | task 0 | stop processing: n_tokens = 173, truncated = 0
+4.19.238.166 I srv    operator(): operator(): cleaning up before exit...

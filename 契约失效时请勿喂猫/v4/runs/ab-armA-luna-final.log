@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v4/harness/real_run.py", line 118, in <module>
+    main()
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v4/harness/real_run.py", line 87, in main
+    reason = runner.run(stop_at=endpoint, max_turns=20_000)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v4/harness/runner.py", line 386, in run
+    self.world.advance(until=boundary)
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v4/harness/kernel.py", line 548, in advance
+    self._complete(job.actor, job.payload)
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v4/harness/kernel.py", line 854, in _complete
+    target = self._actor(str(payload["target"]))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v4/harness/kernel.py", line 1067, in _actor
+    if actor_id not in self.actors: raise ActionRejected(f"unknown actor: {actor_id}")
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+harness.kernel.ActionRejected: unknown actor: 赵师傅

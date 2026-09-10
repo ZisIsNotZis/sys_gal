@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v4/harness/real_run.py", line 119, in <module>
+    main()
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v4/harness/real_run.py", line 106, in main
+    trace.verify_complete(world, endpoint=endpoint.isoformat(), stop_event="world_stops")
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v4/harness/trace.py", line 100, in verify_complete
+    self.verify_no_agent_errors(from_turn=from_turn)
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v4/harness/trace.py", line 108, in verify_no_agent_errors
+    raise ValueError(f"trajectory contains {len(errors)} agent execution errors")
+ValueError: trajectory contains 10 agent execution errors
+note: 10 agent errors survived as lost turns

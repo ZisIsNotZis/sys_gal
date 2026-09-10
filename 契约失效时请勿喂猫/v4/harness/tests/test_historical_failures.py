@@ -265,8 +265,8 @@ class HistoricalFailureGates(unittest.TestCase):
                       document_defs={"ledger": {"title": "Ledger", "content": "x",
                                                 "reading_seconds": 2}},
                       item_locations={"ledger": "room"})
-        for kind in ("read", "copy", "annotate"):
-            args = {"doc": "ledger"} if kind in ("read", "copy") else {"doc": "ledger", "text": "x"}
+        for kind in ("read", "annotate"):
+            args = {"doc": "ledger"} if kind == "read" else {"doc": "ledger", "text": "x"}
             with self.assertRaises(ActionRejected) as ctx:
                 world.submit(Intention("a", kind, args, world.version))
             self.assertIn("'doc'", str(ctx.exception), kind)

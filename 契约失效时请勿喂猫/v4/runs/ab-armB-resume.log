@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v4/harness/resume_run.py", line 174, in <module>
+    main()
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v4/harness/resume_run.py", line 170, in main
+    resume(args.checkpoint, out=args.out, endpoint=args.clock_stop)
+  File "/home/z/vibe/sys_gal/契约失效时请勿喂猫/v4/harness/resume_run.py", line 152, in resume
+    raise RuntimeError(f"resumed segment contained {len(new_errors)} agent execution errors")
+RuntimeError: resumed segment contained 1 agent execution errors

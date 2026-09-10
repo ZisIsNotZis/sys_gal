@@ -141,7 +141,10 @@ class NpcAgent:
         self.rolling_limit = rolling_limit
         saved = dict(session or {})
         self.memory: list[str] = list(saved.get("npc_memory", ()))
-        self.wake_count = int(saved.get("wake_count", 0))
+        try:
+            self.wake_count = int(saved.get("wake_count", 0))
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"invalid wake_count: {exc}") from exc
 
     def __call__(self, state, perception: Mapping[str, Any], affordances: list[dict]):
         context = self.context_provider(state.actor_id, perception) or {}
@@ -164,7 +167,7 @@ class NpcAgent:
             raw = self.call(attempt_messages)
             try:
                 decision, _ = parse_decision(state.actor_id, raw,
-                                             int(perception.get("world_version", 0)) or None)
+                                             int(perception.get("world_version", 0)))
                 break
             except Exception as exc:
                 last_error = exc
@@ -224,7 +227,12 @@ def sample_extra(pool: Iterable[Mapping[str, Any]], rng: random.Random | None = 
                                           "knowledge_notes": "", "weight": 1}]
     # manifest 契约：{fragment, rarity, knowledge_notes, weight}——weight 直接
     # 决定抽样概率（common 3 / rare 1 之类的调参交给种子）。
-    weights = [max(0.0, float(e.get("weight", 1.0))) for e in entries]
+    def _weight(e):
+        try:
+            return max(0.0, float(e.get("weight", 1.0)))
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"invalid weight: {exc}") from exc
+    weights = [_weight(e) for e in entries]
     rng = rng or random.Random()
     return dict(rng.choices(entries, weights=weights, k=1)[0])
 
@@ -238,11 +246,12 @@ def make_npc_agent(seed: CharacterSeed, call: Callable, context_provider: Callab
 
 def make_npc_agent_v4(seed: CharacterSeed, provider: Any, *,
                       session: "V4Session | None" = None):
+    from .natural_agent import V4Session
     """V4 protocol NPC agent (V4-AGENT-INTERFACE §5): identical message
     structure to MCs — the same verbatim system prompt, no persona prompt;
     the director briefing arrives inside the rendered world message. Returns
     agent(world_message_text, state) -> parsed tool-call list."""
-    from .natural_agent import V4Session
+    
     sess = session or V4Session(seed.actor_id, provider)
 
     def agent(world_message_text: str, state: Any) -> list[dict[str, Any]]:

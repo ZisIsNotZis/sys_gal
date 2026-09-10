@@ -99,7 +99,10 @@ def _tolerant_loads(text: str) -> Any:
     body = re.sub(r":\s*False\b", ": false", body)
     body = re.sub(r":\s*None\b", ": null", body)
     body = _single_quote_strings(body)
-    return json.loads(body)
+    try:
+        return json.loads(body)
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise ValueError(f"output is not recognizable JSON: {exc}") from exc
 
 
 def _single_quote_strings(text: str) -> str:
@@ -162,7 +165,10 @@ def load_model_json(raw: str | dict[str, Any] | None) -> Any:
     if judge_fallback is not None:
         judged = judge_fallback(raw)
         if isinstance(judged, str):
-            return json.loads(judged)
+            try:
+                return json.loads(judged)
+            except (json.JSONDecodeError, ValueError) as exc:
+                raise ValueError(f"judge output is not recognizable JSON: {exc}") from exc
         return judged
     raise ValueError("output is not recognizable JSON")
 
@@ -177,10 +183,12 @@ def parse_decision(actor: str, raw: str | dict[str, Any] | None,
         return None, {}
     if not isinstance(value, dict):
         raise ValueError("agent output must be a JSON object")
-    renamed_top = {TOPLEVEL_ALIASES.get(key, key): item for key, item in value.items()}
-    for original in value:
-        if original in TOPLEVEL_ALIASES and original != TOPLEVEL_ALIASES[original]:
-            _record_alias("*", original, str(TOPLEVEL_ALIASES[original]))
+    renamed_top: dict[str, Any] = {}
+    for key, item in value.items():
+        canonical = str(TOPLEVEL_ALIASES.get(key, key))
+        renamed_top[canonical] = item
+        if canonical != key:
+            _record_alias("*", str(key), canonical)
     for ignored in renamed_top.keys() & IGNORED_KEYS:
         _record_alias("*", ignored, "ignored")
         renamed_top.pop(ignored)
