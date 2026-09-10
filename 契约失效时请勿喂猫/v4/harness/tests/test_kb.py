@@ -282,3 +282,52 @@ class SnapshotTests(unittest.TestCase):
         self.assertEqual(clone.snapshot(), state)
         later = T0 + timedelta(hours=6)
         self.assertEqual(len(clone.due_lines(later, {"陈默", "半坡咖啡馆"}, limit=8)), 5)
+
+
+class FieldsLookupTests(unittest.TestCase):
+    """docs §6 (修订): update_memory rows may omit id and locate by fields
+    unique match among open rows (zero → "no match", multiple → "ambiguous")."""
+
+    def setUp(self):
+        self.kb = ActorKB("唐小岚", seed_rows(), T0)
+
+    def test_id_less_edit_matches_unique_fields(self):
+        errors, _ = self.kb.apply_ops(
+            [{"op": "edit", "fields": {"todo": True}, "desc": "改了"}], T0)
+        self.assertEqual(errors, [])
+        todos = [r for r in self.kb._rows.values() if r.id == "draft_claim"]
+        self.assertEqual(todos[0].desc, "改了")
+
+    def test_id_less_lookup_covers_open_rows_only(self):
+        # docs §6: fields 定位只在 open 行中查找——closed 行重开必须带 id。
+        self.kb.apply_ops([{"op": "close", "id": "draft_claim"}], T0)
+        errors, _ = self.kb.apply_ops(
+            [{"op": "open", "fields": {"todo": True}, "desc": "重新翻开"}], T0)
+        self.assertEqual(errors, ["[fields={'todo': True}] no match"])
+        # with the id the reopen works
+        errors, _ = self.kb.apply_ops(
+            [{"op": "open", "id": "draft_claim", "desc": "重新翻开"}], T0)
+        self.assertEqual(errors, [])
+        self.assertEqual(self.kb._rows["draft_claim"].status, "open")
+
+    def test_id_less_zero_match_reports_no_match(self):
+        errors, _ = self.kb.apply_ops(
+            [{"op": "edit", "fields": {"person": "不存在的人"}, "desc": "x"}], T0)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("no match", errors[0])
+        self.assertIn("不存在的人", errors[0])
+
+    def test_id_less_ambiguous_match_reports_ambiguous(self):
+        self.kb.apply_ops(
+            [{"op": "open", "id": "p1", "fields": {"person": "陈默"}, "desc": "1"},
+             {"op": "open", "id": "p2", "fields": {"person": "陈默"}, "desc": "2"}], T0)
+        errors, _ = self.kb.apply_ops(
+            [{"op": "edit", "fields": {"person": "陈默"}, "desc": "x"}], T0)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("ambiguous", errors[0])
+
+    def test_explicit_id_still_works(self):
+        errors, _ = self.kb.apply_ops(
+            [{"op": "edit", "id": "draft_claim", "desc": "用 id 定位"}], T0)
+        self.assertEqual(errors, [])
+        self.assertEqual(self.kb._rows["draft_claim"].desc, "用 id 定位")

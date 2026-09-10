@@ -103,7 +103,7 @@ class WorldPackTests(unittest.TestCase):
             seen, stack = {start}, [start]
             while stack:
                 node = stack.pop()
-                for nxt in graph.get(node, ()) - seen:
+                for nxt in set(graph.get(node, ())) - seen:
                     seen.add(nxt)
                     stack.append(nxt)
             self.assertIn("半坡咖啡馆", seen,
@@ -462,3 +462,33 @@ class KbSeedTests(unittest.TestCase):
                 encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "unparseable reminder time"):
                 load_world_pack(root)
+
+    def test_known_to_gates_personal_entity_rows(self):
+        # docs §6 (修订): 个人关联的物品按 known_to 展开——陈默的哨子只有
+        # 他有行；唐小岚的店杯只有她有行；无关角色（林瑶）没有哨子行。
+        pack = load_world_pack(ROOT / "world")
+        chen = {row["id"]: row for row in pack.kb["陈默"]}
+        self.assertTrue(any(r["fields"].get("item") == "红色哨子"
+                            for r in chen.values()),
+                        "陈默 must have the 红色哨子 row")
+        self.assertTrue(any(r["fields"].get("item") == "裂纹马克杯"
+                            for r in pack.kb["唐小岚"]),
+                        "唐小岚 must have the 裂纹马克杯 row")
+        self.assertFalse(any(r["fields"].get("item") == "红色哨子"
+                             for r in pack.kb["林瑶"]),
+                         "林瑶 must NOT have the 红色哨子 row")
+
+    def test_descriptions_have_no_manual_wrapping_or_meta_voice(self):
+        # 用户点名：描述正文不得手工换行（段落单行），且不得有作者旁白。
+        pack = load_world_pack(ROOT / "world")
+        for kind in ("items", "documents"):
+            for row in getattr(pack, kind):
+                from harness.world_loader import _plain_description
+                markdown = pack.descriptions[kind].get(str(row["id"]), "")
+                desc = _plain_description(markdown)
+                body_lines = [l for l in desc.splitlines() if l.strip()]
+                self.assertEqual(len(body_lines), 1,
+                                 f"{row['id']} description must be a single line: {desc!r}")
+                for banned in ("世界不做", "不是引擎提供", "剧情开关", "登记文本为准",
+                               "不是自动赠予", "世界不替任何人回答", "世界不替"):
+                    self.assertNotIn(banned, desc, f"{row['id']} carries author meta-voice")

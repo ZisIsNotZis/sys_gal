@@ -138,13 +138,30 @@ class ActorKB:
 
     def apply_ops(self, ops: list[dict[str, Any]], now: datetime) -> tuple[list[str], dict[str, int]]:
         """Apply an update_memory patch. Partial success: valid rows apply,
-        failures are returned as per-row English errors (docs §4)."""
+        failures are returned as per-row English errors (docs §4). A row may
+        omit ``id`` and locate by ``fields`` unique match (docs §6 修订)."""
         errors: list[str] = []
         telemetry = {"applied": 0, "rejected": 0, "tolerated_open_on_open": 0, "free_field": 0}
         seen: set[str] = set()
         for op in ops:
             row_id = str(op.get("id", ""))
             kind = str(op.get("op", ""))
+            if not row_id:
+                # id-less row: locate by fields exact-match among open rows.
+                fields = op.get("fields")
+                matches = [r for r in self._rows.values()
+                           if r.status == "open" and isinstance(fields, dict)
+                           and r.fields == fields]
+                if len(matches) == 1:
+                    row_id = matches[0].id
+                elif not matches:
+                    errors.append(f"[fields={fields}] no match")
+                    telemetry["rejected"] += 1
+                    continue
+                else:
+                    errors.append(f"[fields={fields}] ambiguous")
+                    telemetry["rejected"] += 1
+                    continue
             # Literal duplicate rows (two identical opens of one id) collide;
             # a lifecycle sequence open→edit→close of one id applies in order.
             if kind == "open" and row_id in seen:
