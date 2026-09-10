@@ -278,9 +278,8 @@ class V4ProtocolTests(unittest.TestCase):
     def test_chain_executes_in_order_and_accumulates_time(self):
         world = _world()
         agent = FakeV4Agent([
-            [{"name": "think", "arguments": {"inner": "先说再走"}},
-             {"name": "speak", "arguments": {"text": "先说"}},
-             {"name": "move", "arguments": {"target": "far"}}],
+            [{"name": "speak", "arguments": {"text": "先说", "inner": "先说再走"}},
+             {"name": "move", "arguments": {"target": "far", "inner": "去食堂"}}],
         ])
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
         engine.run(stop_at=START + timedelta(seconds=400), max_turns=30)
@@ -290,8 +289,8 @@ class V4ProtocolTests(unittest.TestCase):
 
     def test_more_than_eight_calls_truncate_with_error(self):
         world = _world()
-        calls = ([{"name": "think", "arguments": {"inner": "等"}}]
-                 + [{"name": "wait", "arguments": {"duration_seconds": 60}} for _ in range(9)])
+        calls = [{"name": "wait", "arguments": {"duration_seconds": 60, "inner": "等"}}
+                 for _ in range(10)]
         agent = FakeV4Agent([calls])
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
         engine.run(stop_at=START + timedelta(seconds=200), max_turns=30)
@@ -308,25 +307,22 @@ class V4ProtocolTests(unittest.TestCase):
                  and e.actor == "a" and e.payload.get("action") == "wait"]
         self.assertTrue(waits, "no-world-action chain must idle one tick")
 
-    def test_non_think_first_chain_is_rejected_then_executed_on_retry(self):
-        # docs §4 (engine-enforced): a chain not opening with think is
-        # rejected whole ("think first: …" in every tool result); the actor
-        # re-thinks immediately at zero sim cost; 3 misses open the valve.
+    def test_inner_missing_call_is_rejected_then_executed_on_retry(self):
+        # docs §2/§4 (engine-enforced): a call without a non-empty inner does
+        # not execute — its tool result explains why; the actor retries
+        # immediately at zero sim cost.
         world = _world()
         agent = FakeV4Agent([
-            [{"name": "speak", "arguments": {"text": "不说think"}}],
-            [{"name": "think", "arguments": {"inner": "好"}},
-             {"name": "speak", "arguments": {"text": "这次对了"}}],
+            [{"name": "speak", "arguments": {"text": "没写心声"}}],
+            [{"name": "speak", "arguments": {"text": "这次带上心声", "inner": "好"}}],
         ])
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
         engine.run(stop_at=START + timedelta(seconds=300), max_turns=30)
         rejected = [r for r in agent.delivered if not r.get("ok")]
-        self.assertTrue(all("think first" in r["text"] for r in rejected))
-        self.assertTrue(rejected, "non-compliant chain was not rejected")
+        self.assertTrue(rejected, "inner-less call was not rejected")
+        self.assertTrue(all("inner missing" in r["text"] for r in rejected))
         speeches = [e for e in world.event_log if e.kind == "speech" and e.actor == "a"]
         self.assertEqual(len(speeches), 1, "the retry must speak exactly once")
-        # after compliance the counter resets: no valve needed
-        self.assertEqual(engine._think_retries.get("a", 0), 0)
 
     def test_kb_seed_renders_knowledge_and_update_memory_queues_errors(self):
         world = _world()
@@ -334,10 +330,9 @@ class V4ProtocolTests(unittest.TestCase):
                  "desc": "我，测试角色。"},
                 {"fields": {"todo": True}, "id": "check", "desc": "查一下台账"}]
         agent = FakeV4Agent([
-            [{"name": "think", "arguments": {"inner": "开工"}},
-             {"name": "update_memory",
-              "arguments": {"rows": [{"id": "check", "op": "edit", "desc": "改了"}]}},
-             {"name": "speak", "arguments": {"text": "开工"}}],
+            [{"name": "update_memory",
+              "arguments": {"rows": [{"id": "check", "op": "edit", "desc": "改了"}], "inner": "记"}},
+             {"name": "speak", "arguments": {"text": "开工", "inner": "开工"}}],
         ])
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])},
                               kb_seeds={"a": rows})
@@ -353,10 +348,8 @@ class V4ProtocolTests(unittest.TestCase):
                  "desc": "我，测试角色。"},
                 {"fields": {"reminder": "1/1(周四) 00:03"}, "id": "ring", "desc": "该动了"}]
         agent = FakeV4Agent([
-            [{"name": "think", "arguments": {"inner": "等一会"}},
-             {"name": "wait", "arguments": {"duration_seconds": 60}}],
-            [{"name": "think", "arguments": {"inner": "再等"}},
-             {"name": "wait", "arguments": {"duration_seconds": 180}}],
+            [{"name": "wait", "arguments": {"duration_seconds": 60, "inner": "等一会"}}],
+            [{"name": "wait", "arguments": {"duration_seconds": 180, "inner": "再等"}}],
             [{"name": "continue_action", "arguments": {}}],
         ])
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])},
@@ -365,7 +358,8 @@ class V4ProtocolTests(unittest.TestCase):
         interrupted = [e for e in world.event_log if e.kind == "action_interrupted"
                        and e.payload.get("by") == "reminder"]
         self.assertTrue(interrupted, "due reminder must force-interrupt the wait")
-        self.assertIn("该动了", agent.seen_messages[-1] + agent.seen_messages[-2])
+        self.assertIn("该动了", "\n".join(agent.seen_messages),
+                      "reminder notice must play in a post-interrupt message")
 
 
 class RenderSemanticsTests(unittest.TestCase):
@@ -419,13 +413,14 @@ class RenderSemanticsTests(unittest.TestCase):
         self.assertNotIn("# error", text)
 
     def test_solo_speak_when_nobody_present(self):
+        # docs §3 修订：solo speak 是恒可用工具——不列入 #actions（工具清单
+        # 里仍然存在，模型随时可自言自语）。
         from harness.prompt import render_world_message
         world = self._world()
         affordances = world.affordances("c")
-        speak = [x for x in affordances if x.get("kind") == "speak"][0]
-        self.assertTrue(speak.get("solo"))
+        self.assertNotIn("speak", [x.get("kind") for x in affordances])
         text = render_world_message({"observer": "c", "time": world.now.isoformat(),
                                      "location": "alone", "events": [],
                                      "nearby_actors": [], "inventory": []},
                                     affordances, observer="c")
-        self.assertIn("[speak] volume=normal（自言自语）", text)
+        self.assertNotIn("自言自语", text)

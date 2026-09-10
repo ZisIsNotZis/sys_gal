@@ -265,7 +265,7 @@ class DocumentInteractionTests(unittest.TestCase):
 
     def test_read_is_private_and_returns_content_only_to_reader(self):
         world = self.world()
-        world.submit(Intention("a", "read", {"document": "ledger"}, world.version))
+        world.submit(Intention("a", "read", {"item": "ledger"}, world.version))
         world.advance()
         a = world.poll("a")
         b = world.poll("b")
@@ -275,7 +275,7 @@ class DocumentInteractionTests(unittest.TestCase):
 
     def test_copy_creates_a_provenance_link_and_consumes_material(self):
         world = self.world()
-        world.submit(Intention("a", "copy", {"document": "ledger"}, world.version))
+        world.submit(Intention("a", "copy", {"item": "ledger"}, world.version))
         world.advance()
         copied = next(e for e in world.poll("a")["events"] if e["kind"] == "document_copied")
         new_id = copied["payload"]["copy"]
@@ -289,7 +289,7 @@ class DocumentInteractionTests(unittest.TestCase):
         from harness.replay import replay_world
         initial = self.world()
         world = self.world()
-        world.submit(Intention("a", "copy", {"document": "ledger"}, world.version))
+        world.submit(Intention("a", "copy", {"item": "ledger"}, world.version))
         world.advance()
         replayed = replay_world(initial, world.replayable_log())
         self.assertEqual(replayed.actors["a"].inventory, world.actors["a"].inventory)
@@ -311,7 +311,7 @@ class DocumentInteractionTests(unittest.TestCase):
 
     def test_annotate_is_objective_and_visible_to_other_readers(self):
         world = self.world()
-        world.submit(Intention("a", "annotate", {"document": "ledger", "text": "timestamp conflicts with export"},
+        world.submit(Intention("a", "annotate", {"item": "ledger", "text": "timestamp conflicts with export"},
                                world.version))
         world.advance()
         # The annotation lands on the record itself (objective state).
@@ -326,7 +326,7 @@ class DocumentInteractionTests(unittest.TestCase):
         self.assertTrue(any(e["kind"] == "document_annotated" for e in a["events"]))
         self.assertTrue(any(e["kind"] == "document_annotated" for e in b["events"]))
         # A different reader sees the annotation on the record.
-        world.submit(Intention("b", "read", {"document": "ledger"}, world.version))
+        world.submit(Intention("b", "read", {"item": "ledger"}, world.version))
         world.advance()
         read = next(e for e in world.poll("b")["events"] if e["kind"] == "document_read")
         self.assertEqual(read["payload"]["annotations"][0]["text"], "timestamp conflicts with export")
@@ -335,7 +335,7 @@ class DocumentInteractionTests(unittest.TestCase):
         from harness.replay import replay_world
         initial = self.world()
         world = self.world()
-        world.submit(Intention("a", "annotate", {"document": "ledger", "text": "noted"}, world.version))
+        world.submit(Intention("a", "annotate", {"item": "ledger", "text": "noted"}, world.version))
         world.advance()
         replayed = replay_world(initial, world.replayable_log())
         self.assertEqual(replayed.document_defs["ledger"]["annotations"][0]["text"], "noted")
@@ -344,10 +344,10 @@ class DocumentInteractionTests(unittest.TestCase):
     def test_annotate_rejects_empty_text(self):
         world = self.world()
         with self.assertRaises(ActionRejected):
-            world.submit(Intention("a", "annotate", {"document": "ledger", "text": "  "},
+            world.submit(Intention("a", "annotate", {"item": "ledger", "text": "  "},
                                    world.version))
         with self.assertRaises(ActionRejected):
-            world.submit(Intention("a", "annotate", {"document": "ledger", "text": "x"},
+            world.submit(Intention("a", "annotate", {"item": "ledger", "text": "x"},
                                    world.version + 1))
 
     def test_hidden_description_is_not_resolvable_until_actor_can_physically_access_entity(self):

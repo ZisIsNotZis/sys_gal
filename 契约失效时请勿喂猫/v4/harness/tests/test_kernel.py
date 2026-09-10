@@ -76,30 +76,6 @@ class WorldTests(unittest.TestCase):
         with self.assertRaises(ActionRejected): w.submit(Intention("a", "apologize", {"target": "b"}, version))
         self.assertEqual(w.version, version)
 
-    def test_inspect_item_is_offered_only_when_present_and_reports_objective_fact(self):
-        w = self.world()
-        w.item_locations["folder"] = "room"
-        self.assertIn({"kind": "inspect", "item": "folder"}, w.affordances("a"))
-        w.submit(Intention("a", "inspect", {"item": "folder"}, w.version))
-        w.advance()
-        event = w.event_log[-1]
-        self.assertEqual(event.kind, "item_inspected")
-        self.assertEqual(dict(event.payload), {"item": "folder", "location": "room", "held": False})
-        # v4: the fact of an inspection is co-located visible (payload has no
-        # secret content - V4-DESIGN §3).
-        self.assertIn("a", event.visible_to)
-        self.assertIn("b", event.visible_to)
-
-    def test_search_current_location_lists_only_physically_present_items(self):
-        w = self.world()
-        w.item_locations.update({"folder": "room", "elsewhere": "other"})
-        w.locations["other"] = LocationState("other")
-        self.assertIn({"kind": "search"}, w.affordances("a"))
-        w.submit(Intention("a", "search", {}, w.version))
-        w.advance()
-        self.assertEqual(w.event_log[-1].kind, "location_searched")
-        self.assertEqual(w.event_log[-1].payload["items"], ["folder"])
-
     def test_inspect_rejects_item_not_at_actor_location(self):
         w = self.world()
         w.item_locations["folder"] = "other"
@@ -137,33 +113,6 @@ class WorldTests(unittest.TestCase):
         replayed = replay_world(self.world(), w.replayable_log())
         self.assertIn("item_given", [event["kind"] for event in replayed.replayable_log()])
 
-    def test_interaction_events_replay_without_inventing_state_changes(self):
-        initial = self.world()
-        initial.item_locations["folder"] = "room"
-        w = self.world()
-        w.item_locations["folder"] = "room"
-        w.submit(Intention("a", "inspect", {"item": "folder"}, w.version))
-        w.submit(Intention("b", "search", {}, w.version))
-        replayed = replay_world(initial, w.replayable_log())
-        self.assertEqual(
-            [event["kind"] for event in replayed.replayable_log()],
-            [event["kind"] for event in w.replayable_log()],
-        )
-        self.assertEqual(replayed.item_locations, w.item_locations)
-        self.assertEqual(replayed.actors["a"].location, "room")
-
-    def test_inspect_completion_is_co_located_visible_but_item_is_not_secret(self):
-        # v4: co-located actors see that an inspection happened; the payload
-        # carries no private content (V4-DESIGN §3).
-        w = self.world()
-        w.item_locations["folder"] = "room"
-        w.submit(Intention("a", "inspect", {"item": "folder"}, w.version))
-        w.advance()
-        completion = next(event for event in w.event_log
-                          if event.kind == "action_completed")
-        self.assertIn("b", completion.visible_to)
-        self.assertNotIn("held", dict(completion.payload))
-
     def test_interaction_results_are_private_but_knock_reaches_closed_occupant(self):
         w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
                   actors=[ActorState("a", "outside"), ActorState("b", "office"), ActorState("c", "outside")],
@@ -197,37 +146,6 @@ class WorldTests(unittest.TestCase):
         w.locations["closed"] = LocationState("closed", open=False)
         with self.assertRaises(ActionRejected):
             w.submit(Intention("a", "knock", {"target": "closed"}, w.version))
-
-    def test_closed_boundary_uses_generic_interaction_seam(self):
-        w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
-                  actors=[ActorState("a", "outside"), ActorState("b", "office")],
-                  locations=[LocationState("outside"), LocationState("office", open=False)],
-                  routes={("outside", "office"): 60})
-        option = {"kind": "interact", "target": "office", "verb": "knock", "parameters": {}}
-        self.assertIn(option, w.affordances("a"))
-        w.submit(Intention("a", "interact", {"target": "office", "verb": "knock", "parameters": {}},
-                           w.version))
-        w.advance()
-        event = next(e for e in w.event_log if e.kind == "interaction")
-        self.assertEqual(event.payload["target"], "office")
-        self.assertEqual(event.payload["verb"], "knock")
-        self.assertTrue(event.payload["responded"])
-        self.assertFalse(w.locations["office"].open)
-
-    def test_generic_interaction_validates_capability_and_parameters(self):
-        w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
-                  actors=[ActorState("a", "outside")],
-                  locations=[LocationState("outside"), LocationState(
-                      "gate", open=False, physical_capabilities={
-                          "tap": {"parameters": {"surface": "metal"}}})],
-                  routes={("outside", "gate"): 60})
-        w.submit(Intention("a", "interact", {"target": "gate", "verb": "tap",
-                                                "parameters": {"surface": "metal"}}, w.version))
-        w.advance()
-        self.assertEqual(next(e for e in w.event_log if e.kind == "interaction").payload["verb"], "tap")
-        with self.assertRaises(ActionRejected):
-            w.submit(Intention("a", "interact", {"target": "gate", "verb": "tap",
-                                                    "parameters": {"surface": "wood"}}, w.version))
 
     def test_location_knowledge_is_public_or_actor_private(self):
         w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
@@ -292,7 +210,7 @@ class WorldTests(unittest.TestCase):
         w = self.world()
         w.item_locations["folder"] = "room"
         with self.assertRaises(ActionRejected) as ctx:
-            w.submit(Intention("a", "inspect", {"item": "missing"}, w.version))
+            w.submit(Intention("a", "take", {"item": "missing"}, w.version))
         self.assertIn("folder", str(ctx.exception))
         self.assertTrue(any("folder" in alternative for alternative in ctx.exception.alternatives))
 
@@ -306,16 +224,6 @@ class WorldTests(unittest.TestCase):
         with self.assertRaises(ActionRejected) as ctx:
             w.submit(Intention("a", "move", {"target": "far"}, w.version))
         self.assertIn("不是一个你知道的地方", str(ctx.exception))
-
-    def test_interact_rejection_lists_supported_verbs(self):
-        w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
-                  actors=[ActorState("a", "outside")],
-                  locations=[LocationState("outside"), LocationState(
-                      "gate", open=False, physical_capabilities={"tap": {"parameters": {}}})],
-                  routes={("outside", "gate"): 60})
-        with self.assertRaises(ActionRejected) as ctx:
-            w.submit(Intention("a", "interact", {"target": "gate", "verb": "kick", "parameters": {}}, w.version))
-        self.assertIn("tap", str(ctx.exception))
 
     def test_open_close_requires_controllable(self):
         w = self.world()
@@ -837,7 +745,7 @@ class V4PhysicsTests(unittest.TestCase):
         w = self._world()
         w.document_defs["memo"] = {"title": "便签", "content": "秘密内容"}
         w.item_locations["memo"] = "宿舍"
-        w.submit(parse_decision("b", '{"type":"read","args":{"document":"memo"}}', None)[0])
+        w.submit(parse_decision("b", '{"type":"read","args":{"item":"memo"}}', None)[0])
         w.advance()
         content = next(e for e in w.event_log if e.kind == "document_read")
         self.assertEqual(content.visible_to, frozenset({"b"}))

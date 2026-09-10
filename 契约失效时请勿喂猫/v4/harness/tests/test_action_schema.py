@@ -21,28 +21,30 @@ class ActionSchemaTests(unittest.TestCase):
 
     def test_valid_args_pass(self):
         cases = [
-            ("wait", {"duration_seconds": 60}),
-            ("speak", {"text": "hi", "volume": "normal"}),
-            ("send_message", {"target": "b", "text": "hi"}),
-            ("move", {"target": "room"}),
-            ("observe", {}),
-            ("continue_action", {}),
-            ("read", {"document": "ledger"}),
-            ("compare", {"first": "a", "second": "b"}),
-            ("interact", {"target": "office", "verb": "knock", "parameters": {}}),
-            ("search", {}),
+            ("wait", {"duration_seconds": 60, "inner": "等"}),
+            ("speak", {"text": "hi", "volume": "normal", "inner": "打招呼"}),
+            ("send_message", {"target": "b", "text": "hi", "inner": "通知"}),
+            ("move", {"target": "room", "inner": "过去"}),
+            ("continue_action", {"inner": "继续"}),
+            ("read", {"item": "ledger", "inner": "读"}),
+            ("compare", {"first": "a", "second": "b", "inner": "比对"}),
+            ("system_accept", {"case": "ambiguous-obligations", "inner": "接"}),
+            ("system_decline", {"inner": "推"}),
+            ("system_query", {"question": "哨子在哪里？", "inner": "问"}),
         ]
         for kind, args in cases:
             self.assertIsNone(validate_action_args(kind, args), (kind, args))
 
     def test_wrong_key_is_described(self):
-        reason = validate_action_args("read", {"item": "ledger"})
-        self.assertIn("'document'", reason)
-        self.assertIn("'item'", reason)
+        reason = validate_action_args("read", {"document": "ledger"})
+        self.assertIn("unexpected argument 'document'", reason)
+        self.assertIn("inner", reason)
+        self.assertIn("item", reason)
 
     def test_missing_required_is_described(self):
-        self.assertIn("'text'", validate_action_args("annotate", {"document": "ledger"}))
-        self.assertIn("'second'", validate_action_args("compare", {"first": "a"}))
+        self.assertIn("'inner'", validate_action_args("annotate", {"item": "ledger"}))
+        self.assertIn("'text'", validate_action_args("annotate", {"item": "ledger", "inner": "写"}))
+        self.assertIn("'second'", validate_action_args("compare", {"first": "a", "inner": "比"}))
 
     def test_wrong_type_is_described(self):
         reason = validate_action_args("wait", {"duration_seconds": "60"})
@@ -50,8 +52,8 @@ class ActionSchemaTests(unittest.TestCase):
         self.assertIn("integer", reason)
 
     def test_no_args_action_rejects_extras(self):
-        reason = validate_action_args("search", {"place": "archive"})
-        self.assertIn("takes no arguments", reason)
+        reason = validate_action_args("system_decline", {"place": "archive", "inner": "推"})
+        self.assertIn("unexpected argument 'place'", reason)
 
     def test_runner_rejects_wrong_signature_with_schema_message(self):
         from harness.agent_state import PrivateState
@@ -63,14 +65,14 @@ class ActionSchemaTests(unittest.TestCase):
                       item_locations={"ledger": "room"})
 
         def agent(state, perception, affordances):
-            return Intention("a", "read", {"item": "ledger"}, perception["world_version"])
+            return Intention("a", "read", {"doc": "ledger"}, perception["world_version"])
 
         trace = Trace("v3-test", "schema-rejection")
         Runner(world, {"a": agent}, {actor: PrivateState(actor) for actor in world.actors},
                trace).run(stop_at=world.now + __import__("datetime").timedelta(seconds=60),
                           max_turns=5)
         rejected = next(turn for turn in trace.agent_turns if turn["result"] == "rejected")
-        self.assertIn("'document'", rejected["error"])
+        self.assertIn("unexpected argument 'doc'", rejected["error"])
         self.assertIn("'item'", rejected["error"])
 
     def test_provider_retries_transient_failures_beyond_old_budget(self):

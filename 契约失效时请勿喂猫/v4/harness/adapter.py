@@ -35,11 +35,10 @@ IGNORED_KEYS = {"updates"}
 # argument, executes the action, and counts the hit for aggregate review.
 ARG_ALIASES: dict[tuple[str, str], str] = {
     ("wait", "seconds"): "duration_seconds",
-    ("sleep", "seconds"): "duration_seconds",
-    ("read", "item"): "document",
-    ("copy", "item"): "document",
-    ("label", "item"): "document",
-    ("annotate", "item"): "document",
+    ("read", "document"): "item",
+    ("copy", "document"): "item",
+    ("annotate", "document"): "item",
+    ("annotate", "text_body"): "text",
     ("send_message", "to"): "target",
     ("give", "to"): "target",
     ("move", "seconds"): "duration_seconds",

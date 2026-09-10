@@ -25,28 +25,30 @@ from jsonschema import Draft202012Validator
 
 _STR = {"type": "string"}
 _INT = {"type": "integer"}
-_NO_ARGS = {"type": "object", "properties": {}, "additionalProperties": False}
-_ONE_ITEM = {"type": "object", "required": ["item"],
-             "properties": {"item": _STR}, "additionalProperties": False}
-_ONE_DOC = {"type": "object", "required": ["document"],
-            "properties": {"document": _STR}, "additionalProperties": False}
-_ONE_TARGET = {"type": "object", "required": ["target"],
-               "properties": {"target": _STR}, "additionalProperties": False}
+_INNER = {"type": "string", "minLength": 1}
+_NO_ARGS = {"type": "object", "required": ["inner"],
+            "properties": {"inner": _INNER}, "additionalProperties": False}
 
 
 def _schema(**properties: Any) -> dict[str, Any]:
+    properties = {"inner": _INNER, **properties}
     return {"type": "object", "required": list(properties),
             "properties": properties, "additionalProperties": False}
+_ONE_ITEM = {"type": "object", "required": ["inner", "item"],
+             "properties": {"inner": _INNER, "item": _STR}, "additionalProperties": False}
+_ONE_ITEM_CONTENT = {"type": "object", "required": ["inner", "item"],
+                     "properties": {"inner": _INNER, "item": _STR},
+                     "additionalProperties": False}
+_ONE_TARGET = {"type": "object", "required": ["inner", "target"],
+               "properties": {"inner": _INNER, "target": _STR}, "additionalProperties": False}
 
 
 SCHEMAS: dict[str, dict[str, Any]] = {
     # Memory tools (V4-AGENT-INTERFACE §2): no world-time cost, but every
-    # turn still costs at least one tick — enforced by the engine, not here.
-    "think": {"type": "object", "required": ["inner"],
-              "properties": {"inner": {"type": "string", "minLength": 1}},
-              "additionalProperties": False},
-    "update_memory": {"type": "object", "required": ["rows"],
-                      "properties": {"rows": {"type": "array", "minItems": 1,
+    # call carries a mandatory non-empty inner (this turn's 心声).
+    "update_memory": {"type": "object", "required": ["inner", "rows"],
+                      "properties": {"inner": _INNER,
+                                     "rows": {"type": "array", "minItems": 1,
                                               "items": {"type": "object",
                                                         "required": ["fields", "id", "op"],
                                                         "properties": {"fields": {"type": "object"},
@@ -57,84 +59,93 @@ SCHEMAS: dict[str, dict[str, Any]] = {
                                                         "additionalProperties": False}}},
                       "additionalProperties": False},
     "recall": {"type": "object",
-               "properties": {"kinds": {"type": "array", "items": _STR},
+               "required": ["inner"],
+               "properties": {"inner": _INNER,
+                              "kinds": {"type": "array", "items": _STR},
                               "ids": {"type": "array", "items": _STR},
                               "closed": {"type": "boolean"},
                               "limit": {"type": "integer"}},
                "additionalProperties": False},
-    "flashback": {"type": "object", "required": ["entity"],
-                  "properties": {"entity": _STR},
+    "flashback": {"type": "object", "required": ["inner", "entity"],
+                  "properties": {"inner": _INNER, "entity": _STR},
                   "additionalProperties": False},
     "wait": _schema(duration_seconds=_INT),
     # volume: whisper needs the co-located "to" list (kernel validates it).
     # Both volume and to are optional; only text is required.
-    "speak": {"type": "object", "required": ["text"],
-              "properties": {"text": {"type": "string", "minLength": 1},
+    "speak": {"type": "object", "required": ["inner", "text"],
+              "properties": {"inner": _INNER,
+                             "text": {"type": "string", "minLength": 1},
                              "volume": {"type": "string", "enum": ["whisper", "normal"]},
                              "to": {"type": "array", "items": _STR}},
               "additionalProperties": False},
-    "send_message": {"type": "object", "required": ["target", "text"],
-                     "properties": {"target": _STR,
+    "send_message": {"type": "object", "required": ["inner", "target", "text"],
+                     "properties": {"inner": _INNER,
+                                    "target": _STR,
                                     "text": {"type": "string", "minLength": 1}},
                      "additionalProperties": False},
     # V4-DESIGN §5.6: intent only - the walk time is the map's fact.
     "move": _schema(target=_STR),
     "open": _NO_ARGS,
     "close": _NO_ARGS,
-    "ask_stranger": {"type": "object", "required": ["question"],
-                     "properties": {"question": {"type": "string", "minLength": 1}},
+    "ask_stranger": {"type": "object", "required": ["inner", "question"],
+                     "properties": {"inner": _INNER,
+                                    "question": {"type": "string", "minLength": 1}},
                      "additionalProperties": False},
     "take": _ONE_ITEM,
     "drop": _ONE_ITEM,
-    "inspect": _ONE_ITEM,
-    "search": _NO_ARGS,
-    "observe": _NO_ARGS,
     "continue_action": _NO_ARGS,
     "abandon_action": _NO_ARGS,
-    "interact": _schema(target=_STR, verb=_STR, parameters={"type": "object"}),
     "knock": _ONE_TARGET,
     "give": _schema(target=_STR, item=_STR),
-    "read": _ONE_DOC,
-    "copy": _ONE_DOC,
-    "annotate": {"type": "object", "required": ["document", "text"],
-                 "properties": {"document": _STR,
+    "read": _ONE_ITEM_CONTENT,
+    "copy": _ONE_ITEM_CONTENT,
+    "annotate": {"type": "object", "required": ["inner", "item", "text"],
+                 "properties": {"inner": _INNER, "item": _STR,
                                 "text": {"type": "string", "minLength": 1}},
                  "additionalProperties": False},
     "compare": _schema(first=_STR, second=_STR),
+    "system_accept": _schema(case=_STR),
+    "system_decline": _NO_ARGS,
+    "system_query": _schema(question=_STR),
 }
 
-# One-line Chinese descriptions, one per tool, from V4-AGENT-INTERFACE §2.
+# 每个工具的中文一句话说明（docs §2）。注意：每个调用的 arguments 都必须带
+# 非空 inner——这一动作当下的心声（感受、意图、为什么）；缺 inner 或空 inner
+# 的调用不会被执行。
 _TOOL_DESCRIPTIONS: dict[str, str] = {
-    "think": "inner 心声；保留在会话历史中；无世界事件、无世界状态效果",
     "update_memory":
-    "把事实或要紧的事写进你的私人记事本（引擎保管，只有你能看）：rows=[{fields,id,op,desc?}]。"
-    + "fields 是保留名 person:/location:/item:/todo:true/reminder:\"M/D(周X) HH:MM\" 或自由标签；id 用英文短横线小写。"
-    + "op：open 新建/重开、edit 改 desc、close 翻篇（recall 指名可找回）。只写事实和要紧的事——发生的事世界会自动重现，此刻的感受用 think；部分成功，失败逐行报错",
+        "把事实或要紧的事写进你的私人记事本（引擎保管，只有你能看）。"
+        "【何时用】每获得值得记住的新信息就写：谁说了什么、你发现了什么、承诺或期限。"
+        "【何时不写】世界会自动重现的事（你亲眼看到的事不用抄）；一时的感受写进 inner。"
+        "rows=[{fields,id?,op,desc?}]：fields 是保留名 person:/location:/item:/todo:true/"
+        "reminder:\"M/D(周X) HH:MM\" 或自由标签，id 可省略（fields 唯一匹配时自动定位）；"
+        "op：open 新建（必须带 desc）/edit 改 desc/close 翻篇。部分成功，失败逐行报错",
     "recall":
-    "想立刻翻看记事本：下一轮 #knowledge 显式包含指定的类型/条目（closed 行需 closed=true）",
+        "想立刻翻看记事本时用：下一轮 #knowledge 显式包含指定的类型/条目"
+        "（closed 行需 closed=true）。平时不必用——到期的事会自动回到你眼前",
     "flashback":
-    "手动闪回：重显某地点/物品/人物相关的、你亲历过的历史",
-    "wait": "唯一的时间流逝工具；时长向上取整到 tick 倍数；等待期间事件照常投递",
-    "speak": "当面说话；volume=normal 全地点听得见，whisper 仅 to 指定的在场者听得见文本",
-    "send_message": "发消息（电话），异步，1 tick 后送达",
-    "move": "走向 target；时长由引擎按路线图计算，不用填",
-    "read": "读一份在手边的文档；内容只有你能看到",
-    "copy": "复印一份文档（需要复印材料）",
-    "annotate": "在文档上写批注，后续读者都能看见",
-    "compare": "比对两份都在手边的文档内容是否一致",
+        "手动闪回：重显某地点/物品/人物相关的、你亲历过的历史。想不起某段经历的具体细节时用",
+    "wait": "唯一的时间流逝工具；时长向上取整到 tick 倍数；等待期间事件照常投递。想干等或边等边想时用",
+    "speak": "当面说话；volume=normal 全地点听得见，whisper 仅 to 指定的在场者听得见文本。"
+             "在场无他人时为自言自语。说话花一分钟",
+    "send_message": "发消息（电话），异步，1 tick 后送达；收信人必须是熟人或在场的对象",
+    "move": "走向 target；时长由引擎按路线图计算，不用填。离开时在场者会看见你离开",
+    "read": "读一份在手边的内容型物品；正文和已有批注只在 tool 结果里给你自己看。他人只看见你在读",
+    "copy": "复印一份内容型物品（需要复印材料）：原件留手，副本可交人或另存",
+    "annotate": "在内容型物品上写批注——后续任何读它的人都会看见你的批注",
+    "compare": "比对两份都在手边的物品内容是否一致；判定只在 tool 结果里给你自己看",
     "take": "拿起一件在这里的物品",
     "drop": "放下你拿着的一件物品",
     "give": "把一件物品递给在场的某人",
-    "inspect": "细看一件物品（这里有的或你拿着的）",
-    "search": "搜一搜当前地点",
-    "knock": "敲一个地点的门",
-    "interact": "与一个邻近地点互动（verb + parameters）",
-    "open": "打开当前地点（需可控）",
-    "close": "关闭当前地点（需可控）",
-    "observe": "主动重看：下一回合消息强制全量回放场景状态与描述",
-    "ask_stranger": "搭话在场的匿名路人",
-    "continue_action": "无损继续被打断的动作",
-    "abandon_action": "放弃被打断的动作（作废）",
+    "knock": "敲一个关闭地点的门，探里面有没有人",
+    "open": "打开当前地点（需该地点可控）",
+    "close": "关闭当前地点（需该地点可控）",
+    "ask_stranger": "搭话在场的匿名路人；本地点配置了路人才可用",
+    "continue_action": "无损继续被打断的动作（被打断的回合必须先选这个或 abandon）",
+    "abandon_action": "放弃被打断的动作（作废；被打断的回合必须先选这个或 continue）",
+    "system_accept": "接受台账案件（仅案件提出时可用）",
+    "system_decline": "推掉台账案件（仅案件提出时可用）",
+    "system_query": "向台账查询一件客观事实（受查询次数限制）",
 }
 
 TOOLS: list[dict[str, Any]] = [

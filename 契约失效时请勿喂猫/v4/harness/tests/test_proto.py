@@ -30,11 +30,12 @@ class _FakeResponse(io.BytesIO):
 class ToolsTests(unittest.TestCase):
     def test_tools_cover_the_doc_table_without_sleep(self):
         names = {tool["function"]["name"] for tool in TOOLS}
-        expected = {"think", "update_memory", "recall", "flashback", "wait", "speak",
+        expected = {"update_memory", "recall", "flashback", "wait", "speak",
                     "send_message", "move", "read", "copy", "annotate",
-                    "compare", "take", "drop", "give", "inspect", "search", "knock",
-                    "interact", "open", "close", "observe", "ask_stranger",
-                    "continue_action", "abandon_action"}
+                    "compare", "take", "drop", "give", "knock",
+                    "open", "close", "ask_stranger",
+                    "continue_action", "abandon_action",
+                    "system_accept", "system_decline", "system_query"}
         self.assertEqual(names, expected)
         self.assertNotIn("sleep", SCHEMAS)  # M1: sleep merged into wait
         # Static full declaration, cache-safe: every tool carries a Chinese
@@ -44,10 +45,6 @@ class ToolsTests(unittest.TestCase):
             self.assertIs(tool["function"]["parameters"], SCHEMAS[tool["function"]["name"]])
 
     def test_memory_tool_arg_validation(self):
-        self.assertIsNone(validate_action_args("think", {"inner": "心里的话"}))
-        think_err = validate_action_args("think", {"inner": ""})
-        self.assertIsNotNone(think_err)
-        self.assertIn("non-empty", think_err or "")
         rows_err = validate_action_args("update_memory", {})
         self.assertIsNotNone(rows_err)
         self.assertIn("needs the 'rows' argument", rows_err or "")
@@ -55,8 +52,9 @@ class ToolsTests(unittest.TestCase):
         self.assertIsNotNone(fields_err)
         self.assertIn("needs the 'fields' argument", fields_err or "")
         self.assertIsNone(validate_action_args(
-            "update_memory", {"rows": [{"fields": {"todo": True}, "id": "x", "op": "open"}]}))
-        self.assertIsNone(validate_action_args("recall", {"closed": True, "limit": 5}))
+            "update_memory", {"inner": "记下来",
+                              "rows": [{"fields": {"todo": True}, "id": "x", "op": "open"}]}))
+        self.assertIsNone(validate_action_args("recall", {"closed": True, "limit": 5, "inner": "翻"}))
         entity_err = validate_action_args("flashback", {})
         self.assertIsNotNone(entity_err)
         self.assertIn("needs the 'entity' argument", entity_err or "")

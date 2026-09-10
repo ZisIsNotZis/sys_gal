@@ -263,10 +263,12 @@ class RunnerTests(unittest.TestCase):
         self.assertTrue(checkpoints)
 
     def test_realistic_long_wait_affordance_is_available(self):
+        # wait is a static tool — not listed in #actions (docs §3)
         # v4: wait is free-form (V4-DESIGN §5.6) - one generic affordance,
         # bounded by the kernel, not a fixed menu.
         world = create_world()
-        self.assertIn({"kind": "wait"}, world.affordances("陈默"))
+        self.assertNotIn({"kind": "wait"}, world.affordances("陈默"),
+                         "wait is a static tool — not listed in #actions")
         world.submit(Intention("陈默", "wait", {"duration_seconds": 900},
                                world.version))
 
@@ -740,7 +742,7 @@ class RunnerTests(unittest.TestCase):
         # (auditor F2 — the header's clock already shows the elapsed time).
         self.assertNotIn("等了", combined)
         self.assertIn("搜了" in combined or "搜索" in combined, combined) if False else None
-        self.assertTrue(any("搜" in text for text in perceived["陈默"]))
+        self.assertTrue(any("放下" in text for text in perceived["陈默"]))
         self.assertIn("2013年邻居许可证", combined)
 
     def test_knock_result_feedback_reports_whether_someone_responded(self):
