@@ -28,31 +28,29 @@ class ActionSchemaTests(unittest.TestCase):
             ("continue_action", {"inner": "继续"}),
             ("read", {"item": "ledger", "inner": "读"}),
             ("compare", {"first": "a", "second": "b", "inner": "比对"}),
-            ("system_accept", {"case": "ambiguous-obligations", "inner": "接"}),
-            ("system_decline", {"inner": "推"}),
             ("system_query", {"question": "哨子在哪里？", "inner": "问"}),
         ]
         for kind, args in cases:
             self.assertIsNone(validate_action_args(kind, args), (kind, args))
 
     def test_wrong_key_is_described(self):
-        reason = validate_action_args("read", {"document": "ledger"})
+        reason = validate_action_args("read", {"document": "ledger"}) or ""
         self.assertIn("unexpected argument 'document'", reason)
         self.assertIn("inner", reason)
         self.assertIn("item", reason)
 
     def test_missing_required_is_described(self):
-        self.assertIn("'inner'", validate_action_args("annotate", {"item": "ledger"}))
-        self.assertIn("'text'", validate_action_args("annotate", {"item": "ledger", "inner": "写"}))
-        self.assertIn("'second'", validate_action_args("compare", {"first": "a", "inner": "比"}))
+        self.assertIn("'inner'", validate_action_args("annotate", {"item": "ledger"}) or "")
+        self.assertIn("'text'", validate_action_args("annotate", {"item": "ledger", "inner": "写"}) or "")
+        self.assertIn("'second'", validate_action_args("compare", {"first": "a", "inner": "比"}) or "")
 
     def test_wrong_type_is_described(self):
-        reason = validate_action_args("wait", {"duration_seconds": "60"})
+        reason = validate_action_args("wait", {"duration_seconds": "60"}) or ""
         self.assertIn("'duration_seconds'", reason)
         self.assertIn("integer", reason)
 
     def test_no_args_action_rejects_extras(self):
-        reason = validate_action_args("system_decline", {"place": "archive", "inner": "推"})
+        reason = validate_action_args("wait", {"place": "archive", "inner": "等", "duration_seconds": 60}) or ""
         self.assertIn("unexpected argument 'place'", reason)
 
     def test_runner_rejects_wrong_signature_with_schema_message(self):

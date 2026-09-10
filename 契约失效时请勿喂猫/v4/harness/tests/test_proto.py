@@ -23,7 +23,7 @@ class _FakeResponse(io.BytesIO):
     def __enter__(self) -> "_FakeResponse":
         return self
 
-    def __exit__(self, *args: object) -> None:
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
         return None
 
 
@@ -35,7 +35,7 @@ class ToolsTests(unittest.TestCase):
                     "compare", "take", "drop", "give", "knock",
                     "open", "close", "ask_stranger",
                     "continue_action", "abandon_action",
-                    "system_accept", "system_decline", "system_query"}
+                    "system_query"}
         self.assertEqual(names, expected)
         self.assertNotIn("sleep", SCHEMAS)  # M1: sleep merged into wait
         # Static full declaration, cache-safe: every tool carries a Chinese

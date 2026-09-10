@@ -56,12 +56,22 @@ class Ledger:
     def affordances(self, actor_id: str) -> list[dict[str, Any]]:
         if actor_id != self.bound_actor:
             return []
-        if self.status == "offered":
-            return [{"kind": "system_accept", "case": self.case.id},
-                    {"kind": "system_decline", "case": self.case.id}]
+        # 案件默认已接下（用户裁决）：无 accept/decline 仪式，引擎在启动时
+        # 自动接案并提交 system_case_accepted 事件。
         if self.status == "accepted" and self.queries_used < self.case.query_limit:
             return [{"kind": "system_query", "question": ""}]
         return []
+
+    def auto_accept(self, world: World) -> None:
+        """案件默认已接下（用户裁决 2026-09-10）：台账提出即生效，无仪式；
+        提交 system_case_accepted 事件供叙事。"""
+        if self.status == "offered":
+            self.status = "accepted"
+            self.accepted = True
+            world.commit_external("system_case_accepted", self.bound_actor, {
+                "system_name": self.name, "case": self.case.id,
+                "condition": "auto-accepted on offer",
+            }, None)
 
     def accept(self, world: World, actor_id: str, case_id: str) -> Event:
         if actor_id != self.bound_actor or self.status != "offered" or case_id != self.case.id:

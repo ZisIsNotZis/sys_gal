@@ -79,6 +79,9 @@ class AsyncEngine:
         if set(agents) != required or set(states) != required:
             raise ValueError("one agent and private state are required for every non-extra actor")
         self.world, self.agents, self.states, self.trace, self.system = world, agents, states, trace, system
+        if self.system is not None:
+            # 案件默认已接下（用户裁决 2026-09-10）：无 accept/decline 仪式。
+            self.system.auto_accept(world)
         self.extra_call = extra_call
         self.decision_timeout = _as_float(decision_timeout, 'decision_timeout')
         self.max_wall_seconds = max_wall_seconds
@@ -625,20 +628,14 @@ class AsyncEngine:
                 fail(call, "inner missing: 每个调用都要带上非空 inner——这一动作当下的心声")
                 continue
             inner = inner.strip()
-            if name in {"system_accept", "system_decline", "system_query"}:
+            if name == "system_query":
                 if self.system is None:
                     fail(call, "no ledger bound in this world")
                     continue
-                before = len(world.event_log)
                 try:
-                    if name == "system_accept":
-                        event = self.system.accept(world, actor_id, str(args.get("case")))
-                    elif name == "system_decline":
-                        event = self.system.decline(world, actor_id)
-                    else:
-                        event = self.system.ask(world, actor_id, str(args.get("question")))
-                    results.append({"tool_call_id": call.get("tool_call_id"),
-                                    "ok": True, "text": "ok"})
+                    event = self.system.ask(world, actor_id, str(args.get("question")))
+                    results.append({"tool_call_id": call.get("tool_call_id"), "ok": True,
+                                    "text": f"台账回答：{event.payload.get('answer', '')}"})
                 except ActionRejected as exc:
                     fail(call, str(exc))
                 except Exception as exc:
@@ -650,17 +647,23 @@ class AsyncEngine:
                     if errs:
                         fail(call, "; ".join(errs))
                     else:
-                        results.append({"tool_call_id": call.get("tool_call_id"), "ok": True, "text": "ok"})
+                        written = "；".join(
+                            f"{row.get('id') or next(iter(row.get('fields'), {'记': ''}), '')}"
+                            f"→{row.get('op')}" for row in (args.get("rows") or []))
+                        results.append({"tool_call_id": call.get("tool_call_id"), "ok": True,
+                                        "text": f"已写入记事本：{written}"})
                 else:
                     fail(call, "no notebook seeded for this actor")
                 continue
             if name == "recall":
                 if actor_id in self._kb:
-                    self._recall_lines.setdefault(actor_id, []).extend(
-                        self._kb[actor_id].force_recall(
-                            args.get("kinds"), args.get("ids"),
-                            bool(args.get("closed")), _as_int(args.get("limit") or 8, "limit")))
-                results.append({"tool_call_id": call.get("tool_call_id"), "ok": True, "text": "ok"})
+                    lines = self._kb[actor_id].force_recall(
+                        args.get("kinds"), args.get("ids"),
+                        bool(args.get("closed")), _as_int(args.get("limit") or 8, "limit"))
+                else:
+                    lines = []
+                results.append({"tool_call_id": call.get("tool_call_id"), "ok": True,
+                                "text": "\n".join(lines) or "（记事本里没有匹配的行。）"})
                 continue
             if name == "flashback":
                 lines = self._flashback_query(actor_id, str(args.get("entity") or ""))

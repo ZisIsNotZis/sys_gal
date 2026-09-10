@@ -31,9 +31,9 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 一次性声明全部工具，永不增删（cache 安全）。**每个工具调用的 arguments 都必须包含非空 inner**——这一动作当下的心声（感受、意图、为什么）；缺 inner 或空 inner 的调用不执行，其 tool 结果报错。当回合哪些世界动作可做由世界消息 `# actions` 表达——只列**状态相关**的动作（在场者、手边物品、可达地点、挂起动作、案件）；恒可用的动作（wait、自言自语 speak、记忆工具）不列入。每次调用的结果（ok 或具体错误）由引擎以 role:"tool" 消息回填会话。`harness/action_schema.py` 与本表一一对应。
 
 | 工具 | 消耗时间 | 说明 |
-|---|---|---|
+| --- | --- | --- |
 | update_memory | 同上 | 把事实或要紧的事写进私人记事本（引擎保管，只有你能看）：rows[{fields,id,op:open/edit/close,desc?}]；字段是保留名 person:/location:/item:/todo:true/reminder:"M/D(周X) HH:MM" 或自由标签，id 用英文短横线小写；op：open 新建/重开、edit 改 desc、close 翻篇（recall 指名可找回）；只写事实和要紧的事——发生的事世界会自动重现。**鼓励：每获得值得记住的新信息就 update_memory。**部分成功，失败逐行报错 |
-| recall | 同上 | 想立刻翻看记事本：下一轮 #knowledge 显式包含指定的类型/条目（含 closed，需 closed:true + limit，按最久未看倒序） |
+| recall | 同上 | 立刻翻看记事本：匹配的行（含 closed 需 closed:true）逐字回进该调用的 tool 结果（无匹配则明确说明） |
 | flashback | 同上 | 手动闪回：与 entity 相关的、你亲历过的已播历史逐字回进该调用的 tool 结果（无匹配则明确说明） |
 | wait | 是 | 唯一的时间流逝工具（已并入 sleep）；时长向上取整到 tick 倍数；等待期间事件照常长轮询投递（无 asleep 过滤） |
 | speak | 是 | volume: whisper（仅 to 指定的在场者听得见内容；在场其他人看见耳语动作，听不见文本）/ normal（全地点听得见）；text 必填非空 |
@@ -44,11 +44,11 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 | knock | 是 | 敲关闭地点的门；可带 interrupt=[在场的目标] |
 | open / close | 是 | 场所开关 |
 
-（ask_stranger 保留：触发匿名路人，对话期生命周期——细节见 V4-CAST §1，本文不重复。）
+（ask_stranger 保留：触发匿名路人，question 填想问的话；对话期生命周期——细节见 V4-CAST §1。）
 
 ## 3. 每回合 user 消息（世界消息）
 
-按固定块序渲染；空块省略；表头与 actions 永在。所有动态内容只追加在尾部。**全部事件行为第三人称客观编年体**（见 §0 模板纪律），逐条全时间戳。**NPC 与 MC 的消息结构完全一致**（NPC 唤醒回合额外多一个置顶的 `[director]` 块，见 §5）。`#actions` 只列**状态相关**的动作（恒可用者不列：wait、自言自语 speak、记忆工具、system 案件未提出时）；同类动作合并为一行，候选值用 、 连接（如 `[drop] item=X、Y`；`[speak] volume=normal/whisper, to=X、Y`）。
+按固定块序渲染；空块省略；表头与 actions 永在。所有动态内容只追加在尾部。**全部事件行为第三人称客观编年体**（见 §0 模板纪律），逐条全时间戳。**NPC 与 MC 的消息结构完全一致**（NPC 唤醒回合额外多一个置顶的 `[director]` 块，见 §5）。`#actions` 只列**状态相关**的动作（恒可用者不列：wait、记忆工具；无案件或无台账时不列 system 行）；同类动作合并为一行，候选值用 、 连接（如 `[drop] item=X、Y`；`[speak] volume=normal/whisper, to=X、Y`）。
 
 ```
 9/16(周三) 7:00 @半坡咖啡馆
@@ -85,7 +85,7 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 事件渲染模板（封闭集，每种 kind 一条，槽位 = 实体全名；新增事件 kind 必须先在本文登记模板，再实现）：
 
 | kind | 模板（公开行） |
-|---|---|
+| --- | --- |
 | enter / leave | {actor} 进入 / 离开 {location} |
 | speak | {actor} 说（{听众} 听见）："{text}"——听众 = 提交时刻在场的全部他人，客观事实，各行逐字相同 |
 | speak（whisper） | {actor} 凑近 {target} 耳语了几句 —— 其他人只看见耳语动作，文本仅投递给 to 指定者 |
@@ -103,8 +103,7 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 ## 4. 响应设计（模型 → 工具调用）
 
 - 模型一次响应返回**多个工具调用**（原生 tool_calls），按序逐个执行。
-- `think`：心声保留在会话历史中（compaction 时按记忆折叠），镜像入 trace（私有）；永远是回合的第一个调用，每回合都要写。
-- `update_memory` / `recall` / `flashback`：结果/错误以该调用的 tool 结果回填。
+- `update_memory` / `recall` / `flashback`：结果/错误以该调用的 tool 结果回填（无 ok 占位——每个结果都携带真实内容或具体错误）。
 - `update_memory` 补丁语义：合法行应用，失败行原文进该调用的 tool 结果，其余继续。同一 patch 内出现两行相同 (fields,id)：第一行生效，其余该行报 `duplicate row in patch`。对已是 open 状态的行再次 open：视为 edit（宽容）+ 遥测计数，不报错、不产生第二行。close 的行只能 reopen（`op:"open"`），不能 edit；close 的行不计入 todo 上限。
 - todo 上限 **12** 只数 open 状态的 todo 行。
 - `reminder` 到期 = **force-interrupt**（V4-ENGINE §3）：在执行位置挂起当前动作 → 下回合 continue-or-cancel；通知播放后该行自动 close。
@@ -116,7 +115,7 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 
 ### compaction（M 引用语义补全）
 
-会话消息总量超过 `compaction_threshold=30000` 字符时自动触发：旧消息折叠为第一人称记忆摘要，最近 `recent_messages=4` 条非 world 消息原样保留；随后**全部 last_shown 清零**（下一轮全量重放安全网）、闪回池扩展至新压缩点。think 调用随会话历史一起被折叠（心声化为记忆，非丢失）。
+会话消息总量超过 `compaction_threshold=30000` 字符时自动触发：旧消息折叠为第一人称记忆摘要，最近 `recent_messages=4` 条非 world 消息原样保留；随后**全部 last_shown 清零**（下一轮全量重放安全网）、闪回池扩展至新压缩点。带 inner 的调用随会话历史一起被折叠（心声化为记忆，非丢失）。
 
 ## 5. NPC 与 extras 的接口（M9/M10 裁决）
 
@@ -154,7 +153,7 @@ kb:
 ## 7. 常数表
 
 | 常数 | 值 | 管什么 |
-|---|---|---|
+| --- | --- | --- |
 | `knowledge_replay_minutes` | 120 | knowledge 各类型行（scene/item/person）的 last_shown 间隔（模拟时间分钟） |
 | `todo_replay_minutes` | 60 | todo 行回放间隔 |
 | `reminder_replay_minutes` | 30 | reminder 行回放间隔 |

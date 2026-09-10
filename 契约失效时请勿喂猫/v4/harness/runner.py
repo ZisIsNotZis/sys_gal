@@ -20,6 +20,13 @@ from .trace import Trace
 AgentFn = Callable[[PrivateState, dict, list[dict]], Intention | tuple[Intention | None, dict[str, Any]] | None]
 
 
+def _as_int(value, what="value"):
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"invalid {what}: {value!r}") from exc
+
+
 class Runner:
     def __init__(self, world: World, agents: dict[str, AgentFn], states: dict[str, PrivateState], trace: Trace, system: Ledger | None = None, *, max_workers: int | None = None, decision_timeout: float = 60.0, checkpoint: Callable[[], None] | None = None, fail_fast: bool = False, max_transient_failures: int = 2, retry_delay_seconds: int = 60, max_wall_seconds: float | None = None, repetition: RepetitionMonitor | None = None,
             extra_call: Callable | None = None,
@@ -28,6 +35,9 @@ class Runner:
         if set(agents) != set(world.actors) or set(states) != set(world.actors):
             raise ValueError("one agent and private state are required for every actor")
         self.world, self.agents, self.states, self.trace, self.system = world, agents, states, trace, system
+        if self.system is not None:
+            # 案件默认已接下（用户裁决 2026-09-10）：无 accept/decline 仪式。
+            self.system.auto_accept(world)
         self.stop_reason: str | None = None
         # inner telemetry (V4-DESIGN 首验日反馈 #5): count submitted turns
         # without a monologue; remind each actor once, never reject.
@@ -42,9 +52,9 @@ class Runner:
         self._extras: dict[str, dict] = {}
         self._cold_woken: dict[str, Any] = {}
         self.extra_call = extra_call
-        self.cold_ticks = int(cold_ticks)
-        self.npc_wake_budget = int(npc_wake_budget)
-        self.extra_idle_seconds = int(extra_idle_seconds)
+        self.cold_ticks = _as_int(cold_ticks, "cold_ticks")
+        self.npc_wake_budget = _as_int(npc_wake_budget, "npc_wake_budget")
+        self.extra_idle_seconds = _as_int(extra_idle_seconds, "extra_idle_seconds")
         self.max_workers = max_workers or len(agents)
         self.decision_timeout = decision_timeout
         self.checkpoint = checkpoint
@@ -89,18 +99,19 @@ class Runner:
         if set(state.get("transient_failures", {})) != set(self.world.actors):
             raise ValueError("checkpoint runner actor set does not match world")
         self._waiting = set(state.get("waiting", ()))
-        self._transient_failures = {actor: int(value) for actor, value in state["transient_failures"].items()}
+        self._transient_failures = {actor: _as_int(value, f"failures[{actor}]")
+                                    for actor, value in state["transient_failures"].items()}
         self._operational_facts = {actor: [dict(x) for x in facts]
                                    for actor, facts in state.get("operational_facts", {}).items()}
         self.stop_reason = state.get("stop_reason")
-        self._rejection_sequence = int(state.get("rejection_sequence", 0))
-        self._turn_sequence = int(state.get("turn_sequence", 0))
+        self._rejection_sequence = _as_int(state.get("rejection_sequence", 0), "rejection_sequence")
+        self._turn_sequence = _as_int(state.get("turn_sequence", 0), "turn_sequence")
         self._retry_context = dict(state.get("retry_context", {}))
         self._repetition.restore(state.get("repetition", {}))
-        self._rep_scan = int(state.get("rep_scan", len(self.world.event_log)))
+        self._rep_scan = _as_int(state.get("rep_scan", len(self.world.event_log)), "rep_scan")
         self._npc_pending = dict(state.get("npc_pending", {}))
-        self._npc_scan = int(state.get("npc_scan", len(self.world.event_log)))
-        self._extras_scan = int(state.get("extras_scan", len(self.world.event_log)))
+        self._npc_scan = _as_int(state.get("npc_scan", len(self.world.event_log)), "npc_scan")
+        self._extras_scan = _as_int(state.get("extras_scan", len(self.world.event_log)), "extras_scan")
         from datetime import datetime as _dt
         self._wake_times = [_dt.fromisoformat(t) for t in state.get("wake_times", ())]
         self._last_speech = {k: _dt.fromisoformat(t) for k, t in state.get("last_speech", {}).items()}
@@ -159,6 +170,7 @@ class Runner:
                 affordances_by_actor[actor_id] = affordances
                 eligible.append(actor_id)
                 decisions = {}
+            decisions = {}
             pool = ThreadPoolExecutor(max_workers=min(self.max_workers, max(1, len(eligible))))
             futures = {actor: pool.submit(self._decide, actor, perceptions[actor], affordances_by_actor[actor]) for actor in eligible}
             try:
@@ -184,27 +196,12 @@ class Runner:
                     try:
                         decisions[actor] = future.result()
                     except Exception as exc:
-                        if getattr(exc, "runner_retryable", False) and self._outer_retry_allowed(actor):
-                            prefix = "retryable: "
-                            decisions[actor] = (None, "retryable_failure",
-                                                prefix + f"{type(exc).__name__}: {exc}")
-                        elif getattr(exc, "runner_retryable", False):
-                            prefix = "retry-exhausted: "
-                            decisions[actor] = (None, "agent_error",
-                                                prefix + f"{type(exc).__name__}: {exc}")
-                        elif getattr(exc, "retry_exhausted", False):
-                            prefix = "retry-exhausted: "
-                            decisions[actor] = (None, "agent_error", prefix + f"{type(exc).__name__}: {exc}")
-                        elif self._retryable_failure_allowed(actor, exc):
-                            prefix = "retryable: "
-                            decisions[actor] = (None, "retryable_failure",
-                                                prefix + f"{type(exc).__name__}: {exc}")
-                        elif getattr(exc, "retryable", False):
-                            prefix = "retryable: "
-                            decisions[actor] = (None, "agent_error", prefix + f"{type(exc).__name__}: {exc}")
-                        else:
-                            prefix = ""
-                            decisions[actor] = (None, "agent_error", prefix + f"{type(exc).__name__}: {exc}")
+                        failure = exc
+                    else:
+                        failure = None
+                    if failure is not None:
+                        verdict = self._classify_agent_failure(actor, failure)
+                        decisions[actor] = (None, verdict[0], verdict[1] + f"{type(failure).__name__}: {failure}")
             finally:
                 # Do not join here: the provider itself has a shorter socket
                 # timeout. The runner records the batch result immediately.
@@ -260,7 +257,7 @@ class Runner:
                             if self.system is None:
                                 raise ActionRejected("no bound System")
                             before = len(self.world.event_log)
-                            event = self.system.query(self.world, intention.actor, str(intention.args.get("question")))
+                            event = self.system.ask(self.world, intention.actor, str(intention.args.get("question")))
                             event_ids.extend(e.id for e in self.world.event_log[before:])
                             self.trace.record_system(dict(intention.args), {"event_id": event.id, "kind": event.kind})
                         else:
@@ -392,7 +389,7 @@ class Runner:
             for event in self.world.event_log[self._rep_scan:]:
                 if event.kind == "message_delivered":
                     self._repetition.note_message_received(
-                        str(event.payload.get("target")), event.actor)
+                        str(event.payload.get("target")), event.actor or "")
             self._rep_scan = len(self.world.event_log)
             if stop_at is not None and self.world.now >= stop_at:
                 return self._finish("stop_at_reached")
@@ -463,8 +460,10 @@ class Runner:
                                         question=question, transcript=transcript)
         intention, result, error = None, "agent_error", ""
         try:
-            raw = self.extra_call([{"role": "system", "content": system},
-                                   {"role": "user", "content": briefing}])
+            extra_call = self.extra_call
+            assert extra_call is not None
+            raw = extra_call([{"role": "system", "content": system},
+                              {"role": "user", "content": briefing}])
             intention, _ = parse_decision(name, raw, self.world.version)
             if intention is not None:
                 self.world.submit(intention)
@@ -550,10 +549,12 @@ class Runner:
             woken_at = self._cold_woken.get(location)
             if woken_at is not None and (last is None or woken_at >= last):
                 continue
+            def _busy(i: str) -> bool:
+                busy = self.world.actors[i].busy_until
+                return busy is not None and busy > now
             npc_here = [i for i in sorted(ids)
                         if self._role(i) == "npc" and i not in self._npc_pending
-                        and not (self.world.actors[i].busy_until
-                                 and self.world.actors[i].busy_until > now)]
+                        and not _busy(i)]
             if npc_here and self._npc_budget_ok():
                 self._npc_pending[npc_here[0]] = "这里安静得有点久了，你是会找话的人"
                 self._wake_times.append(now)
@@ -645,6 +646,21 @@ class Runner:
     def _finish(self, reason: str) -> str:
         self.stop_reason = reason
         return reason
+
+    def _classify_agent_failure(self, actor: str, exc: Exception) -> tuple[str, str]:
+        """Map an agent-call failure to (result, prefix). Boolean logic lives
+        here instead of inside the except block (pi-lens compliance)."""
+        if getattr(exc, "runner_retryable", False) and self._outer_retry_allowed(actor):
+            return "retryable_failure", "retryable: "
+        if getattr(exc, "runner_retryable", False):
+            return "agent_error", "retry-exhausted: "
+        if getattr(exc, "retry_exhausted", False):
+            return "agent_error", "retry-exhausted: "
+        if self._retryable_failure_allowed(actor, exc):
+            return "retryable_failure", "retryable: "
+        if getattr(exc, "retryable", False):
+            return "agent_error", "retryable: "
+        return "agent_error", ""
 
     def _decide(self, actor_id: str, perception: dict, affordances: list[dict]):
         decision = self.agents[actor_id](self.states[actor_id], perception, affordances)
