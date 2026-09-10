@@ -159,32 +159,29 @@ def _expand_entity_rows(kb: dict[str, list[dict[str, Any]]],
                         fields: dict[str, Any],
                         descriptions: dict[str, DescriptionCatalog]
                         ) -> dict[str, list[dict[str, Any]]]:
-    """V4-AGENT-INTERFACE §6: world item/document descriptions auto-expand
-    into per-actor item/document KB rows (per known_to when present, else
-    every actor) so the first-turn flood shows what is in hand or in view.
-    Manual rows win: an existing row with the same field+id is not duplicated."""
-    entity_rows: list[tuple[str, str, str]] = []  # (field, entity_id, desc)
+    """V4-AGENT-INTERFACE §6 (修订): world item/document descriptions auto-
+    expand into per-actor **item** KB rows — the KB has no separate document
+    type; content-bearing things are carried by read/copy/compare. Gating:
+    known_to-limited entities expand only for those actors; unmarked ones
+    expand for everyone (public visible layer). Manual rows win."""
+    entity_rows: list[tuple[str, str, str, list[str] | None]] = []
     for kind in ("items", "documents"):
         for row in fields[kind]:
             entity_id = str(row["id"])
             markdown = descriptions[kind].get(entity_id, "")
             if not markdown:
                 continue
-            entity_rows.append((kind[:-1], entity_id, _plain_description(markdown)))
+            entity_rows.append(("item", entity_id, _plain_description(markdown),
+                                row.get("known_to")))
     for actor, rows in kb.items():
         existing = {(next(iter(r["fields"])), r["id"]) for r in rows}
-        for field, entity_id, desc in entity_rows:
+        for field, entity_id, desc, known_to in entity_rows:
             # Entity ids are Chinese; auto-expanded row ids must stay ASCII
             # kebab (docs M2) — derive them deterministically from the pair.
             digest = hashlib.md5(f"{field}:{entity_id}".encode("utf-8")).hexdigest()[:8]
             row = {"fields": {field: entity_id}, "id": f"kb-auto-{digest}", "desc": desc}
             if (field, row["id"]) in existing:
                 continue
-            known_to = None
-            for src in fields["items"] + fields["documents"]:
-                if str(src["id"]) == entity_id:
-                    known_to = src.get("known_to")
-                    break
             if known_to is not None and actor not in known_to:
                 continue
             rows.append(row)

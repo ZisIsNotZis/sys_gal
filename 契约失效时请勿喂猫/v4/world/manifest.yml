@@ -361,10 +361,12 @@ actors:
 items:
 - id: 红色哨子
   location: null
+  known_to: [陈默]
 - id: 空白纸
   location: null
 - id: 裂纹马克杯
   location: 半坡咖啡馆
+  known_to: [唐小岚]
 documents:
 - id: 2013年邻居许可证
   title: 2013年邻居许可证
