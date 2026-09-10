@@ -157,13 +157,29 @@ def render_history_view(trajectory: Mapping[str, Any], actor: str) -> str:
 
 
 def render_chatml_view(trajectory: Mapping[str, Any], actor: str) -> str:
-    """Flat provider-visible stream: only [system]/[user]/[assistant] in order."""
+    """Flat provider-visible stream: [tool_list] + [system]/[user]/[assistant]
+    with actual tool calls and per-call tool results in order."""
+    from .action_schema import TOOLS
     lines: list[str] = [f"# ChatML view: {actor}"]
+    lines.append("\n[tool_list]")
+    for tool in TOOLS:
+        function = tool.get("function", {})
+        params = json.dumps(function.get("parameters", {}), ensure_ascii=False)
+        lines.append(f"- {function.get('name')}: {function.get('description', '')} | 参数: {params}")
     session = trajectory.get("sessions", {}).get(actor, {})
     for message in session.get("messages", []):
         role = str(message.get("role", "?"))
-        tag = "assistant" if role == "assistant" else "system" if role == "system" else "user"
-        lines.append(f"\n[{tag}]\n{message.get('content', '')}")
+        if role == "assistant":
+            lines.append(f"\n[assistant]\n{message.get('content', '')}")
+            for raw in message.get("tool_calls") or []:
+                function = raw.get("function", {})
+                lines.append(f"[tool_call] {function.get('name')}({function.get('arguments', '')})")
+        elif role == "tool":
+            lines.append(f"[tool_result] {message.get('content', '')}")
+        elif role == "system":
+            lines.append(f"\n[system]\n{message.get('content', '')}")
+        else:
+            lines.append(f"\n[user]\n{message.get('content', '')}")
     return "\n".join(lines)
 
 
