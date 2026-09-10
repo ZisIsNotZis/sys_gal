@@ -22,18 +22,13 @@ SYSTEM_PROMPT_V4 = (
     "只追你自己的知识、欲望、责任、恐惧和关系；不为故事或主角服务；不优化故事，不制造浪漫，"
     "不满足任何作者意图。\n\n"
     "世界每回合给你一条消息：几点、你在哪、身边有谁、身上有什么、发生了什么、"
-    "你记事本里到期的事。你用工具行动：一回合可以连续调用多个工具；世界动作消耗真实时间"
+    "你记事本里到期的事。一切事都要花时间：说话也要花一分钟，话一出口对方下个片刻就能听见并回应——"
+    "当面说话仍是最快的交流方式；送别处则更慢。你用工具行动：一回合可以连续调用多个工具；世界动作消耗真实时间"
     "（按序累加，向上取整到 tick 的倍数），think/update_memory/recall/flashback 不额外消耗"
     "（但每回合最少一个 tick）。一回合没有任何世界动作，等于发了一会儿呆（时间照走最少一个 tick）。"
-    "行动前永远先用 think 写心声——此刻的感受、打算做什么、为什么；让 think 成为你每个回合的第一个调用。\n\n"
-    "【常识】一条消息从发出到送到要 1 分钟；说话当场就能听见，所以当面说话最省时间。"
-    "等待随时可行，不必等谁批准；要睡一大觉，找个有床的地方、通常在夜里。陌生人凑近耳语会显得可疑；"
-    "耳语（whisper）只对亲近的人用。消息里时间写作 9/16(周三) 7:00。\n\n"
-    "【记事本】update_memory 把事实或要紧的事写进你的私人记事本（引擎保管，只有你能看）。"
-    "行由 字段+id 定位，字段是保留名：person:/location:/item:/todo:true/reminder:\"9/8(周二) 08:30\"；"
-    "id 用英文短横线小写。op 有 open（新建/重开）/edit（修改）/close（翻篇——不再显示，但 recall 指名可找回，"
-    "只能重开不能改）。只写事实和要紧的事——发生的事世界会自动重现，不用记；此刻的感受用 think。"
-    "你的记事本每隔一阵会自动回到你眼前；想立刻翻看，用 recall。"
+    "行动前永远先用 think 写心声——此刻的感受、打算做什么、为什么；让 think 成为你每个回合的第一个调用。"
+    "等待随时可行，不必等谁批准；夜里困了就找个有床的地方睡下。陌生人凑近耳语会显得可疑；"
+    "耳语（whisper）只对亲近的人用。消息里时间写作 9/16(周三) 7:00。"
 )
 
 
@@ -59,9 +54,9 @@ class V4Session:
         self._compacted_since_decision = False
         self.compacted_memories = list(compacted_memories or ())
         if messages:
-            self.messages = [dict(m) for m in messages]
+            self.messages: list[dict[str, Any]] = [dict(m) for m in messages]
         else:
-            self.messages = [{"role": "system", "content": system_prompt or SYSTEM_PROMPT_V4}]
+            self.messages: list[dict[str, Any]] = [{"role": "system", "content": system_prompt or SYSTEM_PROMPT_V4}]
 
     def decide(self, world_message_text: str) -> list[dict[str, Any]]:
         """Append one world message, call the provider with the full static
@@ -154,6 +149,7 @@ def make_provider_gm(call: ModelCall, *, max_retries: int = 1):
             f"Person's intention:\n{text}\n\nVisible world:\n{perception}\n\n"
             f"Offered actions:\n{affordances}\n\nReturn {{\"kind\":...,\"args\":...}} or null."
         )}]
+        failures: list[Exception] = []
         for attempt in range(max_retries + 1):
             try:
                 return call(prompt)
@@ -161,11 +157,13 @@ def make_provider_gm(call: ModelCall, *, max_retries: int = 1):
                 # Interpretation has no world side effect until its result is
                 # validated and submitted by Runner, so a bounded retry is
                 # safe even when the provider exhausted its own HTTP retries.
-                if getattr(exc, "retryable", False) and attempt < max_retries:
-                    continue
-                if getattr(exc, "retryable", False):
-                    exc.runner_retryable = True  # type: ignore[attr-defined]
-                raise
+                failures.append(exc)
+            retryable = attempt < max_retries and getattr(failures[-1], "retryable", False)
+            if not retryable:
+                last = failures[-1]
+                if getattr(last, "retryable", False):
+                    setattr(last, "runner_retryable", True)
+                raise last
     return gm
 
 
@@ -174,7 +172,7 @@ def make_persistent_agent(seed: CharacterSeed, call: ModelCall, gm: GMCall = Non
                           world_primer: str = ""):
     # ``session`` lets a resume path inject a restored conversation so history
     # survives a checkpoint/restart; otherwise one is created from the seed.
-    session: CharacterSession | None = session
+    restored: CharacterSession | None = session
     gm_records: list[dict[str, Any]] = []
 
     def agent(state: PrivateState, perception: dict, affordances: list[dict]):

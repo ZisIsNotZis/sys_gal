@@ -20,18 +20,18 @@ def _chat_response(message: dict) -> bytes:
 
 
 class _FakeResponse(io.BytesIO):
-    def __enter__(self):
+    def __enter__(self) -> "_FakeResponse":
         return self
 
-    def __exit__(self, *args):
-        return False
+    def __exit__(self, *args: object) -> None:
+        return None
 
 
 class ToolsTests(unittest.TestCase):
     def test_tools_cover_the_doc_table_without_sleep(self):
         names = {tool["function"]["name"] for tool in TOOLS}
         expected = {"think", "update_memory", "recall", "flashback", "wait", "speak",
-                    "send_message", "move", "read", "copy", "label", "annotate",
+                    "send_message", "move", "read", "copy", "annotate",
                     "compare", "take", "drop", "give", "inspect", "search", "knock",
                     "interact", "open", "close", "observe", "ask_stranger",
                     "continue_action", "abandon_action"}
@@ -45,14 +45,21 @@ class ToolsTests(unittest.TestCase):
 
     def test_memory_tool_arg_validation(self):
         self.assertIsNone(validate_action_args("think", {"inner": "心里的话"}))
-        self.assertIn("non-empty", validate_action_args("think", {"inner": ""}))
-        self.assertIn("needs the 'rows' argument", validate_action_args("update_memory", {}))
-        self.assertIn("needs the 'fields' argument",
-                      validate_action_args("update_memory", {"rows": [{"id": "x"}]}))
+        think_err = validate_action_args("think", {"inner": ""})
+        self.assertIsNotNone(think_err)
+        self.assertIn("non-empty", think_err or "")
+        rows_err = validate_action_args("update_memory", {})
+        self.assertIsNotNone(rows_err)
+        self.assertIn("needs the 'rows' argument", rows_err or "")
+        fields_err = validate_action_args("update_memory", {"rows": [{"id": "x"}]})
+        self.assertIsNotNone(fields_err)
+        self.assertIn("needs the 'fields' argument", fields_err or "")
         self.assertIsNone(validate_action_args(
             "update_memory", {"rows": [{"fields": {"todo": True}, "id": "x", "op": "open"}]}))
         self.assertIsNone(validate_action_args("recall", {"closed": True, "limit": 5}))
-        self.assertIn("needs the 'entity' argument", validate_action_args("flashback", {}))
+        entity_err = validate_action_args("flashback", {})
+        self.assertIsNotNone(entity_err)
+        self.assertIn("needs the 'entity' argument", entity_err or "")
 
     def test_speak_only_tools_for_extras(self):
         self.assertEqual([tool["function"]["name"] for tool in SPEAK_TOOLS], ["speak"])
@@ -153,7 +160,7 @@ class V4SessionTests(unittest.TestCase):
         # call's result via deliver_tool_results (docs §3 tool-result rule).
         self.assertEqual([m["role"] for m in session_messages(agent)][2:],
                          ["assistant"])
-        agent.deliver_tool_results([
+        getattr(agent, "deliver_tool_results")([
             {"tool_call_id": "t1", "ok": True, "text": "ok"},
             {"tool_call_id": "t2", "ok": False, "text": "speak: unparseable arguments"},
         ])

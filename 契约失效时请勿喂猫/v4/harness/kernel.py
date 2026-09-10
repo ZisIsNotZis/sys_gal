@@ -178,7 +178,7 @@ class World:
 
     ACTIONS = {"wait", "speak", "send_message", "move", "open", "close",
                "take", "drop", "inspect", "search", "interact", "knock", "give",
-               "read", "copy", "label", "annotate", "compare",
+               "read", "copy", "annotate", "compare",
                "observe", "continue_action", "abandon_action", "ask_stranger"}
 
     def __init__(self, *, start: datetime, actors: Iterable[ActorState],
@@ -540,8 +540,6 @@ class World:
         options += [{"kind": "copy", "document": document}
                     for document in sorted(available_documents)
                     if any(item in a.inventory for item in self.copy_material_items)]
-        options += [{"kind": "label", "document": document, "label": ""}
-                    for document in sorted(available_documents)]
         options += [{"kind": "annotate", "document": document, "text": ""}
                     for document in sorted(available_documents)]
         return options
@@ -803,7 +801,7 @@ class World:
                     out.append(self._commit("message_delivered", job.actor, {
                         "target": str(job.payload["target"]), "text": str(job.payload["text"])
                     }, event.id))
-                if job.payload["action"] in {"read", "copy", "label", "annotate", "compare"}:
+                if job.payload["action"] in {"read", "copy", "annotate", "compare"}:
                     out.append(self._commit_interaction(job.actor, job.payload, event.id))
             elif job.kind == "world_event":
                 # Seeded world events may carry story-neutral objective
@@ -948,7 +946,7 @@ class World:
             # tick to arrive, common knowledge, so sending words has a real
             # time cost.
             return timedelta(seconds=TICK_SECONDS)
-        if i.kind in {"read", "copy", "label", "annotate", "compare"}:
+        if i.kind in {"read", "copy", "annotate", "compare"}:
             return self._document_duration(a, i)
         if i.kind == "inspect":
             item = str(x.get("item"))
@@ -1093,11 +1091,6 @@ class World:
                     f"复印需要复印材料。你有：{', '.join(sorted(actor.inventory)) or '没有'}。",
                     context={"copy_material": sorted(self.copy_material_items)})
             return timedelta(seconds=int(self.document_defs[document].get("reading_seconds", 30)) + 15)
-        if kind == "label":
-            label = intention.args.get("label")
-            if not isinstance(label, str) or not label.strip():
-                raise ActionRejected("label 需要非空文本。")
-            return timedelta(seconds=3)
         if kind == "annotate":
             text = intention.args.get("text")
             if not isinstance(text, str) or not text.strip():
@@ -1148,7 +1141,7 @@ class World:
 
     def _interaction_event(self, kind: str) -> str:
         return {"inspect": "item_inspected", "search": "location_searched", "knock": "knock", "interact": "interaction", "give": "item_given",
-                "read": "document_read", "copy": "document_copied", "label": "document_labeled", "annotate": "document_annotated",
+                "read": "document_read", "copy": "document_copied", "annotate": "document_annotated",
                 "compare": "documents_compared"}[kind]
 
     def _interaction_payload(self, actor: ActorState, intention: Mapping[str, Any]) -> dict[str, Any]:
@@ -1180,10 +1173,6 @@ class World:
             # the public completion event and replay provenance.
             copy = str(intention.get("copy") or f"{source}-copy-{self.version + 1}")
             return {"document": source, "copy": copy, "copied_from": source, "location": actor.location}
-        if kind == "label":
-            document = str(intention["document"])
-            self.document_defs[document].setdefault("labels", []).append(str(intention["label"]))
-            return {"document": document, "label": str(intention["label"])}
         if kind == "compare":
             first, second = str(intention["first"]), str(intention["second"])
             return {"first": first, "second": second,
@@ -1246,11 +1235,11 @@ class World:
         if kind == "documents_compared":
             # The equality verdict is the actor's private analysis.
             return {str(actor)}
-        if kind in {"document_copied", "document_labeled", "document_annotated"}:
+        if kind in {"document_copied", "document_annotated"}:
             # Visible facts on the physical record.
             return self._co_located(str(actor))
         if kind in {"action_started", "action_completed"} and payload.get("action") in {
-                "read", "copy", "label", "compare", "annotate"}:
+                "read", "copy", "compare", "annotate"}:
             # The fact is public; the content never is (carried only by the
             # private document_read event above).
             return self._co_located(str(actor))

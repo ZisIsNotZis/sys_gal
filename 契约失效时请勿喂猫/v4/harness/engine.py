@@ -43,6 +43,20 @@ from .repetition import RepetitionMonitor
 
 AgentFn = Callable[[PrivateState, dict, list[dict]], Any]
 
+def _as_int(value: Any, what: str = "value") -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"invalid {what}: {value!r}") from exc
+
+
+def _as_float(value: Any, what: str = "value") -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"invalid {what}: {value!r}") from exc
+
+
 class AsyncEngine:
     def __init__(self, world: World, agents: dict[str, AgentFn],
                  states: dict[str, PrivateState], trace: Any,
@@ -66,16 +80,16 @@ class AsyncEngine:
             raise ValueError("one agent and private state are required for every non-extra actor")
         self.world, self.agents, self.states, self.trace, self.system = world, agents, states, trace, system
         self.extra_call = extra_call
-        self.decision_timeout = float(decision_timeout)
+        self.decision_timeout = _as_float(decision_timeout, 'decision_timeout')
         self.max_wall_seconds = max_wall_seconds
-        self.max_turns = int(max_turns)
+        self.max_turns = _as_int(max_turns, 'max_turns')
         self.checkpoint = checkpoint
-        self.mc_idle_heartbeat = int(mc_idle_heartbeat)
-        self.extra_idle_seconds = int(extra_idle_seconds)
-        self.cold_ticks = int(cold_ticks)
-        self.npc_wake_budget = int(npc_wake_budget)
-        self.stall_budget_ratio = float(stall_budget_ratio)
-        self.max_transient_failures = int(max_transient_failures)
+        self.mc_idle_heartbeat = _as_int(mc_idle_heartbeat, 'mc_idle_heartbeat')
+        self.extra_idle_seconds = _as_int(extra_idle_seconds, 'extra_idle_seconds')
+        self.cold_ticks = _as_int(cold_ticks, 'cold_ticks')
+        self.npc_wake_budget = _as_int(npc_wake_budget, 'npc_wake_budget')
+        self.stall_budget_ratio = _as_float(stall_budget_ratio, 'stall_budget_ratio')
+        self.max_transient_failures = _as_int(max_transient_failures, 'max_transient_failures')
         self.stop_reason: str | None = None
         # CAST state (V4-CAST): NPC wake reasons, extras, cold-scene bookkeeping.
         self._npc_pending: dict[str, str] = {}
@@ -105,7 +119,7 @@ class AsyncEngine:
         self._kb: dict[str, Any] = {}
         self._kb_seeds = dict(kb_seeds or {})
         self.director_brief = director_brief
-        self.flashback_horizon_minutes = int(flashback_horizon_minutes)
+        self.flashback_horizon_minutes = _as_int(flashback_horizon_minutes, 'flashback_horizon_minutes')
         self._recall_lines: dict[str, list[str]] = {}
         self._flashback_display: dict[str, list[str]] = {}
         self._flashback_pool: dict[str, list[tuple[datetime, str, frozenset[str]]]] = {}
@@ -116,7 +130,7 @@ class AsyncEngine:
 
     def run(self, *, stop_at: datetime | None = None, max_turns: int | None = None) -> str:
         if max_turns is not None:
-            self.max_turns = int(max_turns)
+            self.max_turns = _as_int(max_turns, 'max_turns')
         return asyncio.run(self._run(stop_at))
 
     async def _run(self, stop_at: datetime | None) -> str:
@@ -321,7 +335,7 @@ class AsyncEngine:
         for event in self.world.event_log[self._rep_scan:]:
             if event.kind == "message_delivered":
                 self._repetition.note_message_received(
-                    str(event.payload.get("target")), event.actor)
+                    str(event.payload.get("target")), event.actor or "")
             if event.kind == "world_event" and event.payload.get("event") == "world_stops":
                 self._world_stops_seen = True
             # An NPC whose (non-wait) action completed gets a follow-up turn
@@ -451,11 +465,14 @@ class AsyncEngine:
             decide_task = loop.create_task(asyncio.to_thread(
                 self._decide, actor_id, perception, affordances))
         intention, result, error = None, "none", None
+        chain_calls: list[dict[str, Any]] | None = None
         try:
             decision = await asyncio.wait_for(asyncio.shield(decide_task),
                                               timeout=self.decision_timeout)
             updates: dict[str, Any] = {}
-            if isinstance(decision, tuple):
+            if v4:
+                chain_calls = list(decision or [])
+            elif isinstance(decision, tuple):
                 intention, updates = decision
             else:
                 intention = decision
@@ -480,14 +497,16 @@ class AsyncEngine:
         self._failures[actor_id] = 0
         self._scheduler_wake.set()
         if v4:
-            self._execute_chain(actor_id, intention or [], perception,
+            self._execute_chain(actor_id, chain_calls or [], perception,
                                 affordances, version_before)
         else:
             self._submit(actor_id, perception, affordances, intention, version_before)
         self._rearm_heartbeat(actor_id)
 
     def _decide_v4(self, actor_id: str, world_message_text: str):
-        return self.agents[actor_id](world_message_text, self.states[actor_id])
+        from typing import cast
+        agent_v4 = cast(Callable[[str, Any], list[dict[str, Any]]], self.agents[actor_id])
+        return agent_v4(world_message_text, self.states[actor_id])
 
     def _decide(self, actor_id: str, perception: dict, affordances: list[dict]):
         return self.agents[actor_id](self.states[actor_id], perception, affordances)
@@ -613,7 +632,7 @@ class AsyncEngine:
                     self._recall_lines.setdefault(actor_id, []).extend(
                         self._kb[actor_id].force_recall(
                             args.get("kinds"), args.get("ids"),
-                            bool(args.get("closed")), int(args.get("limit") or 8)))
+                            bool(args.get("closed")), _as_int(args.get("limit") or 8, "limit")))
                 results.append({"tool_call_id": call.get("tool_call_id"), "ok": True, "text": "ok"})
                 continue
             if name == "flashback":
@@ -728,7 +747,7 @@ class AsyncEngine:
                         event = self.system.decline(world, actor_id)
                         event_ids.append(event.id)
                     else:
-                        event = self.system.query(world, actor_id, str(intention.args.get("question")))
+                        event = self.system.ask(world, actor_id, str(intention.args.get("question")))
                         event_ids.extend(e.id for e in world.event_log[before:] if e.kind.startswith("system_"))
                     self.trace.record_system(dict(intention.args), {"event_id": event.id, "kind": event.kind})
                 else:
@@ -786,7 +805,7 @@ class AsyncEngine:
         self._scheduler_wake.set()
 
     def _recovery(self, actor_id: str, perception: dict, affordances: list[dict],
-                  intention, result: str, error: str, version_before: int,
+                  intention, result: str, error: str | None, version_before: int,
                   npc_reason: str | None) -> None:
         """Silent abandonment: record, auto-continue pending, idle one tick."""
         world = self.world
@@ -910,10 +929,13 @@ class AsyncEngine:
             woken_at = self._cold_woken.get(location)
             if woken_at is not None and (last is None or woken_at >= last):
                 continue
+
+            def _busy(i: str) -> bool:
+                busy = self.world.actors[i].busy_until
+                return busy is not None and busy > now
             npc_here = [i for i in sorted(ids)
                         if self._role(i) == "npc" and i not in self._npc_pending
-                        and not (self.world.actors[i].busy_until
-                                 and self.world.actors[i].busy_until > now)]
+                        and not _busy(i)]
             if npc_here and self._npc_budget_ok():
                 self._npc_pending[npc_here[0]] = "这里安静得有点久了，你是会找话的人"
                 self._wake_times.append(now)
@@ -996,13 +1018,16 @@ class AsyncEngine:
         try:
             if hasattr(self.extra_call, "chat_with_tools"):
                 from .npc_agent import extra_tool_calls
+                extra_call = self.extra_call
+                assert extra_call is not None
                 intention_calls = await asyncio.to_thread(
-                    extra_tool_calls, self.extra_call,
-                    [{"role": "system", "content": system}["content"]], briefing)
+                    extra_tool_calls, extra_call, system, briefing)
             else:
+                legacy_extra = self.extra_call
+                assert legacy_extra is not None
                 raw = await asyncio.to_thread(
-                    self.extra_call, [{"role": "system", "content": system},
-                                      {"role": "user", "content": briefing}])
+                    legacy_extra, [{"role": "system", "content": system},
+                                   {"role": "user", "content": briefing}])
                 intention, _ = parse_decision(name, raw, self.world.version)
                 if intention is not None:
                     intention_calls = [{"name": intention.kind,
@@ -1060,21 +1085,21 @@ class AsyncEngine:
 
     def restore_checkpoint(self, state: dict[str, Any]) -> None:
         from datetime import datetime as _dt
-        self._failures = {actor: int(value) for actor, value in state.get("transient_failures", {}).items()}
+        self._failures = {actor: _as_int(value, f"failures[{actor}]") for actor, value in state.get("transient_failures", {}).items()}
         self._operational_facts = {actor: [dict(x) for x in facts]
                                    for actor, facts in state.get("operational_facts", {}).items()}
         self.stop_reason = None
-        self._rejection_sequence = int(state.get("rejection_sequence", 0))
-        self._turns = int(state.get("turn_sequence", 0))
+        self._rejection_sequence = _as_int(state.get("rejection_sequence", 0), "rejection_sequence")
+        self._turns = _as_int(state.get("turn_sequence", 0), "turn_sequence")
         self._repetition.restore(state.get("repetition", {}))
-        self._rep_scan = int(state.get("rep_scan", len(self.world.event_log)))
+        self._rep_scan = _as_int(state.get("rep_scan", len(self.world.event_log)), "rep_scan")
         self._npc_pending = dict(state.get("npc_pending", {}))
-        self._npc_scan = int(state.get("npc_scan", len(self.world.event_log)))
-        self._extras_scan = int(state.get("extras_scan", len(self.world.event_log)))
-        self._wake_scan = int(state.get("wake_scan", len(self.world.event_log)))
+        self._npc_scan = _as_int(state.get("npc_scan", len(self.world.event_log)), "npc_scan")
+        self._extras_scan = _as_int(state.get("extras_scan", len(self.world.event_log)), "extras_scan")
+        self._wake_scan = _as_int(state.get("wake_scan", len(self.world.event_log)), "wake_scan")
         self._wake_times = [_dt.fromisoformat(t) for t in state.get("wake_times", ())]
         self._last_speech = {k: _dt.fromisoformat(t) for k, t in state.get("last_speech", {}).items()}
-        self._heartbeat_jobs = {k: int(v) for k, v in state.get("heartbeat_jobs", {}).items()}
+        self._heartbeat_jobs = {k: _as_int(v, f"heartbeat[{k}]") for k, v in state.get("heartbeat_jobs", {}).items()}
         self._extras = {name: {**x, "last_active": _dt.fromisoformat(x["last_active"])}
                         for name, x in state.get("extras", {}).items()}
         self._recall_lines = {k: list(v) for k, v in state.get("recall_lines", {}).items()}
