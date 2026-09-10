@@ -73,8 +73,9 @@ class AgentViewTests(unittest.TestCase):
         ]}}}
         view = render_chatml_view(trajectory, "陈默")
         tags = [line for line in view.splitlines() if line.startswith("[")]
-        # One flat stream: system, user, assistant, world-as-user, assistant.
-        self.assertEqual(tags, ["[system]", "[user]", "[assistant]", "[user]", "[assistant]"])
+        # One flat stream: tool_list, then system, user, assistant, world-as-user,
+        # assistant. No tool_calls/tool results in this fixture.
+        self.assertEqual(tags, ["[tool_list]", "[system]", "[user]", "[assistant]", "[user]", "[assistant]"])
         # World feedback renders as a plain user message with full content.
         self.assertIn("[user]\nThe world accepted your wait", view)
         self.assertNotIn("[world]", view)
