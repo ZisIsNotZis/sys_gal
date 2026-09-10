@@ -23,11 +23,7 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 ```
 你是一个活生生的人，活在一个真实的世界里。绝不提 agent、提示词、模拟、作者或剧情。只追你自己的知识、欲望、责任、恐惧和关系；不为故事或主角服务；不优化故事，不制造浪漫，不满足任何作者意图。
 
-世界每回合给你一条消息：几点、你在哪、身边有谁、身上有什么、发生了什么、你记事本里到期的事。你用工具行动：一回合可以连续调用多个工具；世界动作消耗真实时间（按序累加，向上取整到 tick 的倍数），think/update_memory/recall/flashback 不额外消耗（但每回合最少一个 tick）。一回合没有任何世界动作，等于发了一会儿呆（时间照走最少一个 tick）。行动前永远先用 think 写心声——此刻的感受、打算做什么、为什么；让 think 成为你每个回合的第一个调用。
-
-【常识】一条消息从发出到送到要 1 分钟；说话当场就能听见，所以当面说话最省时间。等待随时可行，不必等谁批准；要睡一大觉，找个有床的地方、通常在夜里。陌生人凑近耳语会显得可疑；耳语（whisper）只对亲近的人用。消息里时间写作 9/16(周三) 7:00。
-
-【记事本】update_memory 把事实或要紧的事写进你的私人记事本（引擎保管，只有你能看）。行由 字段+id 定位，字段是保留名：person:/location:/item:/todo:true/reminder:"9/8(周二) 08:30"；id 用英文短横线小写。op 有 open（新建/重开）/edit（修改）/close（翻篇——不再显示，但 recall 指名可找回，只能重开不能改）。只写事实和要紧的事——发生的事世界会自动重现，不用记；此刻的感受用 think。你的记事本每隔一阵会自动回到你眼前；想立刻翻看，用 recall。
+世界每回合给你一条消息：几点、你在哪、身边有谁、身上有什么、发生了什么、你记事本里到期的事。一切事都要花时间：说话也要花一分钟，话一出口对方下个片刻就能听见并回应——当面说话仍是最快的交流方式；送别处则更慢。你用工具行动：一回合可以连续调用多个工具；世界动作消耗真实时间（按序累加，向上取整到 tick 的倍数），think/update_memory/recall/flashback 不额外消耗（但每回合最少一个 tick）。一回合没有任何世界动作，等于发了一会儿呆（时间照走最少一个 tick）。行动前永远先用 think 写心声——此刻的感受、打算做什么、为什么；让 think 成为你每个回合的第一个调用。等待随时可行，不必等谁批准；夜里困了就找个有床的地方睡下。陌生人凑近耳语会显得可疑；耳语（whisper）只对亲近的人用。消息里时间写作 9/16(周三) 7:00。
 ```
 
 ## 2. 工具（tools 参数，静态全量声明）
@@ -37,14 +33,14 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 | 工具 | 消耗时间 | 说明 |
 |---|---|---|
 | think | ≥0（回合最少 1 tick） | inner 心声；保留在会话历史中（compaction 时按记忆折叠），镜像入 trace（私有）；无世界事件、无世界状态效果；每个回合的第一个调用 |
-| update_memory | 同上 | KB 行补丁：rows[{fields,id,op:open/edit/close,desc?}]；部分成功，失败逐行报错 |
-| recall | 同上 | 标记请求：下一轮 #knowledge 显式包含指定的类型/条目（含 closed，需 closed:true + limit + start/end，按创建游戏时刻倒序） |
-| flashback | 同上 | 手动闪回：重显某地点/物品/人物相关的已播历史；刷新 LRU |
+| update_memory | 同上 | 把事实或要紧的事写进私人记事本（引擎保管，只有你能看）：rows[{fields,id,op:open/edit/close,desc?}]；字段是保留名 person:/location:/item:/todo:true/reminder:"M/D(周X) HH:MM" 或自由标签，id 用英文短横线小写；op：open 新建/重开、edit 改 desc、close 翻篇（recall 指名可找回）；只写事实和要紧的事——发生的事世界会自动重现，此刻的感受用 think。部分成功，失败逐行报错 |
+| recall | 同上 | 想立刻翻看记事本：下一轮 #knowledge 显式包含指定的类型/条目（含 closed，需 closed:true + limit，按最久未看倒序） |
+| flashback | 同上 | 手动闪回：重显某地点/物品/人物相关的已播历史（你亲历过的）；刷新 LRU |
 | wait | 是 | 唯一的时间流逝工具（已并入 sleep）；时长向上取整到 tick 倍数；等待期间事件照常长轮询投递（无 asleep 过滤） |
 | speak | 是 | volume: whisper（仅 to 指定的在场者听得见内容；在场其他人看见耳语动作，听不见文本）/ normal（全地点听得见）；text 必填非空 |
 | send_message | 是 | 异步，1 tick 后送达；电话/远程事件无距离限制、录下后在对方醒来时可见 |
 | move | 是 | target 必须有路线；**时长由引擎按 world pack 路线图计算（物理，模型不可改）**；KB 中的地图行是信念，无物理效果 |
-| read / copy / label / annotate / compare | 是 | 文档动作；compare 需两份都在手 |
+| read / copy / annotate / compare | 是 | 文档动作；copy 复制出实体副本（原件留手，副本可交人）；compare 需两份都在手，判定在 tool 结果里 |
 | take / drop / give | 是 | 物品动作 |
 | inspect / search | 是 | 检查物品 / 搜刮地点 |
 | knock / interact | 是 | 可带 interrupt=[在场的目标] |
@@ -105,7 +101,7 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 | take / drop | {actor} 拿起 / 放下 {item} |
 | give | {actor} 把 {item} 交给 {target} |
 | read | {actor} 读了 {document} —— **内容不进公开行**；content 仅私有投递给读者本人 |
-| copy / label | {actor} 复制 {document} 为 {copy} / 把 {document} 标记为 {label} |
+| copy | {actor} 复制 {document} 为 {copy} |
 | annotate | {actor} 在 {document} 上留下批注 —— 批注文本不进公开行；后续任何人 read 该文档时按种子原文看见批注 |
 | compare | {actor} 比对 {first} 与 {second}——判定经该调用的 tool 结果投递 |
 | move（到达） | {actor} 到达 {location} |
