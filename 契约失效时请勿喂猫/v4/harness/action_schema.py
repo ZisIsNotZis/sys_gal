@@ -104,8 +104,6 @@ SCHEMAS: dict[str, dict[str, Any]] = {
                                 "text": {"type": "string", "minLength": 1}},
                  "additionalProperties": False},
     "compare": _schema(first=_STR, second=_STR),
-    "system_accept": _schema(case=_STR),
-    "system_decline": _NO_ARGS,
     "system_query": _schema(question=_STR),
 }
 
@@ -121,8 +119,8 @@ _TOOL_DESCRIPTIONS: dict[str, str] = {
         "reminder:\"M/D(周X) HH:MM\" 或自由标签，id 可省略（fields 唯一匹配时自动定位）；"
         "op：open 新建（必须带 desc）/edit 改 desc/close 翻篇。部分成功，失败逐行报错",
     "recall":
-        "想立刻翻看记事本时用：下一轮 #knowledge 显式包含指定的类型/条目"
-        "（closed 行需 closed=true）。平时不必用——到期的事会自动回到你眼前",
+        "立刻翻看记事本：匹配的行逐字回进这个调用的 tool 结果（closed 行需 closed=true）。"
+        "平时不必用——到期的事会自动回到你眼前",
     "flashback":
         "手动闪回：重显某地点/物品/人物相关的、你亲历过的历史。想不起某段经历的具体细节时用",
     "wait": "唯一的时间流逝工具；时长向上取整到 tick 倍数；等待期间事件照常投递。想干等或边等边想时用",
@@ -140,12 +138,10 @@ _TOOL_DESCRIPTIONS: dict[str, str] = {
     "knock": "敲一个关闭地点的门，探里面有没有人",
     "open": "打开当前地点（需该地点可控）",
     "close": "关闭当前地点（需该地点可控）",
-    "ask_stranger": "搭话在场的匿名路人；本地点配置了路人才可用",
+    "ask_stranger": "搭话在场的匿名路人；question 填你想问的话。本地点配置了路人才可用",
     "continue_action": "无损继续被打断的动作（被打断的回合必须先选这个或 abandon）",
     "abandon_action": "放弃被打断的动作（作废；被打断的回合必须先选这个或 continue）",
-    "system_accept": "接受台账案件（仅案件提出时可用）",
-    "system_decline": "推掉台账案件（仅案件提出时可用）",
-    "system_query": "向台账查询一件客观事实（受查询次数限制）",
+    "system_query": "问「台账」（本世界的一册客观记录，案件默认已接下）一件其事实表内的客观问题；受查询次数限制，判定只进 tool 结果",
 }
 
 TOOLS: list[dict[str, Any]] = [
@@ -167,7 +163,7 @@ def _property_name(error: Any) -> str:
     return str(path[0]) if path else ""
 
 
-def _describe(error: Any, schema: Mapping[str, Any], args: Mapping[str, Any]) -> str:
+def _describe(error: Any, schema: Any, args: Mapping[str, Any]) -> str:
     expected = sorted(schema.get("properties", {}))
     validator = error.validator
     if validator == "required":

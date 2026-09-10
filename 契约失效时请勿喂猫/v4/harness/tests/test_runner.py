@@ -311,31 +311,16 @@ class RunnerTests(unittest.TestCase):
         self.assertTrue(world.replayable_log())
         self.assertEqual(trace.snapshot(world)["replay"]["world_versions_contiguous"], True)
 
-    def test_system_is_not_a_world_action_but_can_commit_through_runner(self):
-        world = create_world()
-        states = {actor: PrivateState(actor) for actor in world.actors}
-        def agent(state, perception, affordances):
-            if state.actor_id == "陈默" and not any(e["kind"] == "system_case_accepted" for e in perception["events"]):
-                return Intention("陈默", "system_accept", {"case": "ambiguous-obligations"}, perception["world_version"])
-            return None
-        trace = Trace("v2-test", "system")
-        Runner(world, {actor: agent for actor in world.actors}, states, trace, Ledger()).run(  # type: ignore[arg-type]
-            stop_at=datetime.fromisoformat("2026-03-16T07:01:00+08:00"), max_turns=20)
-        self.assertTrue(any(e.kind == "system_case_accepted" for e in world.event_log))
-        with self.assertRaises(Exception):
-            world.submit(Intention("陈默", "system_accept", {"case": "ambiguous-obligations"}, world.version))
-
     def test_system_reward_feedback_reaches_bound_character_in_natural_language(self):
         world = create_world()
         states = {actor: PrivateState(actor) for actor in world.actors}
         feedback = []
 
         def agent(state, perception, affordances):
+            # 案件默认已接下（auto-accept at poll）——直接 query。
             if state.actor_id == "陈默":
-                if not any(e["kind"] == "system_case_accepted" for e in perception["events"]):
-                    return Intention("陈默", "system_accept", {"case": "ambiguous-obligations"}, perception["world_version"])
-                if any(e["kind"] == "system_case_accepted" for e in perception["events"]):
-                    return Intention("陈默", "system_query", {"question": "Where is the red whistle?"}, perception["world_version"])
+                return Intention("陈默", "system_query", {"question": "Where is the red whistle?"},
+                                 perception["world_version"])
             return None
 
         class Recorder:
@@ -359,57 +344,13 @@ class RunnerTests(unittest.TestCase):
         # 这个测试自建 Ledger 用默认英文 case 文本。
         self.assertTrue(any("one narrow objective clarification" in text for text in rendered),
                         rendered)
-        system_event_ids = {event.id for event in world.event_log if event.kind.startswith("system_")}
+        # the auto-accepted case event is a startup fact (committed before any
+        # turn); the query-chain events must all be turn-recorded.
+        turn_system_ids = {event.id for event in world.event_log
+                           if event.kind.startswith("system_")
+                           and event.kind != "system_case_accepted"}
         recorded_ids = {event_id for turn in trace.agent_turns for event_id in turn["event_ids"]}
-        self.assertTrue(system_event_ids <= recorded_ids)
-
-    def test_system_acceptance_is_durable_after_event_cursor_advances(self):
-        world = create_world()
-        states = {actor: PrivateState(actor) for actor in world.actors}
-        choices = []
-
-        def agent(state, perception, affordances):
-            if state.actor_id != "陈默":
-                return None
-            offered = {str(option.get("kind")) for option in affordances}
-            choices.append((perception["time"], offered))
-            if "system_accept" in offered:
-                return Intention(state.actor_id, "system_accept",
-                                 {"case": "ambiguous-obligations"}, perception["world_version"])
-            return Intention(state.actor_id, "wait", {"duration_seconds": 60},
-                             perception["world_version"])
-
-        Runner(world, {actor: agent for actor in world.actors}, states,  # type: ignore[arg-type]
-               Trace("v3-test", "durable-system-status"), Ledger()).run(
-                   stop_at=datetime.fromisoformat("2026-03-16T07:03:00+00:00"), max_turns=100)
-        self.assertEqual([kind for _, offered in choices for kind in ("system_accept",)
-                          if kind in offered], ["system_accept"])
-
-    def test_system_penalty_feedback_reaches_bound_character_in_natural_language(self):
-        world = create_world()
-        states = {actor: PrivateState(actor) for actor in world.actors}
-        feedback = []
-
-        def agent(state, perception, affordances):
-            if state.actor_id == "陈默":
-                return Intention("陈默", "system_decline", {"case": "ambiguous-obligations"}, perception["world_version"])
-            return None
-
-        class Recorder:
-            def __call__(self, state, perception, affordances):
-                return agent(state, perception, affordances)
-            def record_world_result(self, message):
-                feedback.append(message)
-
-        agents = {actor: (Recorder() if actor == "陈默" else agent) for actor in world.actors}
-        trace = Trace("v2-test", "system-penalty-feedback")
-        Runner(world, agents, states, trace, Ledger()).run(  # type: ignore[arg-type]
-            stop_at=datetime.fromisoformat("2026-03-16T07:01:00+00:00"), max_turns=20)
-        # v4: penalty narrates through perception events.
-        from harness.prompt import render_world_message
-        rendered = [render_world_message(t["perception"], [])
-                    for t in trace.agent_turns if t["actor"] == "陈默"]
-        self.assertTrue(any("forfeited" in text for text in rendered), rendered)
+        self.assertTrue(turn_system_ids <= recorded_ids)
 
     def test_system_feedback_uses_configured_name_not_hardcoded_label(self):
         world = create_world()
@@ -418,8 +359,7 @@ class RunnerTests(unittest.TestCase):
 
         def agent(state, perception, affordances):
             if state.actor_id == "陈默":
-                return Intention("陈默", "system_accept",
-                                 {"case": "ambiguous-obligations"},
+                return Intention("陈默", "system_query", {"question": "Where is the red whistle?"},
                                  perception["world_version"])
             return None
 
@@ -794,11 +734,11 @@ class RunnerTests(unittest.TestCase):
         polls = {actor: 0 for actor in world.actors}
         original_poll = world.poll
 
-        def counted_poll(actor):
-            polls[actor] += 1
-            return original_poll(actor)
+        def counted_poll(actor_id: str):
+            polls[actor_id] += 1
+            return original_poll(actor_id)
 
-        world.poll = counted_poll
+        setattr(world, "poll", counted_poll)
 
         def agent(state, perception, affordances):
             return None
