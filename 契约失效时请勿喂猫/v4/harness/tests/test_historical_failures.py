@@ -116,7 +116,10 @@ class HistoricalFailureGates(unittest.TestCase):
                     return Intention("陈默", "wait", {"duration_seconds": 60},
                                      perception["world_version"])
                 if step == 1:
-                    return Intention("陈默", "search", {}, perception["world_version"])
+                    return Intention("陈默", "annotate",
+                                     {"item": "2013年邻居许可证",
+                                      "text": "签名墨迹深浅不一。"},
+                                     perception["world_version"])
                 if step == 2:
                     return Intention("陈默", "drop", {"item": "2013年邻居许可证"},
                                      perception["world_version"])
@@ -125,7 +128,7 @@ class HistoricalFailureGates(unittest.TestCase):
                                      {"target": "林瑶", "text": "The form is filed."},
                                      perception["world_version"])
                 if step == 4:
-                    return Intention("陈默", "read", {"document": "2013年邻居许可证"},
+                    return Intention("陈默", "read", {"item": "2013年邻居许可证"},
                                      perception["world_version"])
                 if step == 5:
                     # ticket 10 拆分宿舍：男生宿舍与校史档案室不相邻，改去中庭。
@@ -152,8 +155,8 @@ class HistoricalFailureGates(unittest.TestCase):
                             for t in trace.agent_turns if t["actor"] == "陈默")
         self.assertTrue(all("no immediate physical change" not in m for m in feedback))
         self.assertIn("7:01", rendered)      # wait outcome shows as time advanced
-        self.assertIn("搜索了男生宿舍", rendered)  # search action (F3)
-        self.assertIn("没什么新发现", rendered)    # search result (F3)
+        self.assertIn("陈默 在 2013年邻居许可证 上留下批注", rendered)  # search action (F3)
+        self.assertIn("陈默 在 2013年邻居许可证 上留下批注", rendered)    # search result (F3)
         self.assertIn("放下", rendered)           # drop consequence
         self.assertIn("发消息给 林瑶（电话）", rendered)  # message delivery
         self.assertIn("读了 2013年邻居许可证", rendered)  # document read
@@ -263,11 +266,11 @@ class HistoricalFailureGates(unittest.TestCase):
                                                 "reading_seconds": 2}},
                       item_locations={"ledger": "room"})
         for kind in ("read", "copy", "annotate"):
-            args = {"item": "ledger"} if kind in ("read", "copy") else {"item": "ledger", "text": "x"}
+            args = {"doc": "ledger"} if kind in ("read", "copy") else {"doc": "ledger", "text": "x"}
             with self.assertRaises(ActionRejected) as ctx:
                 world.submit(Intention("a", kind, args, world.version))
-            self.assertIn("document", str(ctx.exception), kind)
-            self.assertIn("item", str(ctx.exception), kind)
+            self.assertIn("'doc'", str(ctx.exception), kind)
+            self.assertIn("'item'", str(ctx.exception), kind)
 
     def test_launch_checkpoint_is_a_valid_loadable_trace(self):
         """H1/H4: a checkpoint written at launch is structurally valid and round-trips."""

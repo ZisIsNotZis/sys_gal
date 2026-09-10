@@ -177,9 +177,9 @@ class World:
     """Authoritative, deterministic, event-sourced physical/social world."""
 
     ACTIONS = {"wait", "speak", "send_message", "move", "open", "close",
-               "take", "drop", "inspect", "search", "interact", "knock", "give",
+               "take", "drop", "knock", "give",
                "read", "copy", "annotate", "compare",
-               "observe", "continue_action", "abandon_action", "ask_stranger"}
+               "continue_action", "abandon_action", "ask_stranger"}
 
     def __init__(self, *, start: datetime, actors: Iterable[ActorState],
                  locations: Iterable[LocationState],
@@ -500,14 +500,13 @@ class World:
                              if other.id != a.id and other.location == a.location)
         # docs §3：有其他在场者 → normal/whisper（whisper 的 to 候选 = 在场他人）；
         # 无人在场 → 自言自语。
+        # docs §3: solo speak is always-doable — a static tool, never listed
+        # in #actions (the model knows it from the tool list).
         speak_option = ({"kind": "speak", "volume": "normal/whisper", "to": others_here}
-                        if others_here else
-                        {"kind": "speak", "volume": "normal", "solo": True})
+                        if others_here else None)
         options: list[dict[str, Any]] = [
-            {"kind": "observe"},
-            {"kind": "ask_stranger"},
-            {"kind": "wait"},
-            speak_option,
+            *([{"kind": "ask_stranger"}] if self.locations[a.location].extras else []),
+            *([speak_option] if speak_option else []),
             *({"kind": "send_message", "target": other} for other in self._message_targets(a)),
             *({"kind": "move", "target": target}
               for (source, target), duration in self.routes.items() if source == a.location),
@@ -515,15 +514,6 @@ class World:
               if controllable else []),
         ]
         options += [{"kind": "take", "item": item} for item, loc in self.item_locations.items() if loc == a.location]
-        options += [{"kind": "inspect", "item": item} for item, loc in self.item_locations.items() if loc == a.location]
-        options += [{"kind": "inspect", "item": item} for item in sorted(a.inventory)]
-        options.append({"kind": "search"})
-        options += [{"kind": "interact", "target": location.id, "verb": verb, "parameters": dict(spec.get("parameters", {}))}
-                    for location in self.locations.values() if (a.location, location.id) in self.routes
-                    for verb, spec in self._physical_capabilities(location).items()
-                    if self._interaction_offered(location, verb)]
-        # Compatibility alias retained for existing deterministic callers; new
-        # agents receive the generic shape above.
         options += [{"kind": "knock", "target": location.id} for location in self.locations.values()
                     if not location.open and (a.location, location.id) in self.routes]
         options += [{"kind": "give", "target": other.id, "item": item}
@@ -533,14 +523,14 @@ class World:
         options += [{"kind": "drop", "item": item} for item in sorted(a.inventory)]
         available_documents = [document for document in self.document_defs
                                if self._entity_available(a.id, document)]
-        options += [{"kind": "read", "document": document} for document in sorted(available_documents)]
+        options += [{"kind": "read", "item": document} for document in sorted(available_documents)]
         options += [{"kind": "compare", "first": first, "second": second}
                     for index, first in enumerate(sorted(available_documents))
                     for second in sorted(available_documents)[index + 1:]]
-        options += [{"kind": "copy", "document": document}
+        options += [{"kind": "copy", "item": document}
                     for document in sorted(available_documents)
                     if any(item in a.inventory for item in self.copy_material_items)]
-        options += [{"kind": "annotate", "document": document, "text": ""}
+        options += [{"kind": "annotate", "item": document, "text": ""}
                     for document in sorted(available_documents)]
         return options
 
@@ -550,7 +540,11 @@ class World:
             raise ActionRejected("世界已发生变化，请重新观察后再行动（stale world version）")
         if intention.kind not in self.ACTIONS:
             raise ActionRejected(f"未知动作 '{intention.kind}'。可用动作见你收到的动作列表。")
-        shape_error = validate_action_args(intention.kind, intention.args)
+        # inner is an agent-protocol field (V4-AGENT-INTERFACE §2) enforced by
+        # the ENGINE; the kernel validates only the world-physics shape.
+        probe_args = dict(intention.args)
+        probe_args.setdefault("inner", "kernel-level")
+        shape_error = validate_action_args(intention.kind, probe_args)
         if shape_error is not None:
             raise ActionRejected(shape_error)
         if a.pending is not None and intention.kind not in {"continue_action", "abandon_action"}:
@@ -561,8 +555,6 @@ class World:
             return self._resume(a)
         if intention.kind == "abandon_action":
             return self._abandon(a)
-        if intention.kind == "observe":
-            a.observe_request = True
         if intention.kind == "ask_stranger":
             question = str(intention.args.get("question", "")).strip()
             if not question:
@@ -586,7 +578,7 @@ class World:
             action_payload["path"] = list(move_path)
             action_payload["hop_seconds"] = list(move_hops)
         if intention.kind == "copy":
-            source = str(action_payload["document"])
+            source = str(action_payload["item"])
             action_payload["copy"] = f"{source}-copy-{self.version + 1}"
         uninterruptable = intention.uninterruptable
         if uninterruptable is None:
@@ -793,7 +785,7 @@ class World:
             out.append(event)
             if job.kind == "action_completed" and job.actor:
                 self._complete(job.actor, job.payload)
-                if job.payload["action"] in {"inspect", "search", "knock", "interact"}:
+                if job.payload["action"] in {"knock"}:
                     out.append(self._commit_interaction(job.actor, job.payload, event.id))
                 if job.payload["action"] == "give":
                     out.append(self._commit_interaction(job.actor, job.payload, event.id))
@@ -894,8 +886,6 @@ class World:
 
     def _raw_duration(self, a: ActorState, i: Intention) -> timedelta:
         x = i.args
-        if i.kind == "observe":
-            return timedelta(0)
         if i.kind in {"wait", "sleep"}:
             seconds = x.get("duration_seconds")
             if not isinstance(seconds, int) or isinstance(seconds, bool) or seconds <= 0:
@@ -958,13 +948,8 @@ class World:
                     alternatives=[f"inspect {present}" for present in here],
                     context={"item": item})
             return timedelta(0)
-        if i.kind == "search":
-            return timedelta(0)
-        if i.kind in {"interact", "knock"}:
-            if i.kind == "knock":
-                target, verb, parameters = str(x.get("target")), "knock", {}
-            else:
-                target, verb, parameters = str(x.get("target")), x.get("verb"), x.get("parameters", {})
+        if i.kind == "knock":
+            target = str(x.get("target"))
             if target not in self.locations or (a.location, target) not in self.routes:
                 reachable = self._reachable(a)
                 known = target in self.locations
@@ -974,18 +959,6 @@ class World:
                     message,
                     alternatives=[f"move to {n}" for n in reachable],
                     context={"target": target})
-            if not isinstance(verb, str) or not isinstance(parameters, dict):
-                raise ActionRejected("互动需要字符串 verb 和映射 parameters。")
-            capabilities = self._physical_capabilities(self.locations[target])
-            if verb not in capabilities:
-                supported = sorted(capabilities)
-                raise ActionRejected(
-                    f"「{target}」不支持「{verb}」。支持的互动：{', '.join(supported) or '无'}。",
-                    alternatives=[f"interact with {target} ({verb_name})" for verb_name in supported],
-                    context={"target": target, "verb": verb})
-            expected = capabilities[verb].get("parameters", {})
-            if parameters != expected:
-                raise ActionRejected(f"在{target}上「{verb}」需要参数 {expected}。")
             return timedelta(seconds=3)
         if i.kind == "give":
             target_id = x.get("target")
@@ -1078,7 +1051,7 @@ class World:
                     alternatives=[f"read {document}" for document in available],
                     context={"first": first, "second": second})
             return timedelta(seconds=30)
-        document = str(intention.args.get("document"))
+        document = str(intention.args.get("item"))
         if document not in self.document_defs or not self._entity_available(actor.id, document):
             available = self._available_documents(actor)
             raise ActionRejected(
@@ -1123,7 +1096,7 @@ class World:
         elif kind == "copy":
             material = sorted(item for item in self.copy_material_items if item in a.inventory)[0]
             a.inventory.remove(material)
-            source = str(payload["document"])
+            source = str(payload["item"])
             copy_id = str(payload.get("copy") or f"{source}-copy-{self.version + 1}")
             self.document_defs[copy_id] = {**self.document_defs[source], "copied_from": source}
             self.item_locations[copy_id] = a.location
@@ -1146,28 +1119,21 @@ class World:
 
     def _interaction_payload(self, actor: ActorState, intention: Mapping[str, Any]) -> dict[str, Any]:
         kind = str(intention["action"])
-        if kind == "inspect":
-            item = str(intention["item"])
-            return {"item": item, "location": actor.location, "held": item in actor.inventory}
-        if kind == "search":
-            return {"location": actor.location,
-                    "items": sorted(item for item, location in self.item_locations.items()
-                                     if location == actor.location)}
         if kind == "give":
             return {"item": str(intention["item"]), "from": actor.id, "to": str(intention["target"])}
         if kind == "read":
-            document = str(intention["document"])
+            document = str(intention["item"])
             return {"document": document, "title": self.document_defs[document].get("title", document),
                     "content": self.document_defs[document].get("content", ""),
                     "annotations": [dict(entry) for entry in self.document_defs[document].get("annotations", [])]}
         if kind == "annotate":
-            document = str(intention["document"])
+            document = str(intention["item"])
             annotation = {"text": str(intention.get("text")), "by": actor.id,
                           "time": self.now.isoformat()}
             self.document_defs[document].setdefault("annotations", []).append(annotation)
             return {"document": document, "annotation": str(intention.get("text")), "by": actor.id}
         if kind == "copy":
-            source = str(intention["document"])
+            source = str(intention["item"])
             # The scheduled action already owns the deterministic copy ID.
             # Recomputing it here races the event-version counter and breaks
             # the public completion event and replay provenance.
@@ -1295,16 +1261,6 @@ class World:
         location = self.actors[actor_id].location
         return ({x.id for x in self.actors.values() if x.location == location}
                 | {actor_id})
-
-    @staticmethod
-    def _physical_capabilities(location: LocationState) -> Mapping[str, Mapping[str, Any]]:
-        if location.physical_capabilities:
-            return location.physical_capabilities
-        return {"knock": {"parameters": {}}} if not location.open else {}
-
-    @classmethod
-    def _interaction_offered(cls, location: LocationState, verb: str) -> bool:
-        return verb != "knock" or not location.open
 
     def _knowledge(self, actor: ActorState) -> dict[str, dict[str, str]]:
         result = {key: {"public": value} for key, value in self.public_knowledge.items()}

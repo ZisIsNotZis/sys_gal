@@ -601,35 +601,6 @@ class AsyncEngine:
         world_actions = 0
         calls = list(calls or [])
         truncated = max(0, len(calls) - 8)
-        # think-first enforcement (V4-AGENT-INTERFACE §4): a chain that does
-        # not open with think is rejected whole; the actor re-thinks at zero
-        # sim-time cost. 3 consecutive misses open the valve (execute anyway,
-        # telemetry notes it) so a broken model cannot loop forever.
-        if calls and str(calls[0].get("name", "")) != "think":
-            misses = self._think_retries.get(actor_id, 0)
-            if misses < 3:
-                self._think_retries[actor_id] = misses + 1
-                for call in calls:
-                    results.append({"tool_call_id": call.get("tool_call_id"),
-                                    "ok": False,
-                                    "text": "think first: 你每回合的第一个调用必须是 "
-                                            "think（先写心声，再行动）"})
-                deliver = getattr(self.agents[actor_id], "deliver_tool_results", None)
-                if deliver is not None:
-                    deliver(results)
-                self._failures[actor_id] = self._failures.get(actor_id, 0) + 1
-                self._repetition.note_turn(actor_id, None, "think_first_rejected")
-                self.trace.record_agent(
-                    state=self.states[actor_id], perception=perception,
-                    affordances=affordances,
-                    intention=Intention(actor_id, "think_first_rejected", {}),
-                    result="think_first_rejected", error=None,
-                    version_before=version_before, version_after=world.version,
-                    event_ids=[], role=self._role(actor_id))
-                self._force_turn.add(actor_id)
-                self._scheduler_wake.set()
-                return
-        self._think_retries[actor_id] = 0
         if truncated:
             calls = calls[:8]
         a = world.actors[actor_id]
@@ -640,13 +611,17 @@ class AsyncEngine:
 
         for call in calls:
             name = str(call.get("name", ""))
-            args = call.get("arguments") or {}
+            args = dict(call.get("arguments") or {})
             if call.get("parse_error"):
                 fail(call, f"unparseable arguments: {call['parse_error']}")
                 continue
-            if name == "think":
-                results.append({"tool_call_id": call.get("tool_call_id"), "ok": True, "text": "ok"})
-                continue  # inner stays in the session history; no world effect
+            # inner is mandatory on EVERY call (V4-AGENT-INTERFACE §2):
+            # missing/empty → the call does not execute.
+            inner = args.pop("inner", None)
+            if not isinstance(inner, str) or not inner.strip():
+                fail(call, "inner missing: 每个调用都要带上非空 inner——这一动作当下的心声")
+                continue
+            inner = inner.strip()
             if name == "update_memory":
                 if actor_id in self._kb:
                     errs, _tel = self._kb[actor_id].apply_ops(args.get("rows") or [], world.now)
@@ -671,7 +646,8 @@ class AsyncEngine:
                 results.append({"tool_call_id": call.get("tool_call_id"), "ok": True, "text": "ok"})
                 continue
             try:
-                world.submit(Intention(actor_id, name, dict(args), world.version))
+                world.submit(Intention(actor_id, name, args, world.version,
+                                       inner=inner))
                 world_actions += 1
                 results.append({"tool_call_id": call.get("tool_call_id"), "ok": True,
                                 "text": self._tool_yield(name, args, world)})

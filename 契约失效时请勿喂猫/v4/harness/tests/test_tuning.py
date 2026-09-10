@@ -59,13 +59,16 @@ class TuningTests(unittest.TestCase):
             self._restore_env(saved)
 
     def test_longest_wait_affordance_is_configurable(self):
+        # v4: wait is a static tool, no longer listed in #actions (docs §3:
+        # 恒可用的动作不列) — the configured limit bounds its duration.
         world = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
                       actors=[ActorState("a", "room")],
                       locations=[LocationState("room")],
                       longest_wait_seconds=21600)
         # v4: one generic wait affordance; longest_wait_seconds bounds the
         # value at submit time (V4-DESIGN §5.6).
-        self.assertIn({"kind": "wait"}, world.affordances("a"))
+        self.assertNotIn({"kind": "wait"}, world.affordances("a"),
+                         "wait is a static tool — never listed in #actions")
         world.submit(Intention("a", "wait", {"duration_seconds": 21600}, world.version))
         w2 = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
                    actors=[ActorState("a", "room")],
