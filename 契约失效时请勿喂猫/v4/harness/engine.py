@@ -533,6 +533,24 @@ class AsyncEngine:
                    if t <= horizon and (not entity or entity in entities)]
         return [line for _, line in matches[-5:]]
 
+    def _tool_yield(self, name: str, args: Mapping[str, Any], world: World) -> str:
+        """The caller-facing yield of a world action (V4-AGENT-INTERFACE §3):
+        most actions yield nothing beyond the world's reaction; read and
+        compare carry their content/verdict in the tool result."""
+        if name == "read":
+            document = world.document_defs.get(str(args.get("document")), {})
+            content = str(document.get("content", ""))
+            annotations = document.get("annotations") or []
+            if annotations:
+                notes = "；".join(f"{e.get('by')}批注：{e.get('text')}" for e in annotations)
+                content = f"{content}\n（记录上还有：{notes}）" if content else notes
+            return content or "（这份记录没有可读的正文。）"
+        if name == "compare":
+            same = world.document_defs.get(str(args.get("first")), {}).get("content") == \
+                   world.document_defs.get(str(args.get("second")), {}).get("content")
+            return "内容一致" if same else "内容不一致"
+        return "ok"
+
     def _remember_lines(self, actor_id: str, perception: dict) -> None:
         """Feed the actor's flashback pool with its delivered public lines."""
         from .prompt import _event_sentence
@@ -606,7 +624,8 @@ class AsyncEngine:
             try:
                 world.submit(Intention(actor_id, name, dict(args), world.version))
                 world_actions += 1
-                results.append({"tool_call_id": call.get("tool_call_id"), "ok": True, "text": "ok"})
+                results.append({"tool_call_id": call.get("tool_call_id"), "ok": True,
+                                "text": self._tool_yield(name, args, world)})
                 if a.busy_until and a.busy_until > world.now:
                     # The chain's own committed time: advance to the action's
                     # completion so the next call starts after it — clamped to
