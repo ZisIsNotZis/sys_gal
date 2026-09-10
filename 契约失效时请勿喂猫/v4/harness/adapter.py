@@ -174,7 +174,7 @@ def load_model_json(raw: str | dict[str, Any] | None) -> Any:
 
 
 def parse_decision(actor: str, raw: str | dict[str, Any] | None,
-                   world_version: int) -> tuple[Intention | None, dict[str, Any]]:
+                   world_version: int | None) -> tuple[Intention | None, dict[str, Any]]:
     """Parse one action; private-state updates are no longer part of the
     protocol — ``updates`` is counted as telemetry and ignored (the actor's
     durable self lives in ``inner`` and the session transcript)."""
@@ -248,6 +248,6 @@ def _bound_inner(text: str) -> str:
     return text[:_INNER_LIMIT - len(_INNER_MARKER)] + _INNER_MARKER
 
 
-def parse_intention(actor: str, raw: str | dict[str, Any], world_version: int) -> Intention | None:
+def parse_intention(actor: str, raw: str | dict[str, Any], world_version: int | None) -> Intention | None:
     """Parse only a typed concrete action; never infer a vague action."""
     return parse_decision(actor, raw, world_version)[0]

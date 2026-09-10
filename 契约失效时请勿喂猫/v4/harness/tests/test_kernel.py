@@ -14,6 +14,15 @@ from urllib.error import HTTPError
 from io import BytesIO
 
 
+
+def _submit_parsed(world, actor: str, raw: str, version=None) -> None:
+    """parse_decision + assert-not-None + submit (type-narrowing helper)."""
+    from harness.adapter import parse_decision
+    intent = parse_decision(actor, raw, version)[0]
+    assert intent is not None
+    world.submit(intent)
+
+
 class WorldTests(unittest.TestCase):
     def world(self):
         return World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
@@ -325,23 +334,23 @@ class WorldTests(unittest.TestCase):
     def test_invalid_ledger_query_does_not_consume_quota(self):
         w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
                   actors=[ActorState("陈默", "room")], locations=[LocationState("room")])
-        ledger = Ledger({"known": "answer"})
-        ledger.accept(w, "陈默", "ambiguous-obligations")
+        fact_table_owner = Ledger({"known": "answer"})
+        fact_table_owner.accept(w, "陈默", "ambiguous-obligations")
         with self.assertRaises(ActionRejected):
-            ledger.query(w, "陈默", "unknown")
-        self.assertEqual(ledger.queries_used, 0)
-        ledger.query(w, "陈默", "known")
+            fact_table_owner.query(w, "陈默", "unknown")
+        self.assertEqual(fact_table_owner.queries_used, 0)
+        fact_table_owner.query(w, "陈默", "known")
 
     def test_ledger_reward_is_emitted_only_after_seeded_objective_condition(self):
         w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
                   actors=[ActorState("陈默", "room")], locations=[LocationState("room")])
-        ledger = Ledger({"known": "answer"})
-        accepted = ledger.accept(w, "陈默", "ambiguous-obligations")
-        self.assertEqual(ledger.status, "accepted")
+        fact_table_owner = Ledger({"known": "answer"})
+        accepted = fact_table_owner.accept(w, "陈默", "ambiguous-obligations")
+        self.assertEqual(fact_table_owner.status, "accepted")
         self.assertNotIn("reward_granted", accepted.payload)
-        answer = ledger.query(w, "陈默", "known")
+        answer = fact_table_owner.query(w, "陈默", "known")
         self.assertEqual(answer.kind, "system_answer")
-        self.assertEqual(ledger.status, "completed")
+        self.assertEqual(fact_table_owner.status, "completed")
         reward = w.event_log[-1]
         self.assertEqual(reward.kind, "system_reward_granted")
         self.assertEqual(reward.payload["condition"], "correct objective fact query")
@@ -350,16 +359,16 @@ class WorldTests(unittest.TestCase):
     def test_ledger_penalty_is_an_auditable_consequence_of_voluntary_decline(self):
         w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
                   actors=[ActorState("陈默", "room")], locations=[LocationState("room")])
-        ledger = Ledger({"known": "answer"})
-        event = ledger.decline_offer(w, "陈默")
-        self.assertEqual(ledger.status, "declined")
+        fact_table_owner = Ledger({"known": "answer"})
+        event = fact_table_owner.decline_offer(w, "陈默")
+        self.assertEqual(fact_table_owner.status, "declined")
         self.assertEqual(event.kind, "system_penalty_applied")
         self.assertEqual(event.payload["penalty"], "the offered clarification is forfeited")
-        self.assertTrue(ledger.penalty_applied)
-        self.assertFalse(ledger.reward_granted)
-        self.assertEqual(ledger.affordances("陈默"), [])
+        self.assertTrue(fact_table_owner.penalty_applied)
+        self.assertFalse(fact_table_owner.reward_granted)
+        self.assertEqual(fact_table_owner.affordances("陈默"), [])
         with self.assertRaises(ActionRejected):
-            ledger.query(w, "陈默", "known")
+            fact_table_owner.query(w, "陈默", "known")
 
     def test_targeted_world_event_is_private(self):
         w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
@@ -395,17 +404,14 @@ class WorldTests(unittest.TestCase):
         self.assertIn("[search]", text)
         self.assertIn("[knock] target=office", text)
 
-    def test_prompt_renders_inspection_and_transfer_results_explicitly(self):
+    def test_prompt_renders_transfer_results_explicitly(self):
         from harness.prompt import render_world_message
         text = render_world_message(
             {"time": "now", "location": "room", "observer": "a", "inbox": [], "events": [
-                {"kind": "item_inspected", "actor": "a",
-                 "payload": {"item": "folder", "location": "room", "held": True}},
                 {"kind": "item_given", "actor": "a",
                  "payload": {"item": "folder", "from": "a", "to": "b"}},
             ]}, [],
         )
-        self.assertIn("a 检查了 folder", text)
         self.assertIn("a 把 folder 交给 b", text)
 
     def test_world_message_spells_out_self_move_completion(self):
@@ -424,7 +430,10 @@ class WorldTests(unittest.TestCase):
     def test_adapter_rejects_vague_or_extra_model_output(self):
         with self.assertRaises(ValueError): parse_intention("a", '{"kind":"apologize","target":"b"}', 0)
         with self.assertRaises(ValueError): parse_intention("a", '{"kind":"send_message","args":{},"reason":"plot"}', 0)
-        self.assertEqual(parse_intention("a", {"kind": "wait", "args": {"duration_seconds": 60}}, 4).expected_version, 4)
+        intent = parse_intention("a", {"kind": "wait", "args": {"duration_seconds": 60}}, 4)
+        assert intent is not None
+        self.assertIsNotNone(intent)
+        self.assertEqual(getattr(intent, "expected_version"), 4)
 
     def test_provider_requires_explicit_model(self):
         with patch.dict("os.environ", {"OPENAI_MODEL": ""}, clear=False):
@@ -445,7 +454,7 @@ class WorldTests(unittest.TestCase):
         self.assertNotIn("max_output_tokens", body)
 
     def test_provider_retries_transient_http_failure(self):
-        failure = HTTPError("http://test", 502, "bad gateway", {}, BytesIO(b"upstream"))
+        failure = HTTPError("http://test", 502, "bad gateway", {}, BytesIO(b"upstream"))  # type: ignore[arg-type]
         success = Mock()
         success.__enter__ = lambda self: self
         success.__exit__ = Mock(return_value=False)
@@ -459,7 +468,7 @@ class WorldTests(unittest.TestCase):
         self.assertEqual(pauses, [0.25])
 
     def test_provider_does_not_retry_permanent_http_failure(self):
-        failure = HTTPError("http://test", 400, "bad request", {}, BytesIO(b"bad"))
+        failure = HTTPError("http://test", 400, "bad request", {}, BytesIO(b"bad"))  # type: ignore[arg-type]
         with patch("harness.provider.urlopen", side_effect=failure) as opened:
             with self.assertRaisesRegex(RuntimeError, "provider HTTP 400"):
                 OpenAICompatible(model="m", retries=3, sleep=lambda _: None)([])
@@ -500,9 +509,9 @@ class WorldTests(unittest.TestCase):
                 OpenAICompatible(model="m", retries=1, retry_backoff=0,
                                  sleep=lambda _: None)([])
         self.assertEqual(opened.call_count, 2)
-        self.assertTrue(raised.exception.retryable)
-        self.assertTrue(raised.exception.retry_exhausted)
-        self.assertEqual(raised.exception.attempts, 2)
+        self.assertTrue(getattr(raised.exception, "retryable"))
+        self.assertTrue(getattr(raised.exception, "retry_exhausted"))
+        self.assertEqual(getattr(raised.exception, "attempts"), 2)
 
     def test_provider_rejects_oversized_request_before_network_with_diagnostics(self):
         with patch("harness.provider.urlopen") as opened:
@@ -511,12 +520,13 @@ class WorldTests(unittest.TestCase):
                     {"role": "user", "content": "x" * 500}
                 ])
         opened.assert_not_called()
-        self.assertFalse(raised.exception.retryable)
+        self.assertFalse(getattr(raised.exception, "retryable"))
         self.assertTrue(hasattr(raised.exception, "request_bytes"))
-        self.assertEqual(raised.exception.request_limit, 100)
+        self.assertEqual(getattr(raised.exception, "request_limit"), 100)
 
     def test_provider_exhausted_502_reports_retry_metadata(self):
-        failures = [HTTPError("http://test", 502, "bad gateway", {}, BytesIO(b"upstream")) for _ in range(3)]
+        failures = [HTTPError("http://test", 502, "bad gateway", {}, BytesIO(b"upstream"))  # type: ignore[arg-type]
+                    for _ in range(3)]
         pauses = []
         with patch("harness.provider.urlopen", side_effect=failures) as opened:
             with self.assertRaisesRegex(RuntimeError, r"provider HTTP 502 after 3 attempts") as raised:
@@ -528,7 +538,7 @@ class WorldTests(unittest.TestCase):
         self.assertEqual(getattr(raised.exception, "attempts", None), 3)
 
     def test_provider_retry_budget_is_bounded(self):
-        failure = HTTPError("http://test", 503, "unavailable", {}, BytesIO(b"down"))
+        failure = HTTPError("http://test", 503, "unavailable", {}, BytesIO(b"down"))  # type: ignore[arg-type]
         pauses = []
         with patch("harness.provider.urlopen", side_effect=failure) as opened:
             with self.assertRaises(RuntimeError):
@@ -538,7 +548,7 @@ class WorldTests(unittest.TestCase):
         self.assertEqual(pauses, [0.1, 0.2])
 
     def test_provider_caps_exponential_backoff(self):
-        failure = HTTPError("http://test", 502, "bad gateway", {}, BytesIO(b"upstream"))
+        failure = HTTPError("http://test", 502, "bad gateway", {}, BytesIO(b"upstream"))  # type: ignore[arg-type]
         pauses = []
         with patch("harness.provider.urlopen", side_effect=failure):
             with self.assertRaises(RuntimeError):
@@ -547,7 +557,7 @@ class WorldTests(unittest.TestCase):
         self.assertEqual(pauses, [3, 3, 3, 3])
 
     def test_provider_does_not_start_retry_after_deadline(self):
-        failure = HTTPError("http://test", 502, "bad gateway", {}, BytesIO(b"upstream"))
+        failure = HTTPError("http://test", 502, "bad gateway", {}, BytesIO(b"upstream"))  # type: ignore[arg-type]
         clock = iter([0.0, 0.0, 2.0, 2.0])
         pauses = []
         with patch("harness.provider.urlopen", side_effect=failure) as opened, \
@@ -654,69 +664,76 @@ class V4PhysicsTests(unittest.TestCase):
         from harness.adapter import reset_alias_telemetry
         reset_alias_telemetry()
         intention, _ = parse_decision(
-            "a", '{"inner":"先想清楚再说","type":"speak","args":{"text":"喂"}}', None)
-        self.assertEqual(intention.inner, "先想清楚再说")
+            "a", '{"inner":"先想清楚再说","type":"speak","args":{"text":"喂"}}', 0)
+        self.assertIsNotNone(intention)
+        self.assertEqual(intention.inner if intention else None, "先想清楚再说")
         long_inner = "想" * 300
         intention, _ = parse_decision(
-            "a", '{"inner":"' + long_inner + '","type":"wait","args":{"duration_seconds":60}}', None)
-        self.assertLessEqual(len(intention.inner), 210)
-        self.assertTrue(intention.inner.endswith("已截断）"))
+            "a", '{"inner":"' + long_inner + '","type":"wait","args":{"duration_seconds":60}}', 0)
+        self.assertIsNotNone(intention)
+        self.assertLessEqual(len(getattr(intention, "inner") or ""), 210)
+        inner_text = intention.inner if intention is not None else ""
+        self.assertTrue(inner_text.endswith("已截断）"))
 
     def test_tolerant_parsing_handles_model_slips(self):
         from harness.adapter import parse_decision
         intention, _ = parse_decision(
-            "a", "{'inner':'嗯','type':'wait','args':{'duration_seconds':60,}}", None)
-        self.assertEqual(intention.kind, "wait")
+            "a", "{'inner':'嗯','type':'wait','args':{'duration_seconds':60,}}", 0)
+        self.assertIsNotNone(intention)
+        self.assertEqual(intention.kind if intention else None, "wait")
 
     def test_alias_executes_and_counts(self):
         from harness.adapter import parse_decision, alias_telemetry, reset_alias_telemetry
         reset_alias_telemetry()
-        intention, _ = parse_decision("a", '{"type":"wait","args":{"seconds":60}}', None)
+        intention, _ = parse_decision("a", '{"type":"wait","args":{"seconds":60}}', 0)
+        assert intention is not None
         self.assertEqual(intention.args["duration_seconds"], 60)
         self.assertEqual(alias_telemetry().get("wait:seconds->duration_seconds"), 1)
 
     def test_normal_speech_reaches_location_whisper_only_named(self):
         from harness.adapter import parse_decision
         w = self._world()
-        w.submit(parse_decision("a", '{"type":"speak","args":{"text":"大家好"}}', None)[0])
+        _submit_parsed(w, "a", '{"type":"speak","args":{"text":"大家好"}}', w.version)
         speech = next(e for e in w.event_log if e.kind == "speech")
         self.assertEqual(speech.visible_to, frozenset({"a", "b", "c"}))
         w2 = self._world()
-        w2.submit(parse_decision(
-            "a", '{"type":"speak","args":{"text":"只告诉你","volume":"whisper","to":["b"]}}', None)[0])
+        _submit_parsed(w2, "a", '{"type":"speak","args":{"text":"只告诉你","volume":"whisper","to":["b"]}}', w2.version)
         speech = next(e for e in w2.event_log if e.kind == "speech")
         self.assertEqual(speech.visible_to, frozenset({"a", "b"}))
 
     def test_interrupt_suspend_resume_and_abandon(self):
         from harness.adapter import parse_decision
         w = self._world()
-        w.submit(parse_decision("a", '{"type":"wait","args":{"duration_seconds":900}}', None)[0])
-        w.submit(parse_decision("b", '{"type":"speak","args":{"text":"打扰一下","interrupt":["a"]}}', None)[0])
+        _submit_parsed(w, "a", '{"type":"wait","args":{"duration_seconds":900}}', w.version)
+        _submit_parsed(w, "b", '{"type":"speak","args":{"text":"打扰一下","interrupt":["a"]}}', w.version)
         a = w.actors["a"]
         self.assertIsNone(a.busy_until)
-        self.assertEqual(a.pending["remaining_seconds"], 900)
+        pending = a.pending or {}
+        self.assertEqual(pending["remaining_seconds"], 900)
         self.assertIn({"kind": "continue_action"}, w.affordances("a"))
-        w.submit(parse_decision("a", '{"type":"continue_action"}', None)[0])
+        _submit_parsed(w, "a", '{"type":"continue_action"}')
+        resumed_until = a.busy_until
+        assert resumed_until is not None and a.busy_until is not None
         self.assertEqual((a.busy_until - w.now).total_seconds(), 900)
         # M1: sleep is merged into wait and no action defaults to
         # uninterruptable any more — waits are interruptible like any action;
         # protection exists only via the actor's own declaration.
         w4 = self._world()
-        w4.submit(parse_decision("a", '{"type":"wait","args":{"duration_seconds":3600}}', None)[0])
-        w4.submit(parse_decision("b", '{"type":"speak","args":{"text":"醒醒","interrupt":["a"]}}', None)[0])
+        _submit_parsed(w4, "a", '{"type":"wait","args":{"duration_seconds":3600}}', w4.version)
+        _submit_parsed(w4, "b", '{"type":"speak","args":{"text":"醒醒","interrupt":["a"]}}', w4.version)
         self.assertIsNotNone(w4.actors["a"].pending)
         w5 = self._world()
         w5.submit(Intention("a", "wait", {"duration_seconds": 3600},
                             w5.version, uninterruptable=True))
-        w5.submit(parse_decision("b", '{"type":"speak","args":{"text":"醒醒","interrupt":["a"]}}', None)[0])
+        _submit_parsed(w5, "b", '{"type":"speak","args":{"text":"醒醒","interrupt":["a"]}}', w5.version)
         self.assertIsNone(w5.actors["a"].pending)
 
     def test_abandon_marks_action_failed(self):
         from harness.adapter import parse_decision
         w = self._world()
-        w.submit(parse_decision("a", '{"type":"wait","args":{"duration_seconds":900}}', None)[0])
-        w.submit(parse_decision("b", '{"type":"speak","args":{"text":"打断","interrupt":["a"]}}', None)[0])
-        w.submit(parse_decision("a", '{"type":"abandon_action"}', None)[0])
+        _submit_parsed(w, "a", '{"type":"wait","args":{"duration_seconds":900}}', w.version)
+        _submit_parsed(w, "b", '{"type":"speak","args":{"text":"打断","interrupt":["a"]}}', w.version)
+        _submit_parsed(w, "a", '{"type":"abandon_action"}')
         abandoned = next(e for e in w.event_log if e.kind == "action_abandoned")
         self.assertTrue(abandoned.payload["failed"])
         self.assertIsNone(w.actors["a"].pending)
@@ -724,7 +741,7 @@ class V4PhysicsTests(unittest.TestCase):
     def test_move_duration_is_map_fact_not_argument(self):
         from harness.adapter import parse_decision
         w = self._world()
-        w.submit(parse_decision("a", '{"type":"move","args":{"target":"学生会办公室"}}', None)[0])
+        _submit_parsed(w, "a", '{"type":"move","args":{"target":"学生会办公室"}}', w.version)
         self.assertEqual((w.actors["a"].busy_until - w.now).total_seconds(), 600)
 
     def test_wait_is_bounded_by_longest_wait(self):
@@ -732,12 +749,12 @@ class V4PhysicsTests(unittest.TestCase):
         from harness.kernel import ActionRejected
         w = self._world()
         with self.assertRaises(ActionRejected):
-            w.submit(parse_decision("a", '{"type":"wait","args":{"duration_seconds":3601}}', None)[0])
+            _submit_parsed(w, "a", '{"type":"wait","args":{"duration_seconds":3601}}')
 
     def test_message_latency_is_one_tick(self):
         from harness.adapter import parse_decision
         w = self._world()
-        w.submit(parse_decision("a", '{"type":"send_message","args":{"target":"b","text":"晚上见"}}', None)[0])
+        _submit_parsed(w, "a", '{"type":"send_message","args":{"target":"b","text":"晚上见"}}', w.version)
         self.assertEqual((w.actors["a"].busy_until - w.now).total_seconds(), 60)
 
     def test_document_read_content_stays_private_but_fact_is_public(self):
@@ -745,7 +762,7 @@ class V4PhysicsTests(unittest.TestCase):
         w = self._world()
         w.document_defs["memo"] = {"title": "便签", "content": "秘密内容"}
         w.item_locations["memo"] = "宿舍"
-        w.submit(parse_decision("b", '{"type":"read","args":{"item":"memo"}}', None)[0])
+        w.submit(parse_decision("b", '{"type":"read","args":{"item":"memo"}}', 0)[0])
         w.advance()
         content = next(e for e in w.event_log if e.kind == "document_read")
         self.assertEqual(content.visible_to, frozenset({"b"}))
@@ -756,7 +773,7 @@ class V4PhysicsTests(unittest.TestCase):
     def test_others_wait_sleep_invisible(self):
         from harness.adapter import parse_decision
         w = self._world()
-        w.submit(parse_decision("a", '{"type":"wait","args":{"duration_seconds":600}}', None)[0])
+        _submit_parsed(w, "a", '{"type":"wait","args":{"duration_seconds":600}}')
         w.advance()
         b_seen = [e.kind for e in w.event_log if "b" in e.visible_to]
         self.assertNotIn("action_started", b_seen)

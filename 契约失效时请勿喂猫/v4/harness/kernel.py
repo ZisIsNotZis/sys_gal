@@ -512,7 +512,7 @@ class World:
         speak_option = ({"kind": "speak", "volume": "normal/whisper", "to": others_here}
                         if others_here else None)
         options: list[dict[str, Any]] = [
-            *([{"kind": "ask_stranger"}] if self.locations[a.location].extras else []),
+            *([{"kind": "ask_stranger", "question": ""}] if self.locations[a.location].extras else []),
             *([speak_option] if speak_option else []),
             *({"kind": "send_message", "target": other} for other in self._message_targets(a)),
             *({"kind": "move", "target": target}
@@ -1228,10 +1228,6 @@ class World:
         if kind == "message_delivered": return {str(payload["target"]), str(actor)}
         if kind == "speech":
             return self._hearing_actors(str(actor), payload)
-        if kind == "action_completed" and payload.get("action") in {"inspect", "search"}:
-            return self._co_located(str(actor))
-        if kind in {"item_inspected", "location_searched"}:
-            return self._co_located(str(actor))
         if kind == "item_given":
             return self._co_located(str(payload["from"]))
         if kind in {"knock", "interaction"}:
