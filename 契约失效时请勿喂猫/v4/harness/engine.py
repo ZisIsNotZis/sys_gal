@@ -964,8 +964,9 @@ class AsyncEngine:
             alive = (partner in self.world.actors
                      and self.world.actors[partner].location == self.world.actors[name].location)
             idle = (self.world.now - info["last_active"]).total_seconds() > self.extra_idle_seconds
-            if not alive or idle:
-                self._despawn(name, "idle" if idle else "partner_gone")
+            answered = info.get("has_spoken", False)
+            if not alive or (idle and answered):
+                self._despawn(name, "idle" if (idle and answered) else "partner_gone")
         for event in new_events:
             if event.kind == "stranger_asked" and event.actor:
                 asker = event.actor
@@ -974,7 +975,9 @@ class AsyncEngine:
                 if self.extra_call is None or asker not in self.world.actors:
                     continue
                 location = self.world.actors[asker].location
-                entry = sample_extra(self.world.locations[location].extras)
+                entry = sample_extra(self.world.locations[location].extras or
+                                     [{"fragment": "一个路过的同学", "rarity": "common",
+                                       "knowledge_notes": ""}])
                 name = generate_stranger_name()
                 while name in self.world.actors:
                     name = generate_stranger_name()
@@ -983,7 +986,8 @@ class AsyncEngine:
                                       "knowledge_notes": str(entry.get("knowledge_notes", "")),
                                       "partner": asker, "last_active": self.world.now,
                                       "rarity": str(entry.get("rarity", "common")),
-                                      "start": len(self.world.event_log)}
+                                      "start": len(self.world.event_log),
+                                      "has_spoken": False}
                 self._wake_events[name] = asyncio.Event()
                 self._extra_tasks[name] = loop.create_task(
                     self._extra_loop(name, str(event.payload.get("question", ""))))
@@ -1055,6 +1059,7 @@ class AsyncEngine:
                                             self.world.version))
                 spoke = True
                 info["last_active"] = self.world.now
+                info["has_spoken"] = True
             result = "submitted" if spoke else ("none" if intention_calls else "agent_error")
         except ActionRejected as exc:
             result, error = "rejected", str(exc)

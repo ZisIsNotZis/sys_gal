@@ -184,7 +184,7 @@ class World:
     """Authoritative, deterministic, event-sourced physical/social world."""
 
     ACTIONS = {"wait", "speak", "text", "move", "take", "place", "give",
-               "read", "leave_note", "knock", "ask", "trash",
+               "read", "leave_note", "knock", "ask_stranger", "trash",
                "continue_action", "abandon_action"}
 
     def __init__(self, *, start: datetime, actors: Iterable[ActorState],
@@ -512,7 +512,7 @@ class World:
         speak_option = ({"kind": "speak", "volume": "whisper", "to": others_here}
                         if others_here else None)
         options: list[dict[str, Any]] = [
-            {"kind": "ask", "question": ""},
+            {"kind": "ask_stranger", "question": ""},
             *([speak_option] if speak_option else []),
             *({"kind": "text", "target": other} for other in self._message_targets(a)),
             *({"kind": "move", "target": target}
@@ -562,7 +562,7 @@ class World:
             return self._resume(a)
         if intention.kind == "abandon_action":
             return self._abandon(a)
-        if intention.kind == "ask":
+        if intention.kind == "ask_stranger":
             question = str(intention.args.get("question", "")).strip()
             if not question:
                 raise ActionRejected("ask 需要写明你想问什么（question）。")
@@ -940,7 +940,7 @@ class World:
             # tick to arrive, common knowledge, so sending words has a real
             # time cost.
             return timedelta(seconds=TICK_SECONDS)
-        if i.kind in {"read", "leave_note", "ask", "trash"}:
+        if i.kind in {"read", "leave_note", "ask_stranger", "trash"}:
             return self._item_duration(a, i)
         if i.kind == "knock":
             target = str(x.get("target"))
@@ -1043,7 +1043,7 @@ class World:
             if not isinstance(text, str) or not text.strip():
                 raise ActionRejected("leave_note 需要非空文本（text）。")
             return timedelta(seconds=3)
-        if kind == "ask":
+        if kind == "ask_stranger":
             question = intention.args.get("question")
             if not isinstance(question, str) or not question.strip():
                 raise ActionRejected("ask 需要写明你想问什么（question）。")
@@ -1101,7 +1101,7 @@ class World:
     def _interaction_event(self, kind: str) -> str:
         return {"knock": "knock", "give": "item_given",
                 "read": "document_read", "leave_note": "note_left",
-                "trash": "item_trashed", "ask": "asked"}[kind]
+                "trash": "item_trashed", "ask_stranger": "asked"}[kind]
 
     def _interaction_payload(self, actor: ActorState, intention: Mapping[str, Any]) -> dict[str, Any]:
         kind = str(intention["action"])

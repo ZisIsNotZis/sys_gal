@@ -86,7 +86,7 @@ SCHEMAS: dict[str, dict[str, Any]] = {
     "read": _ONE_ITEM_CONTENT,
     "leave_note": _schema(text={"type": "string", "minLength": 1}),
     "trash": _ONE_ITEM,
-    "ask": _schema(question={"type": "string", "minLength": 1}),
+    "ask_stranger": _schema(question={"type": "string", "minLength": 1}),
 }
 
 # 每个工具的中文一句话说明（docs §2）。注意：每个调用的 arguments 都必须带
@@ -118,7 +118,7 @@ _TOOL_DESCRIPTIONS: dict[str, str] = {
                   "要定向给某人用 text；递到手上用 give",
     "read": "读一份手边的内容型物品；正文和已有批注只在 tool 结果里给你自己看。他人只看见你在读",
     "knock": "敲一个关闭地点的门，探里面有没有人",
-    "ask": "搭话身边的人或随机路人：question=想问的话。对话期对方会回应，结束即散",
+    "ask_stranger": "搭话身边的人或随机路人：question=想问的话。对话期对方会回应，结束即散",
     "continue_action": "无损继续被打断的动作（被打断的回合必须先选这个或 abandon）",
     "abandon_action": "放弃被打断的动作（作废；被打断的回合必须先选这个或 continue）",
     "trash": "销毁一件自己身上或当前地点的物品（字条、杂物），不可逆",
