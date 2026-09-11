@@ -253,7 +253,7 @@ class ExtraLifecycleTests(unittest.TestCase):
             text = answers.pop(0) if answers else "这个我真不知道。"
             return '{"name":"speak","arguments":{"text":"%s"}}' % text
 
-        ask = parse_decision("陈默", '{"name":"ask",'
+        ask = parse_decision("陈默", '{"name":"ask_stranger",'
                                     '"arguments":{"question":"晚安归登记本在哪？"}}', None)[0]
         wait = _wait(300)
         reply = parse_decision("陈默", '{"name":"speak",'

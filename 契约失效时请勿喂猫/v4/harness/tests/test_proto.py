@@ -32,7 +32,7 @@ class ToolsTests(unittest.TestCase):
         names = {tool["function"]["name"] for tool in TOOLS}
         expected = {"update_memory", "recall", "flashback", "wait", "speak",
                     "text", "move", "read", "take", "place", "give", "knock",
-                    "leave_note", "trash", "ask",
+                    "leave_note", "trash", "ask_stranger",
                     "continue_action", "abandon_action"}
         self.assertEqual(names, expected)
         self.assertNotIn("sleep", SCHEMAS)  # M1: sleep merged into wait
