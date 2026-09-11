@@ -78,8 +78,9 @@ wait, speak(仅 whisper 修饰用), text, move, take, place, give, read, knock, 
 ## 2026-09-11 用户裁决：leave_note（空白纸问题终裁）
 
 **leave_note 工具，人人可留，无材料约束**（用户：纸不稀缺，有用就该谁都能留）：
-- `leave_note {text, to? | at?}`：to=在场某人（轻量递达）或 at=当前地点（压桌上/贴门上）；不填则默认 at=当前地点。
-- 世界生成"一张折叠的字条"进入地点/对方手上——新内容型物品，可 read、可 take、可再 give/place。
+- `leave_note {text}`：**只留当前地点**（终裁）——给后来者的：谁进入该地点即可 read/take。
+- 要定向给某人 → 那是 text 工具（leave_note 无 to= 参数，不与 give/text 语义重叠）。
+- 委托场景："如果可能帮我做 xxx 然后 text 我 @xxx"——写在字条内容里，看到的人自然知道联系谁。
 - annotate 的正确替代：actor 留自己创作内容的唯一世界内通道；annotate/copy 的理由链闭合。
 - 空白纸实体删除（纸不建模为资源）。
 
