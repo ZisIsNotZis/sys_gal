@@ -84,8 +84,11 @@ wait, speak(仅 whisper 修饰用), text, move, take, place, give, read, knock, 
 - annotate 的正确替代：actor 留自己创作内容的唯一世界内通道；annotate/copy 的理由链闭合。
 - 空白纸实体删除（纸不建模为资源）。
 
-**目标工具面终版（11 + 记忆 3）**：
-wait, speak(仅 whisper 修饰), text(原 send_message), move, take, place(原 drop), give, leave_note, read, knock, ask(原 ask_stranger) + update_memory/recall/flashback。
+- **trash 工具**：销毁一件自己身上或当前地点的物品（字条/杂物），避免无限堆积。
+- 字条拾取语义：可拿走（他人不再看到）或留下（后来者继续看到）。
+
+**目标工具面终版（12 + 记忆 3）**：
+wait, speak(仅 whisper 修饰), text(原 send_message), move, take, place(原 drop), give, leave_note, read, knock, ask(原 ask_stranger), trash + update_memory/recall/flashback。
 删除：compare, annotate, open/close, interact, system_*(台账 NPC 化), observe 系列(已删), think(已删), copy(已删)。
 
-全部裁决齐备——工单 14 大 slice 待 "go" 开工。
+全部裁决齐备——工单 14 大 slice 已开工（2026-09-11，用户 go）。
