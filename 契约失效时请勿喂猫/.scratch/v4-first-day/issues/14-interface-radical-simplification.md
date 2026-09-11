@@ -92,3 +92,14 @@ wait, speak(仅 whisper 修饰), text(原 send_message), move, take, place(原 d
 删除：compare, annotate, open/close, interact, system_*(台账 NPC 化), observe 系列(已删), think(已删), copy(已删)。
 
 全部裁决齐备——工单 14 大 slice 已开工（2026-09-11，用户 go）。
+
+## 2026-09-11 讨论：公开说话要不要 to=（addressee）
+
+用户提出：公开说话也需要 to——①interrupt 需要定向；②模型常忘写"陈默，"称呼，或用昵称。
+
+**分析**：
+- `to` 应作元数据（主要说给谁）而非投递过滤器——heard 列表保持客观完整（公开说话全场可闻不破）。
+- 纯文本路径无工具参数，结构化 to 无处安放 → 若做，只能"从正文解析称呼"（在场者名单匹配），昵称表是种子维护成本 + 幻觉风险。
+- 简单选项：不加机制。称呼遗漏是世界观内可容忍的（真人也不总是点名）；interrupt 已有显式参数（speak 工具路径）+ 连续性推断（文本路径：被 addressed 的上一说话人）。
+
+**决定**：暂不实现。等运行中出现"因无 addressee 导致剧情/唤醒断裂"的实证案例再上"称呼解析"机制。观察点：NPC 定向唤醒（addressed_speech wake）是否因缺称呼而漏。
