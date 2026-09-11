@@ -630,7 +630,7 @@ class AsyncEngine:
                 continue
             if name in {"think", "system_query", "copy", "annotate", "compare",
                         "observe", "search", "inspect", "label", "interact",
-                        "open", "close", "ask_stranger", "send_message", "drop",
+                        "open", "close", "send_message", "drop",
                         "system_accept", "system_decline"}:
                 # retired tools (ticket 14 / earlier rulings): teach, don't fail
                 # silently — the model may carry them from older sessions.
