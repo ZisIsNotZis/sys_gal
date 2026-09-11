@@ -89,23 +89,40 @@ class ChatWithToolsTests(unittest.TestCase):
         self.assertEqual(seen["body"]["tools"], TOOLS)
         self.assertEqual(message["tool_calls"][0]["function"]["name"], "speak")
 
-    def test_chat_with_tools_retries_when_no_tool_calls(self):
+    def test_chat_with_tools_accepts_text_only_reply(self):
+        # T1 文本即说话: a text-only reply is a valid decision (words are
+        # spoken, the turn idles) — no retry.
+        provider = self._provider(retries=1)
+        attempts = []
+
+        def fake_urlopen(request, timeout=None):
+            attempts.append(1)
+            return _FakeResponse(_chat_response({"content": "只是散文"}))
+
+        with mock.patch("harness.provider.urlopen", fake_urlopen):
+            message = provider.chat_with_tools([{"role": "user", "content": "hi"}], TOOLS)
+        self.assertEqual(len(attempts), 1)
+        self.assertEqual(message["content"], "只是散文")
+        self.assertEqual(message.get("tool_calls"), [])
+
+    def test_chat_with_tools_retries_when_neither_text_nor_calls(self):
+        # A truly unusable shape (no content AND no calls) still retries.
         provider = self._provider(retries=1)
         attempts = []
 
         def fake_urlopen(request, timeout=None):
             attempts.append(1)
             if len(attempts) == 1:
-                return _FakeResponse(_chat_response({"content": "只是散文"}))
+                return _FakeResponse(_chat_response({"content": ""}))
             return _FakeResponse(_chat_response({
                 "content": "", "tool_calls": [
                     {"id": "c", "type": "function",
-                     "function": {"name": "observe", "arguments": "{}"}}]}))
+                     "function": {"name": "wait", "arguments": "{}"}}]}))
 
         with mock.patch("harness.provider.urlopen", fake_urlopen):
             message = provider.chat_with_tools([{"role": "user", "content": "hi"}], TOOLS)
         self.assertEqual(len(attempts), 2)
-        self.assertEqual(message["tool_calls"][0]["function"]["name"], "observe")
+        self.assertEqual(message["tool_calls"][0]["function"]["name"], "wait")
 
 
 class _FakeProvider:

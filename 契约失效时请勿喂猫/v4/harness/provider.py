@@ -228,11 +228,14 @@ class OpenAICompatible:
             return None
         if not isinstance(message, dict):
             return None
+        # T1 文本即说话 (docs §4): a reply with text and no tool_calls is a
+        # VALID decision — the words are spoken, the turn idles. Only an
+        # unusable response shape (no content AND no calls) retries.
         calls = message.get("tool_calls")
         if not isinstance(calls, list) or not calls:
-            # A reply without native tool calls violates the protocol
-            # (V4-AGENT-INTERFACE §0: no lenient parsing) — retry it; an
-            # exhausted budget surfaces as the usual retryable failure.
+            if str(message.get("content") or "").strip():
+                return {"role": message.get("role", "assistant"),
+                        "content": message.get("content", ""), "tool_calls": []}
             return None
         return message
 
