@@ -52,7 +52,7 @@ def _null(_state, _perception, _affordances):
 
 
 def _wait(seconds):
-    return parse_decision("陈默", '{"inner":"等一等。","name":"wait",'
+    return parse_decision("陈默", '{"name":"wait",'
                                   '"arguments":{"duration_seconds":%d}}' % seconds,
                           None)[0]
 
@@ -85,16 +85,16 @@ class RoleSchedulingTests(unittest.TestCase):
             calls[state.actor_id] += 1
             if state.actor_id == "陈默" and calls[state.actor_id] == 1:
                 return parse_decision("陈默",
-                                      '{"inner":"问问宿管。","name":"speak","arguments":'
-                                      '{"text":"阿姨，晚安归登记本在哪？","to":["宿管阿姨"]}}',
+                                      '{"name":"speak","arguments":'
+                                      '{"text":"阿姨，晚安归登记本在哪？","volume":"whisper","to":["宿管阿姨"]}}',
                                       world.version)[0]
             return _wait(300)
 
         def npc_agent(state, perception, affordances):
             calls[state.actor_id] += 1
             return parse_decision("宿管阿姨",
-                                  '{"inner":"告诉他。","name":"speak","arguments":'
-                                  '{"text":"在值班台抽屉里。"}}',
+                                  '{"name":"speak","arguments":'
+                                  '{"text":"在值班台抽屉里。","volume":"whisper","to":["陈默"]}}',
                                   perception.get("world_version"))[0]
 
         trace = Trace("v4-test", "npc-addressed")
@@ -136,10 +136,10 @@ class RoleSchedulingTests(unittest.TestCase):
         states = {a: PrivateState(a) for a in world.actors}
         calls = {a: 0 for a in world.actors}
         # 陈默先 start 一个 900s 的 wait，再被自己的 speak 打断（abandon）。
-        steps = [parse_decision("陈默", '{"inner":"等。","name":"wait",'
+        steps = [parse_decision("陈默", '{"name":"wait",'
                                        '"arguments":{"duration_seconds":900}}',
                                 world.version)[0],
-                 parse_decision("陈默", '{"inner":"不等着了。","name":"speak",'
+                 parse_decision("陈默", '{"name":"speak",'
                                        '"arguments":{"text":"我走。"}}',
                                 world.version)[0]]
 
@@ -194,7 +194,7 @@ class BriefingLeakTests(unittest.TestCase):
 
         def call(messages):
             captured.append(messages)
-            return '{"inner":"我知道分寸。","name":"wait","arguments":{"duration_seconds":300}}'
+            return '{"name":"wait","arguments":{"duration_seconds":300}}'
 
         from harness.character_loader import CharacterSeed
         # NPC 自己的私人起点是它自己的人格材料（合法在场）；
@@ -221,7 +221,7 @@ class BriefingLeakTests(unittest.TestCase):
         mc_state = PrivateState("陈默")
 
         def call(messages):
-            return '{"inner":"这条会进滚动记忆。","name":"wait","arguments":{"duration_seconds":300}}'
+            return '{"name":"wait","arguments":{"duration_seconds":300}}'
 
         from harness.character_loader import CharacterSeed
         seed = CharacterSeed("宿管阿姨", "你是宿管阿姨。", "")
@@ -251,15 +251,15 @@ class ExtraLifecycleTests(unittest.TestCase):
         def stub(messages):
             asked.append(messages)
             text = answers.pop(0) if answers else "这个我真不知道。"
-            return '{"inner":"随手答一句。","name":"speak","arguments":{"text":"%s"}}' % text
+            return '{"name":"speak","arguments":{"text":"%s"}}' % text
 
-        ask = parse_decision("陈默", '{"inner":"问一下路人。","name":"ask_stranger",'
+        ask = parse_decision("陈默", '{"name":"ask",'
                                     '"arguments":{"question":"晚安归登记本在哪？"}}', None)[0]
         wait = _wait(300)
-        reply = parse_decision("陈默", '{"inner":"追问一句。","name":"speak",'
+        reply = parse_decision("陈默", '{"name":"speak",'
                                       '"arguments":{"text":"抽屉锁着吗？"}}', None)[0]
         # 追问完就走到中庭（触发"伙伴离开"销毁）。
-        leave = parse_decision("陈默", '{"inner":"去中庭。","name":"move",'
+        leave = parse_decision("陈默", '{"name":"move",'
                                       '"arguments":{"target":"中庭"}}', None)[0]
         world, runner = self._runner([ask, wait, reply, leave], stub)
         runner.run(stop_at=datetime.fromisoformat("2026-03-16T07:25:00+08:00"),

@@ -31,11 +31,9 @@ class ToolsTests(unittest.TestCase):
     def test_tools_cover_the_doc_table_without_sleep(self):
         names = {tool["function"]["name"] for tool in TOOLS}
         expected = {"update_memory", "recall", "flashback", "wait", "speak",
-                    "send_message", "move", "read", "annotate",
-                    "compare", "take", "drop", "give", "knock",
-                    "open", "close", "ask_stranger",
-                    "continue_action", "abandon_action",
-                    "system_query"}
+                    "text", "move", "read", "take", "place", "give", "knock",
+                    "leave_note", "trash", "ask",
+                    "continue_action", "abandon_action"}
         self.assertEqual(names, expected)
         self.assertNotIn("sleep", SCHEMAS)  # M1: sleep merged into wait
         # Static full declaration, cache-safe: every tool carries a Chinese
@@ -52,9 +50,8 @@ class ToolsTests(unittest.TestCase):
         self.assertIsNotNone(fields_err)
         self.assertIn("needs the 'fields' argument", fields_err or "")
         self.assertIsNone(validate_action_args(
-            "update_memory", {"inner": "记下来",
-                              "rows": [{"fields": {"todo": True}, "id": "x", "op": "open"}]}))
-        self.assertIsNone(validate_action_args("recall", {"closed": True, "limit": 5, "inner": "翻"}))
+            "update_memory", {"rows": [{"fields": {"todo": True}, "id": "x", "op": "open"}]}))
+        self.assertIsNone(validate_action_args("recall", {"kinds": ["todo"]}))
         entity_err = validate_action_args("flashback", {})
         self.assertIsNotNone(entity_err)
         self.assertIn("needs the 'entity' argument", entity_err or "")
@@ -141,12 +138,14 @@ class V4SessionTests(unittest.TestCase):
             "content": "",
             "tool_calls": [{"id": "t1", "type": "function",
                             "function": {"name": "think",
-                                         "arguments": json.dumps({"inner": "先想想"})}},
+                                         "arguments": json.dumps({})}},
                            {"id": "t2", "type": "function",
                             "function": {"name": "speak",
                                          "arguments": "not json"}}]})
         agent = make_persistent_agent_v4(seed, provider)
-        calls = agent("9/16(周三) 7:00 @半坡咖啡馆\n...", PrivateState("陈默"))
+        decision = agent("9/16(周三) 7:00 @半坡咖啡馆\n...", PrivateState("陈默"))
+        assert isinstance(decision, dict)
+        calls = decision["calls"]
         request_messages = provider.calls[0]["messages"]
         # System prompt is the session's verbatim first message (doc §1).
         self.assertEqual(request_messages[0]["role"], "system")
@@ -169,7 +168,7 @@ class V4SessionTests(unittest.TestCase):
         self.assertEqual(session_messages(agent)[4]["tool_call_id"], "t2")
         self.assertIn("unparseable", session_messages(agent)[4]["content"])
         # Structurally parsed calls; malformed arguments carry parse_error.
-        self.assertEqual(calls[0], {"name": "think", "arguments": {"inner": "先想想"},
+        self.assertEqual(calls[0], {"name": "think", "arguments": {},
                                     "tool_call_id": "t1"})
         self.assertEqual(calls[1]["name"], "speak")
         self.assertEqual(calls[1]["arguments"], {})

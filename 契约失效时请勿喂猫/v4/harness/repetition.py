@@ -23,7 +23,7 @@ import json
 from typing import Any, Mapping
 
 # Pacing/no-op actions are not "the same thing done over and over".
-_EXCLUDED_ACTIONS = {"wait", "sleep", "send_message"}
+_EXCLUDED_ACTIONS = {"wait", "sleep", "text"}
 
 
 def _args_key(args: Mapping[str, Any]) -> str:
@@ -50,7 +50,7 @@ class RepetitionMonitor:
         if intention is None or not hasattr(intention, "kind"):
             return
         kind = intention.kind
-        if kind == "send_message":
+        if kind == "text":
             target = intention.args.get("target")
             if isinstance(target, str) and target:
                 counts = self._sent.setdefault(actor, {})

@@ -16,7 +16,7 @@ class RepetitionMonitorTests(unittest.TestCase):
         monitor = RepetitionMonitor(message_threshold=4, message_stride=3)
         for index in range(4):
             monitor.note_turn("lin", Intention(
-                "lin", "send_message", {"target": "amani", "text": "?"}, index + 1), "submitted")
+                "lin", "text", {"target": "amani", "text": "?"}, index + 1), "submitted")
         notice = monitor.notice("lin")
         self.assertIsNotNone(notice)
         self.assertIn("amani", notice)
@@ -38,7 +38,7 @@ class RepetitionMonitorTests(unittest.TestCase):
     def test_state_round_trip(self):
         monitor = RepetitionMonitor()
         for index in range(4):
-            monitor.note_turn("a", Intention("a", "send_message",
+            monitor.note_turn("a", Intention("a", "text",
                                              {"target": "b", "text": "hi"}, index + 1), "submitted")
         restored = RepetitionMonitor()
         restored.restore(monitor.state())
@@ -51,7 +51,7 @@ class RepetitionMonitorTests(unittest.TestCase):
 
         def agent(state, perception, affordances):
             if state.actor_id == "a":
-                return Intention("a", "send_message", {"target": "b", "text": "hello"},
+                return Intention("a", "text", {"target": "b", "text": "hello"},
                                  perception["world_version"])
             return None
 

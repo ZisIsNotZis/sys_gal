@@ -48,14 +48,14 @@ class PersonaLoopTests(unittest.TestCase):
         monitor = RepetitionMonitor()
         for index in range(4):
             monitor.note_turn("a", Intention(
-                "a", "send_message", {"target": "b", "text": "same ask"}, index + 1), "submitted")
+                "a", "text", {"target": "b", "text": "same ask"}, index + 1), "submitted")
         states = {actor: PrivateState(actor) for actor in world.actors}
 
         def a_agent(state, perception, affordances):
             notice = perception.get("situational_notice") or ""
             if "messages in a row" in notice:
                 return None  # Lin's pride: pause rather than pester
-            return Intention("a", "send_message", {"target": "b", "text": "same ask"},
+            return Intention("a", "text", {"target": "b", "text": "same ask"},
                              perception["world_version"])
 
         def b_agent(state, perception, affordances):
@@ -72,7 +72,7 @@ class PersonaLoopTests(unittest.TestCase):
                       a_turns[0]["perception"].get("situational_notice", ""))
         # A persona that honors the notice never repeats the ask.
         self.assertFalse(any(turn.get("intention")
-                             and turn["intention"]["kind"] == "send_message"
+                             and turn["intention"]["kind"] == "text"
                              for turn in a_turns))
         delivered_to_b = [event for event in world.event_log
                           if event.kind == "message_delivered"
@@ -87,14 +87,14 @@ class PersonaLoopTests(unittest.TestCase):
         answered = {"count": 0}
 
         def a_agent(state, perception, affordances):
-            return Intention("a", "send_message", {"target": "b", "text": "do you know?"},
+            return Intention("a", "text", {"target": "b", "text": "do you know?"},
                              perception["world_version"])
 
         def b_agent(state, perception, affordances):
             if perception.get("inbox"):
                 if answered["count"] == 0:
                     answered["count"] += 1
-                    return Intention("b", "send_message",
+                    return Intention("b", "text",
                                      {"target": "a", "text": "I already told you: I don't know."},
                                      perception["world_version"])
                 return None  # will not repeat herself

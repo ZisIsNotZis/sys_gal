@@ -21,14 +21,15 @@ class ActionSchemaTests(unittest.TestCase):
 
     def test_valid_args_pass(self):
         cases = [
-            ("wait", {"duration_seconds": 60, "inner": "等"}),
-            ("speak", {"text": "hi", "volume": "normal", "inner": "打招呼"}),
-            ("send_message", {"target": "b", "text": "hi", "inner": "通知"}),
-            ("move", {"target": "room", "inner": "过去"}),
-            ("continue_action", {"inner": "继续"}),
-            ("read", {"item": "ledger", "inner": "读"}),
-            ("compare", {"first": "a", "second": "b", "inner": "比对"}),
-            ("system_query", {"question": "哨子在哪里？", "inner": "问"}),
+            ("wait", {"duration_seconds": 60}),
+            ("speak", {"text": "悄悄话", "volume": "whisper", "to": ["b"]}),
+            ("text", {"target": "b", "text": "hi"}),
+            ("move", {"target": "room"}),
+            ("continue_action", {}),
+            ("read", {"item": "ledger"}),
+            ("leave_note", {"text": "去后街找我"}),
+            ("trash", {"item": "ledger"}),
+            ("ask", {"question": "哨子在哪里？"}),
         ]
         for kind, args in cases:
             self.assertIsNone(validate_action_args(kind, args), (kind, args))
@@ -36,13 +37,11 @@ class ActionSchemaTests(unittest.TestCase):
     def test_wrong_key_is_described(self):
         reason = validate_action_args("read", {"document": "ledger"}) or ""
         self.assertIn("unexpected argument 'document'", reason)
-        self.assertIn("inner", reason)
         self.assertIn("item", reason)
 
     def test_missing_required_is_described(self):
-        self.assertIn("'inner'", validate_action_args("annotate", {"item": "ledger"}) or "")
-        self.assertIn("'text'", validate_action_args("annotate", {"item": "ledger", "inner": "写"}) or "")
-        self.assertIn("'second'", validate_action_args("compare", {"first": "a", "inner": "比"}) or "")
+        self.assertIn("'text'", validate_action_args("leave_note", {}) or "")
+        self.assertIn("'to'", validate_action_args("speak", {"text": "悄悄话", "volume": "whisper"}) or "")
 
     def test_wrong_type_is_described(self):
         reason = validate_action_args("wait", {"duration_seconds": "60"}) or ""
@@ -50,7 +49,7 @@ class ActionSchemaTests(unittest.TestCase):
         self.assertIn("integer", reason)
 
     def test_no_args_action_rejects_extras(self):
-        reason = validate_action_args("wait", {"place": "archive", "inner": "等", "duration_seconds": 60}) or ""
+        reason = validate_action_args("wait", {"place": "archive", "duration_seconds": 60}) or ""
         self.assertIn("unexpected argument 'place'", reason)
 
     def test_runner_rejects_wrong_signature_with_schema_message(self):

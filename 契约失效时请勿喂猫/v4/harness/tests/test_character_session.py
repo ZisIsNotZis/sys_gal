@@ -189,10 +189,10 @@ class CharacterSessionTests(unittest.TestCase):
 
     def test_json_object_with_empty_message_is_left_for_engine_rejection(self):
         def model(messages):
-            return '{"kind":"send_message","args":{"target":"b","text":""}}'
+            return '{"kind":"text","args":{"target":"b","text":""}}'
         session = CharacterSession(self.seed(), PrivateState("a"), model)
         decision, _ = session.decide("The room is quiet.", 0)
-        self.assertEqual(decision.kind, "send_message")
+        self.assertEqual(decision.kind, "text")
 
     def test_legacy_action_shape_is_reported_and_retried(self):
         calls = []

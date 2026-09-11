@@ -30,7 +30,7 @@ class WorldTests(unittest.TestCase):
                      locations=[LocationState("room")])
 
     def test_message_is_concrete_and_private(self):
-        w = self.world(); w.submit(Intention("a", "send_message", {"target": "b", "text": "I was afraid."}, w.version)); w.advance()
+        w = self.world(); w.submit(Intention("a", "text", {"target": "b", "text": "I was afraid."}, w.version)); w.advance()
         self.assertEqual(w.actors["b"].inbox[0]["text"], "I was afraid.")
         self.assertEqual([e.kind for e in w.event_log], ["action_started", "message_sent", "action_completed", "message_delivered"])
         self.assertNotIn("b", w.event_log[1].visible_to)
@@ -42,20 +42,20 @@ class WorldTests(unittest.TestCase):
                   actors=[ActorState("a", "room", known_contacts={"b"}),
                           ActorState("b", "far"), ActorState("c", "far")],
                   locations=[LocationState("room"), LocationState("far")])
-        w.submit(Intention("a", "send_message", {"target": "b", "text": "hello"}, w.version))
+        w.submit(Intention("a", "text", {"target": "b", "text": "hello"}, w.version))
         with self.assertRaises(ActionRejected):
-            w.submit(Intention("a", "send_message", {"target": "c", "text": "hello"}, w.version))
+            w.submit(Intention("a", "text", {"target": "c", "text": "hello"}, w.version))
 
     def test_co_located_message_is_addressable_without_known_contact(self):
         w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
                   actors=[ActorState("a", "room"), ActorState("b", "room")],
                   locations=[LocationState("room")])
-        self.assertIn({"kind": "send_message", "target": "b"}, w.affordances("a"))
-        w.submit(Intention("a", "send_message", {"target": "b", "text": "hello"}, w.version))
+        self.assertIn({"kind": "text", "target": "b"}, w.affordances("a"))
+        w.submit(Intention("a", "text", {"target": "b", "text": "hello"}, w.version))
 
     def test_poll_exposes_busy_until_and_sender_sees_delivery(self):
         w = self.world()
-        w.submit(Intention("a", "send_message", {"target": "b", "text": "secret"}, w.version))
+        w.submit(Intention("a", "text", {"target": "b", "text": "secret"}, w.version))
         self.assertEqual(w.poll("a")["busy_until"], "2026-01-01T00:01:00+00:00")
         w.advance()
         perception = w.poll("a")
@@ -64,18 +64,18 @@ class WorldTests(unittest.TestCase):
 
     def test_sender_sees_message_target_when_send_completes(self):
         w = self.world()
-        w.submit(Intention("a", "send_message", {"target": "b", "text": "secret"}, w.version))
+        w.submit(Intention("a", "text", {"target": "b", "text": "secret"}, w.version))
         w.advance()
         completion = next(e for e in w.poll("a")["events"] if e["kind"] == "action_completed")
-        self.assertEqual(completion["payload"], {"action": "send_message", "target": "b"})
+        self.assertEqual(completion["payload"], {"action": "text", "target": "b"})
 
     def test_speech_completion_does_not_retarget_original_words(self):
         w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
                   actors=[ActorState("a", "room"), ActorState("b", "far")],
                   locations=[LocationState("room", x=0, y=0, sound_radius=5),
                              LocationState("far", x=100, y=0, sound_radius=5)])
-        w.submit(Intention("a", "speak", {"text": "private words", "volume": "normal"}, w.version))
         w.actors["b"].location = "room"
+        w.submit(Intention("a", "speak", {"text": "private words", "volume": "whisper", "to": ["b"]}, w.version))
         w.advance()
         completion = next(e for e in w.event_log if e.kind == "action_completed")
         self.assertNotIn("b", completion.visible_to)
@@ -234,24 +234,6 @@ class WorldTests(unittest.TestCase):
             w.submit(Intention("a", "move", {"target": "far"}, w.version))
         self.assertIn("不是一个你知道的地方", str(ctx.exception))
 
-    def test_open_close_requires_controllable(self):
-        w = self.world()
-        self.assertNotIn({"kind": "close"}, w.affordances("a"))
-        with self.assertRaises(ActionRejected) as ctx:
-            w.submit(Intention("a", "close", {}, w.version))
-        self.assertIn("不受你控制", str(ctx.exception))
-        controllable = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
-                             actors=[ActorState("a", "room")],
-                             locations=[LocationState("room", controllable=True)])
-        self.assertIn({"kind": "close"}, controllable.affordances("a"))
-        controllable.submit(Intention("a", "close", {}, controllable.version))
-        controllable.advance()
-        self.assertFalse(controllable.locations["room"].open)
-        self.assertIn({"kind": "open"}, controllable.affordances("a"))
-        controllable.submit(Intention("a", "open", {}, controllable.version))
-        controllable.advance()
-        self.assertTrue(controllable.locations["room"].open)
-
     def test_controllable_flag_survives_checkpoint_and_replay(self):
         base = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
                      actors=[ActorState("a", "room")],
@@ -271,7 +253,7 @@ class WorldTests(unittest.TestCase):
     def test_replay_reconstructs_objective_consequences(self):
         initial = self.world()
         w = self.world()
-        w.submit(Intention("a", "send_message", {"target": "b", "text": "recorded"}, w.version))
+        w.submit(Intention("a", "text", {"target": "b", "text": "recorded"}, w.version))
         w.advance()
         replayed = replay_world(initial, w.replayable_log())
         self.assertEqual(replayed.now, w.now)
@@ -299,7 +281,7 @@ class WorldTests(unittest.TestCase):
                   locations=[LocationState("near", x=0, y=0, sound_radius=10),
                              LocationState("far", x=30, y=0), LocationState("blocked", x=2, y=0)],
                   sound_barriers={("near", "blocked"): 20})
-        w.submit(Intention("a", "speak", {"text": "quietly", "volume": "normal"}, w.version))
+        w.submit(Intention("a", "speak", {"text": "quietly", "volume": "whisper", "to": ["b"]}, w.version))
         heard = w.event_log[1].visible_to
         self.assertIn("a", heard); self.assertIn("b", heard)
         self.assertNotIn("c", heard); self.assertNotIn("d", heard)
@@ -318,18 +300,8 @@ class WorldTests(unittest.TestCase):
 
     def test_closed_source_does_not_project_speech(self):
         w = self.world(); w.locations["room"] = LocationState("room", False)
-        w.submit(Intention("a", "speak", {"text": "inside", "volume": "normal"}, w.version))
+        w.submit(Intention("a", "speak", {"text": "inside", "volume": "whisper", "to": ["b"]}, w.version))
         self.assertEqual(w.event_log[1].visible_to, frozenset({"a"}))
-
-    def test_closed_listener_does_not_hear_external_speech(self):
-        w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
-                  actors=[ActorState("a", "outside"), ActorState("b", "inside")],
-                  locations=[LocationState("outside", x=0, y=0, sound_radius=10),
-                             LocationState("inside", open=False, x=1, y=0)],
-                  sound_barriers={("outside", "inside"): 0})
-        w.submit(Intention("a", "speak", {"text": "outside", "volume": "normal"}, w.version))
-        self.assertNotIn("b", w.event_log[1].visible_to)
-        self.assertNotIn("b", w.event_log[0].visible_to)
 
     def test_invalid_ledger_query_does_not_consume_quota(self):
         w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
@@ -381,14 +353,14 @@ class WorldTests(unittest.TestCase):
 
     def test_private_message_start_is_not_a_room_announcement(self):
         w = self.world()
-        w.submit(Intention("a", "send_message", {"target": "b", "text": "secret"}, w.version))
+        w.submit(Intention("a", "text", {"target": "b", "text": "secret"}, w.version))
         self.assertFalse(any(e.kind == "action_started" and "b" in e.visible_to for e in w.event_log))
 
     def test_prompt_contains_only_the_actor_packet_and_concrete_actions(self):
         state = PrivateState("a", goals=("find the missing folder",))
         prompt = build_prompt(identity="A", private_seed="A's private fact", state=state,
                               perception={"observer": "a", "events": []},
-                              affordances=[{"kind": "send_message", "target": "b"}])
+                              affordances=[{"kind": "text", "target": "b"}])
         self.assertIn("A's private fact", prompt)
         self.assertNotIn("b's private fact", prompt)
         self.assertIn("send_message 和 give 用 target", prompt)
@@ -422,14 +394,14 @@ class WorldTests(unittest.TestCase):
         self.assertIn("a 进入 finish", text)
 
     def test_replay_log_verifier_rejects_truncation_and_accepts_real_log(self):
-        w = self.world(); w.submit(Intention("a", "send_message", {"target": "b", "text": "hi"}, w.version)); w.advance()
+        w = self.world(); w.submit(Intention("a", "text", {"target": "b", "text": "hi"}, w.version)); w.advance()
         verify_event_log(w.replayable_log())
         broken = list(w.replayable_log()); broken[1]["id"] = 99
         with self.assertRaises(ValueError): verify_event_log(broken)
 
     def test_adapter_rejects_vague_or_extra_model_output(self):
         with self.assertRaises(ValueError): parse_intention("a", '{"kind":"apologize","target":"b"}', 0)
-        with self.assertRaises(ValueError): parse_intention("a", '{"kind":"send_message","args":{},"reason":"plot"}', 0)
+        with self.assertRaises(ValueError): parse_intention("a", '{"kind":"text","args":{},"reason":"plot"}', 0)
         intent = parse_intention("a", {"kind": "wait", "args": {"duration_seconds": 60}}, 4)
         assert intent is not None
         self.assertIsNotNone(intent)
@@ -659,26 +631,10 @@ class V4PhysicsTests(unittest.TestCase):
         self.assertIn("descriptions", fifth)
         self.assertTrue(fifth["knowledge"])
 
-    def test_inner_is_parsed_bounded_and_private(self):
-        from harness.adapter import parse_decision
-        from harness.adapter import reset_alias_telemetry
-        reset_alias_telemetry()
-        intention, _ = parse_decision(
-            "a", '{"inner":"先想清楚再说","type":"speak","args":{"text":"喂"}}', 0)
-        self.assertIsNotNone(intention)
-        self.assertEqual(intention.inner if intention else None, "先想清楚再说")
-        long_inner = "想" * 300
-        intention, _ = parse_decision(
-            "a", '{"inner":"' + long_inner + '","type":"wait","args":{"duration_seconds":60}}', 0)
-        self.assertIsNotNone(intention)
-        self.assertLessEqual(len(getattr(intention, "inner") or ""), 210)
-        inner_text = intention.inner if intention is not None else ""
-        self.assertTrue(inner_text.endswith("已截断）"))
-
     def test_tolerant_parsing_handles_model_slips(self):
         from harness.adapter import parse_decision
         intention, _ = parse_decision(
-            "a", "{'inner':'嗯','type':'wait','args':{'duration_seconds':60,}}", 0)
+            "a", "{'type':'wait','args':{'duration_seconds':60,}}", 0)
         self.assertIsNotNone(intention)
         self.assertEqual(intention.kind if intention else None, "wait")
 
@@ -690,12 +646,10 @@ class V4PhysicsTests(unittest.TestCase):
         self.assertEqual(intention.args["duration_seconds"], 60)
         self.assertEqual(alias_telemetry().get("wait:seconds->duration_seconds"), 1)
 
-    def test_normal_speech_reaches_location_whisper_only_named(self):
+    def test_whisper_reaches_only_named_listeners(self):
         from harness.adapter import parse_decision
-        w = self._world()
-        _submit_parsed(w, "a", '{"type":"speak","args":{"text":"大家好"}}', w.version)
-        speech = next(e for e in w.event_log if e.kind == "speech")
-        self.assertEqual(speech.visible_to, frozenset({"a", "b", "c"}))
+        # normal-volume speech is plain text output (engine-level); the speak
+        # tool is whisper-only now (docs §2).
         w2 = self._world()
         _submit_parsed(w2, "a", '{"type":"speak","args":{"text":"只告诉你","volume":"whisper","to":["b"]}}', w2.version)
         speech = next(e for e in w2.event_log if e.kind == "speech")
@@ -705,7 +659,7 @@ class V4PhysicsTests(unittest.TestCase):
         from harness.adapter import parse_decision
         w = self._world()
         _submit_parsed(w, "a", '{"type":"wait","args":{"duration_seconds":900}}', w.version)
-        _submit_parsed(w, "b", '{"type":"speak","args":{"text":"打扰一下","interrupt":["a"]}}', w.version)
+        _submit_parsed(w, "b", '{"type":"speak","args":{"text":"打扰一下","volume":"whisper","to":["a"],"interrupt":["a"]}}', w.version)
         a = w.actors["a"]
         self.assertIsNone(a.busy_until)
         pending = a.pending or {}
@@ -720,19 +674,19 @@ class V4PhysicsTests(unittest.TestCase):
         # protection exists only via the actor's own declaration.
         w4 = self._world()
         _submit_parsed(w4, "a", '{"type":"wait","args":{"duration_seconds":3600}}', w4.version)
-        _submit_parsed(w4, "b", '{"type":"speak","args":{"text":"醒醒","interrupt":["a"]}}', w4.version)
+        _submit_parsed(w4, "b", '{"type":"speak","args":{"text":"醒醒","volume":"whisper","to":["a"],"interrupt":["a"]}}', w4.version)
         self.assertIsNotNone(w4.actors["a"].pending)
         w5 = self._world()
         w5.submit(Intention("a", "wait", {"duration_seconds": 3600},
                             w5.version, uninterruptable=True))
-        _submit_parsed(w5, "b", '{"type":"speak","args":{"text":"醒醒","interrupt":["a"]}}', w5.version)
+        _submit_parsed(w5, "b", '{"type":"speak","args":{"text":"醒醒","volume":"whisper","to":["a"],"interrupt":["a"]}}', w5.version)
         self.assertIsNone(w5.actors["a"].pending)
 
     def test_abandon_marks_action_failed(self):
         from harness.adapter import parse_decision
         w = self._world()
         _submit_parsed(w, "a", '{"type":"wait","args":{"duration_seconds":900}}', w.version)
-        _submit_parsed(w, "b", '{"type":"speak","args":{"text":"打断","interrupt":["a"]}}', w.version)
+        _submit_parsed(w, "b", '{"type":"speak","args":{"text":"打断","volume":"whisper","to":["a"],"interrupt":["a"]}}', w.version)
         _submit_parsed(w, "a", '{"type":"abandon_action"}')
         abandoned = next(e for e in w.event_log if e.kind == "action_abandoned")
         self.assertTrue(abandoned.payload["failed"])
@@ -754,7 +708,7 @@ class V4PhysicsTests(unittest.TestCase):
     def test_message_latency_is_one_tick(self):
         from harness.adapter import parse_decision
         w = self._world()
-        _submit_parsed(w, "a", '{"type":"send_message","args":{"target":"b","text":"晚上见"}}', w.version)
+        _submit_parsed(w, "a", '{"type":"text","args":{"target":"b","text":"晚上见"}}', w.version)
         self.assertEqual((w.actors["a"].busy_until - w.now).total_seconds(), 60)
 
     def test_document_read_content_stays_private_but_fact_is_public(self):

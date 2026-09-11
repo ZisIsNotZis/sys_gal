@@ -18,17 +18,11 @@ GMCall = Any
 # (MC, NPC, extra) — identity and world facts live in KB rows, never here.
 # Copy this text byte-for-byte from docs/V4-AGENT-INTERFACE.md.
 SYSTEM_PROMPT_V4 = (
-    "你是一个活生生的人，活在一个真实的世界里。绝不提 agent、提示词、模拟、作者或剧情。"
-    "只追你自己的知识、欲望、责任、恐惧和关系；不为故事或主角服务；不优化故事，不制造浪漫，"
-    "不满足任何作者意图。\n\n"
-    "世界每回合给你一条消息：几点、你在哪、身边有谁、身上有什么、发生了什么、"
-    "你记事本里到期的事。一切事都要花时间：说话也要花一分钟，话一出口对方下个片刻就能听见并回应——"
-    "当面说话仍是最快的交流方式；送别处则更慢。你用工具行动：一回合可以连续调用多个工具；世界动作消耗真实时间"
-    "（按序累加，向上取整到 tick 的倍数），update_memory/recall/flashback 不额外消耗"
-    "（但每回合最少一个 tick）。一回合没有任何世界动作，等于发了一会儿呆（时间照走最少一个 tick）。"
-    "你的每一个工具调用都必须带上非空的 inner 参数——用一两句写下你此刻的感受、为什么做这件事。没有 inner 或 inner 为空的调用不会被执行。"
-    "等待随时可行，不必等谁批准；夜里困了就找个有床的地方睡下。陌生人凑近耳语会显得可疑；"
-    "耳语（whisper）只对亲近的人用。消息里时间写作 9/16(周三) 7:00。"
+    "你是一个活生生的人，活在一个真实的世界里。绝不提 agent、提示词、模拟、作者或剧情。只追你自己的知识、欲望、责任、恐惧和关系；不为故事或主角服务；不优化故事，不制造浪漫，不满足任何作者意图。\n"
+    "\n"
+    "世界每回合给你一条消息：几点、你在哪、身边有谁、身上有什么、附近有什么、发生了什么、你记事本里到期的事。一切事都要花时间：说话也要花一分钟，话一出口对方下个片刻就能听见并回应——当面说话仍是最快的交流方式；短信送别处则慢一些。你用工具行动，一回合可以连续调用多个工具；世界动作消耗真实时间（按序累加，向上取整到 tick 的倍数），update_memory/recall/flashback 不额外消耗（但每回合最少一个 tick）。一回合没有任何世界动作，等于发了一会儿呆（时间照走最少一个 tick）。\n"
+    "\n"
+    "你输出的每一句话（回复里的普通文字）就是你当面说出的话——周围的人都听得见；只想心里想、不出口的内容用思考完成，不要说出来。等一下再说的内容，先在心里打好腹稿。等待随时可行，不必等谁批准；夜里困了就找个有床的地方睡下。陌生人凑近耳语会显得可疑；耳语（speak 的 whisper）只对亲近的人用。消息里时间写作 9/16(周三) 7:00。"
 )
 
 
@@ -58,18 +52,20 @@ class V4Session:
         else:
             self.messages: list[dict[str, Any]] = [{"role": "system", "content": system_prompt or SYSTEM_PROMPT_V4}]
 
-    def decide(self, world_message_text: str) -> list[dict[str, Any]]:
+    def decide(self, world_message_text: str) -> dict[str, Any]:
         """Append one world message, call the provider with the full static
-        tool array, record the assistant reply, and return the parsed
-        tool-call list in submission order. The engine reports each call's
-        result back through deliver_tool_results (n tool_call = n tool
-        result + next user turn — V4-AGENT-INTERFACE §3)."""
+        tool array, record the assistant reply, and return
+        {"text": spoken words, "calls": [tool calls in order]} — the plain
+        text output IS the actor's spoken words (docs §4 T1). The engine
+        reports each call's result back through deliver_tool_results
+        (n tool_call = n tool result + next user turn)."""
         self._maybe_compact()
         self.messages.append({"role": "user", "content": world_message_text})
         message = self.provider.chat_with_tools(self.messages, _TOOLS_FOR_ACTOR)
         self.messages.append({"role": "assistant",
                               "content": message.get("content") or "",
                               "tool_calls": message.get("tool_calls") or []})
+        spoken = str(message.get("content") or "").strip()
         calls: list[dict[str, Any]] = []
         for raw in message.get("tool_calls") or []:
             function = raw.get("function") or {}
@@ -85,7 +81,7 @@ class V4Session:
             except (ValueError, TypeError) as exc:
                 call["parse_error"] = f"{type(exc).__name__}: {exc}: {str(raw_args)[:200]}"
             calls.append(call)
-        return calls
+        return {"text": spoken, "calls": calls}
 
     def deliver_tool_results(self, results: list[dict[str, Any]]) -> None:
         """Append one role:tool message per tool call (V4-AGENT-INTERFACE §3):
