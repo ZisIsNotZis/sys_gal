@@ -103,3 +103,8 @@ wait, speak(仅 whisper 修饰), text(原 send_message), move, take, place(原 d
 - 简单选项：不加机制。称呼遗漏是世界观内可容忍的（真人也不总是点名）；interrupt 已有显式参数（speak 工具路径）+ 连续性推断（文本路径：被 addressed 的上一说话人）。
 
 **决定**：暂不实现。等运行中出现"因无 addressee 导致剧情/唤醒断裂"的实证案例再上"称呼解析"机制。观察点：NPC 定向唤醒（addressed_speech wake）是否因缺称呼而漏。
+
+## 2026-09-11 运行记录：429 配额冷却中断
+- 修复 ask_stranger 误入 retired 名单后：stranger_asked 25 → extra_arrived 15 → extra_removed 14，extras 链通。
+- 全天运行（5400s budget）@15:05 撞 provider 429（deepseek-v4-flash 三个凭证齐刷冷却），7 个代理全 error → stall。
+- 非代码问题，等配额冷却后重跑。期间样例错误（"一楼校史专用柜"不是已知地点）属正常——模型试图移动到地图外角落，拒绝信息本身正确。
