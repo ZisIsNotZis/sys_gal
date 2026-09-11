@@ -643,11 +643,8 @@ class AsyncEngine:
                     if errs:
                         fail(call, "; ".join(errs))
                     else:
-                        written = "；".join(
-                            f"{row.get('id') or next(iter(row.get('fields'), {'记': ''}), '')}"
-                            f"→{row.get('op')}" for row in (args.get("rows") or []))
                         results.append({"tool_call_id": call.get("tool_call_id"), "ok": True,
-                                        "text": f"已写入记事本：{written}"})
+                                        "text": "已记下。"})
                 else:
                     fail(call, "no notebook seeded for this actor")
                 continue

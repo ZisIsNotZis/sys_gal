@@ -157,7 +157,7 @@ class HistoricalFailureGates(unittest.TestCase):
         self.assertIn("陈默 留下一张字条", rendered)  # search action (F3)
         self.assertIn("陈默 留下一张字条", rendered)    # search result (F3)
         self.assertIn("放下", rendered)           # drop consequence
-        self.assertIn("发消息给 林瑶（电话）", rendered)  # message delivery
+        self.assertIn("发消息给 林瑶（手机）", rendered)  # message delivery
         self.assertIn("读了 2013年邻里撤离通知书", rendered)  # document read
         self.assertIn("进入 中庭", rendered)      # move arrival（中庭，与男生宿舍直连）
 

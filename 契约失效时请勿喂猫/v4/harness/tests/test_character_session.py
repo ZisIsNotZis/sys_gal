@@ -319,11 +319,12 @@ class CharacterSessionTests(unittest.TestCase):
 
     def test_world_updates_are_natural_language(self):
         from harness.prompt import render_world_message
-        text = render_world_message({"time":"now", "location":"room", "inbox":[], "events":[]},
-                                    [{"kind":"wait", "duration_seconds":900}])
+        # T2: no #actions block — the message is header + blocks only, no
+        # machine keys like '"time"'.
+        text = render_world_message({"time":"now", "location":"room", "inbox":[], "events":[]})
         self.assertIn("now @room", text)
-        self.assertIn("wait", text)
         self.assertNotIn('"time"', text)
+        self.assertNotIn("# actions", text)
 
     def test_compaction_keeps_initialization_and_recent_turns(self):
         calls = []

@@ -54,12 +54,7 @@ class Ledger:
         self.penalty_applied = False
 
     def affordances(self, actor_id: str) -> list[dict[str, Any]]:
-        if actor_id != self.bound_actor:
-            return []
-        # 案件默认已接下（用户裁决）：无 accept/decline 仪式，引擎在启动时
-        # 自动接案并提交 system_case_accepted 事件。
-        if self.status == "accepted" and self.queries_used < self.case.query_limit:
-            return [{"kind": "system_query", "question": ""}]  # affordance 行带参数名，参数值由 agent 填
+        # 台账不是工具（工单 14）：交互走世界内对话（ask），这里无 affordance。
         return []
 
     def auto_accept(self, world: World) -> None:
