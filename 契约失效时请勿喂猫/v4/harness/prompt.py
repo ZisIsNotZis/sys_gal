@@ -164,7 +164,7 @@ def _event_sentence(event: Mapping[str, Any], location: str = "") -> str | None:
         return f"{who} 发消息给 {payload.get('target')}（电话）"
     if kind == "take":
         return f"{who} 拿起 {payload.get('item')}"
-    if kind == "drop":
+    if kind == "place":
         return f"{who} 放下 {payload.get('item')}"
     if kind == "give":
         return f"{who} 把 {payload.get('item')} 交给 {payload.get('target')}"
@@ -172,6 +172,10 @@ def _event_sentence(event: Mapping[str, Any], location: str = "") -> str | None:
         return f"{payload.get('from')} 把 {payload.get('item')} 交给 {payload.get('to')}"
     if kind == "document_read":
         return f"{who} 读了 {payload.get('document')}"
+    if kind == "note_left":
+        return f"{who} 留下一张字条"
+    if kind == "item_trashed":
+        return f"{who} 销毁了 {payload.get('item')}"
     if kind == "document_annotated":
         return f"{who} 在 {payload.get('document')} 上留下批注"
     if kind == "documents_compared":
@@ -195,7 +199,7 @@ def _event_sentence(event: Mapping[str, Any], location: str = "") -> str | None:
             return f"{who} 把{location or '这里'}关上了"
         if action == "take":
             return f"{who} 拿起 {payload.get('item')}"
-        if action == "drop":
+        if action == "place":
             return f"{who} 放下 {payload.get('item')}"
         return None
     if kind == "action_interrupted":
@@ -278,7 +282,7 @@ def build_prompt(*, identity: str, private_seed: str, state: PrivateState,
         f"LEGAL ACTION SHAPES:\n{[dict(x) for x in affordances]}",
         "只输出一个 JSON 对象，先想后动，inner 永远在最前："
         '{"inner":"你的第一人称心声，几句话","type":"动作名","args":{...},"updates":{...}}。'
-        "type 必须是上面列出的动作之一；参数名照抄供给列表：take/drop/give/read/annotate "
+        "type 必须是上面列出的动作之一；参数名照抄供给列表：take/place/give/read "
         "用 item；compare 用 first 和 second；move 用 target；send_message 和 "
         "give 用 target；wait 用 duration_seconds。speak 可带 volume（whisper 时必须带 "
         "to=[在场的听众]）。updates 只放你私人的 goals/beliefs/memories/interpretations/"

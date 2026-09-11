@@ -63,7 +63,7 @@ class WorldPackTests(unittest.TestCase):
         pack = load_world_pack(ROOT / "world")
         # v4 首验日 slice（V4-DESIGN §6）：一日、三角色、五个地点。
         self.assertGreaterEqual(len(pack.locations), 5)
-        self.assertGreaterEqual(len(pack.items), 3)
+        self.assertGreaterEqual(len(pack.items), 2)
         self.assertGreaterEqual(len(pack.documents), 5)
         self.assertIn("2013年台风台账", pack.descriptions["documents"])
         self.assertIsInstance(pack.descriptions["documents"], Mapping)
@@ -75,7 +75,7 @@ class WorldPackTests(unittest.TestCase):
         self.assertIn("2013年台风台账", world.document_defs)
         self.assertEqual(world.document_defs["2013年台风台账"]["title"], "2013年台风台账")
         self.assertEqual(world.actors["陈默"].inventory,
-                         {"2013年邻居许可证", "空白纸"})
+                         {"2013年邻里撤离通知书"})
         self.assertEqual(pack.manifest["clock"]["stop"], "2026-03-16T22:00:00+08:00")
         # 内容层全中文，协议层 id 保持 ASCII（V4-DESIGN §0）。
         self.assertTrue(any("\u4e2d" in text or text for text in
@@ -256,11 +256,11 @@ class DocumentInteractionTests(unittest.TestCase):
     def world(self):
         return World(
             start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
-            actors=[ActorState("a", "room", {"空白纸"}), ActorState("b", "room")],
+            actors=[ActorState("a", "room", {"2013年邻里撤离通知书"}), ActorState("b", "room")],
             locations=[LocationState("room")],
             item_locations={"ledger": "room"},
             document_defs={"ledger": {"title": "Ledger", "content": "same text", "reading_seconds": 2}},
-            copy_material_items={"空白纸"},
+            copy_material_items={"2013年邻里撤离通知书"},
         )
 
     def test_read_is_private_and_returns_content_only_to_reader(self):
@@ -279,52 +279,25 @@ class DocumentInteractionTests(unittest.TestCase):
         world.locations["elsewhere"] = LocationState("elsewhere")
         world.document_defs["other"] = {"title": "Other", "content": "different"}
         with self.assertRaises(ActionRejected):
-            world.submit(Intention("a", "compare", {"first": "ledger", "second": "other"}, world.version))
-        with self.assertRaises(ActionRejected):
-            world.submit(Intention("a", "label", {"document": "other", "label": "fake"}, world.version))
-        with self.assertRaises(ActionRejected):
-            world.submit(Intention("a", "annotate", {"document": "other", "text": "x"}, world.version))
+            world.submit(Intention("a", "read", {"item": "other"}, world.version))
 
-    def test_annotate_is_objective_and_visible_to_other_readers(self):
+    def test_leave_note_creates_readable_item_here(self):
         world = self.world()
-        world.submit(Intention("a", "annotate", {"item": "ledger", "text": "timestamp conflicts with export"},
+        world.submit(Intention("a", "leave_note", {"text": "去后街找我"},
                                world.version))
         world.advance()
-        # The annotation lands on the record itself (objective state).
-        self.assertEqual(world.document_defs["ledger"]["annotations"][0]["text"],
-                         "timestamp conflicts with export")
-        self.assertEqual(world.document_defs["ledger"]["annotations"][0]["by"], "a")
-        # v4: the annotation is ON the physical record - co-located actors
-        # perceive the fact (V4-DESIGN §3); the reader still needs to read
-        # to see the text.
-        a = world.poll("a")
-        b = world.poll("b")
-        self.assertTrue(any(e["kind"] == "document_annotated" for e in a["events"]))
-        self.assertTrue(any(e["kind"] == "document_annotated" for e in b["events"]))
-        # A different reader sees the annotation on the record.
-        world.submit(Intention("b", "read", {"item": "ledger"}, world.version))
+        note_id = next(i for i in world.item_locations
+                       if i.startswith("字条-") and world.item_locations[i] == "room")
+        note = world.document_defs[note_id]
+        self.assertEqual(note["content"], "去后街找我")
+        self.assertEqual(note["left_by"], "a")
+        # a co-located actor can take the note
+        world.submit(Intention("b", "take", {"item": note_id}, world.version))
         world.advance()
-        read = next(e for e in world.poll("b")["events"] if e["kind"] == "document_read")
-        self.assertEqual(read["payload"]["annotations"][0]["text"], "timestamp conflicts with export")
-
-    def test_annotate_replay_reconstructs_annotation(self):
-        from harness.replay import replay_world
-        initial = self.world()
-        world = self.world()
-        world.submit(Intention("a", "annotate", {"item": "ledger", "text": "noted"}, world.version))
-        world.advance()
-        replayed = replay_world(initial, world.replayable_log())
-        self.assertEqual(replayed.document_defs["ledger"]["annotations"][0]["text"], "noted")
-        self.assertEqual(replayed.document_defs["ledger"]["annotations"][0]["by"], "a")
-
-    def test_annotate_rejects_empty_text(self):
-        world = self.world()
+        self.assertIn(note_id, world.actors["b"].inventory)
+        # empty text rejected
         with self.assertRaises(ActionRejected):
-            world.submit(Intention("a", "annotate", {"item": "ledger", "text": "  "},
-                                   world.version))
-        with self.assertRaises(ActionRejected):
-            world.submit(Intention("a", "annotate", {"item": "ledger", "text": "x"},
-                                   world.version + 1))
+            world.submit(Intention("a", "leave_note", {"text": "  "}, world.version))
 
     def test_hidden_description_is_not_resolvable_until_actor_can_physically_access_entity(self):
         world = self.world()

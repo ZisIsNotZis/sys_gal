@@ -210,7 +210,7 @@ class MultiHopMoveTests(unittest.TestCase):
         world.submit(Intention("a", "move", {"target": "C"}, world.version))
         world.advance(until=START + timedelta(seconds=60))  # a enters B
         self.assertEqual(world.actors["a"].location, "B")
-        world.submit(Intention("b", "speak", {"text": "站住"}, world.version,
+        world.submit(Intention("b", "speak", {"text": "站住", "volume": "whisper", "to": ["a"]}, world.version,
                                interrupt=("a",)))
         self.assertIsNotNone(world.actors["a"].pending)
         self.assertEqual(world.actors["a"].pending["remaining_path"], ["B", "C"])
@@ -251,14 +251,19 @@ class FakeV4Agent:
 
     session_obj = object()
 
-    def __init__(self, script):
+    def __init__(self, script, spoken: str = ""):
         self.script = script
+        self.spoken = spoken
         self.seen_messages = []
         self.delivered = []
 
     def __call__(self, world_message_text, state):
         self.seen_messages.append(world_message_text)
-        return self.script.pop(0) if self.script else []
+        calls = self.script.pop(0) if self.script else []
+        # spoken text is once per fixture by default: the model writes fresh
+        # words every turn in reality.
+        spoken, self.spoken = self.spoken, ""
+        return {"text": spoken, "calls": calls}
 
     def deliver_tool_results(self, results):
         self.delivered.extend(results)
@@ -276,20 +281,21 @@ class V4ProtocolTests(unittest.TestCase):
         return AsyncEngine(world, agents, states, Trace("v4-test", "v4proto"), **kw)
 
     def test_chain_executes_in_order_and_accumulates_time(self):
+        # T1: plain text becomes speech; tool calls execute in order.
         world = _world()
         agent = FakeV4Agent([
-            [{"name": "speak", "arguments": {"text": "先说", "inner": "先说再走"}},
-             {"name": "move", "arguments": {"target": "far", "inner": "去食堂"}}],
-        ])
+            [{"name": "move", "arguments": {"target": "far"}}],
+        ], spoken="我先走一步。")
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
         engine.run(stop_at=START + timedelta(seconds=400), max_turns=30)
         speeches = [e for e in world.event_log if e.kind == "speech" and e.actor == "a"]
         self.assertEqual(len(speeches), 1)
+        self.assertEqual(speeches[0].payload.get("text"), "我先走一步。")
         self.assertEqual(world.actors["a"].location, "far")
 
     def test_more_than_eight_calls_truncate_with_error(self):
         world = _world()
-        calls = [{"name": "wait", "arguments": {"duration_seconds": 60, "inner": "等"}}
+        calls = [{"name": "wait", "arguments": {"duration_seconds": 60}}
                  for _ in range(10)]
         agent = FakeV4Agent([calls])
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
@@ -300,29 +306,27 @@ class V4ProtocolTests(unittest.TestCase):
 
     def test_no_world_action_chain_idles_one_tick(self):
         world = _world()
-        agent = FakeV4Agent([[{"name": "think", "arguments": {"inner": "想一想"}}]])
+        agent = FakeV4Agent([[]])
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
         engine.run(stop_at=START + timedelta(seconds=150), max_turns=30)
         waits = [e for e in world.event_log if e.kind == "action_completed"
                  and e.actor == "a" and e.payload.get("action") == "wait"]
         self.assertTrue(waits, "no-world-action chain must idle one tick")
 
-    def test_inner_missing_call_is_rejected_then_executed_on_retry(self):
-        # docs §2/§4 (engine-enforced): a call without a non-empty inner does
-        # not execute — its tool result explains why; the actor retries
-        # immediately at zero sim cost.
+    def test_plain_text_output_becomes_speech(self):
+        # docs §4 (T1): the model's plain text output is spoken aloud to
+        # everyone present, committed before the tool chain.
         world = _world()
         agent = FakeV4Agent([
-            [{"name": "speak", "arguments": {"text": "没写心声"}}],
-            [{"name": "speak", "arguments": {"text": "这次带上心声", "inner": "好"}}],
-        ])
+            [{"name": "wait", "arguments": {"duration_seconds": 60}}],
+        ], spoken="大家好，准备出门。")
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
         engine.run(stop_at=START + timedelta(seconds=300), max_turns=30)
-        rejected = [r for r in agent.delivered if not r.get("ok")]
-        self.assertTrue(rejected, "inner-less call was not rejected")
-        self.assertTrue(all("inner missing" in r["text"] for r in rejected))
-        speeches = [e for e in world.event_log if e.kind == "speech" and e.actor == "a"]
-        self.assertEqual(len(speeches), 1, "the retry must speak exactly once")
+        speeches = [e for e in world.event_log
+                    if e.kind == "speech" and e.actor == "a"
+                    and e.payload.get("text") == "大家好，准备出门。"]
+        self.assertGreaterEqual(len(speeches), 1)
+        self.assertEqual(speeches[0].payload.get("text"), "大家好，准备出门。")
 
     def test_kb_seed_renders_knowledge_and_update_memory_queues_errors(self):
         world = _world()
@@ -331,8 +335,7 @@ class V4ProtocolTests(unittest.TestCase):
                 {"fields": {"todo": True}, "id": "check", "desc": "查一下台账"}]
         agent = FakeV4Agent([
             [{"name": "update_memory",
-              "arguments": {"rows": [{"id": "check", "op": "edit", "desc": "改了"}], "inner": "记"}},
-             {"name": "speak", "arguments": {"text": "开工", "inner": "开工"}}],
+              "arguments": {"rows": [{"id": "check", "op": "edit", "desc": "改了"}]}}],
         ])
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])},
                               kb_seeds={"a": rows})
@@ -348,8 +351,8 @@ class V4ProtocolTests(unittest.TestCase):
                  "desc": "我，测试角色。"},
                 {"fields": {"reminder": "1/1(周四) 00:03"}, "id": "ring", "desc": "该动了"}]
         agent = FakeV4Agent([
-            [{"name": "wait", "arguments": {"duration_seconds": 60, "inner": "等一会"}}],
-            [{"name": "wait", "arguments": {"duration_seconds": 180, "inner": "再等"}}],
+            [{"name": "wait", "arguments": {"duration_seconds": 60}}],
+            [{"name": "wait", "arguments": {"duration_seconds": 180}}],
             [{"name": "continue_action", "arguments": {}}],
         ])
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])},
@@ -376,8 +379,13 @@ class RenderSemanticsTests(unittest.TestCase):
 
     def test_speech_carries_heard_by_audience(self):
         from harness.prompt import render_world_message
+        from harness.adapter import parse_decision
+        # T1: normal speech arrives as the model's plain text — engine builds
+        # a normal-volume speak Intention; verify via parse of the same shape
+        # the engine submits (no whisper fields).
         world = self._world()
-        world.submit(Intention("a", "speak", {"text": "你们好"}, world.version))
+        world.submit(parse_decision(
+            "a", '{"type":"speak","args":{"text":"你们好","volume":"normal","to":["b"]}}', None)[0])
         world.advance()
         perception = world.poll("b")
         text = render_world_message(perception, world.affordances("b"), observer="b")

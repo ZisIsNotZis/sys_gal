@@ -658,7 +658,7 @@ class RunnerTests(unittest.TestCase):
                 if step == 1:
                     return Intention(actor, "search", {}, perception["world_version"])
                 if step == 2:
-                    return Intention(actor, "drop", {"item": "2013年邻居许可证"},
+                    return Intention(actor, "place", {"item": "2013年邻里撤离通知书"},
                                      perception["world_version"])
             return None
 
@@ -683,7 +683,7 @@ class RunnerTests(unittest.TestCase):
         self.assertNotIn("等了", combined)
         self.assertIn("搜了" in combined or "搜索" in combined, combined) if False else None
         self.assertTrue(any("放下" in text for text in perceived["陈默"]))
-        self.assertIn("2013年邻居许可证", combined)
+        self.assertIn("2013年邻里撤离通知书", combined)
 
     def test_knock_result_feedback_reports_whether_someone_responded(self):
         from harness.kernel import World, ActorState, LocationState
@@ -795,7 +795,7 @@ class RunnerTests(unittest.TestCase):
         states = {actor: PrivateState(actor) for actor in world.actors}
         def agent(state, perception, affordances):
             if state.actor_id == "陈默":
-                return Intention("林瑶", "send_message", {"target": "陈默", "text": "forged"}, perception["world_version"])
+                return Intention("林瑶", "text", {"target": "陈默", "text": "forged"}, perception["world_version"])
             return None
         trace = Trace("v2-test", "boundary")
         Runner(world, {actor: agent for actor in world.actors}, states, trace).run(  # type: ignore[arg-type]
@@ -812,7 +812,7 @@ class RunnerTests(unittest.TestCase):
         states = {actor: PrivateState(actor) for actor in world.actors}
         def agent(state, perception, affordances):
             if state.actor_id == "陈默":
-                return Intention("陈默", "send_message",
+                return Intention("陈默", "text",
                                  {"target": "林瑶", "text": "meet me"},
                                  perception["world_version"],
                                  inner="先想清楚再开口。",

@@ -183,10 +183,9 @@ def apply_world_effects(world: "World", payload: Mapping[str, Any]) -> None:
 class World:
     """Authoritative, deterministic, event-sourced physical/social world."""
 
-    ACTIONS = {"wait", "speak", "send_message", "move", "open", "close",
-               "take", "drop", "knock", "give",
-               "read", "annotate", "compare",
-               "continue_action", "abandon_action", "ask_stranger"}
+    ACTIONS = {"wait", "speak", "text", "move", "take", "place", "give",
+               "read", "leave_note", "knock", "ask", "trash",
+               "continue_action", "abandon_action"}
 
     def __init__(self, *, start: datetime, actors: Iterable[ActorState],
                  locations: Iterable[LocationState],
@@ -511,13 +510,11 @@ class World:
         speak_option = ({"kind": "speak", "volume": "normal/whisper", "to": others_here}
                         if others_here else None)
         options: list[dict[str, Any]] = [
-            *([{"kind": "ask_stranger", "question": ""}] if self.locations[a.location].extras else []),
+            {"kind": "ask", "question": ""},
             *([speak_option] if speak_option else []),
-            *({"kind": "send_message", "target": other} for other in self._message_targets(a)),
+            *({"kind": "text", "target": other} for other in self._message_targets(a)),
             *({"kind": "move", "target": target}
               for (source, target), duration in self.routes.items() if source == a.location),
-            *([{"kind": "open" if not self.locations[a.location].open else "close"}]
-              if controllable else []),
         ]
         options += [{"kind": "take", "item": item} for item, loc in self.item_locations.items() if loc == a.location]
         options += [{"kind": "knock", "target": location.id} for location in self.locations.values()
@@ -526,15 +523,13 @@ class World:
                     for other in self.actors.values()
                     if other.id != actor_id and other.location == a.location
                     for item in sorted(a.inventory)]
-        options += [{"kind": "drop", "item": item} for item in sorted(a.inventory)]
+        options += [{"kind": "place", "item": item} for item in sorted(a.inventory)]
+        options += [{"kind": "leave_note", "text": ""},
+                    {"kind": "ask", "question": ""},
+                    *({"kind": "trash", "item": item} for item in sorted(a.inventory))]
         available_documents = [document for document in self.document_defs
                                if self._entity_available(a.id, document)]
         options += [{"kind": "read", "item": document} for document in sorted(available_documents)]
-        options += [{"kind": "compare", "first": first, "second": second}
-                    for index, first in enumerate(sorted(available_documents))
-                    for second in sorted(available_documents)[index + 1:]]
-        options += [{"kind": "annotate", "item": document, "text": ""}
-                    for document in sorted(available_documents)]
         return options
 
     def submit(self, intention: Intention) -> tuple[Event, ...]:
@@ -542,19 +537,22 @@ class World:
         if intention.expected_version is not None and intention.expected_version != self.version:
             raise ActionRejected("世界已发生变化，请重新观察后再行动（stale world version）")
         if intention.kind not in self.ACTIONS:
-            if intention.kind == "think":
-                raise ActionRejected(
-                    "unknown action 'think' (retired): put your inner voice in the "
-                    "'inner' argument of every call")
             raise ActionRejected(f"unknown action '{intention.kind}'; "
-                                 "see #actions for what you can do here")
-        # inner is an agent-protocol field (V4-AGENT-INTERFACE §2) enforced by
-        # the ENGINE; the kernel validates only the world-physics shape.
-        probe_args = dict(intention.args)
-        probe_args.setdefault("inner", "kernel-level")
-        shape_error = validate_action_args(intention.kind, probe_args)
-        if shape_error is not None:
-            raise ActionRejected(shape_error)
+                                 "see your tool list for the current actions")
+        if intention.kind == "speak" and "volume" not in intention.args:
+            # Engine-constructed normal speech (T1 文本即说话): the model's
+            # plain text output arrives without tool-schema decoration. The
+            # listener set is computed at commit; no whisper fields needed.
+            intention = Intention(intention.actor, intention.kind,
+                                  {"text": intention.args.get("text", ""),
+                                   "volume": "normal"},
+                                  intention.expected_version,
+                                  interrupt=intention.interrupt,
+                                  uninterruptable=intention.uninterruptable)
+        else:
+            shape_error = validate_action_args(intention.kind, intention.args)
+            if shape_error is not None:
+                raise ActionRejected(shape_error)
         if a.pending is not None and intention.kind not in {"continue_action", "abandon_action"}:
             raise ActionRejected("你有一个被打断的动作待处理：请先选择 continue_action 或 abandon_action。")
         if a.busy_until and a.busy_until > self.now:
@@ -563,10 +561,10 @@ class World:
             return self._resume(a)
         if intention.kind == "abandon_action":
             return self._abandon(a)
-        if intention.kind == "ask_stranger":
+        if intention.kind == "ask":
             question = str(intention.args.get("question", "")).strip()
             if not question:
-                raise ActionRejected("ask_stranger 需要写明你想问什么（question）。")
+                raise ActionRejected("ask 需要写明你想问什么（question）。")
             self._commit("stranger_asked", a.id, {"question": question}, None)
             # 打听花一个 tick：答案以在场路人的 speech 事件出现。
         duration = self._duration(a, intention)
@@ -619,7 +617,7 @@ class World:
                 speech_payload["to"] = list(intention.args["to"])
             self._commit("speech", a.id, speech_payload,
                          started.id if started else None)
-        elif intention.kind == "send_message":
+        elif intention.kind == "text":
             self._commit("message_sent", a.id, {"target": str(intention.args["target"])},
                          started.id if started else None)
         hop_sequences: list[int] = []
@@ -794,11 +792,11 @@ class World:
                     out.append(self._commit_interaction(job.actor, job.payload, event.id))
                 if job.payload["action"] == "give":
                     out.append(self._commit_interaction(job.actor, job.payload, event.id))
-                if job.payload["action"] == "send_message":
+                if job.payload["action"] == "text":
                     out.append(self._commit("message_delivered", job.actor, {
                         "target": str(job.payload["target"]), "text": str(job.payload["text"])
                     }, event.id))
-                if job.payload["action"] in {"read", "annotate", "compare"}:
+                if job.payload["action"] in {"read", "leave_note", "trash"}:
                     out.append(self._commit_interaction(job.actor, job.payload, event.id))
             elif job.kind == "world_event":
                 # Seeded world events may carry story-neutral objective
@@ -920,7 +918,7 @@ class World:
             # One utterance = one tick (V4-ENGINE §4): conversation rounds
             # cost M ticks for M exchanges regardless of length.
             return timedelta(seconds=TICK_SECONDS)
-        if i.kind == "send_message":
+        if i.kind == "text":
             target_id = x.get("target")
             if not isinstance(target_id, str) or not target_id:
                 reachable = self._message_targets(a)
@@ -941,8 +939,8 @@ class World:
             # tick to arrive, common knowledge, so sending words has a real
             # time cost.
             return timedelta(seconds=TICK_SECONDS)
-        if i.kind in {"read", "annotate", "compare"}:
-            return self._document_duration(a, i)
+        if i.kind in {"read", "leave_note", "ask", "trash"}:
+            return self._item_duration(a, i)
         if i.kind == "knock":
             target = str(x.get("target"))
             if target not in self.locations or (a.location, target) not in self.routes:
@@ -998,11 +996,6 @@ class World:
                     alternatives=[f"move to {n}" for n in reachable],
                     context={"from": a.location, "target": target})
             return timedelta(seconds=sum(found[1]))
-        if i.kind in {"open", "close"}:
-            if not self.locations[a.location].controllable:
-                raise ActionRejected(
-                    f"你无法{i.kind}{a.location}：这里不受你控制。",
-                    context={"location": a.location, "controllable": False})
             return timedelta(0)
         if i.kind == "take":
             item = str(x.get("item"))
@@ -1014,7 +1007,7 @@ class World:
                     alternatives=[f"take {present}" for present in here],
                     context={"item": item})
             return timedelta(0)
-        if i.kind == "drop":
+        if i.kind == "place":
             item = str(x.get("item"))
             if item not in a.inventory:
                 raise ActionRejected(
@@ -1033,32 +1026,35 @@ class World:
         return (entity_id in actor.inventory or self.item_locations.get(entity_id) == actor.location
                 or actor_id in self.entity_access.get(entity_id, set()))
 
-    def _document_duration(self, actor: ActorState, intention: Intention) -> timedelta:
+    def _item_duration(self, actor: ActorState, intention: Intention) -> timedelta:
         kind = intention.kind
-        if kind == "compare":
-            first, second = str(intention.args.get("first")), str(intention.args.get("second"))
-            if first not in self.document_defs or second not in self.document_defs:
-                raise ActionRejected("两份文档都必须真实存在。")
-            if not self._entity_available(actor.id, first) or not self._entity_available(actor.id, second):
+        item = str(intention.args.get("item"))
+        if kind == "read":
+            if item not in self.document_defs or not self._entity_available(actor.id, item):
                 available = self._available_documents(actor)
                 raise ActionRejected(
-                    f"无法比对 {first} 和 {second}：并非都在你手边。你能读的：{', '.join(available) or '无'}。",
-                    alternatives=[f"read {document}" for document in available],
-                    context={"first": first, "second": second})
-            return timedelta(seconds=30)
-        document = str(intention.args.get("item"))
-        if document not in self.document_defs or not self._entity_available(actor.id, document):
-            available = self._available_documents(actor)
-            raise ActionRejected(
-                f"「{document}」现在不在你手边。你能读的：{', '.join(available) or '无'}。",
-                alternatives=[f"read {present}" for present in available],
-                context={"document": document})
-        if kind == "annotate":
+                    f"「{item}」现在不在你手边。你能读的：{', '.join(available) or '无'}。",
+                    alternatives=[f"read {present}" for present in available],
+                    context={"item": item})
+            return timedelta(seconds=_as_int(self.document_defs[item].get("reading_seconds", 30), "reading_seconds"))
+        if kind == "leave_note":
             text = intention.args.get("text")
             if not isinstance(text, str) or not text.strip():
-                raise ActionRejected("annotate 需要非空文本。")
+                raise ActionRejected("leave_note 需要非空文本（text）。")
             return timedelta(seconds=3)
-        return timedelta(seconds=_as_int(self.document_defs[document].get("reading_seconds", 30), "reading_seconds"))
+        if kind == "ask":
+            question = intention.args.get("question")
+            if not isinstance(question, str) or not question.strip():
+                raise ActionRejected("ask 需要写明你想问什么（question）。")
+            return timedelta(seconds=3)
+        if kind == "trash":
+            item = str(intention.args.get("item"))
+            if item not in actor.inventory and self.item_locations.get(item) != actor.location:
+                raise ActionRejected(
+                    f"You cannot trash '{item}': not held and not here.",
+                    context={"item": item})
+            return timedelta(seconds=3)
+        return timedelta(seconds=3)
 
     def _complete(self, actor_id: str, payload: Mapping[str, Any]) -> None:
         if actor_id not in self.actors:
@@ -1067,23 +1063,30 @@ class World:
             return
         a = self._actor(actor_id); kind = payload["action"]
         if kind == "move": a.location = str(payload["target"])
-        elif kind == "send_message":
+        elif kind == "text":
             target_id = str(payload["target"])
             if target_id not in self.actors:
-                # A message addressed to a despawned extra goes nowhere: the
+                # A text addressed to a despawned extra goes nowhere: the
                 # stranger has left the scene (V4-CAST §1 zero-memory rule).
                 return
             target = self.actors[target_id]
             target.inbox.append({"from": actor_id, "text": str(payload["text"]), "sent_at": self.now.isoformat()})
         elif kind == "take":
             item = str(payload["item"]); a.inventory.add(item); del self.item_locations[item]
-        elif kind == "drop":
+        elif kind == "place":
             item = str(payload["item"]); a.inventory.remove(item); self.item_locations[item] = a.location
+        elif kind == "leave_note":
+            note_id = f"字条-{self.version + 1}"
+            self.document_defs[note_id] = {"title": "一张字条", "content": str(payload["text"]),
+                                           "reading_seconds": 3, "left_by": actor_id}
+            self.item_locations[note_id] = a.location
+        elif kind == "trash":
+            item = str(payload["item"])
+            self.item_locations.pop(item, None)
+            a.inventory.discard(item)
         elif kind == "give":
             item = str(payload["item"]); target = self._actor(str(payload["target"]))
             a.inventory.remove(item); target.inventory.add(item)
-        elif kind in {"open", "close"}:
-            _set_location_open(self, a.location, kind == "open")
         elif kind == "sleep": a.sleeping = False
         a.busy_until = None
         a.current_action = None
@@ -1096,8 +1099,8 @@ class World:
 
     def _interaction_event(self, kind: str) -> str:
         return {"knock": "knock", "give": "item_given",
-                "read": "document_read", "annotate": "document_annotated",
-                "compare": "documents_compared"}[kind]
+                "read": "document_read", "leave_note": "note_left",
+                "trash": "item_trashed", "ask": "asked"}[kind]
 
     def _interaction_payload(self, actor: ActorState, intention: Mapping[str, Any]) -> dict[str, Any]:
         kind = str(intention["action"])
@@ -1108,16 +1111,6 @@ class World:
             return {"document": document, "title": self.document_defs[document].get("title", document),
                     "content": self.document_defs[document].get("content", ""),
                     "annotations": [dict(entry) for entry in self.document_defs[document].get("annotations", [])]}
-        if kind == "annotate":
-            document = str(intention["item"])
-            annotation = {"text": str(intention.get("text")), "by": actor.id,
-                          "time": self.now.isoformat()}
-            self.document_defs[document].setdefault("annotations", []).append(annotation)
-            return {"document": document, "annotation": str(intention.get("text")), "by": actor.id}
-        if kind == "compare":
-            first, second = str(intention["first"]), str(intention["second"])
-            return {"first": first, "second": second,
-                    "same_content": self.document_defs[first].get("content") == self.document_defs[second].get("content")}
         if kind == "knock":
             target = str(intention["target"])
             occupants = [x.id for x in self.actors.values() if x.location == target]
@@ -1128,7 +1121,10 @@ class World:
             return {"target": target, "verb": str(intention.get("verb", "knock")),
                     "parameters": dict(intention.get("parameters", {})),
                     "responded": bool(occupants)}
-        return {"target": str(intention["target"])}
+        if kind in {"leave_note", "trash"}:
+            # these payloads carry no "target" key
+            return {"target": ""}
+        return {"target": str(intention["target"]) if "target" in intention else ""}
 
     def add_extra(self, name: str, location: str) -> ActorState:
         """V4-CAST §1: register a conversation-scoped stranger (role=extra).
@@ -1180,7 +1176,7 @@ class World:
             # Visible facts on the physical record.
             return self._co_located(str(actor))
         if kind in {"action_started", "action_completed"} and payload.get("action") in {
-                "read", "compare", "annotate"}:
+                "read", "leave_note", "trash"}:
             # The fact is public; the content never is (carried only by the
             # private document_read event above).
             return self._co_located(str(actor))
@@ -1205,7 +1201,7 @@ class World:
             # The discrete leave/enter events carry the public movement
             # information; started/completed are the mover's private bookkeeping.
             return {str(actor)}
-        if kind == "action_started" and payload.get("action") == "send_message":
+        if kind == "action_started" and payload.get("action") == "text":
             return {str(actor)}
         if kind == "action_started" and payload.get("action") == "speak":
             return self._hearing_actors(str(actor), payload)
@@ -1247,10 +1243,10 @@ class World:
 
     @staticmethod
     def _public_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
-        if payload.get("action") == "send_message":
+        if payload.get("action") == "text":
             # The sender must know which recipient's delivery is pending, but
             # the text is carried only by the private delivery event.
-            return {"action": "send_message", "target": payload.get("target")}
+            return {"action": "text", "target": payload.get("target")}
         return dict(payload)
 
     @staticmethod

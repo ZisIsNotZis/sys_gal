@@ -107,8 +107,6 @@ class AsyncEngine:
         self._extra_tasks: dict[str, asyncio.Task] = {}
         self._failures: dict[str, int] = {actor: 0 for actor in world.actors}
         self._turns = 0
-        self._inner_missing = 0
-        self._inner_reminded: set[str] = set()
         self._rejection_sequence = 0
         self._operational_facts: dict[str, list[dict[str, Any]]] = {actor: [] for actor in world.actors}
         self._repetition = RepetitionMonitor()
@@ -127,7 +125,6 @@ class AsyncEngine:
         self._flashback_pool: dict[str, list[tuple[datetime, str, frozenset[str]]]] = {}
         self._pending_notices: dict[str, list[str]] = {}
         self._reminder_jobs: dict[tuple[str, str], int] = {}
-        self._think_retries: dict[str, int] = {}
 
     # ------------------------------------------------------------------ run
 
@@ -467,12 +464,15 @@ class AsyncEngine:
                 self._decide, actor_id, perception, affordances))
         intention, result, error = None, "none", None
         chain_calls: list[dict[str, Any]] | None = None
+        spoken_text = ""
         try:
             decision = await asyncio.wait_for(asyncio.shield(decide_task),
                                               timeout=self.decision_timeout)
             updates: dict[str, Any] = {}
             if v4:
-                chain_calls = list(decision or [])
+                decision_map = decision if isinstance(decision, dict) else {"text": "", "calls": decision or []}
+                spoken_text = str(decision_map.get("text", "")).strip()
+                chain_calls = list(decision_map.get("calls") or [])
             elif isinstance(decision, tuple):
                 intention, updates = decision
             else:
@@ -498,6 +498,17 @@ class AsyncEngine:
         self._failures[actor_id] = 0
         self._scheduler_wake.set()
         if v4:
+            # T1 文本即说话: the model's plain text output is spoken aloud to
+            # everyone present (docs §4). Committed before the tool chain so
+            # the chronicle reads speak-then-act.
+            if spoken_text:
+                self.world.submit(Intention(actor_id, "speak",
+                                            {"text": spoken_text}, world.version))
+                limit = world.actors[actor_id].busy_until
+                if limit is not None and self._stop_horizon is not None:
+                    limit = min(limit, self._stop_horizon)
+                if limit is not None and limit > world.now:
+                    world.advance(until=limit)
             self._execute_chain(actor_id, chain_calls or [], perception,
                                 affordances, version_before)
         else:
@@ -565,10 +576,12 @@ class AsyncEngine:
                 notes = "；".join(f"{e.get('by')}批注：{e.get('text')}" for e in annotations)
                 content = f"{content}\n（记录上还有：{notes}）" if content else notes
             return content or "（这份记录没有可读的正文。）"
-        if name == "compare":
-            same = world.document_defs.get(str(args.get("first")), {}).get("content") == \
-                   world.document_defs.get(str(args.get("second")), {}).get("content")
-            return "内容一致" if same else "内容不一致"
+        if name == "leave_note":
+            return "字条已留下，后来者进入这里就能读到。"
+        if name == "trash":
+            return "已销毁。"
+        if name == "place":
+            return "已放在这里，他人可见可拿。"
         return "ok"
 
     def _remember_lines(self, actor_id: str, perception: dict) -> None:
@@ -615,31 +628,14 @@ class AsyncEngine:
             if call.get("parse_error"):
                 fail(call, f"unparseable arguments: {call['parse_error']}")
                 continue
-            if name == "think":
-                # retired tool (docs §2): the inner argument replaced it —
-                # teach the model instead of failing silently.
-                fail(call, "unknown action 'think' (retired): put your inner "
-                           "voice in the 'inner' argument of every call")
-                continue
-            # inner is mandatory on EVERY call (V4-AGENT-INTERFACE §2):
-            # missing/empty → the call does not execute.
-            inner = args.pop("inner", None)
-            if not isinstance(inner, str) or not inner.strip():
-                fail(call, "inner missing: 每个调用都要带上非空 inner——这一动作当下的心声")
-                continue
-            inner = inner.strip()
-            if name == "system_query":
-                if self.system is None:
-                    fail(call, "no ledger bound in this world")
-                    continue
-                try:
-                    event = self.system.ask(world, actor_id, str(args.get("question")))
-                    results.append({"tool_call_id": call.get("tool_call_id"), "ok": True,
-                                    "text": f"台账回答：{event.payload.get('answer', '')}"})
-                except ActionRejected as exc:
-                    fail(call, str(exc))
-                except Exception as exc:
-                    fail(call, f"{type(exc).__name__}: {exc}")
+            if name in {"think", "system_query", "copy", "annotate", "compare",
+                        "observe", "search", "inspect", "label", "interact",
+                        "open", "close", "ask_stranger", "send_message", "drop",
+                        "system_accept", "system_decline"}:
+                # retired tools (ticket 14 / earlier rulings): teach, don't fail
+                # silently — the model may carry them from older sessions.
+                fail(call, f"unknown action '{name}' (retired); "
+                           "see your tool list for the current actions")
                 continue
             if name == "update_memory":
                 if actor_id in self._kb:
@@ -674,14 +670,17 @@ class AsyncEngine:
                                 "text": "\n".join(lines) or "（没有与你经历相关的可回放历史。）"})
                 continue
             if name == "speak":
+                if args.get("volume") != "whisper":
+                    fail(call, "speak is whisper-only: normal speech is plain "
+                               "text output (just write what you say)")
+                    continue
                 co = [x.id for x in world.actors.values()
                       if x.id != actor_id and x.location == world.actors[actor_id].location]
-                if not co:
-                    fail(call, "这里没有别人，说话没人听得见。等待、移动，或找到人再说。")
+                if not co or not args.get("to"):
+                    fail(call, "speak 是耳语专用：需要在场听众（to）。普通说话直接回复文字即可。")
                     continue
             try:
-                world.submit(Intention(actor_id, name, args, world.version,
-                                       inner=inner))
+                world.submit(Intention(actor_id, name, args, world.version))
                 world_actions += 1
                 results.append({"tool_call_id": call.get("tool_call_id"), "ok": True,
                                 "text": self._tool_yield(name, args, world)})
@@ -771,29 +770,11 @@ class AsyncEngine:
                 # ordering is arrival order (V4-ENGINE §2.4).
                 intention = Intention(intention.actor, intention.kind,
                                       intention.args, world.version,
-                                      inner=intention.inner,
                                       interrupt=intention.interrupt,
                                       uninterruptable=intention.uninterruptable)
-                if not intention.inner:
-                    self._inner_missing += 1
-                if intention.kind in {"system_accept", "system_decline", "system_query"}:
-                    if self.system is None:
-                        raise ActionRejected("no bound System")
-                    before = len(world.event_log)
-                    if intention.kind == "system_accept":
-                        event = self.system.accept(world, actor_id, str(intention.args.get("case")))
-                        event_ids.append(event.id)
-                    elif intention.kind == "system_decline":
-                        event = self.system.decline(world, actor_id)
-                        event_ids.append(event.id)
-                    else:
-                        event = self.system.ask(world, actor_id, str(intention.args.get("question")))
-                        event_ids.extend(e.id for e in world.event_log[before:] if e.kind.startswith("system_"))
-                    self.trace.record_system(dict(intention.args), {"event_id": event.id, "kind": event.kind})
-                else:
-                    before = len(world.event_log)
-                    world.submit(intention)
-                    event_ids.extend(e.id for e in world.event_log[before:])
+                before = len(world.event_log)
+                world.submit(intention)
+                event_ids.extend(e.id for e in world.event_log[before:])
                 result = "submitted"
             except ActionRejected as exc:
                 result, error = "rejected", str(exc)
@@ -830,11 +811,6 @@ class AsyncEngine:
             message = self._result_message(result, error, event_ids, alternatives)
             if message:
                 recorder(message)
-        if intention is not None and not intention.inner:
-            self.trace.record_system({"kind": "inner_telemetry"}, {"missing": self._inner_missing})
-            if recorder is not None and actor_id not in self._inner_reminded:
-                self._inner_reminded.add(actor_id)
-                recorder("（你刚才没有写心声；每次行动前先在心里想，再行动。）")
         consume = getattr(self.agents[actor_id], "consume_compaction", None)
         if consume is not None and consume():
             self.world.notify_compaction(actor_id)

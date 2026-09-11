@@ -21,7 +21,7 @@ class AgentViewTests(unittest.TestCase):
 
         def agent(state, perception, affordances):
             if state.actor_id == "陈默" and not perception["inbox"]:
-                return Intention("陈默", "send_message",
+                return Intention("陈默", "text",
                                  {"target": "林瑶", "text": "meet me at the 校史档案室"},
                                  perception["world_version"])
             return None
@@ -95,7 +95,7 @@ class AgentViewTests(unittest.TestCase):
         # The rhythm: perception first, then the action; no accept receipt.
         self.assertIn("现在是", view)
         chen_view = render_history_view(trajectory, "陈默")
-        self.assertIn('{"kind": "send_message"', chen_view)
+        self.assertIn('{"kind": "text"', chen_view)
         self.assertNotIn("The world accepted your", chen_view)
         # Chen's delivered message shows up in lin's perception stream.
         self.assertIn("meet me at the 校史档案室", view)

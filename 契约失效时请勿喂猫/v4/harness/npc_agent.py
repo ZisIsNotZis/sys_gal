@@ -254,7 +254,7 @@ def make_npc_agent_v4(seed: CharacterSeed, provider: Any, *,
     
     sess = session or V4Session(seed.actor_id, provider)
 
-    def agent(world_message_text: str, state: Any) -> list[dict[str, Any]]:
+    def agent(world_message_text: str, state: Any) -> dict[str, Any]:
         return sess.decide(world_message_text)
 
     agent.consume_compaction = (lambda: sess.consume_compaction())  # type: ignore[attr-defined]
