@@ -164,13 +164,14 @@ def _expand_entity_rows(kb: dict[str, list[dict[str, Any]]],
     known_to-limited entities expand only for those actors; unmarked ones
     expand for everyone (public visible layer). Manual rows win."""
     entity_rows: list[tuple[str, str, str, list[str] | None]] = []
-    for kind in ("items", "documents"):
+    for kind, field in (("items", "item"), ("documents", "item"),
+                        ("locations", "location")):
         for row in fields[kind]:
             entity_id = str(row["id"])
             markdown = descriptions[kind].get(entity_id, "")
             if not markdown:
                 continue
-            entity_rows.append(("item", entity_id, _plain_description(markdown),
+            entity_rows.append((field, entity_id, _plain_description(markdown),
                                 row.get("known_to")))
     for actor, rows in kb.items():
         existing = {(next(iter(r["fields"])), r["id"]) for r in rows}

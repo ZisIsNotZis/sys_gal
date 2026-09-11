@@ -66,15 +66,3 @@ class RepetitionMonitorTests(unittest.TestCase):
                    for turn in trace.agent_turns if turn["actor"] == "a"]
         self.assertTrue(any(notice and "messages in a row" in notice for notice in notices))
 
-    def test_prompt_renders_notice_at_the_end(self):
-        text = render_world_message(
-            {"time": "now", "location": "room", "inbox": [], "events": [],
-             "situational_notice": "You have sent b 4 messages in a row without a reply."},
-            [{"kind": "wait", "duration_seconds": 900}])
-        self.assertIn("messages in a row", text)
-        # The notice is a frontier line before the action shapes.
-        self.assertTrue(text.index("messages in a row") < text.index("# actions"))
-
-
-if __name__ == "__main__":
-    unittest.main()

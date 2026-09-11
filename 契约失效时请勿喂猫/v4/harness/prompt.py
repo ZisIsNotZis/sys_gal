@@ -37,7 +37,7 @@ def _clean_description(description: str) -> str:
     return body.strip()
 
 
-def render_world_message(perception: Mapping[str, Any], affordances: Sequence[Mapping[str, Any]],
+def render_world_message(perception: Mapping[str, Any], affordances: Sequence[Mapping[str, Any]] | None = None,
                          *, observer: str | None = None,
                          knowledge_lines: list[str] | None = None,
                          director: str | None = None) -> str:
@@ -57,6 +57,9 @@ def render_world_message(perception: Mapping[str, Any], affordances: Sequence[Ma
     inventory = sorted(str(x) for x in perception.get("inventory", []))
     if inventory:
         lines.append("身上：" + "、".join(inventory))
+    nearby = sorted(str(x) for x in perception.get("nearby_items", []))
+    if nearby:
+        lines.append("附近：" + "、".join(nearby))
     notice = perception.get("situational_notice")
     if notice:
         lines.append(str(notice))
@@ -77,44 +80,7 @@ def render_world_message(perception: Mapping[str, Any], affordances: Sequence[Ma
         lines.append("# knowledge")
         lines.extend(knowledge)
 
-    lines.append("")
-    lines.append("# actions")
-    lines.extend(_merged_action_lines(affordances))
     return "\n".join(lines)
-
-
-def _merged_action_lines(affordances: Sequence[Mapping[str, Any]]) -> list[str]:
-    """docs §3：同类动作合并为一行——按 (kind, 参数键集合) 分组，同组对应值
-    用 、 连接（[drop] item=X、Y）。speak 的 volume/to 由 affordance 自身
-    表达（normal/whisper、在场者候选）；空值参数保留参数名（agent 填空）。"""
-    groups: dict[tuple, dict[str, list[str]]] = {}
-    order: list[tuple] = []
-    for option in affordances:
-        kind = str(option.get("kind", "?"))
-        # 空值参数保留参数名（agent 填空）：question="" → [system_query] question=…
-        args = {k: v for k, v in option.items()
-                if k != "kind" and v is not None and v != {}}
-        key = (kind, tuple(sorted(args)))
-        if key not in groups:
-            groups[key] = {k: [] for k in args}
-            order.append(key)
-        for k, v in args.items():
-            items = v if isinstance(v, (list, tuple)) else [v]
-            for item in items:
-                text = str(item)
-                if text not in groups[key][k]:
-                    groups[key][k].append(text)
-    lines: list[str] = []
-    for key in order:
-        kind, arg_keys = key
-        rendered_keys = list(arg_keys)
-        rendered_keys.sort(key=lambda k: (k != "volume", k))  # volume 首位
-        if not rendered_keys:
-            lines.append(f"[{kind}]")
-            continue
-        parts = [f"{k}={'、'.join(groups[key][k])}" for k in rendered_keys]
-        lines.append(f"[{kind}] {', '.join(parts)}")
-    return lines
 
 
 def _action_args(option: Mapping[str, Any]) -> str:
@@ -161,7 +127,7 @@ def _event_sentence(event: Mapping[str, Any], location: str = "") -> str | None:
     if kind == "leave":
         return f"{who} 离开 {payload.get('location')}"
     if kind == "message_delivered":
-        return f"{who} 发消息给 {payload.get('target')}（电话）"
+        return f"{who} 发消息给 {payload.get('target')}（手机）"
     if kind == "take":
         return f"{who} 拿起 {payload.get('item')}"
     if kind == "place":
@@ -176,9 +142,7 @@ def _event_sentence(event: Mapping[str, Any], location: str = "") -> str | None:
         return f"{who} 留下一张字条"
     if kind == "item_trashed":
         return f"{who} 销毁了 {payload.get('item')}"
-    if kind == "document_annotated":
         return f"{who} 在 {payload.get('document')} 上留下批注"
-    if kind == "documents_compared":
         return f"{who} 比对 {payload.get('first')} 与 {payload.get('second')}"
     if kind == "knock":
         return f"{who} 敲了 {payload.get('target')} 的门"

@@ -406,20 +406,6 @@ class RenderSemanticsTests(unittest.TestCase):
         self.assertIn("a 凑近 b 耳语了几句", world_b)
         self.assertIn("耳语内容：\"悄悄话\"", world_b)
 
-    def test_actions_merge_same_kind_and_show_whisper_candidates(self):
-        from harness.prompt import render_world_message
-        world = self._world()
-        world.item_locations.update({"pen": "room", "paper": "room"})
-        affordances = world.affordances("a")
-        text = render_world_message({"observer": "a", "time": world.now.isoformat(),
-                                     "location": "room", "events": [],
-                                     "nearby_actors": ["b"], "inventory": []},
-                                    affordances, observer="a")
-        self.assertIn("[take] item=pen、paper", text)
-        self.assertIn("[speak] volume=normal/whisper, to=a、b".replace("a、b", "b"), text)
-        self.assertNotIn("可互动：", text)
-        self.assertNotIn("# error", text)
-
     def test_solo_speak_when_nobody_present(self):
         # docs §3 修订：solo speak 是恒可用工具——不列入 #actions（工具清单
         # 里仍然存在，模型随时可自言自语）。

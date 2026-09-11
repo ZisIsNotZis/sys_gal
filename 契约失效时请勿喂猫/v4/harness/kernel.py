@@ -507,7 +507,9 @@ class World:
         # docs §3（修订）: speak 仅在有其他在场者时列出（whisper 的 to 候选 =
         # 在场他人）；无人在场时引擎拒绝 speak（没人听得见）——模型用 wait 或
         # move 去找人。
-        speak_option = ({"kind": "speak", "volume": "normal/whisper", "to": others_here}
+        # docs §2: speak 工具 = whisper 专用（普通说话是纯文本输出，不占
+        # 工具面）。affordance 行不再提供 normal 通道。
+        speak_option = ({"kind": "speak", "volume": "whisper", "to": others_here}
                         if others_here else None)
         options: list[dict[str, Any]] = [
             {"kind": "ask", "question": ""},
@@ -525,7 +527,6 @@ class World:
                     for item in sorted(a.inventory)]
         options += [{"kind": "place", "item": item} for item in sorted(a.inventory)]
         options += [{"kind": "leave_note", "text": ""},
-                    {"kind": "ask", "question": ""},
                     *({"kind": "trash", "item": item} for item in sorted(a.inventory))]
         available_documents = [document for document in self.document_defs
                                if self._entity_available(a.id, document)]
@@ -930,8 +931,8 @@ class World:
             if target.id != a.id and target.id not in a.known_contacts and target.location != a.location:
                 reachable = self._message_targets(a)
                 raise ActionRejected(
-                    f"你联系不上 {target.id}：对方既不是你的熟人，也不在这里。",
-                    alternatives=[f"send_message to {other}" for other in reachable],
+                    f"你联系不上{target.id}：对方既不是你的熟人，也不在这里。",
+                    alternatives=[f"text {other}" for other in reachable],
                     context={"target": target.id})
             if not isinstance(x.get("text"), str) or not x["text"]:
                 raise ActionRejected("消息正文不能为空（text）。")

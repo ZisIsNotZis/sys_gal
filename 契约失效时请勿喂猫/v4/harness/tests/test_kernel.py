@@ -366,16 +366,6 @@ class WorldTests(unittest.TestCase):
         self.assertIn("send_message 和 give 用 target", prompt)
         self.assertIn("inner", prompt)
 
-    def test_prompt_describes_physical_interaction_limits(self):
-        from harness.prompt import render_world_message
-        text = render_world_message(
-            {"time": "now", "location": "room", "observer": "a", "inbox": [], "events": []},
-            [{"kind": "inspect", "item": "folder"}, {"kind": "search"}, {"kind": "knock", "target": "office"}],
-        )
-        self.assertIn("[inspect] item=folder", text)
-        self.assertIn("[search]", text)
-        self.assertIn("[knock] target=office", text)
-
     def test_prompt_renders_transfer_results_explicitly(self):
         from harness.prompt import render_world_message
         text = render_world_message(
