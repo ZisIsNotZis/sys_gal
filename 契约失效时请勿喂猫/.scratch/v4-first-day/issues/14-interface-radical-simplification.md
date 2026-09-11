@@ -74,3 +74,17 @@ wait, speak(仅 whisper 修饰用), text, move, take, place, give, read, knock, 
   (a) 删除实体；(b) 保留纯道具（token 噪音，模型会试写字）；(c) 新增 write 工具
   （在自己稿纸上写 → 生成新内容型物品，可 give/place/read = 留条机制，
   annotate 的正确替代——写在自己的纸上，不是别人的台账上）。
+
+## 2026-09-11 用户裁决：leave_note（空白纸问题终裁）
+
+**leave_note 工具，人人可留，无材料约束**（用户：纸不稀缺，有用就该谁都能留）：
+- `leave_note {text, to? | at?}`：to=在场某人（轻量递达）或 at=当前地点（压桌上/贴门上）；不填则默认 at=当前地点。
+- 世界生成"一张折叠的字条"进入地点/对方手上——新内容型物品，可 read、可 take、可再 give/place。
+- annotate 的正确替代：actor 留自己创作内容的唯一世界内通道；annotate/copy 的理由链闭合。
+- 空白纸实体删除（纸不建模为资源）。
+
+**目标工具面终版（11 + 记忆 3）**：
+wait, speak(仅 whisper 修饰), text(原 send_message), move, take, place(原 drop), give, leave_note, read, knock, ask(原 ask_stranger) + update_memory/recall/flashback。
+删除：compare, annotate, open/close, interact, system_*(台账 NPC 化), observe 系列(已删), think(已删), copy(已删)。
+
+全部裁决齐备——工单 14 大 slice 待 "go" 开工。
