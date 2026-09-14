@@ -101,34 +101,64 @@ def main() -> int:
                 if not args.dry_run:
                     path.write_text(marked, encoding="utf-8")
 
+    # Manifest prose is marked with a ruamel round-trip: comments, quotes,
+    # key order and indentation are preserved exactly, and marked scalars are
+    # written as valid YAML (quoted where a leading [[ would parse as a flow
+    # sequence). Structural fields (ids, titles, keys, coordinates) are not
+    # prose and stay untouched.
+    from ruamel.yaml import YAML
+    from ruamel.yaml.scalarstring import DoubleQuotedScalarString
+    ryaml = YAML()
+    ryaml.preserve_quotes = True
+    ryaml.width = 10 ** 6   # never wrap long Chinese lines
     manifest_path = root / "manifest.yml"
-    manifest_text = manifest_path.read_text(encoding="utf-8")
-    out_lines, manifest_count = [], 0
-    for line in manifest_text.splitlines():
-        stripped = line.lstrip()
-        key, sep, value = stripped.partition(": ")
-        if sep and key.split("#")[0].strip() in _MANIFEST_FIELDS and value.strip():
-            marked, n = _mark_yaml_value(value, names)
-            if n:
-                indent = line[:len(line) - len(stripped)]
-                # A value that begins with [[ is a flow-sequence to YAML; quote
-                # any scalar a marker could make ambiguous.
-                quote_it = marked.startswith(("[", "{", "*", "!", "&", "|", ">", "%"))
-                if not quote_it and ": " in marked:
-                    quote_it = True
-                if quote_it:
-                    escaped = marked.replace("\\", "\\\\").replace('"', '\\"')
-                    marked = '"' + escaped + '"';
-                out_lines.append(f"{indent}{key}: {marked}")
-                manifest_count += n
-                continue
-        out_lines.append(line)
+    manifest = ryaml.load(manifest_path.read_text(encoding="utf-8"))
+
+    PROSE_FIELDS = {"desc", "content", "notice", "knowledge_notes",
+                    "fragment", "memory"}
+    manifest_count = 0
+
+    def quote(text: str):
+        # A scalar starting with [[ would parse as a flow sequence.
+        return (DoubleQuotedScalarString(text)
+                if text.startswith(("[", "{", "*", "!", "&", "|", ">", "%"))
+                or ": " in text else text)
+
+    def apply_tree(node, field=None):
+        """Mark authored prose in place on the ruamel tree. `field` is the key
+        that led here; a `memory:` map is actor-keyed, so its values count as
+        memory prose regardless of the actor key they sit under."""
+        nonlocal manifest_count
+        if isinstance(node, dict):
+            for key in list(node.keys()):
+                value = node[key]
+                child_field = key if isinstance(key, str) else field
+                if isinstance(value, (dict, list)):
+                    apply_tree(value, child_field)
+                elif isinstance(value, str) and value.strip():
+                    effective = "memory" if field == "memory" else child_field
+                    if effective not in PROSE_FIELDS:
+                        continue
+                    marked, _ = _mark_yaml_value(value, names)
+                    if marked != value:
+                        node[key] = quote(marked)
+                        manifest_count += 1
+        elif isinstance(node, list):
+            for item in node:
+                apply_tree(item, field)
+
+    for section in ("scheduled", "locations", "items", "documents",
+                    "concepts", "kb", "contacts"):
+        apply_tree(manifest.get(section), section)
+
+    if manifest_count and not args.dry_run:
+        from io import StringIO
+        buffer = StringIO()
+        ryaml.dump(manifest, buffer)
+        manifest_path.write_text(buffer.getvalue(), encoding="utf-8")
     if manifest_count:
         print(f"manifest.yml: {manifest_count} marker(s)")
         total += manifest_count
-        if not args.dry_run:
-            manifest_path.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
-
     print(f"total: {total} marker(s)" + (" (dry run)" if args.dry_run else ""))
     return 0
 

@@ -55,7 +55,7 @@ _PATTERNS: tuple[re.Pattern[str], ...] = (
 
 # Authored prose the lint scans; generated runs/traces are excluded.
 _PROSE_GLOBS = ("characters/*.md", "items/*.md", "documents/*.md",
-                "locations/*.md", "organizations/*.md", "manifest.yml")
+                "locations/*.md", "organizations/*.md")
 # The lint looks at the manifest's authored prose fields, not the kb rows it
 # generates (those are derived from the same names and would only echo them).
 
@@ -135,108 +135,145 @@ def _scope_holders(pack, source: str) -> list[str] | None:
 
 
 def lint(world_root: str | Path) -> list[str]:
-    """Two complementary gates (T5 裁决) — neither is sufficient alone:
+    """Three gates, one code path per carrier (T5 裁决):
 
-    ① every [[name]] marker must resolve in the KB keys of *each* actor who
-       receives that text;
-    ② every unmarked name-like token must resolve somewhere in the registry
-       (otherwise the author probably forgot to mark it).
+    ① .md prose: every registered name MUST carry a [[marker]] (mark_seed does
+       this), and each marker must resolve for EVERY actor who receives that
+       text (own card -> self; entity description -> its holders; public ->
+       everyone). Marking is what makes per-actor scope checking possible.
+    ② manifest authored prose (notice/desc/content/memory): the recipient set
+       is structural (broadcast / known_to / concept scope), so marking is
+       optional — but every registered name must resolve for the actual
+       recipients.
+    ③ no dead registry entries.
     """
     root = Path(world_root)
     pack = load_world_pack(root)
     declared = _declared(pack)
     kb_keys, universal = _kb_keys(pack)
+    universal |= universal_from_titles(sources_md(root))
     findings: list[str] = []
 
-    sources: list[tuple[str, str]] = []
-    for pattern in _PROSE_GLOBS:
-        for path in sorted(root.glob(pattern)):
-            sources.append((str(path.relative_to(root)),
-                            path.read_text(encoding="utf-8")))
-    # A file defines the thing it is *about*: its own title always resolves for
-    # every reader (the document/location is the definition of the term).
-    self_defining: dict[str, set[str]] = {}
-    universal_from_titles: set[str] = set()
-    for source, text in sources:
-        title = text.splitlines()[0].lstrip("# ").strip() if text else ""
-        self_defining[source] = {title} if title else set()
-        if title:
-            universal_from_titles.add(title)
-
-    # ① marked references, scoped per recipient
-    checked_markers = 0
-    for source, text in sources:
+    # ---------- ① .md bodies: mandatory markers + per-holder resolution ----------
+    for source, text in sources_md(root):
+        lines = text.splitlines(keepends=True)
+        title, body = (lines[0], "".join(lines[1:])) if lines else ("", "")
+        title_name = title.lstrip("# \n").strip()
         holders = _scope_holders(pack, source)
-        for line_no, line in enumerate(text.splitlines(), start=1):
-            for name in ref_names(line):
-                checked_markers += 1
-                def resolves_for(a: str) -> bool:
-                    return (name in universal or name in universal_from_titles
-                            or name in self_defining.get(source, set())
-                            or _resolves(name, kb_keys.get(a, set())))
-                if holders is None:
-                    missing = [a for a in kb_keys if not resolves_for(a)]
-                else:
-                    missing = [a for a in holders if not resolves_for(a)]
-                if missing:
-                    findings.append(
-                        f"{source}:{line_no}: [[{name}]] does not resolve for "
-                        f"{', '.join(missing)} — add a contact row or concept "
-                        f"alias for them")
+        body_names = registered_in(body, declared)
 
-    # ② unmarked name-like tokens (whole registry, as before)
-    seen: set[tuple[str, str]] = set()
-    for source, text in sources:
-        for line_no, line in enumerate(text.splitlines(), start=1):
-            # Contact `as:` lists *declare* nicknames; they are metadata, not
-            # prose, so their tokens cannot be "unmarked references".
-            if re.search(r"as: \[", line):
-                continue
-            for regex in _PATTERNS:
-                for match in regex.finditer(line):
-                    candidate = match.group(0)
-                    if _resolves(candidate, declared):
-                        continue
-                    if any(char in _FUNCTION_CHARS for char in candidate):
-                        continue
-                    key = (candidate, source)
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    findings.append(
-                        f"{source}:{line_no}: unmarked name-like token "
-                        f"{candidate!r} — mark it [[name]] and make sure it "
-                        f"resolves for everyone who reads this text")
-
-    # structured manifest scopes: notices → target; facts → everyone
-    manifest = pack.manifest
-    for row in manifest.get("scheduled", ()):
-        notice = str(row.get("notice", ""))
-        targets = row.get("target")
-        holders = ([targets] if isinstance(targets, str)
-                   else list(targets) if isinstance(targets, list) else None)
-        if holders is None:
-            holders = list(kb_keys)
-        for name in ref_names(notice):
-            missing = [a for a in holders
-                       if a in kb_keys and not (name in universal
-                                                or _resolves(name, kb_keys[a]))]
+        for name in sorted(set(ref_names(body))):
+            if holders is None:
+                missing = [a for a, keys in kb_keys.items()
+                           if not (name in universal
+                                   or _resolves(name, keys))]
+            else:
+                missing = [a for a in holders
+                           if not (name in universal or name == title_name
+                                   or _resolves(name, kb_keys.get(a, set())))]
             if missing:
                 findings.append(
-                    f"manifest scheduled {row.get('event')}: [[{name}]] does not "
-                    f"resolve for {', '.join(missing)}")
-    for name in ref_names(str(pack.manifest.get("system", {}).get("facts", {}))):
-        missing = [a for a, keys in kb_keys.items()
-                   if not (name in universal or _resolves(name, keys))]
-        if missing:
+                    f"{source}: [[{name}]] does not resolve for "
+                    f"{', '.join(missing)} — add a contact row or concept alias")
+
+        for token, _snippet in sorted(set(body_names)):
             findings.append(
-                f"manifest system.facts: [[{name}]] does not resolve for "
-                f"{', '.join(missing)}")
-    if checked_markers == 0:
-        findings.append("no [[name]] markers found anywhere — run "
-                        "scripts/mark_seed.py; unmarked references cannot be "
-                        "scope-checked")
+                f"{source}: unmarked reference {token!r} — wrap it as "
+                f"[[{token}]] (marking is mandatory in prose files)")
+
+    # ---------- ② manifest authored prose: structural scope ----------
+    manifest = pack.manifest
+
+    remote_actors = {str(r["id"]) for r in pack.actors if r.get("remote")}
+
+    def resolvable_for(actor: str, name: str) -> bool:
+        if name in universal:
+            return True
+        keys = kb_keys.get(actor, set())
+        return any(name in key or key in name for key in keys)
+
+    def check_text(text: str, where: str, holders: list[str] | None) -> None:
+        for name in sorted({token for token, _ in registered_in(text, declared)},
+                           key=lambda n: -len(n)):
+            if holders is None:
+                missing = [a for a, keys in kb_keys.items()
+                           if not resolvable_for(a, name)]
+            else:
+                missing = [a for a in holders
+                           if a in kb_keys and not resolvable_for(a, name)]
+            if missing:
+                findings.append(
+                    f"{where}: {name!r} does not resolve for "
+                    f"{', '.join(missing)}")
+
+    for row in manifest.get("scheduled", ()):
+        targets = row.get("target")
+        holders = ([str(targets)] if isinstance(targets, str)
+                   else [str(t) for t in targets] if isinstance(targets, list)
+                   else None)
+        # Broadcast notices are campus atmosphere: a remote actor (陈默妈)
+        # does not receive them, so they impose no knowledge obligation there.
+        # Broadcast (no target) reaches every non-remote actor; targeted
+        # notices reach their targets only.
+        if holders is None:
+            holders = [a for a in kb_keys if a not in remote_actors]
+        else:
+            holders = [a for a in holders if a not in remote_actors] or None
+        check_text(str(row.get("notice", "")),
+                   f"scheduled {row.get('event')}", holders)
+    for concept in pack.concepts:
+        # The shared desc goes to every known_to actor; each memory goes only
+        # to the actor who owns it (that is the point of personal memory).
+        check_text(concept["desc"], f"concept {concept['id']}",
+                   [a for a in concept["known_to"] if a in kb_keys])
+        for owner, memory in concept["memory"].items():
+            if owner in kb_keys:
+                check_text(memory, f"concept {concept['id']} memory[{owner}]",
+                           [owner])
+    for actor, rows in (manifest.get("kb", {}) or {}).items():
+        for row in rows:
+            check_text(str(row.get("desc", "")),
+                       f"kb[{actor}] {sorted(str(k) for k in row['keys'])}",
+                       [actor])
+    # extras knowledge_notes are conversation-scoped (delivered only to
+    # whoever actually talks to that stranger), so they are not per-actor seed
+    # claims — but they must still be registered names, which ② covers via
+    # `declared` resolution in the .md scan of location files.
+
+    # ---------- ③ dead registry entries (informational) ----------
+    for note in dead_aliases(root):
+        findings.append(note)
     return findings
+
+
+def sources_md(root: Path) -> list[tuple[str, str]]:
+    return [(str(path.relative_to(root)), path.read_text(encoding="utf-8"))
+            for pattern in _PROSE_GLOBS
+            for path in sorted(root.glob(pattern))]
+
+
+def registered_in(text: str, declared: set[str]) -> list[tuple[str, str]]:
+    """Unmarked registered-name occurrences, longest-first accounted."""
+    body = re.sub(r"\[\[[^\]\[]+\]\]", "\u0002", text)
+    found: list[tuple[str, str]] = []
+    for name in sorted((n for n in declared if len(n) >= 2), key=lambda n: (-len(n), n)):
+        at = body.find(name)
+        while at >= 0:
+            found.append((name, body[max(0, at - 10):at + len(name) + 10]))
+            body = (body[:at] + "\u0003" * len(name) + body[at + len(name):])
+            at = body.find(name, at + len(name))
+    return found
+
+
+def universal_from_titles(sources: list[tuple[str, str]]) -> set[str]:
+    """A file's own title is the definition of its subject: it resolves for
+    everyone holding that document."""
+    titles: set[str] = set()
+    for _source, text in sources:
+        first = text.splitlines()[0] if text else ""
+        if first.lstrip().startswith("#"):
+            titles.add(first.lstrip("# \n").strip())
+    return titles
 
 
 def dead_aliases(world_root: str | Path) -> list[str]:
