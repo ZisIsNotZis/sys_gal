@@ -142,7 +142,8 @@ def resume(checkpoint_path: Path, *, out: Path | None = None,
                              os.environ.get("V3_MAX_WALL_SECONDS", "7200")),
                          mc_idle_heartbeat=int(os.environ.get("V4_MC_IDLE_HEARTBEAT", "1800")),
                          checkpoint=checkpoint,
-                         extra_call=provider)
+                         extra_call=provider,
+                         lexicon=pack.lexicon)
     runner.restore_checkpoint(cp["runner"])
     holder["runner"] = runner
     trace.save(world, out_path)  # checkpoint at resume start

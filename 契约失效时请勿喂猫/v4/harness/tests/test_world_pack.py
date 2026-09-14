@@ -1,6 +1,7 @@
 import unittest
 from pathlib import Path
 from collections.abc import Mapping
+from tempfile import TemporaryDirectory
 
 from datetime import datetime
 from harness.kernel import ActionRejected, ActorState, Intention, LocationState, World
@@ -441,3 +442,81 @@ class KbSeedTests(unittest.TestCase):
                 for banned in ("世界不做", "不是引擎提供", "剧情开关", "登记文本为准",
                                "不是自动赠予", "世界不替任何人回答", "世界不替"):
                     self.assertNotIn(banned, desc, f"{row['id']} carries author meta-voice")
+
+
+class ConceptRegistryTests(unittest.TestCase):
+    """concepts: is the registry every named non-entity thing must live in
+    (V4-AGENT-INTERFACE §6). The seed name lint is the inverse gate."""
+
+    def _write_pack(self, root: Path, concepts_yaml: str) -> Path:
+        (root / "locations").mkdir()
+        (root / "locations" / "room.md").write_text("room", encoding="utf-8")
+        (root / "characters").mkdir()
+        (root / "items").mkdir()
+        (root / "documents").mkdir()
+        (root / "characters" / "a.md").write_text("A", encoding="utf-8")
+        (root / "manifest.yml").write_text(
+            "schema_version: 1\nclock: {start: '2026-01-01T00:00:00+00:00', stop: '2026-01-01T01:00:00+00:00'}\n"
+            "locations: [{id: room}]\nactors: [{id: a, location: room}]\nitems: []\ndocuments: []\n"
+            "routes: []\nbarriers: []\nscheduled: []\n"
+            "kb:\n  a:\n    - {fields: {person: a, self: true}, id: identity, desc: '我，a。'}\n"
+            + concepts_yaml, encoding="utf-8")
+        return root
+
+    def test_concepts_expand_into_knowledge_and_memory_rows(self):
+        with TemporaryDirectory() as directory:
+            root = self._write_pack(
+                Path(directory),
+                "concepts:\n"
+                "- {id: old-place, name: 老地方, kind: place, desc: 一个旧地方。,\n"
+                "   known_to: [a], memory: {a: 我在那儿长大。}}\n")
+            pack = load_world_pack(root)
+            fields = [row["fields"] for row in pack.kb["a"]]
+            self.assertIn({"concept": "老地方"}, fields)
+            self.assertIn({"memory": "老地方"}, fields)
+            self.assertEqual(pack.lexicon["老地方"], ())
+
+    def test_concept_name_matching_an_entity_contributes_memory_only(self):
+        with TemporaryDirectory() as directory:
+            root = self._write_pack(
+                Path(directory),
+                "concepts:\n"
+                "- {id: room-memory, name: room, kind: place, known_to: [a],\n"
+                "   memory: {a: 我在这个房间长大。}}\n")
+            pack = load_world_pack(root)
+            fields = [row["fields"] for row in pack.kb["a"]]
+            self.assertNotIn({"concept": "room"}, fields)
+            self.assertIn({"memory": "room"}, fields)
+
+    def test_memory_requires_known_to(self):
+        with TemporaryDirectory() as directory:
+            root = self._write_pack(
+                Path(directory),
+                "concepts:\n"
+                "- {id: x, name: 某处, kind: place, desc: 某处。, memory: {a: 我记得。}}\n")
+            with self.assertRaisesRegex(ValueError, "requires known_to"):
+                load_world_pack(root)
+
+    def test_unknown_kind_and_duplicate_name_rejected(self):
+        for yaml_text, message in (
+                ("concepts:\n- {id: x, name: 某处, kind: wormhole, desc: 某处。}\n",
+                 "unknown kind"),
+                ("concepts:\n"
+                 "- {id: x, name: 某处, kind: place, desc: 某处。}\n"
+                 "- {id: y, name: 某处, kind: place, desc: 某处2。}\n",
+                 "duplicate concept name")):
+            with TemporaryDirectory() as directory:
+                root = self._write_pack(Path(directory), yaml_text)
+                with self.assertRaisesRegex(ValueError, message):
+                    load_world_pack(root)
+
+    def test_seed_names_all_resolve(self):
+        """The name registry gate: every name-like token in authored prose
+        resolves to a registered entity or concept (scripts/seed_lint.py)."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "seed_lint", ROOT / "scripts" / "seed_lint.py")
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+        self.assertEqual(module.lint(ROOT / "world"), [])

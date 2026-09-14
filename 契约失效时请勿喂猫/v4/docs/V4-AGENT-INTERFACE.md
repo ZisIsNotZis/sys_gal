@@ -36,9 +36,9 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 
 | 工具 | 消耗时间 | 说明 |
 | --- | --- | --- |
-| update_memory | 否 | 把事实或要紧的事写进私人记事本（引擎保管，只有你能看）：rows[{fields,id,op:open/edit/close,desc?}]；字段是保留名 person:/location:/item:/todo:true/reminder:"M/D(周X) HH:MM" 或自由标签，id 用英文短横线小写（可省略，fields 唯一匹配时自动定位）；只写事实和要紧的事——发生的事世界会自动重现。**鼓励：每获得值得记住的新信息就 update_memory。**部分成功，失败逐行报错 |
+| update_memory | 否 | 把事实或要紧的事写进私人记事本（引擎保管，只有你能看）：rows[{fields,id,op:open/edit/close,desc?}]；字段是保留名 person:/location:/item:/concept:/memory:/todo:true/reminder:"M/D(周X) HH:MM" 或自由标签，id 用英文短横线小写（可省略，fields 唯一匹配时自动定位）；只写事实和要紧的事——发生的事世界会自动重现。**鼓励：每获得值得记住的新信息就 update_memory。**部分成功，失败逐行报错 |
 | recall | 否 | 立刻翻看记事本：用 kinds 或 ids 选择行（两者必填其一），匹配的行逐字回进该调用的 tool 结果（closed 行需 closed:true；无匹配则明确说明） |
-| flashback | 否 | 手动闪回：与 entity 相关的、你亲历过的已播历史逐字回进该调用的 tool 结果（无匹配则明确说明） |
+| flashback | 否 | 手动闪回：把关于 entity 的、你知道或亲历过的一切逐字回进该调用的 tool 结果。来源与优先序：① 你私人记事本里的 memory 行（前史／往事）与 concept 行（它是什么）；② relevant 的 person/item/location 行；③ 本次经历里已投递的历史行。entity 支持注册别名（如 "老街坊" 命中 "老家属院"）与子串匹配；确实没有则明确说明——绝不为空的查询编造历史 |
 | wait | 是 | 唯一的时间流逝工具（已并入 sleep）；时长向上取整到 tick 倍数；等待期间事件照常长轮询投递 |
 | speak | 是 | 仅用于**修饰性说话**：volume=whisper（仅 to 指定的在场者听得见文本，其他人只见耳语动作）。普通说话不用工具——直接输出文字即是开口（见 §1） |
 | text | 是 | 发手机短信：target=收件人，无视距离，1 tick 后送达；正文只投递给收件方 |
@@ -148,10 +148,43 @@ kb:
 规则：
 
 - **身份行锚定（M2）**：每角色恰一行 `self: true`（保留字段），desc 以第一人称"我，…"开头——这是"我"的锚；模型同时每回合在表头在场行看到自己的名字（`(you)`）。引擎校验：有且仅有一行 self:true，否则加载失败。
-- fields 的键为保留名或自由次要标签（受控主键：person/location/item/todo/reminder/self；自由键钳为 knowledge + 遥测）。
-- 行在 turn 0 全部 last_shown=0 → 无条件行（self/todo/reminder）灌入首条消息；实体行按提及集门控。
+- fields 的键为保留名或自由次要标签（受控主键：person/location/item/concept/memory/todo/reminder/self；自由键钳为 knowledge + 遥测）。
+- `concept:` = 世界知识（那地方／那人／那事是什么）；`memory:` = 私人回忆（我和它的来历）。二者由 `concepts:` 注册表自动展开（见下）。
+- 行在 turn 0 全部 last_shown=0 → 无条件行（self/todo/reminder/**concept**）灌入首条消息；实体行（person/location/item/document）与 **memory 行**按提及集门控。
 - public_knowledge（manifest）自动展开为**每角色一条对应 KB 行**（各角色独立副本，可各自 edit）。world 包 items/documents 的描述同样按 known_to 自动展开为对应角色的 item KB 行（KB 行统一用 item=，不再有独立 document 类型——内容型物品由 read 承载）。**知识是私人的**：个人关联的物品/文档必须标 known_to；未标 known_to 者只展开可见层描述。首轮泛洪只覆盖无条件行（self/todo/reminder）——实体行一律提及集门控。
 - id 全角色 KB 内唯一；定位用 (fields,id)，update_memory 允许省略 id 而以 fields 唯一匹配（引擎自动解析，避免角色需要记忆内部 id）。
+
+### 6.1 concepts: 注册表（自洽规则）
+
+**规则：种子里出现的每一个有名之物都必须注册。** 不是 actor/location/item/document
+的长住实体，一律进入 manifest 的 `concepts:` 段，拿到「它是什么」（desc）、谁「知道」
+（known_to）与谁「有来历」（memory）。散文里不允许出现只有文本、运行时拿不到的名字——
+这正是 `flashback` 返回空、模型放弃记忆工具的根因。
+
+```
+concepts:
+- id: old-compound            # ascii kebab，全局唯一
+  name: 老家属院                # 规范名 = 提及键
+  aliases: [家属院, 老街坊, 地下室]  # flashback 与名字检查都认得
+  kind: place                  # place|person|item|event|org|thing|generic
+  known_to: [陈默, 林瑶, 下棋大爷]      # 得到无条件 concept 知识行
+  desc: 陈默长大的旧居民区……      # 「它是什么」（generic 可免）
+  memory:                      # 可选；键必须是 known_to 的子集
+    陈默: 我在那儿长到九岁……    # 私下第一人称回忆 → memory 行（提及集门控）
+```
+
+- `known_to` 非空的 concept，除 `generic` 外，每角色展开一行 `fields: {concept: <name>}`
+  （无条件、按 knowledge 间隔重放）；`memory` 每角色展开一行 `fields: {memory: <name>}`
+  （提及集门控 + flashback 可检索）。id 形如 `kb-concept-<id>`、`kb-memory-<id>`。
+- **name 等于已有实体 id 时**（如 `红色哨子`、`林瑶`）为“补充条目”：不重复生成知识行
+  （实体自带描述），只贡献 memory。
+- `kind: generic` = 仅注册、不展开行：用于确实只是名称（校门口、教务处）或 Tier-C 纹理
+  （糖罐子、催稿单），使名字检查有一个合法目标、而不给角色加无意义负担。
+- **名字检查（pre-run gate）**：`scripts/seed_lint.py` 扫描全部作者散文，凡出现「名字样」
+  token（姓氏+身份、小/老+姓、地点后缀、物品后缀、事件词）而未解析到任一实体 id、
+  concept 名或 alias，即失败并列出 `file:line`。**没有旁路白名单**——该进世界的名字就注册；
+  这不只防止忘改，也让 `rg`/`flashback`/模型三方看到同一套名字。`test_seed_names_all_resolve`
+  把当前种子锁成绿灯。
 
 ## 7. 常数表
 
@@ -160,8 +193,8 @@ kb:
 | `knowledge_replay_minutes` | 120 | knowledge 各类型行（scene/item/person）的 last_shown 间隔（模拟时间分钟） |
 | `todo_replay_minutes` | 60 | todo 行回放间隔 |
 | `reminder_replay_minutes` | 30 | reminder 行回放间隔 |
-| `flashback_limit` | 5 | 闪回行数 |
-| `flashback_horizon_minutes` | 可配 | 多远算"可能忘了" |
+| `flashback_limit` | 5 | 闪回行数（memory/concept 优先，其次已投递历史）|
+| `flashback_horizon_minutes` | 保留 | 旧地平线语义已废止：闪回是“回忆”不是“查日志”，前史无时间戳，一律可回 |
 | `compaction_threshold` | 30000 字符 | 会话压缩触发 |
 | `recent_messages` | 4 | 压缩保留的最近非 world 消息 |
 | todo 行上限 | 12 | 只数 open 状态 |

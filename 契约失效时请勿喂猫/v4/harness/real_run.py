@@ -86,7 +86,8 @@ def main() -> None:
                          mc_idle_heartbeat=int(os.environ.get("V4_MC_IDLE_HEARTBEAT", "1800")),
                          stall_budget_ratio=float(os.environ.get("V4_STALL_BUDGET_RATIO", "0.25")),
                          checkpoint=checkpoint, extra_call=provider,
-                         kb_seeds=pack.kb, director_brief=director_brief)
+                         kb_seeds=pack.kb, director_brief=director_brief,
+                         lexicon=pack.lexicon)
     holder["runner"] = runner
     try:
         reason = runner.run(stop_at=endpoint, max_turns=20_000)

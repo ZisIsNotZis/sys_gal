@@ -331,3 +331,40 @@ class FieldsLookupTests(unittest.TestCase):
             [{"op": "edit", "id": "draft_claim", "desc": "用 id 定位"}], T0)
         self.assertEqual(errors, [])
         self.assertEqual(self.kb._rows["draft_claim"].desc, "用 id 定位")
+
+
+class ConceptAndMemoryRowTests(unittest.TestCase):
+    """V4-AGENT-INTERFACE §6 (concepts registry): concept rows are the actor's
+    unconditional world knowledge; memory rows are the actor's own past and are
+    retrieved by flashback (mention-gated for replay)."""
+
+    def rows(self):
+        return [
+            {"fields": {"person": "陈默", "self": True}, "id": "identity",
+             "desc": "我，陈默。"},
+            {"fields": {"concept": "老家属院"}, "id": "kb-concept-old-compound",
+             "desc": "陈默长大的旧居民区。"},
+            {"fields": {"memory": "老家属院"}, "id": "kb-memory-old-compound",
+             "desc": "我在那儿长到九岁。"},
+            {"fields": {"item": "红色哨子"}, "id": "kb-auto-whistle",
+             "desc": "一只小小的红色应急哨。"},
+        ]
+
+    def test_concept_rows_flood_and_memory_rows_are_mention_gated(self):
+        kb = ActorKB("陈默", self.rows(), T0)
+        turn0 = kb.due_lines(T0, set(), limit=8)
+        self.assertIn("[concept=老家属院]: 陈默长大的旧居民区。", turn0)
+        self.assertNotIn("[memory=老家属院]: 我在那儿长到九岁。", turn0)
+        with_mention = ActorKB("陈默", self.rows(), T0).due_lines(T0, {"老家属院"}, limit=8)
+        self.assertIn("[memory=老家属院]: 我在那儿长到九岁。", with_mention)
+
+    def test_match_rows_returns_memory_and_concept_before_public_description(self):
+        kb = ActorKB("陈默", self.rows(), T0)
+        lines = kb.match_rows({"红色哨子"})
+        self.assertEqual(len(lines), 1)  # only the auto item row mentions it
+        lines = kb.match_rows({"家属院"})
+        self.assertTrue(lines[0].startswith("[memory=老家属院]"))
+        self.assertTrue(any(line.startswith("[concept=老家属院]") for line in lines))
+
+    def test_match_rows_is_empty_without_terms(self):
+        self.assertEqual(ActorKB("陈默", self.rows(), T0).match_rows(set()), [])

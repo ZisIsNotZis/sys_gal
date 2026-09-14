@@ -40,6 +40,24 @@ proves the seed schedule drains to `world_stops`; the dead-end gate
 closed location is permanently unreachable. A large run is only worth its cost
 once these are green.
 
+### v4 seed self-consistency gate
+
+The v4 line carries its own ledger (`v4/harness/tests/test_historical_failures.py`)
+and an additional gate: every name-like token in the seed must resolve to a
+registered entity or concept, and `flashback` must recall the seeded pre-run
+history (P9). Both are part of the suite; run them and the lint before any v4
+run:
+
+```text
+cd 契约失效时请勿喂猫/v4
+python3 -m unittest discover -s harness/tests -p 'test_*.py'
+python3 scripts/seed_lint.py --verbose
+```
+
+A new in-world name that is not in `world/manifest.yml` (entities or
+`concepts:`) fails the lint by design — register it instead of leaving it as
+prose, so `flashback`/`recall`/the model all see the same names.
+
 ## Interrupted-run methodology
 
 Provider instability is common and is not a reason to redo a run. The default

@@ -1,6 +1,6 @@
 # 14: 接口激进简化——工具面/inner/#actions/台账 NPC 化
 
-Status: needs-info（等用户裁决）
+Status: done
 Labels: needs-triage, decision
 来源：用户 2026-09-11 巡检，八点意见 + "tools are kind of inferable, maybe no actions at all"。
 
@@ -108,3 +108,8 @@ wait, speak(仅 whisper 修饰), text(原 send_message), move, take, place(原 d
 - 修复 ask_stranger 误入 retired 名单后：stranger_asked 25 → extra_arrived 15 → extra_removed 14，extras 链通。
 - 全天运行（5400s budget）@15:05 撞 provider 429（deepseek-v4-flash 三个凭证齐刷冷却），7 个代理全 error → stall。
 - 非代码问题，等配额冷却后重跑。期间样例错误（"一楼校史专用柜"不是已知地点）属正常——模型试图移动到地图外角落，拒绝信息本身正确。
+
+
+## Comments
+
+- 2026-09-14 agent (pi, 当前会话模型): closed: all eight points decided and implemented; the public-speech to= addressee question is resolved as deferred-until-evidence.

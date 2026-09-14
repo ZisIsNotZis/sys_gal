@@ -70,6 +70,10 @@ class WorldPack:
     scheduled: tuple[dict[str, Any], ...]
     system: dict[str, Any]
     kb: dict[str, list[dict[str, Any]]]
+    concepts: tuple[dict[str, Any], ...]
+    # canonical name -> aliases, for every actor/location/item/document/concept.
+    # flashback uses it to resolve "老街坊" to its registered concept.
+    lexicon: dict[str, tuple[str, ...]]
 
     def build_world(self) -> World:
         locations = [LocationState(
@@ -141,9 +145,19 @@ def load_world_pack(root: str | Path) -> WorldPack:
     _validate(fields, manifest)
     _validate_descriptions(fields, descriptions)
     actor_ids = {str(row["id"]) for row in fields["actors"]}
+    entity_ids = (actor_ids
+                  | {str(row["id"]) for row in fields["locations"]}
+                  | {str(row["id"]) for row in fields["items"]}
+                  | {str(row["id"]) for row in fields["documents"]})
     kb = _validate_kb(manifest["kb"], actors=actor_ids)
     kb = _expand_entity_rows(kb, fields, descriptions)
-    return WorldPack(root, manifest, descriptions, **fields, system=dict(manifest.get("system", {})), kb=kb)
+    concepts = _validate_concepts(manifest.get("concepts", ()), actors=actor_ids,
+                                  entity_ids=entity_ids)
+    kb = _expand_concept_rows(kb, concepts, entity_ids)
+    lexicon = _build_lexicon(fields, concepts)
+    return WorldPack(root, manifest, descriptions, **fields,
+                     system=dict(manifest.get("system", {})), kb=kb,
+                     concepts=concepts, lexicon=lexicon)
 
 
 def _plain_description(markdown: str) -> str:
@@ -185,6 +199,109 @@ def _expand_entity_rows(kb: dict[str, list[dict[str, Any]]],
             if known_to is not None and actor not in known_to:
                 continue
             rows.append(row)
+    return kb
+
+
+def _build_lexicon(fields: dict[str, Any],
+                   concepts: tuple[dict[str, Any], ...]) -> dict[str, tuple[str, ...]]:
+    """Every nameable thing the world model knows, for flashback resolution
+    and the seed name check. Actor/location/item/document names are their ids;
+    concepts contribute their canonical name plus aliases."""
+    lexicon: dict[str, tuple[str, ...]] = {}
+    for kind in ("locations", "items", "documents", "actors"):
+        for row in fields[kind]:
+            lexicon[str(row["id"])] = ()
+    for concept in concepts:
+        lexicon[concept["name"]] = tuple(concept["aliases"])
+    return lexicon
+
+
+_CONCEPT_KINDS = frozenset({"place", "person", "item", "event", "org",
+                            "thing", "generic"})
+
+
+def _validate_concepts(concepts: Any, *, actors: set[str],
+                       entity_ids: set[str] | None = None) -> tuple[dict[str, Any], ...]:
+    """Validate the concepts: registry (V4-AGENT-INTERFACE §6). Every named
+    thing that is not an actor/location/item/document lives here so it has a
+    definition (desc), a knower set, and optional per-actor memory. A concept
+    whose name is an existing entity is an enrichment entry: it contributes
+    personal memory only and needs no desc."""
+    entity_ids = entity_ids or set()
+    if concepts is None:
+        return ()
+    if not isinstance(concepts, (list, tuple)):
+        raise ValueError("concepts: must be a list")
+    result: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    seen_names: set[str] = set()
+    for row in concepts:
+        if not isinstance(row, dict):
+            raise ValueError("concept entry must be a mapping")
+        cid = row.get("id")
+        if not isinstance(cid, str) or not re.match(r"^[a-z0-9-]+$", cid):
+            raise ValueError(f"concept needs an ascii kebab id: {cid!r}")
+        if cid in seen_ids:
+            raise ValueError(f"duplicate concept id: {cid}")
+        seen_ids.add(cid)
+        name = row.get("name")
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError(f"concept {cid} needs a non-empty name")
+        name = name.strip()
+        if name in seen_names:
+            raise ValueError(f"duplicate concept name: {name}")
+        seen_names.add(name)
+        kind = str(row.get("kind", "thing"))
+        if kind not in _CONCEPT_KINDS:
+            raise ValueError(f"concept {cid} has unknown kind: {kind}")
+        aliases = row.get("aliases", ()) or ()
+        if not isinstance(aliases, (list, tuple)) or any(
+                not isinstance(a, str) or not a.strip() for a in aliases):
+            raise ValueError(f"concept {cid} aliases must be non-empty strings")
+        known = row.get("known_to", ()) or ()
+        if not isinstance(known, (list, tuple)) or any(a not in actors for a in known):
+            raise ValueError(f"concept {cid} known_to references an unknown actor")
+        memory = row.get("memory", {}) or {}
+        if not isinstance(memory, dict) or any(a not in actors for a in memory):
+            raise ValueError(f"concept {cid} memory references an unknown actor")
+        unknown_memory = [a for a in memory if a not in known]
+        if unknown_memory:
+            raise ValueError(f"concept {cid} memory for {unknown_memory} requires known_to")
+        desc = str(row.get("desc", "")).strip()
+        if kind != "generic" and not desc and name not in entity_ids:
+            raise ValueError(f"concept {cid} needs a desc (what it is)")
+        result.append({"id": cid, "name": name, "kind": kind,
+                       "aliases": tuple(a.strip() for a in aliases),
+                       "known_to": tuple(known), "memory": dict(memory), "desc": desc})
+    return tuple(result)
+
+
+def _expand_concept_rows(kb: dict[str, list[dict[str, Any]]],
+                         concepts: tuple[dict[str, Any], ...],
+                         entity_ids: set[str]) -> dict[str, list[dict[str, Any]]]:
+    """Expand the concepts registry into per-actor KB rows: one knowledge row
+    (fields: {concept: name}) per known_to actor — unconditional, so the actor
+    always knows what the thing is — and one memory row (fields: {memory: name})
+    per actor in memory. Concepts whose name is an existing entity skip the
+    knowledge row (the entity already carries a public description) and only
+    contribute personal memory. Manual rows win."""
+    for actor, rows in kb.items():
+        present = {str(r["id"]) for r in rows}
+        for concept in concepts:
+            name = concept["name"]
+            if (actor in concept["known_to"] and concept["kind"] != "generic"
+                    and name not in entity_ids):
+                row_id = f"kb-concept-{concept['id']}"
+                if row_id not in present:
+                    rows.append({"fields": {"concept": name}, "id": row_id,
+                                 "desc": concept["desc"]})
+                    present.add(row_id)
+            if actor in concept["memory"]:
+                row_id = f"kb-memory-{concept['id']}"
+                if row_id not in present:
+                    rows.append({"fields": {"memory": name}, "id": row_id,
+                                 "desc": str(concept["memory"][actor]).strip()})
+                    present.add(row_id)
     return kb
 
 
@@ -302,7 +419,8 @@ def _validate(fields: dict[str, tuple[dict[str, Any], ...]], manifest: dict[str,
 
 
 _REMINDER_RE = re.compile(r"^\d{1,2}/\d{1,2}\(周[一二三四五六日]\) \d{1,2}:\d{2}$")
-_RESERVED_KB_FIELDS = frozenset({"person", "location", "item", "todo", "reminder", "self"})
+_RESERVED_KB_FIELDS = frozenset({"person", "location", "item", "concept",
+                                 "memory", "todo", "reminder", "self"})
 
 
 def _reminder_time_ok(value: Any) -> bool:

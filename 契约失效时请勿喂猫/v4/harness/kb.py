@@ -19,16 +19,21 @@ REMINDER_REPLAY_MINUTES = 30
 KNOWLEDGE_REPLAY_MINUTES = 120
 TODO_OPEN_LIMIT = 12
 
-RESERVED_FIELDS = {"person", "location", "item", "todo", "reminder", "self"}
+RESERVED_FIELDS = {"person", "location", "item", "todo", "reminder", "self",
+                   "concept", "memory"}
 # Fields whose values participate in the mention set (M7). "document" stays
 # because legacy event payloads/replays may still carry document= keys; current
-# KB rows are emitted as item= (docs §6).
-_MENTION_FIELDS = ("person", "location", "item", "document")
+# KB rows are emitted as item= (docs §6). "memory" is gated too: a personal
+# recollection surfaces when the person/thing it is about is present. "concept"
+# is deliberately NOT mention-gated — knowing what a place/event/thing is is
+# unconditional world knowledge (replayed on its interval like todo).
+_MENTION_FIELDS = ("person", "location", "item", "document", "memory")
 _WEEKDAY = {"一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "日": 6}
 _WEEKDAY_CHAR = {v: k for k, v in _WEEKDAY.items()}
 _REMINDER_RE = re.compile(r"^(\d{1,2})/(\d{1,2})\((周[一二三四五六日])\) (\d{1,2}):(\d{2})$")
 # Rendering order for due lines within one turn (docs §3: 按类型排序).
-_CATEGORY_ORDER = {"reminder": 0, "todo": 1, "person": 2, "location": 3, "item": 4}
+_CATEGORY_ORDER = {"reminder": 0, "todo": 1, "concept": 2, "person": 3,
+                   "location": 4, "item": 5, "memory": 6}
 
 
 def parse_reminder_time(value: Any, now: datetime) -> datetime | None:
@@ -74,7 +79,8 @@ def _interval_minutes(fields: dict[str, Any]) -> int:
 
 
 def _main_field(fields: dict[str, Any]) -> tuple[str, Any]:
-    for key in ("self", "todo", "reminder", "person", "location", "item"):
+    for key in ("self", "todo", "reminder", "concept", "person", "location",
+                "item", "memory"):
         if key in fields:
             return key, fields[key]
     for key, value in fields.items():
@@ -351,6 +357,28 @@ class ActorKB:
                 out.append({"id": row.id, "time": when, "desc": row.desc,
                             "rendered": row.render()})
         return out
+
+    def match_rows(self, terms: set[str]) -> list[str]:
+        """flashback: surface every row (open or closed) that mentions any of
+        ``terms`` in a field value or in its desc. Memory rows sort first, then
+        concepts, then everything else; ties keep surfacing order."""
+        wanted = {term for term in terms if term}
+        if not wanted:
+            return []
+        matches: list[_Row] = []
+        for row in self._rows.values():
+            hay = "\n".join([*(str(v) for v in row.fields.values()), row.desc])
+            if any(term in hay for term in wanted):
+                matches.append(row)
+
+        def rank(row: _Row) -> tuple[int, float, int]:
+            key, _ = _main_field(row.fields)
+            priority = {"memory": 0, "concept": 1}.get(key, 2)
+            ts = row.last_shown.timestamp() if row.last_shown else -1.0
+            return (priority, ts, row.shown_seq)
+
+        matches.sort(key=rank)
+        return [row.render() for row in matches]
 
     def force_recall(self, kinds: list[str] | None, ids: list[str] | None,
                      closed: bool = False, limit: int = 8) -> list[str]:

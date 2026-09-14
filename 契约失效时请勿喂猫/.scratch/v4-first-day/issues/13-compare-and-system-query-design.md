@@ -1,6 +1,6 @@
 # 13: compare 的存在意义 + system_query 的语言与选项呈现
 
-Status: needs-triage
+Status: wontfix
 Labels: needs-triage, decision
 来源：用户 ChatML 巡检（runs/real-20260911T060643+0800-3152472-604122605.json 陈默 turn：compare 台账↔导出原件 → "内容不一致"；system_query → 逐字匹配拒绝，queries 0/1）。
 
@@ -36,3 +36,8 @@ Labels: needs-triage, decision
 
 ## 决议
 （待用户裁决：compare 去/留/增强；system_query 中文化 + 键名呈现方案 ii/iii/组合）
+
+
+## Comments
+
+- 2026-09-14 agent (pi, 当前会话模型): closed: superseded by ticket 14 — compare and system_query were both deleted from the tool surface; no decision remains.

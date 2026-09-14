@@ -733,3 +733,326 @@ kb:
   - fields: {location: 中庭}
     id: chess-table
     desc: 中庭石桌是我的棋摊，下午常有人来杀两盘。
+# concepts: every named thing that is not an actor/location/item/document.
+# Each gets a definition (what it is), the actors who know it (knowledge row),
+# and per-actor first-person memory (flashback row). A concept whose name equals
+# an existing entity id contributes only memory (the entity already has a row).
+# kind: generic = registry-only (keeps the name check honest, no rows).
+concepts:
+# ---- places ----
+- id: old-compound
+  name: 老家属院
+  kind: place
+  aliases: [家属院, 老街坊, 地下室, 老家属院的地下室, 家属院地下室]
+  known_to: [陈默, 林瑶, 下棋大爷]
+  desc: 陈默长大的旧居民区，陈默家在院里。院里有间地下室，2013 年台风夜进过水，旧物一直堆在里头，没人认真清过。
+  memory:
+    陈默: 我在那儿长到九岁。那晚我只剩几个碎片——一根水管、一只红色哨子、一个走得很慢的大人；别的都是后来从大人嘴里拼出来的。
+    林瑶: 我九岁前也住那片。抽屉里那张蓝色兔子贴纸就是从家属院带出来的——我认得眼前这个陈默，却不想让这件事先开口。
+    下棋大爷: 2013 那晚我在大门值班，不是地下室。家属院地下室进了水，老赵头在楼下喊人喊哑了嗓子，那声音我记到今天。
+- id: primary-school
+  name: 小学
+  kind: place
+  known_to: [陈默, 下棋大爷, 食堂大妈]
+  desc: 家属院旁边的小学。2013 年台风夜，地下室进水的第一通电话就是从那儿打出来的；器材室借出去的两台抽水泵也是去帮它。
+  memory:
+    下棋大爷: 那晚抽水泵是去帮小学的。抬泵的人来来回回，谁也没顾上自己家。
+- id: equipment-room
+  name: 器材室
+  kind: place
+  known_to: [陈默, 下棋大爷, 食堂大妈]
+  desc: 借出两台抽水泵的地方，登记人签名潦草。2013 年那晚的借出时间在纸质台账和导出件上对不上。
+  memory:
+    下棋大爷: 器材室的灯那晚一直亮着，进进出出全是拿东西救水的人。
+- id: back-street-bakery
+  name: 后街糕点铺
+  kind: place
+  known_to: [唐小岚]
+  desc: 校门后街的小铺子。后街糕点铺的老板娘和半坡咖啡馆的老板娘相识，常让熟客顺路带句话。
+  memory:
+    唐小岚: 老板娘信我，才让我顺路带话；这种小事我从不含糊。
+- id: co-op-market
+  name: 市场合作社
+  kind: place
+  aliases: [合作社]
+  known_to: [唐小岚]
+  desc: 校外市场里的合作社。有人据说为一张"不是她能应承"的发票跟人红过脸。
+  memory:
+    唐小岚: 我是在吧台听见的——合作社老板娘为一张发票跟人翻脸。这种事我只听，不传。
+# ---- people ----
+- id: old-neighbor-rep
+  name: 老街坊代表
+  kind: person
+  known_to: [陈默, 林瑶]
+  desc: 2013 年邻里撤离通知书落款上签名的那个人，当年家属院推出来的代表，签名墨迹深浅不一。审计要的责任人指向他。
+  memory:
+    陈默: 许可证原件在我抽屉里，落款是他的手写签名。我一直没弄清他现在在哪。
+    林瑶: 那名字我见过——就在监护人那栏旁边，落着一个我不认识的大人。
+- id: zhao-old-man
+  name: 老赵头
+  kind: person
+  known_to: [下棋大爷]
+  desc: 家属院的老人。2013 年台风夜在楼下喊人，喊哑了嗓子。听说现在耳背。
+  memory:
+    下棋大爷: 那晚老赵头在楼下喊人喊哑了嗓子。要问那晚的事得找他——不过他耳背。
+- id: zhou-student
+  name: 小周
+  kind: person
+  known_to: [陈默, 林瑶, 班长, 辅导员]
+  desc: 校史档案室原来的值班学生，这周从值班表上被换了下去。
+  memory:
+    陈默: 小周和我搭过班。这周她突然不在表上了，谁都说不出为什么。
+- id: chen-student
+  name: 小陈
+  kind: person
+  known_to: [陈默, 林瑶, 班长, 辅导员]
+  desc: 校史档案室原来的值班学生，这周和小周一起从值班表上被换了下去。
+  memory:
+    陈默: 小陈也是被换下去的那个。两个人的名字一齐从表上没了。
+- id: paper-editor
+  name: 校报编辑
+  kind: person
+  known_to: [唐小岚]
+  desc: 在校报草稿页眉写催稿批注的人，催的是一篇涉及报销争议的稿子。
+  memory:
+    唐小岚: 编辑把催稿单贴在吧台上好几天了，那位记者一直没露面。
+- id: paper-reporter
+  name: 校报记者
+  kind: person
+  known_to: [唐小岚]
+  desc: 校报草稿的主人，不常露面，写稿时用胳膊把纸圈起来，页边画着"待核实"。
+  memory:
+    唐小岚: 他坐最里头那张桌，胳膊圈着稿子——一看就知道写的东西不能让人看见。
+- id: co-op-boss
+  name: 合作社老板娘
+  kind: person
+  known_to: [唐小岚]
+  desc: 市场合作社的负责人，据说为一张发票跟人红过脸，说那不是她能应承的事。
+  memory:
+    唐小岚: 那件事传到我耳朵里时已经压了一阵。我留着没用，但也没舍得丢。
+- id: archive-keeper
+  name: 档案室管理员
+  kind: person
+  known_to: [陈默, 林瑶]
+  desc: 校史档案室的管理员，常年不在，重大事项要电话报备。原件必须登记才能碰。
+  memory:
+    陈默: 管理员把档案室交给我一个上午。他只说"先登记、后翻阅"。
+- id: slow-adult
+  name: 那个走得很慢的大人
+  kind: person
+  known_to: [陈默]
+  desc: 陈默记忆碎片里的人物——2013 年那晚把他带回楼的大人，走得极慢。他至今认不出那是谁。
+  memory:
+    陈默: 我只记得他走得很慢，雨衣一直在滴水。我认不出他的脸，也认不出签名上那个名字是不是他。
+- id: lin-yao-bond
+  name: 林瑶
+  kind: person
+  aliases: [瑶姐]
+  known_to: [陈默]
+  memory:
+    陈默: 我对她的好感全藏在"帮忙"里。九岁那年的事我一直没敢开口——档案室的上午班是我最接近她的地方。
+# ---- items / things ----
+- id: red-whistle-memory
+  name: 红色哨子
+  kind: item
+  known_to: [陈默]
+  memory:
+    陈默: 我的东西，从老街坊带出来的，漆面有几道划痕。后来它就不在我手上了——我一直在找它。
+- id: blue-rabbit-sticker
+  name: 蓝色兔子贴纸
+  kind: item
+  known_to: [林瑶]
+  desc: 一张蓝色兔子图案的旧贴纸，林瑶抽屉里收着，来自家属院。
+  memory:
+    林瑶: 贴纸从家属院带出来，我留到现在。它和眼前这个陈默是同一年的事——我一直没把它们并到一起。
+- id: blue-rabbit-umbrella
+  name: 蓝色兔子雨伞
+  kind: item
+  known_to: [陈默]
+  desc: 一把儿童尺寸、印着褪色蓝色兔子的雨伞，陈默当年没送出去的东西，听说混在老家属院地下室那堆旧物里。
+  memory:
+    陈默: 那把伞我买了没送出去，后来就不见了。听说地下室的旧物还在，我想找回来。
+- id: pumps
+  name: 两台抽水泵
+  kind: item
+  known_to: [陈默, 下棋大爷, 食堂大妈]
+  desc: 2013 年台风夜从器材室借出的两台抽水泵，纸质台账记 22:05，导出件记 23:30。
+  memory:
+    下棋大爷: 泵是那晚最要紧的东西，谁先拿到谁家就能先出水。
+- id: ledger-copy
+  name: 台账私人抄件
+  kind: item
+  known_to: [林瑶]
+  desc: 林瑶自己留的一份 2013 年台账私抄；在说清它从哪来之前，公开它只会毁掉项目的信誉。
+  memory:
+    林瑶: 抄件是我私下留的。我还没想好怎么说明它的来路。
+- id: flood-route-note
+  name: 洪水路线旁注
+  kind: thing
+  known_to: [陈默, 林瑶]
+  desc: 撤离通知书页边一条铅笔画的窄窄洪水路线，箭头没画完；无障碍方案缺的原始依据正是它。
+  memory:
+    陈默: 那条铅笔线是上一辈人手画的，箭头断在最要紧的地方。
+    林瑶: 方案差的就是这一段。全校最能帮我的人，恰好是我最不想开口的那个。
+- id: borrow-register
+  name: 借阅登记本
+  kind: item
+  known_to: [陈默, 林瑶]
+  desc: 档案室压在进门左手抽屉里的借阅登记本，谁借过什么、什么时候借的都记在上面。
+  memory:
+    陈默: 登记本就在左手抽屉。我那天正要去翻，结果被支开了。
+# ---- events / history ----
+- id: typhoon-2013
+  name: 2013年台风夜
+  kind: event
+  known_to: [陈默, 林瑶, 下棋大爷]
+  desc: 2013 年那场台风的夜里，校园和家属院多处进水：小学地下室、家属院地下室、食堂后厨都进了水，操场是那之后翻修的。
+  memory:
+    陈默: 那晚我只剩下碎片。我答应过林瑶留下，然后走了，好像过了一个小时才回来——她记住的是哪个版本，我不知道。
+    林瑶: 那晚他答应我留下，然后走了。我不记得他后来带回来的是哪个大人。
+    下棋大爷: 那晚我在大门值班。家属院和小学都进了水，抽水泵来回跑，喊人的声音整片楼都听得见。
+- id: flood-route-2013
+  name: 2013年洪水路线
+  kind: thing
+  known_to: [陈默, 林瑶]
+  desc: 2013 年那场台风的水线走向，家属院的老人按记忆走过一遍。无障碍方案的原始依据要的正是它。
+  memory:
+    陈默: 老路线的走向我小时候走来走去，闭着眼都记得——可纸上没有现成结论。
+    林瑶: 我要的是能写进方案的依据，不是谁的记忆。
+- id: childhood-promise
+  name: 九岁那年的承诺
+  kind: event
+  known_to: [陈默, 林瑶]
+  desc: 九岁那年陈默答应林瑶留下，然后走了。两个人各自记着不同的版本，谁也没先开口。
+  memory:
+    陈默: 我答应她留下，然后走了。我想把当年的事说开，不是背好的道歉稿，是当面一句完整的话。
+    林瑶: 他说"我来"。我到现在分不清我要的是道歉，还是那句"当年你为什么要走"。
+- id: heard-crying
+  name: 那晚听见的哭声
+  kind: event
+  known_to: [陈默]
+  desc: 2013 年台风夜，陈默在楼道里听见的哭声。他从没跟任何人提过。
+  memory:
+    陈默: 那晚我其实听见了哭声。这件事我谁也没说。
+- id: xiaolan-fired
+  name: 唐小岚被辞退
+  kind: event
+  known_to: [唐小岚]
+  desc: 上一份工作里，唐小岚把无意听到的事当笑话讲了半句，一个同事当众下不来台；一周之内她被辞退。
+  memory:
+    唐小岚: 我到今天没想明白，被罚是因为多嘴，还是因为被抓住。这件事我绝不说出口。
+- id: unpaid-coffee
+  name: 没付的那杯咖啡
+  kind: event
+  known_to: [陈默, 唐小岚]
+  desc: 上一学期，陈默在半坡咖啡馆有一杯咖啡没付钱就走了。唐小岚从没提过。
+  memory:
+    陈默: 那杯咖啡我一直没去补。羞耻压着，偏偏那家店我还要常去。
+    唐小岚: 我没提过。这根小杠杆捏在手里，用一次是人情，用第二次就是要挟——我有点羞耻。
+- id: shift-swap
+  name: 值班表换人
+  kind: event
+  known_to: [陈默, 林瑶, 班长, 辅导员]
+  desc: 这周校史档案室的值班表把小周和小陈换了下去，理由没人说得清。
+  memory:
+    陈默: 值班表换人换得不正常。我一直在查是为了什么。
+    林瑶: 班长说"不只是换人那么简单"，档案室的老人只拿"排班调了调"搪塞我。
+- id: anniversary-activity
+  name: 3·16台风纪念活动
+  kind: event
+  known_to: [陈默, 林瑶, 唐小岚, 班长, 下棋大爷]
+  desc: 下周日在中庭办的台风纪念活动，招募志愿者整理老照片和旧记录；今天正好是 3 月 16 日。
+- id: access-project
+  name: 无障碍改造项目
+  kind: event
+  known_to: [陈默, 林瑶, 辅导员, 班长]
+  desc: 绿荫校园社的无障碍改造项目，林瑶负责，今天下午之前要交原始依据；中庭塌陷的透水砖在名单上排第一。
+  memory:
+    林瑶: 这是白纸黑字的事。私底下我更想验证的，是另一个人这次会不会做到。
+- id: audit-case
+  name: 学生会审计
+  kind: event
+  known_to: [陈默, 林瑶, 辅导员, 班长]
+  desc: 学生会办公室的一份在办审计：汇总表两个总额没标用途，手写更正没署名，底层凭证不在包里。核对期限是今天 16:00。
+  memory:
+    林瑶: 审计包的手法，跟台账被改的手法是一个路数。
+# ---- organizations ----
+- id: green-club
+  name: 绿荫校园社
+  kind: org
+  known_to: [陈默, 林瑶, 辅导员, 班长]
+  desc: 林瑶负责的学生社团，这学期在做校园无障碍改造项目。
+- id: student-union
+  name: 学生会
+  kind: org
+  known_to: [陈默, 林瑶, 唐小岚, 辅导员, 班长]
+  desc: 管公告栏、审计与场地审批的学生组织；办公室在校园一侧，白天人来人往。
+- id: history-society
+  name: 校史研究社
+  kind: org
+  known_to: [陈默, 林瑶, 辅导员]
+  desc: 整理校史档案的学生社团，对台账与导出件的差异早有耳闻。
+# ---- registry-only names (no KB rows; keeps the seed name check honest) ----
+- id: campus-gate
+  name: 校门口
+  kind: generic
+- id: canteen-kitchen
+  name: 食堂后厨
+  kind: generic
+  aliases: [后厨]
+- id: broadcast-station
+  name: 广播站
+  kind: generic
+- id: academic-office
+  name: 教务处
+  kind: generic
+- id: logistics
+  name: 后勤
+  kind: generic
+- id: paper-editorial
+  name: 校报编辑部
+  kind: generic
+- id: actor-chess-uncle
+  name: 下棋大爷
+  kind: person
+  aliases: [老周]
+- id: actor-counselor
+  name: 辅导员
+  kind: person
+  aliases: [方老师]
+- id: actor-dorm-aunt
+  name: 宿管阿姨
+  kind: person
+  aliases: [桂阿姨, 桂姨]
+- id: actor-roommate
+  name: 林瑶室友
+  kind: person
+  aliases: [小满]
+- id: actor-monitor
+  name: 班长
+  kind: person
+  aliases: [纪风]
+# ---- Tier-C texture: registered so no named thing lives only in prose ----
+- id: hometown-county
+  name: 老家县城
+  kind: generic
+  aliases: [县城]
+- id: neighbor-li
+  name: 李阿姨
+  kind: generic
+- id: red-thermos
+  name: 红色保温杯
+  kind: generic
+- id: candy-jar
+  name: 糖罐子
+  kind: generic
+- id: proof-slip
+  name: 催稿单
+  kind: generic
+- id: reminder-slip
+  name: 催办单
+  kind: generic
+- id: old-photos-records
+  name: 老照片
+  kind: generic
+  aliases: [旧记录]

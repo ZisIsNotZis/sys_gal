@@ -30,7 +30,7 @@ from __future__ import annotations
 import asyncio
 import time
 from datetime import datetime, timedelta
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any, Callable, Iterable, Mapping, Sequence
 
 from .adapter import parse_decision
 from .agent_state import PrivateState
@@ -72,6 +72,7 @@ class AsyncEngine:
                  max_transient_failures: int = 3,
                  kb_seeds: Mapping[str, list[dict]] | None = None,
                  director_brief: Callable[[str], str | None] | None = None,
+                 lexicon: Mapping[str, Sequence[str]] | None = None,
                  flashback_horizon_minutes: int = 120) -> None:
         # Extras restored from a checkpoint have no agent/state of their own
         # (they run on extra_call with session-local memory, V4-CAST §1).
@@ -121,6 +122,14 @@ class AsyncEngine:
         self._kb_seeds = dict(kb_seeds or {})
         self.director_brief = director_brief
         self.flashback_horizon_minutes = _as_int(flashback_horizon_minutes, 'flashback_horizon_minutes')
+        # Name lexicon (canonical -> aliases): flashback resolves a queried
+        # entity to every registered alias group it belongs to, so "家属院"
+        # and "老街坊" reach the same memory rows (V4-AGENT-INTERFACE §2).
+        self._lexicon_terms: dict[str, frozenset[str]] = {}
+        for canonical, aliases in (lexicon or {}).items():
+            group = frozenset({canonical, *(str(a) for a in aliases)})
+            for term in group:
+                self._lexicon_terms[term] = group
         self._recall_lines: dict[str, list[str]] = {}
         self._flashback_pool: dict[str, list[tuple[datetime, str, frozenset[str]]]] = {}
         self._pending_notices: dict[str, list[str]] = {}
@@ -557,12 +566,35 @@ class AsyncEngine:
         return lines
 
     def _flashback_query(self, actor_id: str, entity: str) -> list[str]:
-        """flashback tool: re-display the actor's own delivered history lines
-        related to an entity, older than the horizon, LRU-capped (§3)."""
-        horizon = self.world.now - timedelta(minutes=self.flashback_horizon_minutes)
-        matches = [(t, line) for (t, line, entities) in self._flashback_pool.get(actor_id, [])
-                   if t <= horizon and (not entity or entity in entities)]
-        return [line for _, line in matches[-5:]]
+        """flashback tool: recall everything the actor knows or lived that
+        concerns ``entity``. Three sources, in this order: the actor's own KB
+        rows (seeded memory/concept rows first — pre-run life has no event
+        line), then the delivered-history pool. Matching resolves aliases
+        through the lexicon and tolerates substrings, because in-world names
+        appear inside prose ("老街坊" / "2013年台风") rather than as ids."""
+        entity = (entity or "").strip()
+        if not entity:
+            return []
+        terms: set[str] = {entity}
+        terms |= set(self._lexicon_terms.get(entity, ()))
+        for term, group in self._lexicon_terms.items():
+            if entity in term or term in entity:
+                terms |= set(group)
+        ordered: list[str] = []
+        seen: set[str] = set()
+        kb = self._kb.get(actor_id)
+        if kb is not None:
+            # match_rows sorts memory/concept first: the actor's own past wins
+            # over the public description of the same thing.
+            for line in kb.match_rows(terms):
+                if line not in seen:
+                    seen.add(line)
+                    ordered.append(line)
+        for _, line, entities in self._flashback_pool.get(actor_id, []):
+            if (entities & terms or any(term in line for term in terms)) and line not in seen:
+                seen.add(line)
+                ordered.append(line)
+        return ordered[:5]
 
     def _tool_yield(self, name: str, args: Mapping[str, Any], world: World) -> str:
         """The caller-facing yield of a world action (V4-AGENT-INTERFACE §3):

@@ -34,6 +34,7 @@ P5  meetings never co-locate .................................. test_seed_route_
 P6  reading a file not at your location ....................... test_kernel (rejection lists what is present)
 P7  send_message with a missing/wrong target key (new probe) ... test_send_message_without_target_is_helpful
 P8  document action with wrong key (2-day run, 97 rejections) . test_document_action_with_wrong_key_is_helpful
+P9  flashback returned nothing for seeded backstory ............ test_flashback_recalls_seeded_history_and_resolves_aliases
 H1/H4 empty checkpoint written at launch ...................... test_launch_checkpoint_is_a_valid_loadable_trace
 H2  duplicate run artifacts ................................... test_runner (unique run ids)
 H3  failed/truncated artifact mislabeled as clean .............. test_trace_completion_gate_rejects_truncated_run (runner)
@@ -196,6 +197,28 @@ class HistoricalFailureGates(unittest.TestCase):
         self.assertTrue(any("从男生宿舍可以到" in reason for reason in reasons))
         # The world still advanced through the schedule; one stuck actor is not a deadlock.
         self.assertGreaterEqual(world.now.isoformat(), "2026-03-16T12:00:00+08:00")
+
+    def test_flashback_recalls_seeded_history_and_resolves_aliases(self):
+        """P9: the documented v4 day-run failure — 陈默 flips through the
+        whistle's memories and gets "（没有与你经历相关的可回放历史。）" even
+        though 红色哨子/老街坊 are seeded. flashback must read the actor's own
+        KB (pre-run memory), resolve aliases, and stay scoped to that actor."""
+        pack = load_story_pack()
+        world = pack.build_world()
+        states = {actor: PrivateState(actor) for actor in world.actors}
+        engine = AsyncEngine(world, _lean_wait_agents(world), states,
+                             Trace("v4-test", "historical-gate-flashback"),
+                             kb_seeds=pack.kb, lexicon=pack.lexicon)
+        engine._init_kb(world.now)
+        whistle = engine._flashback_query("陈默", "红色哨子")
+        self.assertTrue(whistle, "flashback on the seeded whistle returned nothing")
+        self.assertTrue(any("红色哨子" in line for line in whistle))
+        # An alias must reach the same registered concept/memory.
+        self.assertTrue(engine._flashback_query("陈默", "老街坊"))
+        # 林瑶 never lived through 陈默's private memories.
+        self.assertFalse(engine._flashback_query("林瑶", "听见的哭声"))
+        # A name nobody knows stays empty rather than inventing history.
+        self.assertEqual(engine._flashback_query("陈默", "不存在的东西"), [])
 
     def test_seed_closed_locations_all_have_a_scheduled_opening_effect(self):
         """I02/P4: no seed location may be a permanent dead-end."""
