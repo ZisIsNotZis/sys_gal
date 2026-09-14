@@ -505,6 +505,28 @@ class World:
         cursor = self._cursor[actor_id]
         return bool(a.inbox or any(actor_id in event.visible_to for event in self.event_log[cursor:]))
 
+    def dismiss_events(self, actor_id: str) -> None:
+        """Advance the actor's perception cursor past everything emitted so
+        far, so has_wakeup() reflects only genuinely new events (V4-CAST §1:
+        an extra's own speech must not re-wake it into a chatter loop)."""
+        self._cursor[actor_id] = len(self.event_log)
+
+    def has_external_wakeup(self, actor_id: str) -> bool:
+        """Conversational wake class for extras (V4-CAST §1): ready only
+        when a NEW wake-class event from someone else is visible — speech,
+        delivered messages, knocks, an arrival — never on the actor's own
+        bookkeeping (own speech, its action_completed) or ambient world
+        events. Mirrors _unseen_social_event but reads the live cursor."""
+        a = self._actor(actor_id)
+        if a.busy_until and a.busy_until > self.now:
+            return False
+        cursor = self._cursor[actor_id]
+        return bool(a.inbox or any(
+            actor_id in event.visible_to
+            and event.kind in WAKE_EVENT_KINDS
+            and event.actor != actor_id
+            for event in self.event_log[cursor:]))
+
     def affordances(self, actor_id: str) -> list[dict[str, Any]]:
         a = self._actor(actor_id)
         if a.pending is not None:

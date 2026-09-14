@@ -271,7 +271,12 @@ def make_npc_agent_v4(seed: CharacterSeed, provider: Any, *,
 def extra_tool_calls(provider: Any, system_text: str, briefing_text: str) -> list[dict[str, Any]]:
     """One extras turn under the v4 protocol (V4-AGENT-INTERFACE §5): the
     extra's whole world is the briefing; its tool surface is speak-only.
-    Returns the parsed tool-call list (same shape as the v4 agents)."""
+    Returns the parsed tool-call list (same shape as the v4 agents).
+
+    T1 文本即说话 applies to extras too: a reply with plain text and no
+    tool_calls is that extra's spoken words — synthesize the speak call.
+    (The live run showed models often answer in prose; dropping the text
+    left extras permanently silent.)"""
     message = provider.chat_with_tools(
         [{"role": "system", "content": system_text},
          {"role": "user", "content": briefing_text}],
@@ -291,4 +296,34 @@ def extra_tool_calls(provider: Any, system_text: str, briefing_text: str) -> lis
             continue
         calls.append({"name": str(function.get("name", "")), "arguments": args,
                       "tool_call_id": raw.get("id")})
+    if not calls:
+        text = str(message.get("content") or "").strip()
+        if text:
+            # Models sometimes answer with an inline decision JSON instead of
+            # a tool call ({"inner":..., "name":"speak", "arguments":{...}}).
+            # Parse that shape before treating the text as spoken words.
+            stripped = text.strip()
+            if stripped.startswith("`"):
+                # code fence
+                stripped = stripped.strip("`")
+                if stripped.lower().startswith("json"):
+                    stripped = stripped[4:]
+                stripped = stripped.strip()
+            if stripped.startswith("{"):
+                try:
+                    parsed = json.loads(stripped)
+                except (ValueError, TypeError):
+                    parsed = None
+                if isinstance(parsed, dict) and isinstance(parsed.get("name"), str):
+                    args = parsed.get("arguments")
+                    if not isinstance(args, dict):
+                        args = {"text": str(parsed.get("text") or parsed.get("inner") or parsed.get("content") or "")}
+                    calls.append({"name": parsed["name"], "arguments": args})
+                    return calls
+            # No volume/to: the kernel treats a speak without volume as
+            # engine-constructed normal speech (T1), broadcast to everyone
+            # present — exactly like an MC's plain-text reply. Adding
+            # volume would push it through tool-schema validation, which
+            # demands `to` (whisper-only) and rejects the turn.
+            calls.append({"name": "speak", "arguments": {"text": text}})
     return calls

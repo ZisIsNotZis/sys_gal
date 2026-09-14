@@ -35,6 +35,9 @@ P6  reading a file not at your location ....................... test_kernel (rej
 P7  send_message with a missing/wrong target key (new probe) ... test_send_message_without_target_is_helpful
 P8  document action with wrong key (2-day run, 97 rejections) . test_document_action_with_wrong_key_is_helpful
 P9  flashback returned nothing for seeded backstory ............ test_flashback_recalls_seeded_history_and_resolves_aliases
+E1  extra turns die silently at trace-record time ............. test_extra_turns_are_recorded_and_conversational
+E2  extra self-wake chatter loop (replies to own speech) ...... test_extra_turns_are_recorded_and_conversational
+E3  extras permanently silent: content-only replies dropped ... test_extra_turns_are_recorded_and_conversational
 H1/H4 empty checkpoint written at launch ...................... test_launch_checkpoint_is_a_valid_loadable_trace
 H2  duplicate run artifacts ................................... test_runner (unique run ids)
 H3  failed/truncated artifact mislabeled as clean .............. test_trace_completion_gate_rejects_truncated_run (runner)
@@ -314,6 +317,99 @@ class HistoricalFailureGates(unittest.TestCase):
             # The empty-prefix trajectory replays cleanly against the pack.
             replayed = replay_world(pack.build_world(), data["world_events"])
             self.assertEqual(replayed.now.isoformat(), world.now.isoformat())
+
+
+    def test_extra_turns_are_recorded_and_conversational(self):
+        """E1/E2/E3: a stranger_asked must spawn an extra whose reply reaches
+        the world AND the trace, then park instead of chattering.
+
+        E1 — engine _extra_turn passed a plain dict to Trace.record_agent,
+        which reads intention.actor/.kind → AttributeError AFTER the speech
+        was submitted but BEFORE the record; _extra_loop caught only
+        CancelledError, so the task died silently and gather() swallowed the
+        exception. Every run since the async engine landed had zero extra
+        turns and zero extra speech.
+        E2 — the extra's own speech is visible to itself; without draining
+        its perception cursor, has_wakeup() stayed True forever and the
+        extra answered every scheduler pass.
+        E3 — extras answer in prose (no tool call); extra_tool_calls dropped
+        content-only replies, so live-run extras never spoke at all (T1
+        文本即说话 must apply to extras too)."""
+        class ProseExtra:
+            def __init__(self):
+                self.calls = 0
+
+            def chat_with_tools(self, messages, tools):
+                self.calls += 1
+                if self.calls == 1:
+                    return {"role": "assistant", "content": "", "tool_calls": [
+                        {"id": "c1", "type": "function",
+                         "function": {"name": "speak",
+                                      "arguments": '{"text":"我知道那笔记录的事。"}'}}]}
+                # Later turns: inline decision JSON instead of a tool call —
+                # the shape that used to leak verbatim into the world speech.
+                return {"role": "assistant",
+                        "content": json.dumps({"inner": "想想再答",
+                                               "name": "speak",
+                                               "arguments": {"text": "后续回答"}},
+                                              ensure_ascii=False),
+                        "tool_calls": []}
+
+        pack = load_story_pack()
+        world = pack.build_world()
+        trace = Trace("v4-test", "historical-gate-extra-turns")
+        asked = set()
+
+        def agent(state, perception, affordances):
+            if state.actor_id == "陈默" and state.actor_id not in asked:
+                asked.add(state.actor_id)
+                return Intention(state.actor_id, "ask",
+                                 {"question": "请问台账的事？"},
+                                 perception["world_version"])
+            # One follow-up ask to the same stranger (routed to the existing
+            # partner extra), then wait forever.
+            if state.actor_id == "陈默" and len(asked) == 1:
+                asked.add(state.actor_id + "-2")
+                return Intention(state.actor_id, "ask",
+                                 {"question": "那签字的人是谁？"},
+                                 perception["world_version"])
+            return Intention(state.actor_id, "wait",
+                             {"duration_seconds": 3600},
+                             perception["world_version"])
+
+        non_extra = [a for a in world.actors if world.actors[a].role != "extra"]
+        agents = {a: agent for a in non_extra}
+        states = {a: PrivateState(a) for a in non_extra}
+        stub = ProseExtra()
+        engine = AsyncEngine(world, agents, states, trace, None,
+                             extra_call=stub, decision_timeout=10,
+                             max_wall_seconds=60, extra_idle_seconds=60)
+        stop = datetime.fromisoformat("2026-03-16T07:06:00+08:00")
+        reason = engine.run(stop_at=stop, max_turns=300)
+        self.assertEqual(reason, "stop_at_reached")
+
+        # E1: the extra's turns are recorded with role="extra" — exactly one
+        # extra spawned, two turns (initial + follow-up ask routed to it).
+        extra_turns = [t for t in trace.agent_turns if t.get("role") == "extra"]
+        self.assertEqual(len(extra_turns), 2)
+        self.assertTrue(all(t["result"] == "submitted" for t in extra_turns))
+        self.assertEqual(len({t["actor"] for t in extra_turns}), 1)
+
+        # The replies became real speech events; the follow-up answer must be
+        # the parsed speak text, NOT the raw decision JSON.
+        speech = [str(e.payload.get("text", "")) for e in world.event_log
+                  if e.kind == "speech"]
+        self.assertTrue(any("那笔记录" in t for t in speech))
+        self.assertTrue(any(t == "后续回答" for t in speech))
+        self.assertFalse(any(t.startswith("{") for t in speech))
+
+        # E2: no chatter — exactly two provider calls (initial + follow-up).
+        self.assertEqual(stub.calls, 2)
+
+        # No actor task crashed.
+        crashes = [r for r in trace.system_turns
+                   if r["request"].get("kind") == "actor_task_crash"]
+        self.assertEqual(crashes, [])
 
 
 if __name__ == "__main__":

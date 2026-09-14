@@ -375,7 +375,16 @@ class AsyncEngine:
         for actor, event in self._wake_events.items():
             if actor not in self.world.actors:
                 continue
-            if self._ready_now(actor):
+            # Extras wake only on someone else's wake-class event or a
+            # parked follow-up question; their own speech bookkeeping must
+            # not re-arm them (V4-CAST §1).
+            if self._role(actor) == "extra":
+                info = self._extras.get(actor)
+                ready = (self.world.has_external_wakeup(actor)
+                         or bool(info and info.get("pending_question")))
+            else:
+                ready = self._ready_now(actor)
+            if ready:
                 event.set()
         self._scheduler_wake.set()
 
@@ -1009,7 +1018,18 @@ class AsyncEngine:
         for event in new_events:
             if event.kind == "stranger_asked" and event.actor:
                 asker = event.actor
-                if any(x["partner"] == asker for x in self._extras.values()):
+                existing = [x for x in self._extras.values()
+                            if x["partner"] == asker]
+                if existing:
+                    # Conversation continuation: the MC asked the same extra
+                    # again — park the new question and wake it, so the
+                    # follow-up is answered (V4-CAST §1). One conversation
+                    # per MC still holds.
+                    info = existing[0]
+                    info["pending_question"] = str(event.payload.get("question", ""))
+                    info["last_active"] = self.world.now
+                    name = [n for n, x in self._extras.items() if x is info][0]
+                    self._wake_events[name].set()
                     continue
                 if self.extra_call is None or asker not in self.world.actors:
                     continue
@@ -1042,16 +1062,25 @@ class AsyncEngine:
 
     async def _extra_loop(self, name: str, question: str) -> None:
         event = self._wake_events[name]
-        pending_question = question
+        info = self._extras.get(name)
+        if info is None:
+            return
+        info["pending_question"] = question
         try:
             while name in self._extras and name in self.world.actors and not self.stop_reason:
-                asked = pending_question
-                pending_question = ""
                 info = self._extras.get(name)
                 if info is None:
                     return
+                asked = str(info.pop("pending_question", "") or "")
                 await self._extra_turn(name, asked)
-                while name in self._extras and not self._ready_now(name):
+                # The extra's own speech is visible to itself; drain its
+                # cursor so only NEW events (the partner's reply, an
+                # arrival) wake it again — otherwise it chatters forever.
+                if name in self._extras and name in self.world.actors:
+                    self.world.dismiss_events(name)
+                while name in self._extras and not (
+                        self.world.has_external_wakeup(name)
+                        or self._extras.get(name, {}).get("pending_question")):
                     if self.stop_reason:
                         return
                     await event.wait()
@@ -1104,11 +1133,17 @@ class AsyncEngine:
             result, error = "rejected", str(exc)
         except Exception as exc:
             result, error = "agent_error", f"{type(exc).__name__}: {exc}"
+        # Trace.record_agent requires a real Intention (it reads .actor/.kind/
+        # .args); a bare dict made every extra turn die after submitting its
+        # speech, so no extra turn was ever recorded (ticket-21).
+        trace_intention = Intention(name, "speak",
+                                    {"calls": intention_calls},
+                                    self.world.version)
         self.trace.record_agent(state=PrivateState(name),
                                 perception={"observer": name, "time": self.world.now.isoformat(),
                                             "location": location, "events": [], "inbox": [],
                                             "nearby_actors": [], "nearby_items": []},
-                                affordances=[], intention={"kind": "speak", "args": {"calls": intention_calls}},
+                                affordances=[], intention=trace_intention,
                                 result=result,
                                 error=error or None, role="extra")
         self._scheduler_wake.set()
