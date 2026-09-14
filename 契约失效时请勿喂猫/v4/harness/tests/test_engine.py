@@ -306,6 +306,18 @@ class V4ProtocolTests(unittest.TestCase):
         texts = " ".join(str(r.get("text")) for r in agent.delivered)
         self.assertIn("truncated: 2 calls dropped", texts)
 
+    def test_restored_kb_is_not_clobbered_by_seed_rows(self):
+        from harness.kb import ActorKB
+        world = _world()
+        engine = self._engine(world, {"a": FakeV4Agent([]), "b": FakeV4Agent([])},
+                              kb_seeds={"a": [{"keys": ["a"], "desc": "种子"}]})
+        engine._kb["a"] = ActorKB("a", [{"keys": ["a"], "desc": "跑出来的"},
+                                        {"keys": ["新事"], "desc": "运行中记的"}], world.now)
+        engine._init_kb(world.now)
+        descs = [row["desc"] for row in engine._kb["a"].snapshot()["rows"]]
+        self.assertIn("运行中记的", descs)
+        self.assertNotIn("种子", descs)
+
     def test_no_world_action_chain_idles_one_tick(self):
         world = _world()
         agent = FakeV4Agent([[]])

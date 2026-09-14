@@ -498,6 +498,21 @@ class ConceptRegistryTests(unittest.TestCase):
             self.assertEqual(len(room_rows), 1)
             self.assertIn("我在这个房间长大", room_rows[0]["desc"])
 
+    def test_concept_aliases_enrich_the_entity_row_instead_of_duplicating(self):
+        """A concept named after a location must not render twice: its aliases
+        join the auto row's keys and its memory is appended there."""
+        with TemporaryDirectory() as directory:
+            root = self._write_pack(
+                Path(directory),
+                "concepts:\n"
+                "- {id: room-aliases, name: room, aliases: [那个房间], kind: place,\n"
+                "   known_to: [aa], memory: {aa: 我在这里长大。}}\n")
+            pack = load_world_pack(root)
+            rows = [row for row in pack.kb["aa"] if "room" in row["keys"]]
+            self.assertEqual(len(rows), 1, "老家属院-style duplicate row")
+            self.assertEqual(set(rows[0]["keys"]), {"room", "那个房间"})
+            self.assertIn("我在这里长大", rows[0]["desc"])
+
     def test_memory_alone_creates_a_row(self):
         with TemporaryDirectory() as directory:
             root = self._write_pack(

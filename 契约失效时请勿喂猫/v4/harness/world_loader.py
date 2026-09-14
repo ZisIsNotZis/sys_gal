@@ -311,6 +311,10 @@ def _expand_concept_rows(kb: dict[str, list[dict[str, Any]]],
     creating a colliding row. Manual/auto rows win on desc."""
     for actor, rows in kb.items():
         index = {frozenset(str(k) for k in r["keys"]): r for r in rows}
+        # Entity auto-rows are keyed by the bare entity name; a concept whose
+        # name matches one must enrich that row in place, even when the concept
+        # adds aliases (otherwise the place/item renders twice).
+        by_name = {str(r["keys"][0]): r for r in rows if len(r["keys"]) == 1}
         for concept in concepts:
             if concept["kind"] == "generic":
                 continue
@@ -320,6 +324,13 @@ def _expand_concept_rows(kb: dict[str, list[dict[str, Any]]],
             key_set = frozenset(keys)
             memory = str(concept["memory"].get(actor) or "").strip()
             existing = index.get(key_set)
+            if existing is None and concept["aliases"]:
+                base = by_name.pop(concept["name"], None)
+                if base is not None:
+                    index.pop(frozenset(str(k) for k in base["keys"]), None)
+                    base["keys"] = keys
+                    index[key_set] = base
+                    existing = base
             if existing is not None:
                 if memory and memory not in existing["desc"]:
                     existing["desc"] = existing["desc"].rstrip() + "\n我：" + memory
@@ -550,6 +561,8 @@ def world_primer(pack: WorldPack) -> str:
     """
     lines: list[str] = ["【这个世界】"]
     for row in pack.locations:
+        if not row.get("primer", True):
+            continue  # private/off-map place: known only via its own KB row
         place = str(row["id"])
         catalog = pack.descriptions["locations"].get(place, "")
         first = next((ln.strip() for ln in catalog.splitlines()

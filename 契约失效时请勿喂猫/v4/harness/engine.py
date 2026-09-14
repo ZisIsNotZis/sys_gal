@@ -173,12 +173,16 @@ class AsyncEngine:
 
     def _init_kb(self, now: datetime) -> None:
         """V4-AGENT-INTERFACE §6: build each actor's KB from the manifest's
-        kb: seed rows (engine-owned memory; the session never carries it)."""
+        kb: seed rows (engine-owned memory; the session never carries it).
+
+        A restored checkpoint already carries each actor's lived KB —
+        ``restore_checkpoint`` runs before ``run`` — so those actors are left
+        untouched; only actors without a restored notebook are seeded."""
         if not self._kb_seeds:
             return
         from .kb import ActorKB
         for actor, rows in self._kb_seeds.items():
-            if actor in self.world.actors:
+            if actor in self.world.actors and actor not in self._kb:
                 self._kb[actor] = ActorKB(actor, rows, now)
 
     def _persistent_actors(self) -> list[str]:

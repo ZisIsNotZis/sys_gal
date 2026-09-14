@@ -45,15 +45,33 @@ class RowModelTests(unittest.TestCase):
             ActorKB("唐小岚", [{"keys": ["唐小岚"]},
                                {"keys": ["!at=13/45(周八) 99:99"], "desc": "y"}], T0)
 
-    def test_legacy_fields_rows_still_load(self):
-        kb = ActorKB("唐小岚", [
-            {"fields": {"person": "唐小岚", "self": True}, "id": "i", "desc": "我，唐小岚。"},
-            {"fields": {"todo": True}, "id": "t", "desc": "带话"},
-            {"fields": {"reminder": "3/16(周一) 08:30"}, "id": "r", "desc": "别迟到"},
-        ], T0)
+    def test_legacy_fields_rows_are_rejected_for_seeds(self):
+        # V4-AGENT-INTERFACE §6: seeds and update_memory speak the key-set
+        # model only; `fields` survives solely for old checkpoints.
+        with self.assertRaisesRegex(ValueError, "needs at least one key"):
+            ActorKB("唐小岚", [{"fields": {"person": "唐小岚"}, "desc": "我"}], T0)
+
+    def test_legacy_fields_snapshot_still_restores(self):
+        snapshot = {
+            "actor_id": "唐小岚", "shown_seq": 1, "overflow": [], "pending_recall": [],
+            "rows": [
+                {"fields": {"person": "唐小岚", "self": True}, "id": "i",
+                 "desc": "我，唐小岚。"},
+                {"fields": {"todo": True}, "id": "t", "desc": "带话"},
+                {"fields": {"reminder": "3/16(周一) 08:30"}, "id": "r", "desc": "别迟到"},
+            ]}
+        kb = ActorKB.from_snapshot(snapshot, T0)
         lines = kb.due_lines(T0, "", limit=8)
-        self.assertTrue(any(line.startswith("[!always") for line in lines))
+        self.assertTrue(any("!always" in line for line in lines))
         self.assertTrue(any("!at=" in line for line in lines))
+
+    def test_render_labels_the_first_key_and_counts_the_rest(self):
+        kb = ActorKB("唐小岚", [
+            {"keys": ["唐小岚"], "desc": "我"},
+            {"keys": ["老家属院", "家属院", "老街坊"], "desc": "旧居民区"},
+        ], T0)
+        line = next(l for l in kb.due_lines(T0, "老家属院", limit=8) if "旧居民区" in l)
+        self.assertTrue(line.startswith("[老家属院 +2]"), line)
 
     def test_reminder_parsing_is_strict(self):
         self.assertEqual(parse_reminder_time("3/16(周一) 08:30", T0),

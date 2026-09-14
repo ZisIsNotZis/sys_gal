@@ -283,8 +283,19 @@ locations:
   x: -20
   y: 10
   sound_radius: 6
+  known_to: [陈默, 陈默妈]
+  primer: false
   rules:
   - 远程地点：仅电话/消息可达
+  remote: true
+- id: 老家属院
+  x: -40
+  y: 10
+  sound_radius: 6
+  known_to: [陈默, 林瑶, 下棋大爷]
+  primer: false
+  rules:
+  - 远程地点：仅电话/消息可达；当日无法步行到达
   remote: true
 actors:
 - id: 陈默
@@ -300,7 +311,7 @@ actors:
 - id: 林瑶
   location: 女生宿舍
   role: mc
-  inventory: []
+  inventory: [蓝色兔子贴纸]
   known_contacts:
   - 陈默
   - 唐小岚
@@ -357,11 +368,17 @@ actors:
   - 陈默
 items:
 - id: 红色哨子
-  location: null
+  location: 老家属院
   known_to: [陈默]
 - id: 裂纹马克杯
   location: 半坡咖啡馆
   known_to: [唐小岚]
+- id: 蓝色兔子雨伞
+  location: 老家属院
+  known_to: [陈默]
+- id: 蓝色兔子贴纸
+  location: null
+  known_to: [林瑶]
 documents:
 - id: 2013年邻里撤离通知书
   title: 2013年邻里撤离通知书
@@ -1030,3 +1047,41 @@ concepts:
   name: 老照片
   kind: generic
   aliases: [旧记录]
+# ---- Tier-A leftovers: relations that were prose-only before ----
+- id: chen-father
+  name: 陈默爸
+  kind: person
+  aliases: [陈默的爸爸]
+  known_to: [陈默, 陈默妈]
+  desc: 陈默的父亲，跑长途，常年不在家。
+  memory:
+    陈默: 我爸常年在外跑车，家里的事都是我妈一个人扛。
+    陈默妈: 他跑长途，半个月不着家，我一个人对着一屋子安静。
+- id: canteen-husband
+  name: 食堂大妈的丈夫
+  kind: person
+  known_to: [食堂大妈]
+  desc: 食堂大妈的丈夫，跑长途货车，半个月回不来一趟。
+  memory:
+    食堂大妈: 他半个月不着家，回来也是倒头就睡。
+- id: canteen-son
+  name: 食堂大妈的儿子
+  kind: person
+  known_to: [食堂大妈]
+  desc: 食堂大妈的儿子，前年高考失利，现在在她店里帮工。
+  memory:
+    食堂大妈: 儿子在我店里帮工，娘俩一天说不上十句话。
+- id: xiaolan-excolleague
+  name: 唐小岚的前同事
+  kind: person
+  known_to: [唐小岚]
+  desc: 唐小岚上一份工作里的同事——她的一句玩笑让对方当众下不来台。
+  memory:
+    唐小岚: 我把听来的事当笑话讲了半句，她当着一层人的面下不来台。一周之内我就被辞退了。
+- id: xiaolan-exboss
+  name: 唐小岚的前老板
+  kind: person
+  known_to: [唐小岚]
+  desc: 唐小岚上一份工作的老板，辞退她的那个人。
+  memory:
+    唐小岚: 辞退我的决定是他做的。我到今天没想明白，罚的是多嘴，还是被抓住。

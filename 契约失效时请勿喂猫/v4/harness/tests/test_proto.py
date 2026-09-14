@@ -58,6 +58,32 @@ class ToolsTests(unittest.TestCase):
         self.assertIsNotNone(entity_err)
         self.assertIn("needs the 'entity' argument", entity_err or "")
 
+    def test_memory_tool_descriptions_match_the_key_set_schema(self):
+        """Guard a real miss: the schemas moved to key sets while the
+        descriptions still advertised fields:/item:/kinds, which is what made
+        the model write `item:2013年台风台账` as a key in a live run."""
+        from harness.action_schema import _TOOL_DESCRIPTIONS
+        for name in ("update_memory", "recall"):
+            desc = _TOOL_DESCRIPTIONS[name]
+            for banned in ("fields", "kinds"):
+                self.assertNotIn(banned, desc, f"{name} description still mentions {banned!r}")
+        self.assertIn("keys", _TOOL_DESCRIPTIONS["update_memory"])
+        self.assertIn("keys", _TOOL_DESCRIPTIONS["recall"])
+
+    def test_trace_records_the_offered_tool_list(self):
+        from datetime import datetime
+        from harness.kernel import ActorState, LocationState, World
+        from harness.trace import Trace
+        world = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
+                      actors=[ActorState("a", "room")], locations=[LocationState("room")])
+        trace = Trace("v3", "tool-list")
+        trace.record_tools(["wait", "speak"])
+        snapshot = trace.snapshot(world)
+        self.assertEqual(snapshot["tools"], ["wait", "speak"])
+        restored = Trace("v3", "other")
+        restored.restore_from_snapshot(snapshot)
+        self.assertEqual(restored.tools, ["wait", "speak"])
+
     def test_speak_only_tools_for_extras(self):
         self.assertEqual([tool["function"]["name"] for tool in SPEAK_TOOLS], ["speak"])
 

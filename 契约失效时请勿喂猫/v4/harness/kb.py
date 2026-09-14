@@ -133,17 +133,17 @@ def matched_span(keys: Any, queries: Any) -> int:
     return best
 
 
-def _row_keys(entry: dict[str, Any]) -> list[str]:
-    """Normalize a seed/snapshot/update row into a key list.
+def _row_keys(entry: dict[str, Any], *, legacy: bool = False) -> list[str]:
+    """Normalize a row into a key list.
 
-    Accepts the current ``keys`` list and the legacy ``fields`` mapping so that
-    pre-migration checkpoints and seeds still load: text-valued fields become
-    keys, ``todo: true`` becomes ``!always``, ``reminder: <time>`` becomes
-    ``!at=<time>``, ``self: true`` is dropped (identity is derived from the
-    actor's own name).
+    The current shape is ``keys: [...]``. The legacy ``fields`` mapping is read
+    only when ``legacy=True`` — i.e. when restoring a pre-migration checkpoint;
+    seeds and ``update_memory`` must speak the key-set model and nothing else.
     """
     if "keys" in entry:
         return [str(k).strip() for k in entry["keys"]]
+    if not legacy:
+        return []
     keys: list[str] = []
     for name, value in (entry.get("fields") or {}).items():
         if isinstance(value, bool):
@@ -189,6 +189,9 @@ class _Row:
     last_shown: datetime | None = None
     shown_seq: int = 0
     at: datetime | None = None
+    # Key order as authored: the first text key is the row's label when
+    # rendered (concept name first, then aliases). Identity is still the set.
+    order: tuple[str, ...] = ()
 
     @property
     def text_keys(self) -> frozenset[str]:
@@ -199,20 +202,27 @@ class _Row:
         return ALWAYS_KEY in self.keys
 
     def render(self) -> str:
-        if self.at is not None:
-            shown = sorted(render_key(k, self.at) for k in self.keys)
-        else:
-            shown = sorted(self.keys)
-        return f"[{' '.join(shown)}]: {self.desc}"
+        """`[<directives> <label> +N]: desc`. The key set is the row's handle,
+        but listing six aliases on every line is noise: the label is the first
+        key as authored (concept name for registry rows) and `+N` counts the
+        rest. Any single key still addresses the row (fuzzy locate)."""
+        ordered = list(self.order) or sorted(self.keys)
+        directives = [render_key(k, self.at) for k in ordered if k.startswith(_DIRECTIVE)]
+        texts = [k for k in ordered if not k.startswith(_DIRECTIVE)]
+        label = directives + texts[:1]
+        if len(texts) > 1:
+            label.append(f"+{len(texts) - 1}")
+        return f"[{' '.join(label) or key_id(self.keys)}]: {self.desc}"
 
 
 def _make_row(keys: list[str], desc: str, now: datetime) -> _Row:
-    unique = frozenset(keys)
+    order = tuple(dict.fromkeys(keys))
+    unique = frozenset(order)
     at = None
     for key in unique:
         if key.startswith(_AT_PREFIX):
             at = parse_reminder_time(key[len(_AT_PREFIX):], now)
-    return _Row(unique, desc, at=at)
+    return _Row(unique, desc, at=at, order=order)
 
 
 class ActorKB:
@@ -495,7 +505,7 @@ class ActorKB:
 
     def snapshot(self) -> dict[str, Any]:
         return {"actor_id": self.actor_id,
-                "rows": [{"keys": sorted(row.keys),
+                "rows": [{"keys": list(row.order) or sorted(row.keys),
                           "desc": row.desc,
                           "status": row.status,
                           "last_shown": row.last_shown.isoformat() if row.last_shown else None,
@@ -519,7 +529,7 @@ class ActorKB:
         kb._overflow = []
         kb._pending_recall = []
         for entry in state["rows"]:
-            keys = _row_keys(entry)
+            keys = _row_keys(entry, legacy=True)
             if not keys:
                 continue  # pre-migration row with no derivable key
             row = _make_row(keys, str(entry.get("desc", "")), now)

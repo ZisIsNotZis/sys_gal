@@ -24,11 +24,10 @@ from pathlib import Path
 
 from .agent_state import PrivateState
 from .character_loader import load_story_characters
-from .character_session import CharacterSession
 from .checkpoint import load_checkpoint, save_checkpoint
 from .kernel import World
-from .natural_agent import make_persistent_agent, make_provider_gm
-from .npc_agent import make_npc_agent, public_mc_digest, schedule_digest
+from .natural_agent import V4Session, make_persistent_agent_v4
+from .npc_agent import make_npc_agent_v4, public_mc_digest, schedule_digest
 from .provider import provider_from_env
 from .world_loader import world_primer
 from .engine import AsyncEngine
@@ -52,18 +51,18 @@ def resume(checkpoint_path: Path, *, out: Path | None = None,
     world = World.from_checkpoint(base_world, cp["world"])
     apply_idle_wait(world)
 
-    # 2) Provider, GM, and agents. Sessions are restored from the checkpoint so
-    #    each character's conversation history is preserved across the restart;
-    #    only the code that runs it may have changed. ``call`` is a test hook
-    #    for a mock model; production uses the env-tuned resilient provider.
+    # 2) Provider and agents. Sessions are restored from the checkpoint so
+    #    each character's conversation history survives the restart; only the
+    #    code that runs it may have changed. The v4 protocol is the only one
+    #    (V4-AGENT-INTERFACE §0): native tool calls, no GM/judge interpreter.
+    #    ``call`` is a test hook for a mock model; production uses the
+    #    env-tuned resilient provider.
     if call is None:
         provider = provider_from_env(
             max_concurrency=min(len(world.actors),
                                 env_int("V3_PROVIDER_CONCURRENCY", 8)))
-        gm = make_provider_gm(provider)
     else:
         provider = call
-        gm = None
     states = {}
     for actor in world.actors:
         if world.actors[actor].role == "extra":
@@ -71,38 +70,41 @@ def resume(checkpoint_path: Path, *, out: Path | None = None,
         snapshot = cp.get("states", {}).get(actor)
         states[actor] = (PrivateState.from_snapshot(snapshot) if snapshot
                          else PrivateState(actor))
-    # 两层演员制：MC 恢复持久会话；NPC 恢复滚动记忆并走导演简报；extras
-    # 由引擎管理，不配 agent（V4-CAST §1）。
+    # 两层演员制：MC 恢复持久会话；NPC 恢复其会话；extras 由引擎管理，不配 agent。
     primer = world_primer(pack)
     schedule_text = schedule_digest(pack.scheduled, now=world.now)
     npc_director_notes = pack.manifest.get("npc_director_notes", {})
 
-    def npc_context(actor_id: str, _perception) -> dict[str, str]:
-        return {"mc_digest": public_mc_digest(world),
-                "schedule_text": schedule_text,
-                "beat_goal": str(npc_director_notes.get("beat_goals", {}).get(actor_id, ""))}
+    def director_brief(actor_id: str) -> str | None:
+        goal = str(npc_director_notes.get("beat_goals", {}).get(actor_id, ""))
+        if not goal:
+            return None
+        return (f"[导演] 本场目标：{goal}\n"
+                f"主角近况（公开信息）：{public_mc_digest(world)[:400]}\n"
+                f"排程背景（不许剧透）：{schedule_text[:300]}")
 
     agents = {}
     for actor in world.actors:
         role = world.actors[actor].role
-        session_snapshot = cp.get("sessions", {}).get(actor)
-        if role == "npc":
-            agents[actor] = make_npc_agent(seeds[actor], provider, npc_context,
-                                           director_notes=str(npc_director_notes.get(actor, "")),
-                                           session=session_snapshot or {})
-        elif role == "extra":
+        if role == "extra":
             continue
+        session_snapshot = cp.get("sessions", {}).get(actor)
+        session = (V4Session.from_snapshot(session_snapshot, provider)
+                   if session_snapshot else None)
+        if role == "npc":
+            agents[actor] = make_npc_agent_v4(seeds[actor], provider,
+                                              session=session, world_primer=primer)
         else:
-            session = (CharacterSession.from_snapshot(session_snapshot, seeds[actor], provider,
-                                                      state=states[actor], world_primer=primer)
-                       if session_snapshot else None)
-            agents[actor] = make_persistent_agent(seeds[actor], provider, gm, session=session,
-                                                  world_primer=primer)
+            agents[actor] = make_persistent_agent_v4(seeds[actor], provider,
+                                                     session=session, world_primer=primer)
 
     # 3) Trace carries the earlier history so the saved artifact is contiguous.
     run_id = new_run_id("resumed")
     trace = Trace("v3", run_id)
     trace.restore_from_snapshot(cp["trace"])
+    if not trace.tools:
+        from .action_schema import TOOLS
+        trace.record_tools([tool["function"]["name"] for tool in TOOLS])
     out_path = (out or root / "runs" / f"{run_id}.json")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     checkpoint_output = out_path.with_name(out_path.stem + ".checkpoint.json")
@@ -140,7 +142,8 @@ def resume(checkpoint_path: Path, *, out: Path | None = None,
                          max_wall_seconds=env_float("V3_MAX_WALL_SECONDS", 7200.0),
                          mc_idle_heartbeat=env_int("V4_MC_IDLE_HEARTBEAT", 1800),
                          checkpoint=checkpoint,
-                         extra_call=provider)
+                         extra_call=provider,
+                         kb_seeds=pack.kb, director_brief=director_brief)
     runner.restore_checkpoint(cp["runner"])
     holder["runner"] = runner
     trace.save(world, out_path)  # checkpoint at resume start

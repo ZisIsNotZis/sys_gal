@@ -36,10 +36,17 @@ _ROLES = ("大爷|大妈|阿姨|大叔|大姐|师傅|老板|老板娘|代表|社
           "|秘书|同学|学长|学姐|老师|校工|店主|摊主|主任|主席|辅导员")
 _PLACE_TAILS = ("家属院|地下室|器材室|后厨|广播站|糕点铺|县城|合作社|校园社|研究社|编辑部|坊")
 
+# Prose particles/pronouns: a "name" match containing one of these is almost
+# always an over-greedy capture ("会催的妈", "都是我妈") rather than a name.
+_FUNCTION_CHARS = frozenset("的了是我你他她它都也会要有这那个们很就还只把被从和对与后前上中很")
+
 # Order matters only for readability; resolution uses substring containment.
 _PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(rf"[{_SURNAMES}](?:{_ROLES})"),
     re.compile(rf"[小老][{_SURNAMES}]"),
+    re.compile(r"阿[\u4e00-\u9fff]"),
+    # Kinship suffix with a name in front (陈默爸). {2,3} skips bare "爸爸"/"妈妈".
+    re.compile(r"[\u4e00-\u9fff]{2,3}(?:爸|妈|哥|姐|弟|妹)"),
     re.compile(rf"[\u4e00-\u9fff]{{1,4}}(?:{_PLACE_TAILS})"),
     re.compile(r"(?:蓝色兔子(?:贴纸|雨伞|登记)|红色(?:哨子|保温杯)|催(?:稿|办)单|抽水泵|"
                r"登记本|抄件|保温杯|糖罐子|老照片|旧记录|校报草稿|审计包)"),
@@ -115,6 +122,8 @@ def lint(world_root: str | Path) -> list[str]:
                     candidate = match.group(0)
                     if _resolves(candidate, declared):
                         continue
+                    if any(char in _FUNCTION_CHARS for char in candidate):
+                        continue  # over-greedy prose capture, not a name
                     key = (candidate, source)
                     if key in seen:
                         continue

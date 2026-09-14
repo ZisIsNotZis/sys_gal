@@ -32,6 +32,13 @@ class Trace:
         # segment boundaries (compaction points, V4-DESIGN §5.3).
         self.alias_telemetry: dict[str, int] = {}
         self.compactions: list[dict[str, Any]] = []
+        # The static tool surface this run actually offered (cache-safe: the
+        # list never changes mid-run). Recorded so a later view renders what
+        # the model saw instead of whatever the current code declares.
+        self.tools: list[str] = []
+
+    def record_tools(self, names: list[str]) -> None:
+        self.tools = list(names)
 
     def record_alias_telemetry(self) -> dict[str, int]:
         """Merge the adapter's cumulative alias counters into the trace."""
@@ -113,6 +120,7 @@ class Trace:
                 "run_id": self.run_id, "agent_turns": self.agent_turns,
                 "system_turns": self.system_turns, "gm_turns": self.gm_turns,
                 "sessions": self.sessions, "outcome": self.outcome,
+                "tools": list(self.tools),
         "world_events": list(world.replayable_log()),
                 "replay": {"event_count": len(world.event_log), "contiguous": [e.id for e in world.event_log] == list(range(1, len(world.event_log) + 1)),
                            "world_versions_contiguous": [e.world_version for e in world.event_log] == list(range(1, len(world.event_log) + 1)),
@@ -138,6 +146,7 @@ class Trace:
         self.gm_turns = deepcopy(snapshot.get("gm_turns", []))
         self.sessions = deepcopy(snapshot.get("sessions", {}))
         self.outcome = deepcopy(snapshot.get("outcome"))
+        self.tools = list(snapshot.get("tools", []))
 
     def checkpoint_snapshot(self, world: World, runner: Any) -> dict[str, Any]:
         return {"format": "v3-checkpoint-1", "world": world.checkpoint_state(),

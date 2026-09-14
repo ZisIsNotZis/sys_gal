@@ -64,6 +64,8 @@ def main() -> None:
                                                         world_primer=primer)
     run_id = new_run_id("real")
     trace = Trace("v3", run_id)
+    from .action_schema import TOOLS
+    trace.record_tools([tool["function"]["name"] for tool in TOOLS])
     ledger = Ledger(pack.system.get("facts", {}), pack.system)
     endpoint = effective_clock_stop(world, str(pack.manifest["clock"]["stop"]))
     output = root / "runs" / f"{run_id}.json"

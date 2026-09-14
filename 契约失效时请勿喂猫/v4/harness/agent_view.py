@@ -158,14 +158,23 @@ def render_history_view(trajectory: Mapping[str, Any], actor: str) -> str:
 
 def render_chatml_view(trajectory: Mapping[str, Any], actor: str) -> str:
     """Flat provider-visible stream: [tool_list] + [system]/[user]/[assistant]
-    with actual tool calls and per-call tool results in order."""
+    with actual tool calls and per-call tool results in order.
+
+    The tool list is the one the run recorded (the static surface the model was
+    actually offered); only traces from before that was recorded fall back to
+    the current code's declarations.
+    """
     from .action_schema import TOOLS
     lines: list[str] = [f"# ChatML view: {actor}"]
+    recorded = list(trajectory.get("tools") or [])
     lines.append("\n[tool_list]")
-    for tool in TOOLS:
-        function = tool.get("function", {})
-        params = json.dumps(function.get("parameters", {}), ensure_ascii=False)
-        lines.append(f"- {function.get('name')}: {function.get('description', '')} | 参数: {params}")
+    if recorded:
+        lines.extend(f"- {name}" for name in recorded)
+    else:
+        for tool in TOOLS:
+            function = tool.get("function", {})
+            params = json.dumps(function.get("parameters", {}), ensure_ascii=False)
+            lines.append(f"- {function.get('name')}: {function.get('description', '')} | 参数: {params}")
     session = trajectory.get("sessions", {}).get(actor, {})
     for message in session.get("messages", []):
         role = str(message.get("role", "?"))
@@ -237,7 +246,12 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--history", action="store_true",
                         help="full per-actor log from story start to end, replayed from the trace")
     args = parser.parse_args(argv)
-    data = json.loads(Path(args.trajectory).read_text(encoding="utf-8"))
+    try:
+        data = json.loads(Path(args.trajectory).read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise SystemExit(f"cannot read trajectory {args.trajectory}: {exc}") from exc
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"trajectory {args.trajectory} is not valid JSON: {exc}") from exc
     actors = list(data.get("sessions", {})) or sorted(
         {t["actor"] for t in data.get("agent_turns", [])})
     if args.actor:
