@@ -313,8 +313,8 @@ class ActorKB:
                                    f"the row's keys are [{sorted(candidates[0].keys)}]"), []
         if len(candidates) > 1:
             listed = " / ".join(str(sorted(r.keys)) for r in candidates[:5])
-            return None, None, [f"[{sorted(target)}] is ambiguous; you might mean: {listed}"]
-        return None, None, [f"[{sorted(target)}] no match"]
+            return None, None, [f"keys {sorted(target)} are ambiguous; you might mean: {listed}"]
+        return None, None, [f"no row keyed {sorted(target)}"]
 
     # ------------------------------------------------------------- mutation
 
@@ -331,7 +331,7 @@ class ActorKB:
             kind = str(op.get("op", ""))
             keys = _row_keys(op)
             if kind not in {"open", "edit", "close"}:
-                errors.append(f"[{sorted(keys)}] unknown op: {kind or '(missing)'}")
+                errors.append(f"keys {sorted(keys)}: unknown op: {kind or '(missing)'}")
                 telemetry["rejected"] += 1
                 continue
             error = _validate_keys(keys, where=f"[{sorted(keys)}]", now=now)
@@ -356,12 +356,12 @@ class ActorKB:
                     telemetry["applied"] += 1
                     continue
                 if ALWAYS_KEY in target and self._open_always() >= ALWAYS_OPEN_LIMIT:
-                    errors.append(f"[{sorted(keys)}] always-bringup limit reached "
+                    errors.append(f"keys {sorted(keys)}: always-bringup limit reached "
                                   f"({ALWAYS_OPEN_LIMIT})")
                     telemetry["rejected"] += 1
                     continue
                 if not isinstance(desc, str) or not desc.strip():
-                    errors.append(f"[{sorted(keys)}] missing desc")
+                    errors.append(f"keys {sorted(keys)}: missing desc")
                     telemetry["rejected"] += 1
                     continue
                 self._rows[target] = _make_row(keys, desc, now)
@@ -380,7 +380,7 @@ class ActorKB:
                 telemetry["fuzzy_match"] += 1
             if kind == "edit":
                 if row.status == "closed":
-                    errors.append(f"[{sorted(keys)}] wrong state: closed rows can "
+                    errors.append(f"keys {sorted(keys)}: wrong state: closed rows can "
                                   f"only be reopened")
                     telemetry["rejected"] += 1
                     continue
@@ -389,11 +389,11 @@ class ActorKB:
                 continue
             # close
             if row.status == "closed":
-                errors.append(f"[{sorted(keys)}] wrong state: already closed")
+                errors.append(f"keys {sorted(keys)}: wrong state: already closed")
                 telemetry["rejected"] += 1
                 continue
             if self.actor_id in row.keys:
-                errors.append(f"[{sorted(keys)}] cannot close your identity row")
+                errors.append(f"keys {sorted(keys)}: cannot close your identity row")
                 telemetry["always_rejected"] += 1
                 continue
             row.status = "closed"

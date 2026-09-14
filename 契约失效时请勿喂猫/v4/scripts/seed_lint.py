@@ -146,10 +146,6 @@ def lint(world_root: str | Path) -> list[str]:
     pack = load_world_pack(root)
     declared = _declared(pack)
     kb_keys, universal = _kb_keys(pack)
-    # Public figures (cast members) are common knowledge as *people*: a place
-    # description may name the person who works there without every reader
-    # having met them. Resolving their formal name ≠ knowing them personally.
-    public_figures = {str(r["id"]) for r in pack.actors}
     findings: list[str] = []
 
     sources: list[tuple[str, str]] = []
@@ -160,9 +156,12 @@ def lint(world_root: str | Path) -> list[str]:
     # A file defines the thing it is *about*: its own title always resolves for
     # every reader (the document/location is the definition of the term).
     self_defining: dict[str, set[str]] = {}
+    universal_from_titles: set[str] = set()
     for source, text in sources:
         title = text.splitlines()[0].lstrip("# ").strip() if text else ""
         self_defining[source] = {title} if title else set()
+        if title:
+            universal_from_titles.add(title)
 
     # ① marked references, scoped per recipient
     checked_markers = 0
@@ -172,7 +171,7 @@ def lint(world_root: str | Path) -> list[str]:
             for name in ref_names(line):
                 checked_markers += 1
                 def resolves_for(a: str) -> bool:
-                    return (name in universal or name in public_figures
+                    return (name in universal or name in universal_from_titles
                             or name in self_defining.get(source, set())
                             or _resolves(name, kb_keys.get(a, set())))
                 if holders is None:
@@ -189,6 +188,10 @@ def lint(world_root: str | Path) -> list[str]:
     seen: set[tuple[str, str]] = set()
     for source, text in sources:
         for line_no, line in enumerate(text.splitlines(), start=1):
+            # Contact `as:` lists *declare* nicknames; they are metadata, not
+            # prose, so their tokens cannot be "unmarked references".
+            if re.search(r"as: \[", line):
+                continue
             for regex in _PATTERNS:
                 for match in regex.finditer(line):
                     candidate = match.group(0)
@@ -217,7 +220,6 @@ def lint(world_root: str | Path) -> list[str]:
         for name in ref_names(notice):
             missing = [a for a in holders
                        if a in kb_keys and not (name in universal
-                                                or name in public_figures
                                                 or _resolves(name, kb_keys[a]))]
             if missing:
                 findings.append(
@@ -225,8 +227,7 @@ def lint(world_root: str | Path) -> list[str]:
                     f"resolve for {', '.join(missing)}")
     for name in ref_names(str(pack.manifest.get("system", {}).get("facts", {}))):
         missing = [a for a, keys in kb_keys.items()
-                   if not (name in universal or name in public_figures
-                           or _resolves(name, keys))]
+                   if not (name in universal or _resolves(name, keys))]
         if missing:
             findings.append(
                 f"manifest system.facts: [[{name}]] does not resolve for "

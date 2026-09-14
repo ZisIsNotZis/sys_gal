@@ -250,10 +250,13 @@ class WorldPackTests(unittest.TestCase):
         pack = load_world_pack(ROOT / "world")
         chen = [row for row in pack.kb["陈默"] if "!contact" in row["keys"]]
         formal = {next(k for k in row["keys"] if k != "!contact") for row in chen}
-        self.assertEqual(formal, {"林瑶", "唐小岚", "陈默妈", "班长"})
+        # The institutional figures (宿管阿姨/辅导员) are known in advance too:
+        # every cast member who plausibly knows them holds a contact row.
+        self.assertEqual(formal,
+                         {"林瑶", "唐小岚", "陈默妈", "班长", "宿管阿姨", "辅导员"})
         mom = next(row for row in chen if "陈默妈" in row["keys"])
         self.assertIn("妈妈", mom["keys"], "陈默's private nickname for his mother")
-        self.assertNotIn("陈默妈", mom["keys"].index("陈默妈") * [0] or ["x"][:0])
+        self.assertIn("陈默妈", mom["keys"], "the formal name is the row's anchor")
         # 昵称是私有的：妈妈这个称呼不属于唐小岚的联系人行。
         xiaolan = [row for row in pack.kb["唐小岚"] if "!contact" in row["keys"]]
         self.assertFalse(any("妈妈" in row["keys"] for row in xiaolan))

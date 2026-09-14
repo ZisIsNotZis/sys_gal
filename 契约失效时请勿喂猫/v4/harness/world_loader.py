@@ -263,9 +263,15 @@ def _expand_entity_rows(kb: dict[str, list[dict[str, Any]]],
                 continue
             entity_rows.append((entity_id, _plain_description(markdown),
                                 row.get("known_to")))
+    remote_actors = {str(r["id"]) for r in fields["actors"] if r.get("remote")}
     for actor, rows in kb.items():
         present = {frozenset(str(k) for k in r["keys"]) for r in rows}
         for entity_id, desc, known_to in entity_rows:
+            # A remote actor (陈默妈) holds no public world rows at all: their
+            # KB is only what reaches them over the phone plus their own
+            # concepts. Explicitly known_to'd entities still land.
+            if actor in remote_actors and known_to is None:
+                continue
             if known_to is not None and actor not in known_to:
                 continue
             keys = frozenset({entity_id})

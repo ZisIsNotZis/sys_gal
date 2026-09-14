@@ -89,14 +89,15 @@ def main() -> int:
     for pattern in _PROSE_GLOBS:
         for path in sorted(root.glob(pattern)):
             original = path.read_text(encoding="utf-8")
-            body, lines = original.split("\n", 1) if "\n" in original else (original, "")
-            # Line 1 is the `# title` — leave it; mark the body.
-            body_marked, n1 = _mark_text(body, names)
-            lines_marked, n2 = _mark_text(lines, names)
-            marked = body_marked + ("\n" + lines_marked if lines else "")
+            lines = original.splitlines(keepends=True)
+            # Line 1 is the `# title` — the file's own name, never marked
+            # (it is the definition of the term, and must stay a clean title).
+            title, body = (lines[0], "".join(lines[1:])) if lines else ("", "")
+            body_marked, n = _mark_text(body, names)
+            marked = title + body_marked
             if marked != original:
-                total += n1 + n2
-                print(f"{path.relative_to(root)}: {n1 + n2} marker(s)")
+                total += n
+                print(f"{path.relative_to(root)}: {n} marker(s)")
                 if not args.dry_run:
                     path.write_text(marked, encoding="utf-8")
 

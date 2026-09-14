@@ -158,7 +158,7 @@ class MutationTests(unittest.TestCase):
 
     def test_no_match_and_unknown_op(self):
         errs, _, _ = self.kb.apply_ops([{"keys": ["没有的"], "op": "close"}], T0)
-        self.assertTrue(any("no match" in e for e in errs))
+        self.assertTrue(any("no row keyed" in e for e in errs), errs)
         errs, _, _ = self.kb.apply_ops([{"keys": ["草稿"], "op": "rename"}], T0)
         self.assertTrue(any("unknown op" in e for e in errs))
 

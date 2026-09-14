@@ -45,6 +45,7 @@ locations:
   x: -6
   y: 5
   sound_radius: 12
+  known_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 食堂大妈, 辅导员, 班长, 林瑶室友, 下棋大爷]
   rules:
   - 男生止步于一楼大厅
   - 23:00 后保持安静
@@ -66,6 +67,7 @@ locations:
   x: 14
   y: 0
   sound_radius: 12
+  known_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 食堂大妈, 辅导员, 班长, 林瑶室友, 下棋大爷]
   rules:
   - 原件经借阅登记后方可翻阅，不得带离
   - 17:00 闭馆，晚间仅值班学生留守
@@ -87,6 +89,7 @@ locations:
   x: 0
   y: 12
   sound_radius: 12
+  known_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 食堂大妈, 辅导员, 班长, 林瑶室友, 下棋大爷]
   rules:
   - 18:00 后无人值班
   - 审计材料不得外借，仅限在场查阅
@@ -107,6 +110,7 @@ locations:
   x: 14
   y: 12
   sound_radius: 14
+  known_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 食堂大妈, 辅导员, 班长, 林瑶室友, 下棋大爷]
   rules:
   - 22:00 打烊
   - 吧台内非请莫入
@@ -128,6 +132,7 @@ locations:
   x: 28
   y: 0
   sound_radius: 30
+  known_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 食堂大妈, 辅导员, 班长, 林瑶室友, 下棋大爷]
   extras:
   - fragment: 路过的学生
     rarity: common
@@ -145,6 +150,7 @@ locations:
   x: 8
   y: 22
   sound_radius: 20
+  known_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 食堂大妈, 辅导员, 班长, 林瑶室友, 下棋大爷]
   rules:
   - 饭点排队，先到先得
   - 15:00–16:30 闭餐整理
@@ -166,6 +172,7 @@ locations:
   x: 20
   y: 16
   sound_radius: 12
+  known_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 食堂大妈, 辅导员, 班长, 林瑶室友, 下棋大爷]
   rules:
   - 7:00–23:00 营业
   extras:
@@ -185,6 +192,7 @@ locations:
   x: 34
   y: 14
   sound_radius: 26
+  known_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 食堂大妈, 辅导员, 班长, 林瑶室友, 下棋大爷]
   rules:
   - 22:30 后熄灯清场
   extras:
@@ -204,6 +212,7 @@ locations:
   x: 8
   y: -8
   sound_radius: 8
+  known_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 食堂大妈, 辅导员, 班长, 林瑶室友, 下棋大爷]
   rules:
   - 保持安静
   - 带书出馆须借阅登记
@@ -225,6 +234,7 @@ locations:
   x: 0
   y: -14
   sound_radius: 18
+  known_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 食堂大妈, 辅导员, 班长, 林瑶室友, 下棋大爷]
   rules:
   - 22:00 后锁楼
   - 公告栏张贴须经学生会盖章
@@ -245,6 +255,7 @@ locations:
   x: 36
   y: 24
   sound_radius: 22
+  known_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 食堂大妈, 辅导员, 班长, 林瑶室友, 下棋大爷]
   rules:
   - 18:00–24:00 出摊
   extras:
@@ -326,6 +337,7 @@ actors:
 - id: 陈默妈
   location: 陈默家
   role: npc
+  remote: true
 - id: 林瑶室友
   location: 女生宿舍
   role: npc
@@ -699,35 +711,51 @@ contacts:
   - {of: 林瑶}
   - {of: 唐小岚}
   - {of: 班长}
+  - {of: 宿管阿姨}
+  - {of: 辅导员}
   林瑶:
   - {of: 陈默}
   - {of: 唐小岚}
   - {of: 班长}
   - {of: 辅导员}
+  - {of: 宿管阿姨}
   唐小岚:
   - {of: 陈默}
   - {of: 林瑶}
   - {of: 班长}
+  - {of: 辅导员}
+  - {of: 宿管阿姨}
   宿管阿姨:
   - {of: 林瑶}
   - {of: 陈默}
   食堂大妈:
   - {of: 陈默}
   - {of: 林瑶}
+  - {of: 宿管阿姨}
+  - {of: 辅导员}
   辅导员:
   - {of: 林瑶}
   - {of: 班长}
+  - {of: 陈默, as: [档案室兼职的那个学生]}
+  - {of: 宿管阿姨}
   班长:
   - {of: 陈默}
   - {of: 林瑶}
   - {of: 辅导员}
+  - {of: 宿管阿姨}
   陈默妈:
   - {of: 陈默, as: [儿子]}
+  - {of: 林瑶, as: [小林, 林瑶]}
   林瑶室友:
   - {of: 林瑶, as: [瑶姐]}
   - {of: 唐小岚}
+  - {of: 陈默, as: [档案室那个男生]}
+  - {of: 宿管阿姨}
+  - {of: 辅导员}
   下棋大爷:
   - {of: 陈默}
+  - {of: 宿管阿姨}
+  - {of: 辅导员}
 
 # concepts: every named thing that is not an actor/location/item/document.
 # Each gets a definition (what it is), the actors who know it (knowledge row),
