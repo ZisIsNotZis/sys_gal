@@ -39,6 +39,7 @@ from .kernel import (ActionRejected, Intention, TICK_SECONDS,
 from .npc_agent import (build_extra_briefing, build_extra_system_prompt,
                         generate_stranger_name, sample_extra)
 from .prompt import render_world_message, _event_sentence
+from .kb import CONTACT_KEY
 from .repetition import RepetitionMonitor
 
 AgentFn = Callable[[PrivateState, dict, list[dict]], Any]
@@ -170,6 +171,37 @@ class AsyncEngine:
         if self.checkpoint is not None:
             self.checkpoint()
         return self.stop_reason or "stopped"
+
+    def _sync_contacts(self, actor_id: str) -> None:
+        """Mirror the actor's open contact rows into known_contacts (T3 裁决).
+
+        The kernel gates remote contact by ``known_contacts`` and stays
+        KB-free; the engine is the only KB-aware component, so it derives the
+        addressable formal names from `!contact` rows before each turn. Called
+        after restore as well, so a resumed notebook keeps its contacts."""
+        kb = self._kb.get(actor_id)
+        actor = self.world.actors.get(actor_id)
+        if kb is None or actor is None:
+            return
+        names: set[str] = set()
+        aliases: dict[str, str] = {}
+        for row in kb.snapshot()["rows"]:
+            if row.get("status", "open") != "open":
+                continue
+            keys = [str(k) for k in row.get("keys", [])]
+            if CONTACT_KEY not in keys:
+                continue
+            texts = [k for k in keys if not k.startswith("!")]
+            if not texts:
+                continue
+            # First key as authored is the formal name; the rest are the
+            # actor's private nicknames for that person.
+            formal = texts[0]
+            names.add(formal)
+            for alias in texts[1:]:
+                aliases.setdefault(alias, formal)
+        actor.known_contacts = names
+        actor.contact_aliases = aliases
 
     def _init_kb(self, now: datetime) -> None:
         """V4-AGENT-INTERFACE §6: build each actor's KB from the manifest's
@@ -442,6 +474,7 @@ class AsyncEngine:
         v4 = hasattr(self.agents[actor_id], "session_obj")
         if v4:
             knowledge_lines = self._knowledge_lines(actor_id, perception, affordances)
+            self._sync_contacts(actor_id)
             director = (self.director_brief(actor_id)
                         if self.director_brief and self._role(actor_id) == "npc" and npc_reason
                         else None)

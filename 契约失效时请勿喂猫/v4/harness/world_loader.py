@@ -12,6 +12,7 @@ import re
 
 import yaml
 
+from .kb import CONTACT_KEY, _MIN_KEY_CHARS
 from .kernel import ActorState, LocationState, World
 
 
@@ -24,7 +25,9 @@ class DescriptionCatalog(Mapping[str, str]):
 
     def __getitem__(self, key: str) -> str:
         try:
-            return self._paths[key].read_text(encoding="utf-8").strip()
+            # [[name]] markers are linter-only; every read path (KB rows,
+            # world primer, entity descriptions) gets clean text.
+            return strip_refs(self._paths[key].read_text(encoding="utf-8").strip())
         except KeyError:
             raise KeyError(key) from None
 
@@ -92,6 +95,7 @@ class WorldPack:
     system: dict[str, Any]
     kb: dict[str, list[dict[str, Any]]]
     concepts: tuple[dict[str, Any], ...]
+    contacts: dict[str, list[dict[str, Any]]]
     # canonical name -> aliases, for every actor/location/item/document/concept.
     # flashback uses it to resolve "老街坊" to its registered concept.
     lexicon: dict[str, tuple[str, ...]]
@@ -120,7 +124,7 @@ class WorldPack:
                           if item not in inventory_items}
         document_defs = {_as_str(row.get("id"), "document id"): {
             "title": _as_str(row.get("title", row.get("id")), "document title"),
-            "content": _as_str(row.get("content", ""), "document content"),
+            "content": strip_refs(_as_str(row.get("content", ""), "document content")),
             "reading_seconds": _as_int(row.get("reading_seconds", 30), "reading_seconds"),
             **({"labels": list(row["labels"])} if "labels" in row else {}),
         } for row in self.documents}
@@ -155,6 +159,14 @@ class WorldPack:
                                             "engine.state_refresh_rounds")
         world.description_refresh_rounds = _as_int(engine_cfg.get("description_refresh_rounds", 99999),
                                                   "engine.description_refresh_rounds")
+        # Seeded contacts become the initial addressable set (T3); the engine
+        # re-derives it from the actor's `!contact` rows every turn, so run-time
+        # additions and checkpoint restores flow through the same gate.
+        for actor_id, rows in self.contacts.items():
+            if actor_id in world.actors:
+                world.actors[actor_id].known_contacts = {row["of"] for row in rows}
+                world.actors[actor_id].contact_aliases = {
+                    alias: row["of"] for row in rows for alias in row["as"]}
         return world
 
 
@@ -181,23 +193,57 @@ def load_world_pack(root: str | Path) -> WorldPack:
                   | {str(row["id"]) for row in fields["locations"]}
                   | {str(row["id"]) for row in fields["items"]}
                   | {str(row["id"]) for row in fields["documents"]})
-    kb = _validate_kb(manifest["kb"], actors=actor_ids)
-    kb = _expand_entity_rows(kb, fields, descriptions)
     concepts = _validate_concepts(manifest.get("concepts", ()), actors=actor_ids,
                                   entity_ids=entity_ids)
+    kb = _validate_kb(manifest["kb"], actors=actor_ids)
+    kb = _expand_entity_rows(kb, fields, descriptions)
+    # Strip [[name]] markers from every authored string the model could see
+    # (T5 裁决): the markers are linter-only syntax.
+    for row in manifest.get("scheduled", ()):
+        if isinstance(row, dict) and "notice" in row:
+            row["notice"] = strip_refs(row["notice"])
+    for row in manifest.get("locations", ()):
+        for extra in (row.get("extras") or ()):
+            if isinstance(extra, dict) and "knowledge_notes" in extra:
+                extra["knowledge_notes"] = strip_refs(extra["knowledge_notes"])
+    for key, value in (manifest.get("system", {}).get("facts", {}) or {}).items():
+        manifest["system"]["facts"][key] = strip_refs(value)
+        manifest["system"]["facts"][strip_refs(key)] = strip_refs(value)
     kb = _expand_concept_rows(kb, concepts, entity_ids)
+    contacts = _validate_contacts(manifest.get("contacts"), actors=actor_ids)
+    kb = _expand_contact_rows(kb, contacts)
     lexicon = _build_lexicon(fields, concepts)
     return WorldPack(root, manifest, descriptions, **fields,
                      system=dict(manifest.get("system", {})), kb=kb,
-                     concepts=concepts, lexicon=lexicon)
+                     concepts=concepts, lexicon=lexicon, contacts=contacts)
+
+
+import re as _re
+
+_REF_RE = _re.compile(r"\[\[([^\]\[]+)\]\]")
+
+
+def strip_refs(text: Any) -> str:
+    """Remove [[name]] reference markers from authored seed prose (T5 裁决).
+
+    The markers exist for the seed linter only — the model must never see
+    them. Applied at every authored-string entry point.
+    """
+    return _REF_RE.sub(r"\1", str(text))
+
+
+def ref_names(text: Any) -> list[str]:
+    """The [[name]] markers in a piece of authored prose, in order."""
+    return _REF_RE.findall(str(text))
 
 
 def _plain_description(markdown: str) -> str:
     """Strip the '# 标题' heading and join the first paragraph — the KB row
-    carries the plain description, not the markdown wrapper."""
+    carries the plain description, not the markdown wrapper. Also strips
+    [[name]] markers: linter-only syntax must never reach the model."""
     lines = [line.strip() for line in markdown.strip().splitlines()]
     body = [line for line in lines if line and not line.startswith("#")]
-    return ("\n".join(body).split("\n\n")[0] or markdown.strip()).strip()
+    return strip_refs(("\n".join(body).split("\n\n")[0] or markdown.strip()).strip())
 
 
 def _expand_entity_rows(kb: dict[str, list[dict[str, Any]]],
@@ -227,6 +273,59 @@ def _expand_entity_rows(kb: dict[str, list[dict[str, Any]]],
                 continue
             rows.append({"keys": [entity_id], "desc": desc})
             present.add(keys)
+    return kb
+
+
+def _validate_contacts(contacts: Any, *, actors: set[str]) -> dict[str, list[dict[str, str]]]:
+    """Validate the contacts: seed section (V4-AGENT-INTERFACE T3). Each entry
+    is one contact row: {of: actor, as: [nicknames]} — the model's own private
+    names for that person, expanded into a `!contact` KB row."""
+    if contacts is None:
+        return {}
+    if not isinstance(contacts, dict):
+        raise ValueError("contacts: must be a mapping of actor id to row list")
+    result: dict[str, list[dict[str, Any]]] = {}
+    for actor_id, rows in contacts.items():
+        if actor_id not in actors:
+            raise ValueError(f"contacts: references unknown actor {actor_id!r}")
+        if not isinstance(rows, list):
+            raise ValueError(f"contacts for {actor_id} must be a list")
+        normalized: list[dict[str, Any]] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                raise ValueError(f"contacts rows for {actor_id} must be mappings")
+            of = str(row.get("of", "")).strip()
+            if of not in actors or of == actor_id:
+                raise ValueError(f"contacts row for {actor_id} has invalid 'of': {of!r}")
+            as_list = row.get("as", ()) or ()
+            if isinstance(as_list, str):
+                as_list = [as_list]
+            as_list = [a for a in as_list if isinstance(a, str) and a.strip()]
+            if any(len(a.strip()) < _MIN_KEY_CHARS for a in as_list):
+                raise ValueError(
+                    f"contacts row for {actor_id}->{of} has a too-short nickname "
+                    f"(min {_MIN_KEY_CHARS} chars): {as_list!r}")
+            normalized.append({"of": of,
+                               "as": [a.strip() for a in as_list if a.strip()]})
+        result[str(actor_id)] = normalized
+    return result
+
+
+def _expand_contact_rows(kb: dict[str, list[dict[str, Any]]],
+                         contacts: dict[str, list[dict[str, str]]]) -> dict[str, list[dict[str, Any]]]:
+    """Each seeded contact becomes one `!contact` KB row: keys = formal name +
+    the actor's private nicknames, desc = a first-person address-book line."""
+    from .kb import CONTACT_KEY  # the directive is a kb-layer constant
+    for actor_id, rows in contacts.items():
+        present = {frozenset(str(k) for k in r["keys"]) for r in kb[actor_id]}
+        for row in rows:
+            keys = [CONTACT_KEY, row["of"], *row["as"]]
+            if frozenset(keys) in present:
+                continue  # hand-written row wins
+            nick = "、".join(row["as"]) if row["as"] else ""
+            desc = (f"联系人：{row['of']}" + (f"（我称{'、'.join(row['as'])}）" if nick else "")
+                    + "。要联系就发短信；想记下关于这个人的事，直接 edit 这行。")
+            kb[actor_id].append({"keys": keys, "desc": desc})
     return kb
 
 
@@ -297,7 +396,9 @@ def _validate_concepts(concepts: Any, *, actors: set[str],
             raise ValueError(f"concept {cid} needs a desc (what it is)")
         result.append({"id": cid, "name": name, "kind": kind,
                        "aliases": tuple(a.strip() for a in aliases),
-                       "known_to": tuple(known), "memory": dict(memory), "desc": desc})
+                       "known_to": tuple(known),
+                       "memory": {k: strip_refs(v) for k, v in memory.items()},
+                       "desc": strip_refs(desc)})
     return tuple(result)
 
 
@@ -530,7 +631,7 @@ def _validate_kb(kb: Any, actors: set[str]) -> dict[str, list[dict[str, Any]]]:
             if not isinstance(desc, str) or not desc.strip():
                 raise ValueError(f"kb row {sorted(key_set)} for {actor_id} needs a "
                                  f"non-empty desc")
-            normalized.append({"keys": sorted(key_set), "desc": str(desc)})
+            normalized.append({"keys": sorted(key_set), "desc": strip_refs(str(desc))})
         if not any(actor_id in row["keys"] for row in normalized):
             raise ValueError(f"actor {actor_id} needs an identity kb row keyed by "
                              f"their own name ({actor_id!r})")

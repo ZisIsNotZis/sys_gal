@@ -33,9 +33,11 @@ REMINDER_REPLAY_MINUTES = SCHEDULED_REPLAY_MINUTES
 TODO_OPEN_LIMIT = ALWAYS_OPEN_LIMIT
 
 ALWAYS_KEY = "!always"
+CONTACT_KEY = "!contact"
 _AT_PREFIX = "!at="
 _DIRECTIVE = "!"
 _MIN_KEY_CHARS = 2
+_KNOWN_DIRECTIVES = frozenset({ALWAYS_KEY, CONTACT_KEY})
 
 _WEEKDAY = {"一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "日": 6}
 _WEEKDAY_CHAR = {v: k for k, v in _WEEKDAY.items()}
@@ -119,6 +121,39 @@ def hits(keys: Any, queries: Any) -> bool:
     return False
 
 
+def resolve_name(query: Any, candidates: Any) -> tuple[str | None, str | None]:
+    """Resolve a name-bearing argument against a candidate set (T4 裁决).
+
+    Same normalization as :func:`hits`; **exact-first** so a call that works
+    today (``text {target: 陈默}``) never becomes ambiguous just because other
+    candidates contain it as a substring. Returns ``(resolved, note)``:
+
+    - exact hit                     -> (name, None)
+    - one fuzzy hit                 -> (name, warning line teaching the form)
+    - several fuzzy hits            -> (None, ambiguity listing candidates)
+    - no hit                        -> (None, rejection listing what's available)
+
+    The caller turns ``note`` into a rejection or appends it to the tool result.
+    """
+    text = normalize(query)
+    if not text:
+        return None, "empty name"
+    names = [str(c) for c in candidates if str(c).strip()]
+    for name in names:
+        if normalize(name) == text:
+            return name, None
+    fuzzy = [name for name in names
+             if hits([name], [text]) or hits([text], [name])]
+    if len(fuzzy) == 1:
+        return fuzzy[0], (f"resolved '{query}' to '{fuzzy[0]}' by fuzzy match — "
+                          f"use the exact name next time")
+    if len(fuzzy) > 1:
+        listed = " / ".join(sorted(fuzzy)[:6])
+        return None, f"ambiguous name '{query}': {listed}"
+    available = " / ".join(sorted(names)[:8]) if names else "(none)"
+    return None, f"unknown name '{query}'; available: {available}"
+
+
 def matched_span(keys: Any, queries: Any) -> int:
     """Longest text key matching any query — replay priority ('highest match')."""
     needles = [normalize(k) for k in keys if not str(k).startswith(_DIRECTIVE)]
@@ -172,7 +207,7 @@ def _validate_keys(keys: list[str], *, where: str, now: datetime,
             if key.startswith(_AT_PREFIX):
                 if parse_reminder_time(key[len(_AT_PREFIX):], now) is None:
                     return f"{where}: unparseable scheduled key: {key}"
-            elif key != ALWAYS_KEY:
+            elif key not in _KNOWN_DIRECTIVES:
                 return f"{where}: unknown directive key: {key}"
         elif len(key) < _MIN_KEY_CHARS and key != actor_id:
             # Short keys match too much; the actor's own identity key is the

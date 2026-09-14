@@ -78,6 +78,9 @@ class ActorState:
     sleeping: bool = False
     inbox: list[dict[str, Any]] = field(default_factory=list)
     known_contacts: set[str] = field(default_factory=set)
+    # Contact aliases: nickname -> formal id (T3). The actor's own private
+    # names for people; the formal names live in known_contacts.
+    contact_aliases: dict[str, str] = field(default_factory=dict)
     # In-progress action bookkeeping for the interrupt mechanism.
     current_action: dict[str, Any] | None = None
     # A suspended action: {"payload", "remaining_seconds", "interrupted_by"}.
@@ -260,6 +263,7 @@ class World:
                               "busy_until": value.busy_until.isoformat() if value.busy_until else None,
                               "sleeping": value.sleeping, "inbox": copy.deepcopy(value.inbox),
                               "known_contacts": sorted(value.known_contacts),
+                              "contact_aliases": dict(value.contact_aliases),
                               "current_action": copy.deepcopy(value.current_action),
                               "pending": copy.deepcopy(value.pending),
                               "observed_locations": sorted(value.observed_locations),
@@ -311,15 +315,23 @@ class World:
             source = base or self
             actors = {}
             for key, row in state["actors"].items():
-                actors[key] = ActorState(str(row["id"]), str(row["location"]),
-                    set(row["inventory"]), datetime.fromisoformat(row["busy_until"]) if row["busy_until"] else None,
-                    bool(row["sleeping"]), copy.deepcopy(row["inbox"]), set(row["known_contacts"]),
-                    copy.deepcopy(row.get("current_action")), copy.deepcopy(row.get("pending")),
-                    set(row.get("observed_locations", ())), int(row.get("rounds_since_observation", 0)),
-                    bool(row.get("observe_request", False)),
-                    set(row.get("described_locations", ())), int(row.get("rounds_since_descriptions", 0)),
-                    bool(row.get("force_observation", False)),
-                    str(row.get("role", "mc")))
+                actors[key] = ActorState(
+                    id=str(row["id"]), location=str(row["location"]),
+                    inventory=set(row["inventory"]),
+                    busy_until=datetime.fromisoformat(row["busy_until"]) if row["busy_until"] else None,
+                    sleeping=bool(row["sleeping"]),
+                    inbox=copy.deepcopy(row["inbox"]),
+                    known_contacts=set(row["known_contacts"]),
+                    contact_aliases=dict(row.get("contact_aliases", {})),
+                    current_action=copy.deepcopy(row.get("current_action")),
+                    pending=copy.deepcopy(row.get("pending")),
+                    observed_locations=set(row.get("observed_locations", ())),
+                    rounds_since_observation=int(row.get("rounds_since_observation", 0)),
+                    observe_request=bool(row.get("observe_request", False)),
+                    described_locations=set(row.get("described_locations", ())),
+                    rounds_since_descriptions=int(row.get("rounds_since_descriptions", 0)),
+                    force_observation=bool(row.get("force_observation", False)),
+                    role=str(row.get("role", "mc")))
             locations = {key: LocationState(str(row["id"]), bool(row["open"]), float(row["x"]),
                 float(row["y"]), float(row["sound_radius"]), float(row["sound_loss"]),
                 dict(row.get("physical_capabilities", {})), bool(row.get("controllable", False)),
@@ -554,6 +566,12 @@ class World:
             shape_error = validate_action_args(intention.kind, intention.args)
             if shape_error is not None:
                 raise ActionRejected(shape_error)
+        if intention.kind in {"speak", "text", "give"}:
+            # Person-name resolution (V4-AGENT-INTERFACE T4): a nickname that
+            # uniquely matches one candidate is canonicalized here, before any
+            # validation, so both the gate and the committed event see formal
+            # names. Ambiguity/no-hit is rejected with the candidates listed.
+            intention = self._canonicalize_persons(a, intention)
         if a.pending is not None and intention.kind not in {"continue_action", "abandon_action"}:
             raise ActionRejected("你有一个被打断的动作待处理：请先选择 continue_action 或 abandon_action。")
         if a.busy_until and a.busy_until > self.now:
@@ -1257,6 +1275,67 @@ class World:
     def _actor(self, actor_id: str) -> ActorState:
         if actor_id not in self.actors: raise ActionRejected(f"unknown actor: {actor_id}")
         return self.actors[actor_id]
+
+    def _resolve_person(self, actor: ActorState, query: Any) -> tuple[str | None, str | None]:
+        """Name resolution for person arguments (V4-AGENT-INTERFACE T4).
+
+        Candidates are the actor's own world: contact formal names, their
+        private aliases, and whoever is physically present. Exact match wins
+        silently; a fuzzy hit is used with a teaching note; ambiguity or
+        nothing is a rejection."""
+        from .kb import resolve_name
+        candidates = set(actor.known_contacts) | set(actor.contact_aliases)
+        candidates.update(other.id for other in self.actors.values()
+                          if other.location == actor.location)
+        resolved, note = resolve_name(query, candidates)
+        # A nickname resolves to the formal id; that mapping is the point of
+        # the contact system.
+        if resolved is not None:
+            resolved = actor.contact_aliases.get(resolved, resolved)
+        return resolved, note
+
+    def _canonicalize_persons(self, actor: ActorState, intention: Intention) -> Intention:
+        """Rewrite person-name arguments to formal ids (T4/T3 裁决).
+
+        ``text`` needs a contact row to go through; ``speak``/``give`` are
+        co-presence actions, so present actors are always candidates. Returns
+        the intention unchanged when nothing needs resolving."""
+        args = dict(intention.args)
+        changed = False
+        for key in ("target",):
+            query = args.get(key)
+            if not isinstance(query, str) or not query.strip():
+                continue
+            resolved, note = self._resolve_person(actor, query)
+            if resolved is None:
+                raise ActionRejected(str(note), context={key: query})
+            if resolved != query:
+                args[key] = resolved
+                changed = True
+        if intention.kind == "speak":
+            to = args.get("to")
+            if isinstance(to, list):
+                resolved_to, notes = [], []
+                for entry in to:
+                    resolved, note = self._resolve_person(actor, entry)
+                    if resolved is None:
+                        notes.append(note or str(entry))
+                    else:
+                        resolved_to.append(resolved)
+                        if resolved != entry:
+                            changed = True
+                if notes:
+                    raise ActionRejected(
+                        f"低声说话的对象无法识别：{'; '.join(notes)}。",
+                        context={"unknown": notes})
+                if resolved_to != to:
+                    args["to"] = resolved_to
+        if not changed:
+            return intention
+        return Intention(intention.actor, intention.kind, args,
+                         intention.expected_version, inner=intention.inner,
+                         interrupt=intention.interrupt,
+                         uninterruptable=intention.uninterruptable)
 
     def _message_targets(self, actor: ActorState) -> list[str]:
         """Expose only addressable people; the world does not reveal its roster."""

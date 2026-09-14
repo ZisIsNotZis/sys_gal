@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from .world_loader import strip_refs
+
 
 @dataclass(frozen=True)
 class CharacterSeed:
@@ -34,8 +36,9 @@ def load_character(path: str | Path, actor_id: str | None = None) -> CharacterSe
     director_notes = ""
     if "## 导演笔记" in text:
         director_notes = text.split("## 导演笔记", 1)[1].split("## ", 1)[0].strip()
-    return CharacterSeed(actor_id or Path(path).stem, public.strip(), private, goals,
-                         director_notes=director_notes)
+    return CharacterSeed(actor_id or Path(path).stem, strip_refs(public.strip()),
+                         strip_refs(private), strip_refs(goals),
+                         director_notes=strip_refs(director_notes))
 
 
 def load_characters(directory: str | Path) -> dict[str, CharacterSeed]:

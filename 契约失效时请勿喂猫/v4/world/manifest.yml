@@ -292,7 +292,7 @@ locations:
   x: -40
   y: 10
   sound_radius: 6
-  known_to: [陈默, 林瑶, 下棋大爷]
+  known_to: [陈默, 林瑶, 下棋大爷, 陈默妈]
   primer: false
   rules:
   - 远程地点：仅电话/消息可达；当日无法步行到达
@@ -303,69 +303,35 @@ actors:
   role: mc
   inventory:
   - 2013年邻里撤离通知书
-  known_contacts:
-  - 林瑶
-  - 唐小岚
-  - 陈默妈
-  - 班长
 - id: 林瑶
   location: 女生宿舍
   role: mc
   inventory: [蓝色兔子贴纸]
-  known_contacts:
-  - 陈默
-  - 唐小岚
-  - 班长
-  - 辅导员
 - id: 唐小岚
   location: 半坡咖啡馆
   role: mc
   inventory: []
-  known_contacts:
-  - 陈默
-  - 林瑶
-  - 班长
 - id: 宿管阿姨
   location: 女生宿舍
   role: npc
-  known_contacts:
-  - 林瑶
-  - 陈默
 - id: 食堂大妈
   location: 食堂
   role: npc
-  known_contacts:
-  - 陈默
-  - 林瑶
 - id: 辅导员
   location: 教学楼
   role: npc
-  known_contacts:
-  - 林瑶
-  - 班长
 - id: 班长
   location: 教学楼
   role: npc
-  known_contacts:
-  - 陈默
-  - 林瑶
-  - 辅导员
 - id: 陈默妈
   location: 陈默家
   role: npc
-  known_contacts:
-  - 陈默
 - id: 林瑶室友
   location: 女生宿舍
   role: npc
-  known_contacts:
-  - 林瑶
-  - 唐小岚
 - id: 下棋大爷
   location: 中庭
   role: npc
-  known_contacts:
-  - 陈默
 items:
 - id: 红色哨子
   location: 老家属院
@@ -724,6 +690,45 @@ kb:
     desc: 我，老周，六十八岁，退休校工，中庭石桌的常客。我棋品好，话密，记性挑着坏——三十年前的人名记得一清二楚，昨天早饭吃什么要想半天。
   - keys: [中庭]
     desc: 中庭石桌是我的棋摊，下午常有人来杀两盘。
+# contacts: initial contact rows (V4-AGENT-INTERFACE T3). `of` is the formal
+# actor name, `as` lists this actor's private nicknames; each expands into one
+# `!contact` KB row. Remote contact requires such a row; co-presence does not.
+contacts:
+  陈默:
+  - {of: 陈默妈, as: [妈妈, 我妈]}
+  - {of: 林瑶}
+  - {of: 唐小岚}
+  - {of: 班长}
+  林瑶:
+  - {of: 陈默}
+  - {of: 唐小岚}
+  - {of: 班长}
+  - {of: 辅导员}
+  唐小岚:
+  - {of: 陈默}
+  - {of: 林瑶}
+  - {of: 班长}
+  宿管阿姨:
+  - {of: 林瑶}
+  - {of: 陈默}
+  食堂大妈:
+  - {of: 陈默}
+  - {of: 林瑶}
+  辅导员:
+  - {of: 林瑶}
+  - {of: 班长}
+  班长:
+  - {of: 陈默}
+  - {of: 林瑶}
+  - {of: 辅导员}
+  陈默妈:
+  - {of: 陈默, as: [儿子]}
+  林瑶室友:
+  - {of: 林瑶, as: [瑶姐]}
+  - {of: 唐小岚}
+  下棋大爷:
+  - {of: 陈默}
+
 # concepts: every named thing that is not an actor/location/item/document.
 # Each gets a definition (what it is), the actors who know it (knowledge row),
 # and per-actor first-person memory (flashback row). A concept whose name equals
@@ -880,7 +885,8 @@ concepts:
 - id: flood-route-note
   name: 洪水路线旁注
   kind: thing
-  known_to: [陈默, 林瑶]
+  aliases: [洪水路线]
+  known_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 食堂大妈, 辅导员, 班长, 陈默妈, 林瑶室友, 下棋大爷]
   desc: 撤离通知书页边一条铅笔画的窄窄洪水路线，箭头没画完；无障碍方案缺的原始依据正是它。
   memory:
     陈默: 那条铅笔线是上一辈人手画的，箭头断在最要紧的地方。
@@ -1085,3 +1091,8 @@ concepts:
   desc: 唐小岚上一份工作的老板，辞退她的那个人。
   memory:
     唐小岚: 辞退我的决定是他做的。我到今天没想明白，罚的是多嘴，还是被抓住。
+# ---- common-knowledge names (public legend, no personal rows) ----
+- id: compound-legend
+  name: 家属院
+  kind: generic
+  aliases: [地下室]

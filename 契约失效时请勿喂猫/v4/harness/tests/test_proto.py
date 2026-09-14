@@ -58,6 +58,45 @@ class ToolsTests(unittest.TestCase):
         self.assertIsNotNone(entity_err)
         self.assertIn("needs the 'entity' argument", entity_err or "")
 
+    def test_contact_nickname_resolves_to_formal_id(self):
+        """T3/T4 end to end: 妈妈 must reach 陈默妈 through the contact row,
+        and an uncontactable name must be rejected with the addressable list."""
+        from datetime import datetime, timezone
+        from harness.kernel import (ActorState, ActionRejected, LocationState,
+                                    World, Intention)
+
+        def fresh():
+            start = datetime(2026, 3, 16, 7, 0, tzinfo=timezone.utc)
+            world = World(start=start,
+                          actors=[ActorState("陈默", "男生宿舍"),
+                                  ActorState("陈默妈", "陈默家")],
+                          locations=[LocationState("男生宿舍"),
+                                     LocationState("陈默家")])
+            world.actors["陈默"].known_contacts = {"陈默妈"}
+            world.actors["陈默"].contact_aliases = {"妈妈": "陈默妈", "我妈": "陈默妈"}
+            return world
+
+        # nickname -> formal id, exact name -> itself
+        for nickname in ("妈妈", "我妈", "陈默妈"):
+            world = fresh()
+            world.submit(Intention("陈默", "text",
+                                   {"target": nickname, "text": "在吗"},
+                                   world.version))
+            world.advance()
+            sent = [e for e in world.event_log if e.kind == "message_sent"]
+            self.assertTrue(sent, f"text({nickname!r}) must send")
+            self.assertEqual(sent[0].payload["target"], "陈默妈")
+        # uncontactable names are rejected with the addressable list
+        for stranger in ("林瑶", "爸"):
+            with self.assertRaises(ActionRejected) as ctx:
+                fresh().submit(Intention("陈默", "text",
+                                         {"target": stranger, "text": "hi"},
+                                         None) if False else
+                               Intention("陈默", "text",
+                                         {"target": stranger, "text": "hi"},
+                                         fresh().version))
+            self.assertIn("available", str(ctx.exception))
+
     def test_memory_tool_descriptions_match_the_key_set_schema(self):
         """Guard a real miss: the schemas moved to key sets while the
         descriptions still advertised fields:/item:/kinds, which is what made

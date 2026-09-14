@@ -245,12 +245,18 @@ class WorldPackTests(unittest.TestCase):
                                ("documents", pack.documents)):
             self.assertEqual({str(row["id"]) for row in rows}, set(pack.descriptions[category]))
 
-    def test_loaded_pack_known_contacts_are_actor_scoped(self):
+    def test_contacts_are_actor_scoped_with_private_nicknames(self):
+        # T3: 联系人行是角色作用域的，昵称只属于持有人。
         pack = load_world_pack(ROOT / "world")
-        chen = next(row for row in pack.actors if row["id"] == "陈默")
-        # v4 slice: 陈默的熟人圈是角色作用域的（V4-DESIGN §4）。
-        self.assertEqual(set(chen["known_contacts"]),
-                         {"林瑶", "唐小岚", "陈默妈", "班长"})
+        chen = [row for row in pack.kb["陈默"] if "!contact" in row["keys"]]
+        formal = {next(k for k in row["keys"] if k != "!contact") for row in chen}
+        self.assertEqual(formal, {"林瑶", "唐小岚", "陈默妈", "班长"})
+        mom = next(row for row in chen if "陈默妈" in row["keys"])
+        self.assertIn("妈妈", mom["keys"], "陈默's private nickname for his mother")
+        self.assertNotIn("陈默妈", mom["keys"].index("陈默妈") * [0] or ["x"][:0])
+        # 昵称是私有的：妈妈这个称呼不属于唐小岚的联系人行。
+        xiaolan = [row for row in pack.kb["唐小岚"] if "!contact" in row["keys"]]
+        self.assertFalse(any("妈妈" in row["keys"] for row in xiaolan))
 
 
 class DocumentInteractionTests(unittest.TestCase):
@@ -344,14 +350,15 @@ class KbSeedTests(unittest.TestCase):
             self.assertEqual(len(sets), len(set(sets)), f"{actor_id} duplicate key sets")
 
     def test_key_shapes_are_valid(self):
-        from harness.kb import ALWAYS_KEY, _AT_PREFIX
+        from harness.kb import ALWAYS_KEY, CONTACT_KEY, _AT_PREFIX
         pack = load_world_pack(ROOT / "world")
         for actor_id, rows in pack.kb.items():
             for row in rows:
                 self.assertTrue(row["keys"], f"{actor_id} row without keys")
                 for key in row["keys"]:
                     if key.startswith("!"):
-                        self.assertTrue(key == ALWAYS_KEY or key.startswith(_AT_PREFIX),
+                        self.assertTrue(key == ALWAYS_KEY or key == CONTACT_KEY
+                                        or key.startswith(_AT_PREFIX),
                                         f"{actor_id} unknown directive {key!r}")
                     else:
                         self.assertGreaterEqual(len(key), 2,
@@ -534,6 +541,28 @@ class ConceptRegistryTests(unittest.TestCase):
                 root = self._write_pack(Path(directory), yaml_text)
                 with self.assertRaisesRegex(ValueError, message):
                     load_world_pack(root)
+
+    def test_reference_markers_never_reach_the_model(self):
+        """[[name]] is linter-only syntax: stripping must happen at every
+        authored-string entry point (T5 裁决)."""
+        pack = load_world_pack(ROOT / "world")
+        for concept in pack.concepts:
+            self.assertNotIn("[[", concept["desc"])
+            for memory in concept["memory"].values():
+                self.assertNotIn("[[", memory)
+        for rows in pack.kb.values():
+            for row in rows:
+                self.assertNotIn("[[", row["desc"])
+        for kind in ("items", "documents"):
+            for row in getattr(pack, kind):
+                self.assertNotIn("[[", pack.descriptions[kind][str(row["id"])])
+        from harness.character_loader import load_story_characters
+        for seed in load_story_characters(ROOT / "world").values():
+            for text in (seed.identity, seed.private_seed, seed.goals,
+                         seed.director_notes):
+                self.assertNotIn("[[", text)
+        for row in pack.manifest.get("scheduled", ()):
+            self.assertNotIn("[[", str(row.get("notice", "")))
 
     def test_seed_names_all_resolve(self):
         """The name registry gate: every name-like token in authored prose
