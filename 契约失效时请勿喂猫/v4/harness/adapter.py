@@ -51,7 +51,7 @@ ARG_ALIASES: dict[tuple[str, str], str] = {
 DEFAULT_ARGS: dict[tuple[str, str], Any] = {
     ("wait", "duration_seconds"): 300,
     ("sleep", "duration_seconds"): 300,
-    ("ask_stranger", "question"): "",
+    ("ask", "question"): "",
 }
 
 # Legacy top-level key -> canonical wire key. Same policy: execute + count.

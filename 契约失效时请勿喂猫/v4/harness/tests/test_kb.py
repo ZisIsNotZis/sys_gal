@@ -1,370 +1,209 @@
-"""Unit tests for the per-actor KB row model (V4-AGENT-INTERFACE §3/§4/§6)."""
+"""Unit tests for the key-set KB row model (V4-AGENT-INTERFACE §3/§6).
+
+A row is ``{keys, desc, status}``: the key set is both the row's identity and
+its mention matcher. ``!always`` / ``!at=<time>`` are directive keys with
+engine semantics; text keys are needles.
+"""
 
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from harness.kb import (ActorKB, KNOWLEDGE_REPLAY_MINUTES, REMINDER_REPLAY_MINUTES,
-                        TODO_OPEN_LIMIT, format_reminder_time, parse_reminder_time)
+from harness.kb import (ALWAYS_OPEN_LIMIT, ActorKB, format_reminder_time, hits,
+                        key_id, parse_reminder_time)
 
 T0 = datetime(2026, 3, 16, 7, 0, tzinfo=timezone(timedelta(hours=8)))  # 周一
 
 
 def seed_rows():
     return [
-        {"fields": {"person": "唐小岚", "self": True}, "id": "identity",
-         "desc": "我，唐小岚，咖啡师。"},
-        {"fields": {"todo": True}, "id": "draft_claim", "desc": "弄清草稿是谁放的"},
-        {"fields": {"location": "半坡咖啡馆"}, "id": "scene", "desc": "校门口的独立咖啡馆"},
-        {"fields": {"person": "陈默"}, "id": "chen", "desc": "常来的学生，最近在查账"},
-        {"fields": {"reminder": "3/16(周一) 08:30"}, "id": "bread_run",
-         "desc": "去后街糕点铺带话"},
+        {"keys": ["唐小岚"], "desc": "我，唐小岚，咖啡师。"},
+        {"keys": ["!always", "草稿"], "desc": "弄清草稿是谁放的"},
+        {"keys": ["半坡咖啡馆"], "desc": "校门口的独立咖啡馆"},
+        {"keys": ["陈默", "常客"], "desc": "常来的学生，最近在查账"},
+        {"keys": ["!at=3/16(周一) 08:30", "糕点铺"], "desc": "去后街糕点铺带话"},
     ]
 
 
-class SeedValidationTests(unittest.TestCase):
-    def test_exactly_one_self_row_is_enforced(self):
-        for rows in ([], seed_rows() + [{"fields": {"self": True}, "id": "self2", "desc": "我"}]):
-            with self.assertRaises(ValueError) as ctx:
-                ActorKB("唐小岚", rows, T0)
-            self.assertIn("唐小岚", str(ctx.exception))
+class RowModelTests(unittest.TestCase):
+    def test_identity_row_is_required(self):
+        with self.assertRaisesRegex(ValueError, "identity"):
+            ActorKB("唐小岚", [{"keys": ["别人"]}], T0)
 
-    def test_duplicate_seed_id_rejected(self):
-        with self.assertRaises(ValueError):
-            ActorKB("唐小岚", seed_rows() + [seed_rows()[0]], T0)
+    def test_duplicate_key_set_rejected(self):
+        rows = seed_rows() + [{"keys": ["半坡咖啡馆"], "desc": "重复"}]
+        with self.assertRaisesRegex(ValueError, "duplicate key set"):
+            ActorKB("唐小岚", rows, T0)
 
-    def test_turn_zero_rows_flood_first_message(self):
-        # docs §6 (修订): turn-0 泛洪只覆盖无条件行（self/todo/reminder）；
-        # 实体行（person/location/item）永远提及集门控——未提及的实体
-        # （如不在场的哨子）不得在首轮浮现（用户裁决 2026-09-08）。
-        kb = ActorKB("唐小岚", seed_rows(), T0)
-        lines = kb.due_lines(T0, set(), limit=8)
-        self.assertEqual(len(lines), 3)
-        self.assertIn("[person=唐小岚]: 我，唐小岚，咖啡师。", lines)
-        self.assertIn("[todo=true]: 弄清草稿是谁放的", lines)
-        self.assertTrue(any(line.startswith("[reminder=") for line in lines))
-        self.assertNotIn("[location=半坡咖啡馆]", str(lines))
-        self.assertNotIn("[person=陈默]", str(lines))
+    def test_short_and_unknown_directive_keys_rejected(self):
+        with self.assertRaisesRegex(ValueError, "too short"):
+            ActorKB("唐小岚", [{"keys": ["唐小岚"]}, {"keys": ["x"], "desc": "y"}], T0)
+        with self.assertRaisesRegex(ValueError, "unknown directive"):
+            ActorKB("唐小岚", [{"keys": ["唐小岚"]}, {"keys": ["!nope"], "desc": "y"}], T0)
 
+    def test_unparseable_scheduled_key_rejected(self):
+        with self.assertRaisesRegex(ValueError, "unparseable scheduled"):
+            ActorKB("唐小岚", [{"keys": ["唐小岚"]},
+                               {"keys": ["!at=13/45(周八) 99:99"], "desc": "y"}], T0)
 
-class ReminderParsingTests(unittest.TestCase):
-    def test_canonical_format_parses_and_checks_weekday(self):
-        when = parse_reminder_time("3/16(周一) 08:30", T0)
-        assert when is not None
-        self.assertEqual(when, T0.replace(hour=8, minute=30))
-        self.assertEqual(format_reminder_time(when), "3/16(周一) 08:30")
+    def test_legacy_fields_rows_still_load(self):
+        kb = ActorKB("唐小岚", [
+            {"fields": {"person": "唐小岚", "self": True}, "id": "i", "desc": "我，唐小岚。"},
+            {"fields": {"todo": True}, "id": "t", "desc": "带话"},
+            {"fields": {"reminder": "3/16(周一) 08:30"}, "id": "r", "desc": "别迟到"},
+        ], T0)
+        lines = kb.due_lines(T0, "", limit=8)
+        self.assertTrue(any(line.startswith("[!always") for line in lines))
+        self.assertTrue(any("!at=" in line for line in lines))
 
-    def test_wrong_weekday_is_rejected(self):
+    def test_reminder_parsing_is_strict(self):
+        self.assertEqual(parse_reminder_time("3/16(周一) 08:30", T0),
+                         T0.replace(hour=8, minute=30))
         self.assertIsNone(parse_reminder_time("3/16(周二) 08:30", T0))
-
-    def test_iso_format_parses(self):
-        self.assertEqual(parse_reminder_time("2026-03-16T09:00:00+08:00", T0),
-                         T0.replace(hour=9))
-
-    def test_garbage_is_rejected(self):
-        for value in ("", "明天早上", "13/16(周一) 08:30", None, 123):
-            self.assertIsNone(parse_reminder_time(value, T0))
-
-    def test_unparseable_reminder_rejects_the_row(self):
-        kb = ActorKB("唐小岚", seed_rows(), T0)
-        errors, telemetry = kb.apply_ops(
-            [{"op": "open", "id": "bad_rem", "fields": {"reminder": "下周二"},
-              "desc": "x"}], T0)
-        self.assertEqual(errors, ["[id=bad_rem] unparseable reminder time: 下周二"])
-        self.assertEqual(telemetry["applied"], 0)
+        self.assertIsNone(parse_reminder_time("不是时间", T0))
+        self.assertEqual(format_reminder_time(T0), "3/16(周一) 07:00")
 
 
-class ApplyOpsTests(unittest.TestCase):
-    def setUp(self):
-        self.kb = ActorKB("唐小岚", seed_rows(), T0)
+class HitsTests(unittest.TestCase):
+    def test_substring_matches_in_both_directions(self):
+        self.assertTrue(hits(["陈默"], ["陈默的爸爸"]))
+        self.assertTrue(hits(["2013年台风夜"], ["2013年台风"]))
+        self.assertFalse(hits(["陈默"], ["林瑶"]))
 
-    def test_open_edit_close_lifecycle(self):
-        errors, _ = self.kb.apply_ops(
-            [{"op": "open", "id": "note1", "fields": {"item": "校报草稿"},
-              "desc": "压在吧台"},
-             {"op": "edit", "id": "note1", "desc": "压在吧台，无署名"}], T0)
-        self.assertEqual(errors, [])
-        # open/edit only refresh last_shown (docs §4) — no immediate echo;
-        # the row resurfaces at its interval under a matching mention set.
-        later = T0 + timedelta(minutes=KNOWLEDGE_REPLAY_MINUTES + 1)
-        self.assertIn("[item=校报草稿]: 压在吧台，无署名",
-                      self.kb.due_lines(later, {"校报草稿"}))
-        errors, _ = self.kb.apply_ops([{"op": "close", "id": "note1"}], T0)
-        self.assertEqual(errors, [])
-        self.assertNotIn("note1", str(self.kb.due_lines(T0.replace(hour=23),
-                                                       {"校报草稿"})))
-        self.assertFalse(any("压在吧台" in line
-                             for line in self.kb.force_recall(None, ["note1"])))
-        self.assertTrue(any("压在吧台" in line for line in
-                            self.kb.force_recall(None, ["note1"], closed=True)))
+    def test_particles_are_neutral_to_matching(self):
+        self.assertTrue(hits(["老家属院地下室"], ["老家属院的地下室"]))
 
-    def test_closed_row_cannot_be_edited_but_can_reopen(self):
-        self.kb.apply_ops([{"op": "open", "id": "n1", "fields": {"person": "陈默"},
-                            "desc": "a"}, {"op": "close", "id": "n1"}], T0)
-        errors, _ = self.kb.apply_ops([{"op": "edit", "id": "n1", "desc": "b"}], T0)
-        self.assertEqual(errors, ["[id=n1] wrong state: closed rows can only be reopened"])
-        errors, _ = self.kb.apply_ops([{"op": "open", "id": "n1", "desc": "b"}], T0)
-        self.assertEqual(errors, [])
-        later = T0 + timedelta(minutes=KNOWLEDGE_REPLAY_MINUTES + 1)
-        self.assertIn("[person=陈默]: b", self.kb.due_lines(later, {"陈默"}))
-
-    def test_duplicate_open_in_one_patch(self):
-        errors, _ = self.kb.apply_ops(
-            [{"op": "open", "id": "n1", "fields": {"person": "陈默"}, "desc": "first"},
-             {"op": "open", "id": "n1", "fields": {"person": "陈默"}, "desc": "second"}], T0)
-        self.assertEqual(errors, ["[id=n1] duplicate row in patch"])
-        later = T0 + timedelta(minutes=KNOWLEDGE_REPLAY_MINUTES + 1)
-        self.assertIn("[person=陈默]: first", self.kb.due_lines(later, {"陈默"}))
-
-    def test_open_on_open_row_is_tolerated_as_edit(self):
-        errors, telemetry = self.kb.apply_ops(
-            [{"op": "open", "id": "chen", "desc": "常来的学生，最近在查账，态度谨慎"}], T0)
-        self.assertEqual(errors, [])
-        self.assertEqual(telemetry["tolerated_open_on_open"], 1)
-        later = T0 + timedelta(minutes=KNOWLEDGE_REPLAY_MINUTES + 1)
-        self.assertIn("[person=陈默]: 常来的学生，最近在查账，态度谨慎",
-                      self.kb.due_lines(later, {"陈默"}))
-
-    def test_todo_open_limit_counts_open_rows_only(self):
-        ops = [{"op": "open", "id": f"t{i}", "fields": {"todo": True}, "desc": f"t{i}"}
-               for i in range(TODO_OPEN_LIMIT - 1)]
-        errors, _ = self.kb.apply_ops(ops, T0)
-        self.assertEqual(errors, [])
-        errors, _ = self.kb.apply_ops(
-            [{"op": "open", "id": "over", "fields": {"todo": True}, "desc": "x"}], T0)
-        self.assertEqual(errors, [f"[id=over] todo limit reached ({TODO_OPEN_LIMIT})"])
-        self.kb.apply_ops([{"op": "close", "id": "t0"}], T0)
-        errors, _ = self.kb.apply_ops(
-            [{"op": "open", "id": "over", "fields": {"todo": True}, "desc": "x"}], T0)
-        self.assertEqual(errors, [])
-
-    def test_free_fields_are_tolerated_with_telemetry(self):
-        _, telemetry = self.kb.apply_ops(
-            [{"op": "open", "id": "n1", "fields": {"mood": "紧张"}, "desc": "x"}], T0)
-        self.assertEqual(telemetry["free_field"], 1)
-
-    def test_missing_desc_or_fields_rejected(self):
-        errors, _ = self.kb.apply_ops(
-            [{"op": "open", "id": "n1", "fields": {"person": "陈默"}},
-             {"op": "open", "id": "n2", "desc": "x"},
-             {"op": "edit", "id": "ghost", "desc": "x"},
-             {"op": "frobnicate", "id": "n3"}], T0)
-        self.assertEqual(errors[0], "[id=n1] missing desc")
-        self.assertEqual(errors[1], "[id=n2] missing fields")
-        self.assertEqual(errors[2], "[id=ghost] no match")
-        self.assertTrue(errors[3].startswith("[id=n3] unknown op"))
+    def test_directives_are_not_needles(self):
+        self.assertFalse(hits(["!always"], ["!always"]))
 
 
 class ReplayTests(unittest.TestCase):
-    def setUp(self):
-        self.kb = ActorKB("唐小岚", seed_rows(), T0)
-        self.kb.due_lines(T0, set())  # turn-0 flood: everything shown once
+    def test_always_and_scheduled_replay_without_a_mention(self):
+        kb = ActorKB("唐小岚", seed_rows(), T0)
+        lines = kb.due_lines(T0, "无关的一句话", limit=8)
+        self.assertTrue(any(line.startswith("[!always 草稿]") for line in lines))
+        self.assertTrue(any(line.startswith("[!at=") for line in lines))
+        self.assertFalse(any("独立咖啡馆" in line for line in lines))
 
-    def test_intervals_by_field_type(self):
-        self.assertEqual(self.kb.due_lines(T0 + timedelta(minutes=29), set()), [])
-        lines = self.kb.due_lines(T0 + timedelta(minutes=REMINDER_REPLAY_MINUTES), set())
-        self.assertEqual(len(lines), 1)
-        self.assertTrue(lines[0].startswith("[reminder="))
-        lines = self.kb.due_lines(T0 + timedelta(minutes=60), set())
-        # at exactly 60min both the todo (60) and the re-due reminder (30+30) fire
-        self.assertIn("[todo=true]: 弄清草稿是谁放的", lines)
+    def test_mention_gates_text_rows(self):
+        kb = ActorKB("唐小岚", seed_rows(), T0)
+        lines = kb.due_lines(T0, "陈默走进来，问了一杯咖啡。", limit=8)
+        self.assertTrue(any("常来的学生" in line for line in lines))
+        self.assertFalse(any("独立咖啡馆" in line for line in lines))
 
-    def test_mention_set_gates_entity_rows(self):
-        # close the time-driven rows (and the unconditional identity row) so
-        # only entity-gated rows remain
-        self.kb.apply_ops([{"op": "close", "id": "bread_run"},
-                           {"op": "close", "id": "draft_claim"},
-                           {"op": "close", "id": "identity"}], T0)
-        now = T0 + timedelta(minutes=KNOWLEDGE_REPLAY_MINUTES + 1)
-        self.assertEqual(self.kb.due_lines(now, set()), [])
-        self.assertEqual(self.kb.due_lines(now, {"陈默"}),
-                         ["[person=陈默]: 常来的学生，最近在查账"])
+    def test_haystack_accepts_a_list_of_queries(self):
+        kb = ActorKB("唐小岚", seed_rows(), T0)
+        lines = kb.due_lines(T0, ["今天很安静", "半坡咖啡馆里没人"], limit=8)
+        self.assertTrue(any("独立咖啡馆" in line for line in lines))
 
-    def test_multifield_row_takes_max_interval(self):
-        self.kb.apply_ops([{"op": "close", "id": "bread_run"},
-                           {"op": "close", "id": "draft_claim"}], T0)
-        self.kb.apply_ops([{"op": "open", "id": "mix",
-                            "fields": {"todo": True, "person": "陈默"},
-                            "desc": "问陈默草稿的事"}], T0)
-        # todo alone would be due at 60min; person's 120min dominates (m3).
-        self.assertEqual(self.kb.due_lines(T0 + timedelta(minutes=90), set()), [])
-        lines = self.kb.due_lines(T0 + timedelta(minutes=121), {"陈默"})
-        self.assertIn("[todo=true]: 问陈默草稿的事", lines)
-
-    def test_overflow_lines_clear_first(self):
-        now = T0 + timedelta(minutes=KNOWLEDGE_REPLAY_MINUTES + 1)
-        lines = self.kb.due_lines(now, set(), limit=1)
-        self.assertTrue(lines[0].startswith("[reminder="))
-        # with an empty mention set only todo/reminder rows are candidates
-        # (entity rows are mention-gated, docs M7) — the overflowed todo
-        # clears first next turn, before any newly due row would.
-        nxt = self.kb.due_lines(now + timedelta(minutes=1), set(), limit=8)
-        # the overflowed todo clears first; the identity row (120min interval,
-        # unconditional) is newly due and follows it
-        self.assertEqual(nxt, ["[todo=true]: 弄清草稿是谁放的",
-                               "[person=唐小岚]: 我，唐小岚，咖啡师。"],
-                         "overflowed line must clear before new due rows")
+    def test_overflow_drains_before_new_rows(self):
+        rows = [{"keys": ["唐小岚"], "desc": "我"}] + [
+            {"keys": ["!always", f"事{i}"], "desc": f"第{i}件"} for i in range(12)]
+        kb = ActorKB("唐小岚", rows, T0)
+        first = kb.due_lines(T0, "", limit=8)
+        self.assertEqual(len(first), 8)
+        self.assertEqual(len(kb.due_lines(T0, "", limit=8)), 4)
 
     def test_due_reminders_and_auto_close(self):
-        # reminder 08:30 = T0 + 90min (T0 is 07:00)
-        due = self.kb.due_reminders(T0 + timedelta(minutes=31))
-        self.assertEqual([d["id"] for d in due], [])
-        due = self.kb.due_reminders(T0 + timedelta(minutes=91))
-        self.assertEqual([d["id"] for d in due], ["bread_run"])
-        self.assertEqual(due[0]["rendered"],
-                         "[reminder=3/16(周一) 08:30]: 去后街糕点铺带话")
-        self.kb.close_reminder("bread_run")
-        self.assertEqual(self.kb.due_reminders(T0 + timedelta(hours=5)), [])
+        kb = ActorKB("唐小岚", seed_rows(), T0)
+        later = T0.replace(hour=9, minute=0)
+        due = kb.due_reminders(later)
+        self.assertEqual(len(due), 1)
+        kb.close_scheduled(due[0]["id"])
+        self.assertEqual(kb.due_reminders(later), [])
+        self.assertEqual(key_id(["!at=3/16(周一) 08:30", "糕点铺"]), due[0]["id"])
+
+
+class MutationTests(unittest.TestCase):
+    def setUp(self):
+        self.kb = ActorKB("唐小岚", seed_rows(), T0)
+
+    def test_open_edit_close_by_exact_keys(self):
+        for op, desc in (("open", "记一笔"), ("edit", "改一笔"), ("close", None)):
+            row = {"keys": ["新事", "笔记"], "op": op}
+            if desc:
+                row["desc"] = desc
+            errs, _, _ = self.kb.apply_ops([row], T0)
+            self.assertEqual(errs, [], f"{op}: {errs}")
+
+    def test_fuzzy_unique_match_applies_with_a_warning(self):
+        errs, telemetry, warnings = self.kb.apply_ops(
+            [{"keys": ["草稿"], "op": "edit", "desc": "改了"}], T0)
+        self.assertEqual(errs, [])
+        self.assertTrue(warnings)
+        self.assertEqual(telemetry["fuzzy_match"], 1)
+
+    def test_ambiguous_match_reports_candidates(self):
+        self.kb.apply_ops([{"keys": ["陈默", "甲事"], "op": "open", "desc": "1"},
+                           {"keys": ["陈默", "乙事"], "op": "open", "desc": "2"}], T0)
+        errs, _, _ = self.kb.apply_ops([{"keys": ["陈默"], "op": "close"}], T0)
+        self.assertTrue(any("ambiguous" in e for e in errs))
+
+    def test_no_match_and_unknown_op(self):
+        errs, _, _ = self.kb.apply_ops([{"keys": ["没有的"], "op": "close"}], T0)
+        self.assertTrue(any("no match" in e for e in errs))
+        errs, _, _ = self.kb.apply_ops([{"keys": ["草稿"], "op": "rename"}], T0)
+        self.assertTrue(any("unknown op" in e for e in errs))
+
+    def test_identity_row_cannot_be_closed(self):
+        errs, _, _ = self.kb.apply_ops([{"keys": ["唐小岚"], "op": "close"}], T0)
+        self.assertTrue(any("identity" in e for e in errs))
+
+    def test_always_limit_counts_open_always_rows(self):
+        rows = [{"keys": ["唐小岚"], "desc": "我"}] + [
+            {"keys": ["!always", f"事{i}"], "desc": "x"} for i in range(ALWAYS_OPEN_LIMIT)]
+        kb = ActorKB("唐小岚", rows, T0)
+        errs, _, _ = kb.apply_ops(
+            [{"keys": ["!always", "多一件"], "op": "open", "desc": "y"}], T0)
+        self.assertTrue(any("limit" in e for e in errs))
+
+    def test_reopen_after_close(self):
+        self.kb.apply_ops([{"keys": ["新事"], "op": "open", "desc": "x"}], T0)
+        self.kb.apply_ops([{"keys": ["新事"], "op": "close"}], T0)
+        errs, _, _ = self.kb.apply_ops([{"keys": ["新事"], "op": "open", "desc": "回来了"}], T0)
+        self.assertEqual(errs, [])
 
 
 class RecallTests(unittest.TestCase):
     def setUp(self):
         self.kb = ActorKB("唐小岚", seed_rows(), T0)
-        self.kb.due_lines(T0, set())  # turn-0 flood
 
-    def test_force_recall_surfaces_next_turn_exactly_once(self):
-        lines = self.kb.force_recall(None, ["chen"], limit=8)
-        self.assertEqual(lines, ["[person=陈默]: 常来的学生，最近在查账"])
-        surfaced = self.kb.due_lines(T0 + timedelta(minutes=1), set(), limit=8)
-        self.assertEqual(surfaced.count("[person=陈默]: 常来的学生，最近在查账"), 1)
-        # refreshed by the surfacing: not due again inside the interval
-        later = T0 + timedelta(minutes=1 + KNOWLEDGE_REPLAY_MINUTES - 2)
-        self.assertNotIn("[person=陈默]: 常来的学生，最近在查账",
-                         self.kb.due_lines(later, {"陈默"}))
+    def test_recall_by_keyword(self):
+        self.assertTrue(any("独立咖啡馆" in line
+                            for line in self.kb.force_recall(["咖啡馆"])))
 
-    def test_force_recall_by_kind(self):
-        lines = self.kb.force_recall(["reminder"], None, limit=8)
-        self.assertEqual(lines, ["[reminder=3/16(周一) 08:30]: 去后街糕点铺带话"])
+    def test_recall_can_list_always_rows(self):
+        self.assertTrue(any("弄清草稿" in line
+                            for line in self.kb.force_recall(["!always"])))
 
-    def test_force_recall_closed_rows_gated(self):
-        self.kb.apply_ops([{"op": "open", "id": "n1", "fields": {"person": "陈默"},
-                            "desc": "a"}, {"op": "close", "id": "n1"}], T0)
-        self.assertEqual(self.kb.force_recall(None, ["n1"]), [])
-        self.assertEqual(len(self.kb.force_recall(None, ["n1"], closed=True)), 1)
+    def test_recall_closed_rows_are_gated(self):
+        self.kb.apply_ops([{"keys": ["新事"], "op": "open", "desc": "内容"}], T0)
+        self.kb.apply_ops([{"keys": ["新事"], "op": "close"}], T0)
+        self.assertFalse(any("内容" in line for line in self.kb.force_recall(["新事"])))
+        self.assertTrue(any("内容" in line
+                            for line in self.kb.force_recall(["新事"], closed=True)))
 
-    def test_recall_order_oldest_last_shown_first(self):
-        # recall surfaces rows oldest-last_shown first (docs §2: 按创建游戏时
-        # 刻倒序 → last_shown 最旧优先).
-        self.kb.apply_ops([{"op": "open", "id": "p1", "fields": {"person": "甲"},
-                            "desc": "1"}], T0)
-        self.kb.apply_ops([{"op": "open", "id": "p2", "fields": {"person": "乙"},
-                            "desc": "2"}], T0 + timedelta(minutes=10))
-        lines = self.kb.force_recall(None, ["p1", "p2"], limit=8)
-        self.assertEqual(lines, ["[person=甲]: 1", "[person=乙]: 2"])
-        # touching p2 again makes it the most recent → it sorts last
-        self.kb.apply_ops([{"op": "edit", "id": "p2", "desc": "2（更新）"}],
-                          T0 + timedelta(minutes=20))
-        self.kb.force_recall(None, ["p1", "p2"], limit=8)
-        self.kb.due_lines(T0 + timedelta(minutes=21), set())  # consume the queue
-        lines = self.kb.force_recall(None, ["p1", "p2"], limit=8)
-        self.assertEqual(lines, ["[person=甲]: 1", "[person=乙]: 2（更新）"])
+    def test_match_rows_returns_matches_and_empty_without_query(self):
+        self.assertTrue(self.kb.match_rows(["陈默"]))
+        self.assertEqual(self.kb.match_rows([]), [])
+
+    def test_recall_surfaces_next_turn_exactly_once(self):
+        self.kb.force_recall(["咖啡馆"])
+        first = self.kb.due_lines(T0, "", limit=8)
+        self.assertTrue(any("独立咖啡馆" in line for line in first))
+        second = self.kb.due_lines(T0, "", limit=8)
+        self.assertFalse(any("独立咖啡馆" in line for line in second))
 
 
-class CompactionTests(unittest.TestCase):
-    def test_compaction_resets_last_shown_but_not_closed(self):
+class PersistenceTests(unittest.TestCase):
+    def test_snapshot_round_trip(self):
         kb = ActorKB("唐小岚", seed_rows(), T0)
-        kb.due_lines(T0, set())
-        kb.apply_ops([{"op": "open", "id": "n1", "fields": {"person": "陈默"},
-                       "desc": "a"}, {"op": "close", "id": "n1"}], T0)
+        kb.apply_ops([{"keys": ["新事"], "op": "open", "desc": "记"}], T0)
+        kb.due_lines(T0, "陈默", limit=8)
+        restored = ActorKB.from_snapshot(kb.snapshot(), T0)
+        self.assertEqual(restored.snapshot()["rows"], kb.snapshot()["rows"])
+
+    def test_compaction_resets_last_shown(self):
+        kb = ActorKB("唐小岚", seed_rows(), T0)
+        kb.due_lines(T0, "", limit=8)
         kb.on_compaction()
-        lines = kb.due_lines(T0, {"唐小岚", "半坡咖啡馆", "陈默"})
-        self.assertEqual(len(lines), 5)
-        self.assertNotIn("n1", str(lines))
-
-
-class SnapshotTests(unittest.TestCase):
-    def test_round_trip_preserves_rows_status_and_overflow(self):
-        kb = ActorKB("唐小岚", seed_rows(), T0)
-        kb.due_lines(T0, set(), limit=2)  # turn-0 flood truncated → overflow
-        kb.apply_ops([{"op": "open", "id": "n1", "fields": {"person": "陈默"},
-                       "desc": "a"}, {"op": "close", "id": "n1"}], T0)
-        state = kb.snapshot()
-        clone = ActorKB.from_snapshot(state, T0)
-        self.assertEqual(clone.snapshot(), state)
-        later = T0 + timedelta(hours=6)
-        self.assertEqual(len(clone.due_lines(later, {"陈默", "半坡咖啡馆"}, limit=8)), 5)
-
-
-class FieldsLookupTests(unittest.TestCase):
-    """docs §6 (修订): update_memory rows may omit id and locate by fields
-    unique match among open rows (zero → "no match", multiple → "ambiguous")."""
-
-    def setUp(self):
-        self.kb = ActorKB("唐小岚", seed_rows(), T0)
-
-    def test_id_less_edit_matches_unique_fields(self):
-        errors, _ = self.kb.apply_ops(
-            [{"op": "edit", "fields": {"todo": True}, "desc": "改了"}], T0)
-        self.assertEqual(errors, [])
-        todos = [r for r in self.kb._rows.values() if r.id == "draft_claim"]
-        self.assertEqual(todos[0].desc, "改了")
-
-    def test_id_less_lookup_covers_open_rows_only(self):
-        # docs §6: fields 定位只在 open 行中查找——closed 行重开必须带 id。
-        self.kb.apply_ops([{"op": "close", "id": "draft_claim"}], T0)
-        errors, _ = self.kb.apply_ops(
-            [{"op": "open", "fields": {"todo": True}, "desc": "重新翻开"}], T0)
-        self.assertEqual(errors, ["[fields={'todo': True}] no match"])
-        # with the id the reopen works
-        errors, _ = self.kb.apply_ops(
-            [{"op": "open", "id": "draft_claim", "desc": "重新翻开"}], T0)
-        self.assertEqual(errors, [])
-        self.assertEqual(self.kb._rows["draft_claim"].status, "open")
-
-    def test_id_less_zero_match_reports_no_match(self):
-        errors, _ = self.kb.apply_ops(
-            [{"op": "edit", "fields": {"person": "不存在的人"}, "desc": "x"}], T0)
-        self.assertEqual(len(errors), 1)
-        self.assertIn("no match", errors[0])
-        self.assertIn("不存在的人", errors[0])
-
-    def test_id_less_ambiguous_match_reports_ambiguous(self):
-        self.kb.apply_ops(
-            [{"op": "open", "id": "p1", "fields": {"person": "陈默"}, "desc": "1"},
-             {"op": "open", "id": "p2", "fields": {"person": "陈默"}, "desc": "2"}], T0)
-        errors, _ = self.kb.apply_ops(
-            [{"op": "edit", "fields": {"person": "陈默"}, "desc": "x"}], T0)
-        self.assertEqual(len(errors), 1)
-        self.assertIn("ambiguous", errors[0])
-
-    def test_explicit_id_still_works(self):
-        errors, _ = self.kb.apply_ops(
-            [{"op": "edit", "id": "draft_claim", "desc": "用 id 定位"}], T0)
-        self.assertEqual(errors, [])
-        self.assertEqual(self.kb._rows["draft_claim"].desc, "用 id 定位")
-
-
-class ConceptAndMemoryRowTests(unittest.TestCase):
-    """V4-AGENT-INTERFACE §6 (concepts registry): concept rows are the actor's
-    unconditional world knowledge; memory rows are the actor's own past and are
-    retrieved by flashback (mention-gated for replay)."""
-
-    def rows(self):
-        return [
-            {"fields": {"person": "陈默", "self": True}, "id": "identity",
-             "desc": "我，陈默。"},
-            {"fields": {"concept": "老家属院"}, "id": "kb-concept-old-compound",
-             "desc": "陈默长大的旧居民区。"},
-            {"fields": {"memory": "老家属院"}, "id": "kb-memory-old-compound",
-             "desc": "我在那儿长到九岁。"},
-            {"fields": {"item": "红色哨子"}, "id": "kb-auto-whistle",
-             "desc": "一只小小的红色应急哨。"},
-        ]
-
-    def test_concept_rows_flood_and_memory_rows_are_mention_gated(self):
-        kb = ActorKB("陈默", self.rows(), T0)
-        turn0 = kb.due_lines(T0, set(), limit=8)
-        self.assertIn("[concept=老家属院]: 陈默长大的旧居民区。", turn0)
-        self.assertNotIn("[memory=老家属院]: 我在那儿长到九岁。", turn0)
-        with_mention = ActorKB("陈默", self.rows(), T0).due_lines(T0, {"老家属院"}, limit=8)
-        self.assertIn("[memory=老家属院]: 我在那儿长到九岁。", with_mention)
-
-    def test_match_rows_returns_memory_and_concept_before_public_description(self):
-        kb = ActorKB("陈默", self.rows(), T0)
-        lines = kb.match_rows({"红色哨子"})
-        self.assertEqual(len(lines), 1)  # only the auto item row mentions it
-        lines = kb.match_rows({"家属院"})
-        self.assertTrue(lines[0].startswith("[memory=老家属院]"))
-        self.assertTrue(any(line.startswith("[concept=老家属院]") for line in lines))
-
-    def test_match_rows_is_empty_without_terms(self):
-        self.assertEqual(ActorKB("陈默", self.rows(), T0).match_rows(set()), [])
+        self.assertIsNone(kb._rows[frozenset({"唐小岚"})].last_shown)

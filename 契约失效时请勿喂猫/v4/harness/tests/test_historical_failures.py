@@ -208,7 +208,7 @@ class HistoricalFailureGates(unittest.TestCase):
         states = {actor: PrivateState(actor) for actor in world.actors}
         engine = AsyncEngine(world, _lean_wait_agents(world), states,
                              Trace("v4-test", "historical-gate-flashback"),
-                             kb_seeds=pack.kb, lexicon=pack.lexicon)
+                             kb_seeds=pack.kb)
         engine._init_kb(world.now)
         whistle = engine._flashback_query("陈默", "红色哨子")
         self.assertTrue(whistle, "flashback on the seeded whistle returned nothing")

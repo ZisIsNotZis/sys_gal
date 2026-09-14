@@ -40,7 +40,7 @@ class V4Session:
     def __init__(self, actor_id: str, provider: Any, *, messages: list[dict] | None = None,
                  compacted_memories: list[dict] | None = None,
                  compaction_threshold: int = 30000, recent_messages: int = 4,
-                 system_prompt: str | None = None) -> None:
+                 system_prompt: str | None = None, world_primer: str = "") -> None:
         self.actor_id = actor_id
         self.provider = provider
         self.compaction_threshold = compaction_threshold
@@ -50,7 +50,13 @@ class V4Session:
         if messages:
             self.messages: list[dict[str, Any]] = [dict(m) for m in messages]
         else:
-            self.messages: list[dict[str, Any]] = [{"role": "system", "content": system_prompt or SYSTEM_PROMPT_V4}]
+            # The verbatim preamble stays byte-identical for every actor; the
+            # per-world primer (locations/走法/time rules) is appended once and
+            # is static, so provider caching is unaffected.
+            base = system_prompt or SYSTEM_PROMPT_V4
+            if world_primer and not system_prompt:
+                base = base + "\n\n" + world_primer
+            self.messages: list[dict[str, Any]] = [{"role": "system", "content": base}]
 
     def decide(self, world_message_text: str) -> dict[str, Any]:
         """Append one world message, call the provider with the full static
@@ -232,14 +238,15 @@ def make_persistent_agent(seed: CharacterSeed, call: ModelCall, gm: GMCall = Non
 
 
 def make_persistent_agent_v4(seed: CharacterSeed, provider: Any, *,
-                             session: "V4Session | None" = None):
+                             session: "V4Session | None" = None,
+                             world_primer: str = ""):
     """V4 protocol persistent agent (V4-AGENT-INTERFACE §4): the engine hands
     in the rendered world message; the agent owns the session and returns the
     parsed native tool-call list. Signature: agent(world_message_text, state).
     """
-    sess = session or V4Session(seed.actor_id, provider)
+    sess = session or V4Session(seed.actor_id, provider, world_primer=world_primer)
 
-    def agent(world_message_text: str, state: PrivateState) -> list[dict[str, Any]]:
+    def agent(world_message_text: str, state: PrivateState) -> dict[str, Any]:
         return sess.decide(world_message_text)
 
     agent.consume_compaction = (lambda: sess.consume_compaction())  # type: ignore[attr-defined]

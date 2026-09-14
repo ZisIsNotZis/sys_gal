@@ -21,9 +21,9 @@ class WorldPackTests(unittest.TestCase):
         self.assertIn("宿舍", text)
         self.assertIn("半坡咖啡馆", text)
         self.assertIn("步行约", text)
-        self.assertIn("5 分钟", text)
+        self.assertIn("分钟", text)
         self.assertIn("whisper", text)
-        self.assertIn("observe", text)
+        self.assertIn("ask", text)
 
     def test_readiness_rejects_orphan_markdown(self):
         from tempfile import TemporaryDirectory
@@ -34,10 +34,10 @@ class WorldPackTests(unittest.TestCase):
             (root / "characters").mkdir()
             (root / "locations" / "room.md").write_text("room", encoding="utf-8")
             (root / "locations" / "unlisted.md").write_text("orphan", encoding="utf-8")
-            (root / "characters" / "a.md").write_text("A", encoding="utf-8")
+            (root / "characters" / "aa.md").write_text("A", encoding="utf-8")
             (root / "manifest.yml").write_text(
                 "schema_version: 1\nclock: {start: '2026-01-01T00:00:00+00:00', stop: '2026-01-01T01:00:00+00:00'}\n"
-                "locations: [{id: room}]\nactors: [{id: a, location: room}]\nitems: []\ndocuments: []\nroutes: []\nbarriers: []\nscheduled: []\nkb:\n  a:\n    - {fields: {person: a, self: true}, id: identity, desc: '我，a。'}\n", encoding="utf-8")
+                "locations: [{id: room}]\nactors: [{id: aa, location: room}]\nitems: []\ndocuments: []\nroutes: []\nbarriers: []\nscheduled: []\nkb:\n  aa:\n    - {keys: [aa], desc: '我，aa。'}\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "orphan unlisted"):
                 validate_story_pack(root)
 
@@ -50,10 +50,10 @@ class WorldPackTests(unittest.TestCase):
             (root / "characters").mkdir()
             (root / "locations" / "room.md").write_text("room", encoding="utf-8")
             (root / "locations" / "ROOM.md").write_text("duplicate", encoding="utf-8")
-            (root / "characters" / "a.md").write_text("A", encoding="utf-8")
+            (root / "characters" / "aa.md").write_text("A", encoding="utf-8")
             (root / "manifest.yml").write_text(
                 "schema_version: 1\nclock: {start: '2026-01-01T00:00:00+00:00', stop: '2026-01-01T01:00:00+00:00'}\n"
-                "locations: [{id: room}]\nactors: [{id: a, location: room}]\nitems: []\ndocuments: []\nroutes: []\nbarriers: []\nscheduled: []\nkb:\n  a:\n    - {fields: {person: a, self: true}, id: identity, desc: '我，a。'}\n", encoding="utf-8")
+                "locations: [{id: room}]\nactors: [{id: aa, location: room}]\nitems: []\ndocuments: []\nroutes: []\nbarriers: []\nscheduled: []\nkb:\n  aa:\n    - {keys: [aa], desc: '我，aa。'}\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "duplicate Markdown id"):
                 validate_story_pack(root)
 
@@ -141,7 +141,7 @@ class WorldPackTests(unittest.TestCase):
             (root / "locations" / "room.md").write_text("room", encoding="utf-8")
             (root / "manifest.yml").write_text(
                 "schema_version: 1\nclock:\n  start: '2026-01-01T00:00:00+00:00'\n  stop: '2026-01-01T01:00:00+00:00'\n"
-                "locations:\n  - id: room\nactors:\n  - id: a\n    location: room\n"
+                "locations:\n  - id: room\nactors:\n  - id: aa\n    location: room\n"
                 "routes:\n  - from: room\n    to: nowhere\n    duration_seconds: 1\n",
                 encoding="utf-8")
             with self.assertRaises(ValueError):
@@ -153,7 +153,7 @@ class WorldPackTests(unittest.TestCase):
             root = Path(directory)
             (root / "manifest.yml").write_text(
                 "schema_version: 1\nclock:\n  start: '2026-01-01T00:00:00+00:00'\n  stop: '2026-01-01T01:00:00+00:00'\n"
-                "locations: [{id: room}]\nactors: [{id: a, location: room}]\n"
+                "locations: [{id: room}]\nactors: [{id: aa, location: room}]\n"
                 "items: []\ndocuments: []\nroutes: []\nbarriers: []\n"
                 "scheduled: [{event: too_early, time: '2025-12-31T23:59:00+00:00'}]\n",
                 encoding="utf-8")
@@ -167,7 +167,7 @@ class WorldPackTests(unittest.TestCase):
             (root / "manifest.yml").write_text(
                 "schema_version: 1\nclock:\n  start: '2026-01-01T00:00:00+00:00'\n  stop: '2026-01-01T01:00:00+00:00'\n"
                 "  stop: '2025-01-01T00:00:00+00:00'\n"
-                "locations: [{id: room}]\nactors: [{id: a, location: room}]\n"
+                "locations: [{id: room}]\nactors: [{id: aa, location: room}]\n"
                 "items: []\ndocuments: []\nroutes: []\nbarriers: []\n"
                 "scheduled: [{event: x, target: nobody, time: '2026-01-01T00:00:00+00:00'}]\n",
                 encoding="utf-8")
@@ -181,7 +181,7 @@ class WorldPackTests(unittest.TestCase):
             (root / "manifest.yml").write_text(
                 "schema_version: 1\nclock:\n  start: '2026-01-01T00:00:00+00:00'\n  stop: '2026-01-01T01:00:00+00:00'\n"
                 "  stop: '2026-01-01T01:00:00+00:00'\n"
-                "locations: [{id: room}]\nactors: [{id: a, location: room}]\n"
+                "locations: [{id: room}]\nactors: [{id: aa, location: room}]\n"
                 "items: []\ndocuments: []\nroutes: []\nbarriers: []\n"
                 "scheduled: [{event: x, time: '2026-01-01T02:00:00+00:00'}]\n",
                 encoding="utf-8")
@@ -192,9 +192,9 @@ class WorldPackTests(unittest.TestCase):
         from tempfile import TemporaryDirectory
         base = (
             "schema_version: 1\nclock:\n  start: '2026-01-01T00:00:00+00:00'\n  stop: '2026-01-01T01:00:00+00:00'\n"
-            "locations: [{id: room}]\nactors: [{id: a, location: room}]\n"
+            "locations: [{id: room}]\nactors: [{id: aa, location: room}]\n"
             "items: []\ndocuments: []\nroutes: []\nbarriers: []\n"
-            "kb:\n  a:\n    - {fields: {person: a, self: true}, id: identity, desc: '我，a。'}\n"
+            "kb:\n  aa:\n    - {keys: [aa], desc: '我，aa。'}\n"
         )
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -233,9 +233,9 @@ class WorldPackTests(unittest.TestCase):
             (root / "manifest.yml").write_text(
                 "schema_version: 1\nclock:\n  start: '2026-01-01T00:00:00+00:00'\n  stop: '2026-01-01T01:00:00+00:00'\n"
                 "  stop: '2026-01-01T01:00:00+00:00'\n"
-                "locations: [{id: room}]\nactors: [{id: a, location: room}]\n"
+                "locations: [{id: room}]\nactors: [{id: aa, location: room}]\n"
                 "items: [{id: coin, location: room}]\ndocuments: []\nroutes: []\n"
-                "barriers: []\nscheduled: []\nkb:\n  a:\n    - {fields: {person: a, self: true}, id: identity, desc: '我，a。'}\n", encoding="utf-8")
+                "barriers: []\nscheduled: []\nkb:\n  aa:\n    - {keys: [aa], desc: '我，aa。'}\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "items missing"):
                 load_world_pack(root)
 
@@ -320,8 +320,8 @@ if __name__ == "__main__":
 
 
 class KbSeedTests(unittest.TestCase):
-    """V4-AGENT-INTERFACE §6: every actor's KB rows are seeded in the
-    manifest and validated at load time (M2 identity anchor)."""
+    """V4-AGENT-INTERFACE §6: KB rows are seeded in the manifest as key sets
+    and validated at load time; identity is derived from the actor's own name."""
 
     def test_kb_section_exists_and_covers_every_actor(self):
         pack = load_world_pack(ROOT / "world")
@@ -329,104 +329,111 @@ class KbSeedTests(unittest.TestCase):
         for actor_id, rows in pack.kb.items():
             self.assertTrue(rows, f"{actor_id} has no kb rows")
 
-    def test_every_actor_has_exactly_one_identity_row(self):
+    def test_every_actor_has_an_identity_row_keyed_by_its_own_name(self):
         pack = load_world_pack(ROOT / "world")
         for actor_id, rows in pack.kb.items():
-            self_rows = [row for row in rows if row["fields"].get("self") is True]
-            self.assertEqual(len(self_rows), 1, f"{actor_id} identity anchor (docs §6/M2)")
-            self.assertTrue(self_rows[0]["desc"].startswith("我，"),
+            identity = [row for row in rows if actor_id in row["keys"]]
+            self.assertEqual(len(identity), 1, f"{actor_id} identity row")
+            self.assertTrue(identity[0]["desc"].startswith("我，"),
                             f"{actor_id} identity desc must be first-person")
 
-    def test_kb_ids_are_unique_and_snake_kebab(self):
-        import re
+    def test_key_sets_are_unique_per_actor(self):
         pack = load_world_pack(ROOT / "world")
         for actor_id, rows in pack.kb.items():
-            ids = [row["id"] for row in rows]
-            self.assertEqual(len(ids), len(set(ids)), f"{actor_id} duplicate kb ids")
-            for row_id in ids:
-                self.assertTrue(re.match(r"^[a-z0-9-]+$", row_id),
-                                f"{actor_id} kb id {row_id!r} not lowercase-kebab")
+            sets = [frozenset(row["keys"]) for row in rows]
+            self.assertEqual(len(sets), len(set(sets)), f"{actor_id} duplicate key sets")
 
-    def test_mc_seeds_carry_todo_and_reminder_rows(self):
+    def test_key_shapes_are_valid(self):
+        from harness.kb import ALWAYS_KEY, _AT_PREFIX
+        pack = load_world_pack(ROOT / "world")
+        for actor_id, rows in pack.kb.items():
+            for row in rows:
+                self.assertTrue(row["keys"], f"{actor_id} row without keys")
+                for key in row["keys"]:
+                    if key.startswith("!"):
+                        self.assertTrue(key == ALWAYS_KEY or key.startswith(_AT_PREFIX),
+                                        f"{actor_id} unknown directive {key!r}")
+                    else:
+                        self.assertGreaterEqual(len(key), 2,
+                                                f"{actor_id} short key {key!r}")
+
+    def test_mc_seeds_carry_always_and_scheduled_rows(self):
         pack = load_world_pack(ROOT / "world")
         for actor_id in ("陈默", "林瑶", "唐小岚"):
             rows = pack.kb[actor_id]
-            self.assertTrue(any(row["fields"].get("todo") is True for row in rows),
-                            f"{actor_id} needs at least one todo row")
-            reminders = [row for row in rows if "reminder" in row["fields"]]
-            self.assertEqual(len(reminders), 1, f"{actor_id} needs exactly one reminder row")
+            self.assertTrue(any("!always" in row["keys"] for row in rows),
+                            f"{actor_id} needs at least one !always row")
+            scheduled = [row for row in rows
+                         if any(k.startswith("!at=") for k in row["keys"])]
+            self.assertEqual(len(scheduled), 1, f"{actor_id} needs exactly one !at row")
 
-    def test_reminder_times_are_strictly_parseable(self):
-        import re
+    def test_scheduled_keys_are_strictly_parseable(self):
         from harness.world_loader import _reminder_time_ok
         pack = load_world_pack(ROOT / "world")
         for actor_id, rows in pack.kb.items():
             for row in rows:
-                if "reminder" in row["fields"]:
-                    value = str(row["fields"]["reminder"])
+                for key in row["keys"]:
+                    if not key.startswith("!at="):
+                        continue
+                    value = key[len("!at="):]
                     self.assertTrue(_reminder_time_ok(value),
-                                    f"{actor_id} reminder {value!r} unparseable")
-                    self.assertRegex(value, r"^\d{1,2}/\d{1,2}\(周[一二三四五六日]\) \d{1,2}:\d{2}$")
+                                    f"{actor_id} scheduled key {value!r} unparseable")
+                    self.assertRegex(
+                        value, r"^\d{1,2}/\d{1,2}\(周[一二三四五六日]\) \d{1,2}:\d{2}$")
 
     def test_loader_rejects_actor_without_identity_row(self):
-        from tempfile import TemporaryDirectory
         with TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "locations").mkdir()
             (root / "locations" / "room.md").write_text("room", encoding="utf-8")
             (root / "manifest.yml").write_text(
                 "schema_version: 1\nclock:\n  start: '2026-01-01T00:00:00+00:00'\n  stop: '2026-01-01T01:00:00+00:00'\n"
-                "locations: [{id: room}]\nactors: [{id: a, location: room}]\n"
-                "items: []\ndocuments: []\nroutes: []\nbarriers: []\nscheduled: []\nkb:\n  a:\n    - {fields: {person: a, self: true}, id: identity, desc: '我，a。'}\n"
-                "kb:\n  a:\n    - {fields: {person: a}, id: note, desc: no identity here}\n",
+                "locations: [{id: room}]\nactors: [{id: aa, location: room}]\n"
+                "items: []\ndocuments: []\nroutes: []\nbarriers: []\nscheduled: []\n"
+                "kb:\n  aa:\n    - {keys: [别处], desc: 没有自己的身份行}\n",
                 encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "exactly one self:true"):
+            with self.assertRaisesRegex(ValueError, "identity"):
                 load_world_pack(root)
 
     def test_loader_rejects_missing_kb_section(self):
-        from tempfile import TemporaryDirectory
         with TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "locations").mkdir()
             (root / "locations" / "room.md").write_text("room", encoding="utf-8")
             (root / "manifest.yml").write_text(
                 "schema_version: 1\nclock:\n  start: '2026-01-01T00:00:00+00:00'\n  stop: '2026-01-01T01:00:00+00:00'\n"
-                "locations: [{id: room}]\nactors: [{id: a, location: room}]\n"
+                "locations: [{id: room}]\nactors: [{id: aa, location: room}]\n"
                 "items: []\ndocuments: []\nroutes: []\nbarriers: []\nscheduled: []\n",
                 encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "missing the kb: section"):
                 load_world_pack(root)
 
-    def test_loader_rejects_unparseable_reminder(self):
-        from tempfile import TemporaryDirectory
+    def test_loader_rejects_unparseable_scheduled_key(self):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "locations").mkdir()
             (root / "locations" / "room.md").write_text("room", encoding="utf-8")
             (root / "manifest.yml").write_text(
                 "schema_version: 1\nclock:\n  start: '2026-01-01T00:00:00+00:00'\n  stop: '2026-01-01T01:00:00+00:00'\n"
-                "locations: [{id: room}]\nactors: [{id: a, location: room}]\n"
+                "locations: [{id: room}]\nactors: [{id: aa, location: room}]\n"
                 "items: []\ndocuments: []\nroutes: []\nbarriers: []\nscheduled: []\n"
-                "kb:\n  a:\n    - {fields: {person: a, self: true}, id: identity, desc: '我，a。'}\n"
-                "    - {fields: {reminder: '下周二早上'}, id: bad, desc: 不合法时间}\n",
+                "kb:\n  aa:\n    - {keys: [aa], desc: '我，aa。'}\n"
+                "    - {keys: ['!at=下周二早上'], desc: 不合法时间}\n",
                 encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "unparseable reminder time"):
+            with self.assertRaisesRegex(ValueError, "unparseable scheduled"):
                 load_world_pack(root)
 
     def test_known_to_gates_personal_entity_rows(self):
-        # docs §6 (修订): 个人关联的物品按 known_to 展开——陈默的哨子只有
-        # 他有行；唐小岚的店杯只有她有行；无关角色（林瑶）没有哨子行。
+        # docs §6: 个人关联的物品按 known_to 展开——陈默的哨子只有他有行，
+        # 唐小岚的马克杯只有她有行，无关角色（林瑶）没有哨子行。
         pack = load_world_pack(ROOT / "world")
-        chen = {row["id"]: row for row in pack.kb["陈默"]}
-        self.assertTrue(any(r["fields"].get("item") == "红色哨子"
-                            for r in chen.values()),
-                        "陈默 must have the 红色哨子 row")
-        self.assertTrue(any(r["fields"].get("item") == "裂纹马克杯"
-                            for r in pack.kb["唐小岚"]),
-                        "唐小岚 must have the 裂纹马克杯 row")
-        self.assertFalse(any(r["fields"].get("item") == "红色哨子"
-                             for r in pack.kb["林瑶"]),
-                         "林瑶 must NOT have the 红色哨子 row")
+
+        def has(actor: str, key: str) -> bool:
+            return any(key in row["keys"] for row in pack.kb[actor])
+
+        self.assertTrue(has("陈默", "红色哨子"), "陈默 must have the 红色哨子 row")
+        self.assertTrue(has("唐小岚", "裂纹马克杯"), "唐小岚 must have the 裂纹马克杯 row")
+        self.assertFalse(has("林瑶", "红色哨子"), "林瑶 must NOT have the 红色哨子 row")
 
     def test_descriptions_have_no_manual_wrapping_or_meta_voice(self):
         # 用户点名：描述正文不得手工换行（段落单行），且不得有作者旁白。
@@ -446,7 +453,7 @@ class KbSeedTests(unittest.TestCase):
 
 class ConceptRegistryTests(unittest.TestCase):
     """concepts: is the registry every named non-entity thing must live in
-    (V4-AGENT-INTERFACE §6). The seed name lint is the inverse gate."""
+    (V4-AGENT-INTERFACE §6.1). The seed name lint is the inverse gate."""
 
     def _write_pack(self, root: Path, concepts_yaml: str) -> Path:
         (root / "locations").mkdir()
@@ -454,48 +461,51 @@ class ConceptRegistryTests(unittest.TestCase):
         (root / "characters").mkdir()
         (root / "items").mkdir()
         (root / "documents").mkdir()
-        (root / "characters" / "a.md").write_text("A", encoding="utf-8")
+        (root / "characters" / "aa.md").write_text("A", encoding="utf-8")
         (root / "manifest.yml").write_text(
             "schema_version: 1\nclock: {start: '2026-01-01T00:00:00+00:00', stop: '2026-01-01T01:00:00+00:00'}\n"
-            "locations: [{id: room}]\nactors: [{id: a, location: room}]\nitems: []\ndocuments: []\n"
+            "locations: [{id: room}]\nactors: [{id: aa, location: room}]\nitems: []\ndocuments: []\n"
             "routes: []\nbarriers: []\nscheduled: []\n"
-            "kb:\n  a:\n    - {fields: {person: a, self: true}, id: identity, desc: '我，a。'}\n"
+            "kb:\n  aa:\n    - {keys: [aa], desc: '我，aa。'}\n"
             + concepts_yaml, encoding="utf-8")
         return root
 
-    def test_concepts_expand_into_knowledge_and_memory_rows(self):
+    def test_concepts_expand_into_one_merged_row(self):
         with TemporaryDirectory() as directory:
             root = self._write_pack(
                 Path(directory),
                 "concepts:\n"
-                "- {id: old-place, name: 老地方, kind: place, desc: 一个旧地方。,\n"
-                "   known_to: [a], memory: {a: 我在那儿长大。}}\n")
+                "- {id: old-place, name: 老地方, aliases: [旧地方], kind: place,\n"
+                "   desc: 一个旧地方。,\n"
+                "   known_to: [aa], memory: {aa: 我在那儿长大。}}\n")
             pack = load_world_pack(root)
-            fields = [row["fields"] for row in pack.kb["a"]]
-            self.assertIn({"concept": "老地方"}, fields)
-            self.assertIn({"memory": "老地方"}, fields)
-            self.assertEqual(pack.lexicon["老地方"], ())
+            rows = [row for row in pack.kb["aa"] if "老地方" in row["keys"]]
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(set(rows[0]["keys"]), {"老地方", "旧地方"})
+            self.assertIn("一个旧地方", rows[0]["desc"])
+            self.assertIn("我在那儿长大", rows[0]["desc"])
+            self.assertEqual(pack.lexicon["老地方"], ("旧地方",))
 
-    def test_concept_name_matching_an_entity_contributes_memory_only(self):
+    def test_concept_named_after_an_entity_merges_memory_into_its_row(self):
         with TemporaryDirectory() as directory:
             root = self._write_pack(
                 Path(directory),
                 "concepts:\n"
-                "- {id: room-memory, name: room, kind: place, known_to: [a],\n"
-                "   memory: {a: 我在这个房间长大。}}\n")
+                "- {id: room-memory, name: room, kind: place, known_to: [aa],\n"
+                "   memory: {aa: 我在这个房间长大。}}\n")
             pack = load_world_pack(root)
-            fields = [row["fields"] for row in pack.kb["a"]]
-            self.assertNotIn({"concept": "room"}, fields)
-            self.assertIn({"memory": "room"}, fields)
+            room_rows = [row for row in pack.kb["aa"] if row["keys"] == ["room"]]
+            self.assertEqual(len(room_rows), 1)
+            self.assertIn("我在这个房间长大", room_rows[0]["desc"])
 
-    def test_memory_requires_known_to(self):
+    def test_memory_alone_creates_a_row(self):
         with TemporaryDirectory() as directory:
             root = self._write_pack(
                 Path(directory),
                 "concepts:\n"
-                "- {id: x, name: 某处, kind: place, desc: 某处。, memory: {a: 我记得。}}\n")
-            with self.assertRaisesRegex(ValueError, "requires known_to"):
-                load_world_pack(root)
+                "- {id: x, name: 某处, kind: place, desc: 某处。, memory: {aa: 我记得。}}\n")
+            pack = load_world_pack(root)
+            self.assertTrue(any(row["keys"] == ["某处"] for row in pack.kb["aa"]))
 
     def test_unknown_kind_and_duplicate_name_rejected(self):
         for yaml_text, message in (
@@ -516,7 +526,7 @@ class ConceptRegistryTests(unittest.TestCase):
         import importlib.util
         spec = importlib.util.spec_from_file_location(
             "seed_lint", ROOT / "scripts" / "seed_lint.py")
+        assert spec is not None and spec.loader is not None
         module = importlib.util.module_from_spec(spec)
-        assert spec.loader is not None
         spec.loader.exec_module(module)
         self.assertEqual(module.lint(ROOT / "world"), [])

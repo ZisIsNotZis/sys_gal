@@ -3,6 +3,7 @@
 import json
 import unittest
 from datetime import datetime
+from email.message import Message
 
 from harness.action_schema import SCHEMAS, validate_action_args
 from harness.kernel import ActionRejected, ActorState, Intention, LocationState, World
@@ -29,7 +30,7 @@ class ActionSchemaTests(unittest.TestCase):
             ("read", {"item": "ledger"}),
             ("leave_note", {"text": "去后街找我"}),
             ("trash", {"item": "ledger"}),
-            ("ask_stranger", {"question": "哨子在哪里？"}),
+            ("ask", {"question": "哨子在哪里？"}),
         ]
         for kind, args in cases:
             self.assertIsNone(validate_action_args(kind, args), (kind, args))
@@ -94,7 +95,7 @@ class ActionSchemaTests(unittest.TestCase):
             def fake(request, timeout=0):
                 calls["n"] += 1
                 if calls["n"] <= 6:
-                    raise HTTPError("http://test", 502, "bad", {}, BytesIO(b"upstream"))
+                    raise HTTPError("http://test", 502, "bad", Message(), BytesIO(b"upstream"))
                 payload = json.dumps({"output_text": json.dumps(
                     {"kind": "wait", "args": {"duration_seconds": 60}})})
                 return BytesIO(payload.encode())

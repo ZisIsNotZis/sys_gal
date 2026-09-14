@@ -1,9 +1,17 @@
-"""Per-actor private notebook / KB row model (V4-AGENT-INTERFACE §3/§4/§6).
+"""Per-actor private notebook: key-set rows and one text matcher.
 
-The engine owns the KB; the model sees only rendered lines. desc is opaque —
-the engine never interprets memory content. Rows are located by id (unique
-per actor); fields are immutable (M8): edit only changes desc. Replay
-intervals are sim-minutes (tick = 1 minute, V4-ENGINE §2).
+A row is ``{keys: frozenset[str], desc, status}`` (V4-AGENT-INTERFACE §3/§6).
+The key set is the row's identity *and* its match mechanism:
+
+- text keys are mention needles — the row surfaces when any needle appears in
+  what the actor is currently reading/saying/hearing (``any(k in q)``);
+- directive keys (``!`` prefix) carry engine semantics instead of matching:
+  ``!always`` = unconditional interval bringup, ``!at=<M/D(周X) HH:MM>`` =
+  scheduled bringup + force-interrupt.
+
+There are no ids and no ``person/location/item`` match types: ``recall``,
+``flashback`` and ambient replay all call the same :func:`hits`. Keys are
+immutable; changing them means close + open.
 """
 
 from __future__ import annotations
@@ -14,26 +22,40 @@ import itertools
 import re
 from typing import Any
 
-TODO_REPLAY_MINUTES = 60
-REMINDER_REPLAY_MINUTES = 30
+ALWAYS_REPLAY_MINUTES = 60
+SCHEDULED_REPLAY_MINUTES = 30
 KNOWLEDGE_REPLAY_MINUTES = 120
-TODO_OPEN_LIMIT = 12
+ALWAYS_OPEN_LIMIT = 12
 
-RESERVED_FIELDS = {"person", "location", "item", "todo", "reminder", "self",
-                   "concept", "memory"}
-# Fields whose values participate in the mention set (M7). "document" stays
-# because legacy event payloads/replays may still carry document= keys; current
-# KB rows are emitted as item= (docs §6). "memory" is gated too: a personal
-# recollection surfaces when the person/thing it is about is present. "concept"
-# is deliberately NOT mention-gated — knowing what a place/event/thing is is
-# unconditional world knowledge (replayed on its interval like todo).
-_MENTION_FIELDS = ("person", "location", "item", "document", "memory")
+# Backwards-compatible names used by older call sites/tests.
+TODO_REPLAY_MINUTES = ALWAYS_REPLAY_MINUTES
+REMINDER_REPLAY_MINUTES = SCHEDULED_REPLAY_MINUTES
+TODO_OPEN_LIMIT = ALWAYS_OPEN_LIMIT
+
+ALWAYS_KEY = "!always"
+_AT_PREFIX = "!at="
+_DIRECTIVE = "!"
+_MIN_KEY_CHARS = 2
+
 _WEEKDAY = {"一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "日": 6}
 _WEEKDAY_CHAR = {v: k for k, v in _WEEKDAY.items()}
 _REMINDER_RE = re.compile(r"^(\d{1,2})/(\d{1,2})\((周[一二三四五六日])\) (\d{1,2}):(\d{2})$")
-# Rendering order for due lines within one turn (docs §3: 按类型排序).
-_CATEGORY_ORDER = {"reminder": 0, "todo": 1, "concept": 2, "person": 3,
-                   "location": 4, "item": 5, "memory": 6}
+
+# Characters neutral to matching: Chinese particles, whitespace, and the
+# punctuation that separates names in prose. Removing them on both sides makes
+# 「陈默的爸爸」/「陈默爸爸」 and 「老家属院地下室」/「老家属院的地下室」 equivalent
+# without asking the model to write globs.
+_NEUTRAL = str.maketrans("", "", "的之\x00 \t\r\n，。、；：！？（）【】《》"
+                                "\u201c\u201d\u2018\u2019…—－-·／/")
+
+
+def normalize(text: Any) -> str:
+    return str(text).translate(_NEUTRAL)
+
+
+def key_id(keys: Any) -> str:
+    """Canonical string form of a key set (checkpoints, kernel job handles)."""
+    return "|".join(sorted(str(k) for k in keys))
 
 
 def parse_reminder_time(value: Any, now: datetime) -> datetime | None:
@@ -71,42 +93,126 @@ def format_reminder_time(when: datetime) -> str:
             f"{when.hour:02d}:{when.minute:02d}")
 
 
-def _interval_minutes(fields: dict[str, Any]) -> int:
-    """m3: a multi-field row takes the MAX of its fields' intervals."""
-    table = {"todo": TODO_REPLAY_MINUTES, "reminder": REMINDER_REPLAY_MINUTES}
-    values = [table.get(key, KNOWLEDGE_REPLAY_MINUTES) for key in fields]
-    return max(values) if values else KNOWLEDGE_REPLAY_MINUTES
+def render_key(key: str, at: datetime | None) -> str:
+    if at is not None and key.startswith(_AT_PREFIX):
+        return f"{_AT_PREFIX}{format_reminder_time(at)}"
+    return key
 
 
-def _main_field(fields: dict[str, Any]) -> tuple[str, Any]:
-    for key in ("self", "todo", "reminder", "concept", "person", "location",
-                "item", "memory"):
-        if key in fields:
-            return key, fields[key]
-    for key, value in fields.items():
-        return key, value
-    return "id", ""
+def hits(keys: Any, queries: Any) -> bool:
+    """One matcher for replay, recall and flashback (V4-AGENT-INTERFACE §3).
+
+    True when any text key is a substring of any query, or vice versa (the
+    reverse direction lets a short query such as 「2013年台风」 reach the longer
+    key 「2013年台风夜」). Directive keys are not needles.
+    """
+    needles = [normalize(k) for k in keys if not str(k).startswith(_DIRECTIVE)]
+    if not needles:
+        return False
+    for query in queries:
+        text = normalize(query)
+        if not text:
+            continue
+        for needle in needles:
+            if needle and (needle in text or text in needle):
+                return True
+    return False
+
+
+def matched_span(keys: Any, queries: Any) -> int:
+    """Longest text key matching any query — replay priority ('highest match')."""
+    needles = [normalize(k) for k in keys if not str(k).startswith(_DIRECTIVE)]
+    best = 0
+    for query in queries:
+        text = normalize(query)
+        if not text:
+            continue
+        for needle in needles:
+            if needle and (needle in text or text in needle):
+                best = max(best, len(needle))
+    return best
+
+
+def _row_keys(entry: dict[str, Any]) -> list[str]:
+    """Normalize a seed/snapshot/update row into a key list.
+
+    Accepts the current ``keys`` list and the legacy ``fields`` mapping so that
+    pre-migration checkpoints and seeds still load: text-valued fields become
+    keys, ``todo: true`` becomes ``!always``, ``reminder: <time>`` becomes
+    ``!at=<time>``, ``self: true`` is dropped (identity is derived from the
+    actor's own name).
+    """
+    if "keys" in entry:
+        return [str(k).strip() for k in entry["keys"]]
+    keys: list[str] = []
+    for name, value in (entry.get("fields") or {}).items():
+        if isinstance(value, bool):
+            if name == "todo" and value:
+                keys.append(ALWAYS_KEY)
+            continue
+        if name == "reminder":
+            if isinstance(value, str) and value.strip():
+                keys.append(f"{_AT_PREFIX}{value.strip()}")
+            continue
+        if name == "self":
+            continue
+        if isinstance(value, str) and value.strip():
+            keys.append(value.strip())
+    return keys
+
+
+def _validate_keys(keys: list[str], *, where: str, now: datetime,
+                   actor_id: str | None = None) -> str | None:
+    if not keys:
+        return f"{where}: needs at least one key"
+    for key in keys:
+        if not key:
+            return f"{where}: empty key"
+        if key.startswith(_DIRECTIVE):
+            if key.startswith(_AT_PREFIX):
+                if parse_reminder_time(key[len(_AT_PREFIX):], now) is None:
+                    return f"{where}: unparseable scheduled key: {key}"
+            elif key != ALWAYS_KEY:
+                return f"{where}: unknown directive key: {key}"
+        elif len(key) < _MIN_KEY_CHARS and key != actor_id:
+            # Short keys match too much; the actor's own identity key is the
+            # one legitimate exception (its name may be one character).
+            return f"{where}: key too short (min {_MIN_KEY_CHARS} chars): {key!r}"
+    return None
 
 
 @dataclass
 class _Row:
-    id: str
-    fields: dict[str, Any]
+    keys: frozenset[str]
     desc: str
     status: str = "open"
     last_shown: datetime | None = None
-    shown_seq: int = 0  # monotonic per-KB surfacing order (recall tie-break)
+    shown_seq: int = 0
+    at: datetime | None = None
+
+    @property
+    def text_keys(self) -> frozenset[str]:
+        return frozenset(k for k in self.keys if not k.startswith(_DIRECTIVE))
+
+    @property
+    def always(self) -> bool:
+        return ALWAYS_KEY in self.keys
 
     def render(self) -> str:
-        if self.fields.get("self") and "person" in self.fields:
-            # docs §3 sample: the identity row renders as [person=<own name>]
-            return f"[person={self.fields['person']}]: {self.desc}"
-        key, value = _main_field(self.fields)
-        if key == "reminder" and isinstance(value, datetime):
-            value = format_reminder_time(value)
-        if key in {"self", "todo"}:
-            value = "true"
-        return f"[{key}={value}]: {self.desc}"
+        if self.at is not None:
+            shown = sorted(render_key(k, self.at) for k in self.keys)
+        else:
+            shown = sorted(self.keys)
+        return f"[{' '.join(shown)}]: {self.desc}"
+
+
+def _make_row(keys: list[str], desc: str, now: datetime) -> _Row:
+    unique = frozenset(keys)
+    at = None
+    for key in unique:
+        if key.startswith(_AT_PREFIX):
+            at = parse_reminder_time(key[len(_AT_PREFIX):], now)
+    return _Row(unique, desc, at=at)
 
 
 class ActorKB:
@@ -114,292 +220,267 @@ class ActorKB:
 
     def __init__(self, actor_id: str, rows: list[dict[str, Any]], now: datetime) -> None:
         self.actor_id = actor_id
-        self._now = now  # last sim-time seen; refresh anchor for recall
-        self._rows: dict[str, _Row] = {}
-        self._overflow: list[str] = []
-        self._pending_recall: list[str] = []
+        self._now = now
+        self._rows: dict[frozenset[str], _Row] = {}
+        self._overflow: list[frozenset[str]] = []
+        self._pending_recall: list[frozenset[str]] = []
         self._shown_seq = itertools.count(1)
-        self_rows = 0
-        for row in rows:
-            row_id = str(row.get("id", ""))
-            if not row_id:
-                raise ValueError(f"[{actor_id}] seed row without id")
-            if row_id in self._rows:
-                raise ValueError(f"[{actor_id}] duplicate seed row id: {row_id}")
-            fields = dict(row.get("fields", {}))
-            if "reminder" in fields and isinstance(fields["reminder"], str):
-                when = parse_reminder_time(fields["reminder"], now)
-                if when is None:
-                    raise ValueError(f"[{actor_id}] seed row {row_id}: "
-                                     f"unparseable reminder time: {fields['reminder']}")
-                fields["reminder"] = when
-            if fields.get("self"):
-                self_rows += 1
-            self._rows[row_id] = _Row(row_id, fields, str(row.get("desc", "")))
-        if self_rows != 1:
-            raise ValueError(f"[{actor_id}] exactly one self:true row is required, "
-                             f"found {self_rows}")
+        for entry in rows:
+            keys = _row_keys(entry)
+            error = _validate_keys(keys, where=f"[{key_id(keys) or '?'}]", now=now,
+                                   actor_id=actor_id)
+            if error:
+                raise ValueError(f"[{actor_id}] seed row {error}")
+            row = _make_row(keys, str(entry.get("desc", "")), now)
+            if row.keys in self._rows:
+                raise ValueError(f"[{actor_id}] duplicate key set: {key_id(row.keys)}")
+            self._rows[row.keys] = row
+        # Identity anchor (M2 without a magic key): every actor keeps one row
+        # keyed by their own name, so the model always has an "I am X" line.
+        if not any(actor_id in row.keys for row in self._rows.values()):
+            raise ValueError(f"[{actor_id}] no identity row keyed by {actor_id!r}")
+
+    # ------------------------------------------------------------- helpers
+
+    def row_keys(self) -> list[frozenset[str]]:
+        return list(self._rows.keys())
+
+    def has_identity(self) -> bool:
+        return any(self.actor_id in row.keys for row in self._rows.values())
+
+    def scheduled_rows(self) -> list[_Row]:
+        return [row for row in self._rows.values()
+                if row.status == "open" and row.at is not None]
+
+    def _open_always(self) -> int:
+        return sum(1 for row in self._rows.values()
+                   if row.status == "open" and row.always)
+
+    def _locate(self, target: frozenset[str]) -> tuple[_Row | None, str | None, list[str]]:
+        """Exact key set, then a unique superset; ambiguity lists candidates."""
+        row = self._rows.get(target)
+        if row is not None:
+            return row, None, []
+        candidates = [r for r in self._rows.values()
+                      if r.status == "open" and target <= r.keys]
+        if len(candidates) == 1:
+            return candidates[0], (f"matched by unique subset: "
+                                   f"the row's keys are [{sorted(candidates[0].keys)}]"), []
+        if len(candidates) > 1:
+            listed = " / ".join(str(sorted(r.keys)) for r in candidates[:5])
+            return None, None, [f"[{sorted(target)}] is ambiguous; you might mean: {listed}"]
+        return None, None, [f"[{sorted(target)}] no match"]
 
     # ------------------------------------------------------------- mutation
 
-    def apply_ops(self, ops: list[dict[str, Any]], now: datetime) -> tuple[list[str], dict[str, int]]:
+    def apply_ops(self, ops: list[dict[str, Any]], now: datetime
+                  ) -> tuple[list[str], dict[str, int], list[str]]:
         """Apply an update_memory patch. Partial success: valid rows apply,
-        failures are returned as per-row English errors (docs §4). A row may
-        omit ``id`` and locate by ``fields`` unique match (docs §6 修订)."""
+        failures are per-row English errors. Returns (errors, telemetry,
+        warnings) — warnings report a fuzzy-but-unique key-set match."""
         errors: list[str] = []
-        telemetry = {"applied": 0, "rejected": 0, "tolerated_open_on_open": 0, "free_field": 0}
-        seen: set[str] = set()
+        warnings: list[str] = []
+        telemetry = {"applied": 0, "rejected": 0, "tolerated_open_on_open": 0,
+                     "fuzzy_match": 0, "always_rejected": 0}
         for op in ops:
-            row_id = str(op.get("id", ""))
             kind = str(op.get("op", ""))
-            if not row_id:
-                # id-less row: locate by fields exact-match among open rows.
-                fields = op.get("fields")
-                matches = [r for r in self._rows.values()
-                           if r.status == "open" and isinstance(fields, dict)
-                           and r.fields == fields]
-                if len(matches) == 1:
-                    row_id = matches[0].id
-                elif not matches:
-                    errors.append(f"[fields={fields}] no match")
-                    telemetry["rejected"] += 1
-                    continue
-                else:
-                    errors.append(f"[fields={fields}] ambiguous")
-                    telemetry["rejected"] += 1
-                    continue
-            # Literal duplicate rows (two identical opens of one id) collide;
-            # a lifecycle sequence open→edit→close of one id applies in order.
-            if kind == "open" and row_id in seen:
-                errors.append(f"[id={row_id}] duplicate row in patch")
-                telemetry["rejected"] += 1
-                continue
-            seen.add(row_id)
+            keys = _row_keys(op)
             if kind not in {"open", "edit", "close"}:
-                errors.append(f"[id={row_id}] unknown op: {kind or '(missing)'}")
+                errors.append(f"[{sorted(keys)}] unknown op: {kind or '(missing)'}")
                 telemetry["rejected"] += 1
                 continue
-            fields = op.get("fields")
-            error = self._apply_one(row_id, kind, fields, op.get("desc"), now, telemetry)
+            error = _validate_keys(keys, where=f"[{sorted(keys)}]", now=now)
             if error:
                 errors.append(error)
                 telemetry["rejected"] += 1
-            else:
+                continue
+            target = frozenset(keys)
+            desc = op.get("desc")
+            if kind == "open":
+                existing = self._rows.get(target)
+                if existing is not None and existing.status == "open":
+                    telemetry["tolerated_open_on_open"] += 1
+                    self._write_desc(existing, desc, now, errors)
+                    telemetry["applied"] += 1
+                    continue
+                if existing is not None:
+                    existing.status = "open"
+                    existing.last_shown = now
+                    existing.shown_seq = next(self._shown_seq)
+                    self._write_desc(existing, desc, now, errors)
+                    telemetry["applied"] += 1
+                    continue
+                if ALWAYS_KEY in target and self._open_always() >= ALWAYS_OPEN_LIMIT:
+                    errors.append(f"[{sorted(keys)}] always-bringup limit reached "
+                                  f"({ALWAYS_OPEN_LIMIT})")
+                    telemetry["rejected"] += 1
+                    continue
+                if not isinstance(desc, str) or not desc.strip():
+                    errors.append(f"[{sorted(keys)}] missing desc")
+                    telemetry["rejected"] += 1
+                    continue
+                self._rows[target] = _make_row(keys, desc, now)
+                self._touch(self._rows[target], now)
+                if target in self._overflow:
+                    self._overflow.remove(target)
                 telemetry["applied"] += 1
-        return errors, telemetry
-
-    def _apply_one(self, row_id: str, kind: str, fields: Any, desc: Any,
-                   now: datetime, telemetry: dict[str, int]) -> str | None:
-        row = self._rows.get(row_id)
-        if kind == "open":
-            if row is not None and row.status == "open":
-                # Tolerated reopen of an open row: treated as edit (docs §4).
-                telemetry["tolerated_open_on_open"] += 1
-                return self._edit_desc(row, desc, now, self._shown_seq)
-            if row is not None and row.status == "closed":
-                return self._reopen(row, desc, now, telemetry)
-            # New row.
-            if not isinstance(fields, dict) or not fields:
-                return f"[id={row_id}] missing fields"
-            if fields.get("todo") and self._open_todos() >= TODO_OPEN_LIMIT:
-                return f"[id={row_id}] todo limit reached ({TODO_OPEN_LIMIT})"
-            for key in fields:
-                if key not in RESERVED_FIELDS:
-                    telemetry["free_field"] += 1
-            if "reminder" in fields:
-                when = parse_reminder_time(fields["reminder"], now)
-                if when is None:
-                    return (f"[id={row_id}] unparseable reminder time: "
-                            f"{fields['reminder']}")
-                fields = {**fields, "reminder": when}
-            if not isinstance(desc, str) or not desc.strip():
-                return f"[id={row_id}] missing desc"
-            self._rows[row_id] = _Row(row_id, dict(fields), desc)
-            self._touch(self._rows[row_id], now)
-            if row_id in self._overflow:
-                self._overflow.remove(row_id)
-            return None
-        if row is None:
-            return f"[id={row_id}] no match"
-        if kind == "edit":
+                continue
+            row, warning, locate_errors = self._locate(target)
+            if row is None:
+                errors.extend(locate_errors)
+                telemetry["rejected"] += 1
+                continue
+            if warning:
+                warnings.append(warning)
+                telemetry["fuzzy_match"] += 1
+            if kind == "edit":
+                if row.status == "closed":
+                    errors.append(f"[{sorted(keys)}] wrong state: closed rows can "
+                                  f"only be reopened")
+                    telemetry["rejected"] += 1
+                    continue
+                self._write_desc(row, desc, now, errors)
+                telemetry["applied"] += 1
+                continue
+            # close
             if row.status == "closed":
-                return f"[id={row_id}] wrong state: closed rows can only be reopened"
-            return self._edit_desc(row, desc, now, self._shown_seq)
-        # close
-        if row.status == "closed":
-            return f"[id={row_id}] wrong state: already closed"
-        row.status = "closed"
-        if row_id in self._overflow:
-            self._overflow.remove(row_id)
-        return None
+                errors.append(f"[{sorted(keys)}] wrong state: already closed")
+                telemetry["rejected"] += 1
+                continue
+            if self.actor_id in row.keys:
+                errors.append(f"[{sorted(keys)}] cannot close your identity row")
+                telemetry["always_rejected"] += 1
+                continue
+            row.status = "closed"
+            if row.keys in self._overflow:
+                self._overflow.remove(row.keys)
+            telemetry["applied"] += 1
+        return errors, telemetry, warnings
+
+    def _write_desc(self, row: _Row, desc: Any, now: datetime,
+                    errors: list[str]) -> None:
+        if desc is None:
+            return  # bare open/edit is a tolerated no-op
+        if not isinstance(desc, str) or not desc.strip():
+            errors.append(f"[{sorted(row.keys)}] missing desc")
+            return
+        row.desc = desc
+        self._touch(row, now)
 
     def _touch(self, row: _Row, now: datetime) -> None:
-        """Refresh a row's last_shown and its surfacing tie-break order."""
         row.last_shown = now
         row.shown_seq = next(self._shown_seq)
-
-    @staticmethod
-    def _edit_desc(row: _Row, desc: Any, now: datetime, seq_next) -> str | None:
-        if desc is None:
-            return None  # a bare open/edit with no desc is a tolerated no-op
-        if not isinstance(desc, str) or not desc.strip():
-            return f"[id={row.id}] missing desc"
-        row.desc = desc
-        row.last_shown = now
-        row.shown_seq = next(seq_next)
-        return None
-
-    def _reopen(self, row: _Row, desc: Any, now: datetime,
-                telemetry: dict[str, int]) -> str | None:
-        row.status = "open"
-        row.last_shown = now  # re-archive resets last_shown (docs M8)
-        row.shown_seq = next(self._shown_seq)
-        if desc is not None:
-            if not isinstance(desc, str) or not desc.strip():
-                row.status = "closed"
-                return f"[id={row.id}] missing desc"
-            row.desc = desc
-        return None
-
-    def _open_todos(self) -> int:
-        return sum(1 for r in self._rows.values()
-                   if r.status == "open" and r.fields.get("todo"))
-
-    def close_reminder(self, row_id: str) -> None:
-        row = self._rows.get(row_id)
-        if row is not None:
-            row.status = "closed"
-            if row_id in self._overflow:
-                self._overflow.remove(row_id)
 
     # ------------------------------------------------------------- replay
+
+    def _interval_minutes(self, row: _Row) -> int:
+        if row.always:
+            return ALWAYS_REPLAY_MINUTES
+        if row.at is not None:
+            return SCHEDULED_REPLAY_MINUTES
+        return KNOWLEDGE_REPLAY_MINUTES
 
     def _is_due(self, row: _Row, now: datetime) -> bool:
         if row.status != "open":
             return False
         if row.last_shown is None:
             return True
-        return (now - row.last_shown).total_seconds() >= _interval_minutes(row.fields) * 60
+        return (now - row.last_shown).total_seconds() >= self._interval_minutes(row) * 60
 
-    def _mention_hit(self, row: _Row, mention_set: set[str]) -> bool:
-        # Entity rows (person/location/item) are mention-gated ALWAYS —
-        # including turn 0: an unmentioned entity's description must not
-        # surface before the entity enters the actor's perception (user
-        # ruling 2026-09-08: [item=红色哨子] must not pop up unmentioned).
-        # Unconditional rows (self/todo/reminder/free) flood on turn 0 and
-        # replay on their interval timers; the identity anchor (self:true)
-        # is always unconditional.
-        if row.fields.get("self"):
-            return True
-        hits = [key for key in _MENTION_FIELDS
-                if key in row.fields and row.fields[key] in mention_set]
-        if hits:
-            return True
-        return not any(key in row.fields for key in _MENTION_FIELDS)
-
-    def _category(self, row: _Row) -> tuple[int, float]:
-        key, _ = _main_field(row.fields)
-        order = _CATEGORY_ORDER.get(key, 5)
-        ts = row.last_shown.timestamp() if row.last_shown else 0.0
-        return (order, ts)
-
-    def due_lines(self, now: datetime, mention_set: set[str], limit: int = 8) -> list[str]:
+    def due_lines(self, now: datetime, haystack: Any, limit: int = 8) -> list[str]:
+        """Rows to inject this turn: explicit recalls, then due directives
+        (``!always`` unconditional, ``!at`` on schedule), then mention hits in
+        longest-match order. Overflow queue drains before newly due rows."""
         self._now = now
+        queries = list(haystack) if isinstance(haystack, (list, tuple, set)) else [haystack]
         lines: list[str] = []
-        rendered: set[str] = set()
+        rendered: set[frozenset[str]] = set()
 
         def emit(row: _Row) -> None:
             row.last_shown = now
             row.shown_seq = next(self._shown_seq)
-            rendered.add(row.id)
+            rendered.add(row.keys)
             lines.append(row.render())
 
-        # Explicitly recalled rows surface first (docs §4: 下一轮显式包含);
-        # rows that do not fit stay queued for the next turn.
-        still_pending: list[str] = []
-        for row_id in self._pending_recall:
-            row = self._rows.get(row_id)
+        still_pending: list[frozenset[str]] = []
+        for keys in self._pending_recall:
+            row = self._rows.get(keys)
             if row is None or row.status != "open":
                 continue
             if len(lines) < limit:
                 emit(row)
             else:
-                still_pending.append(row_id)
+                still_pending.append(keys)
         self._pending_recall = still_pending
 
-        open_rows = {row.id: row for row in self._rows.values()
-                     if row.status == "open" and row.id not in rendered}
-        # Overflowed rows clear before newly due rows (docs §3 顺延队列先清);
-        # they were already due when they overflowed, so they render
-        # unconditionally in queue order.
-        ordered = [open_rows[rid] for rid in self._overflow if rid in open_rows]
+        open_rows = [row for row in self._rows.values()
+                     if row.status == "open" and row.keys not in rendered]
+        by_keys = {row.keys: row for row in open_rows}
+        ordered: list[_Row] = [by_keys[k] for k in self._overflow if k in by_keys]
         in_overflow = set(self._overflow)
-        candidates = [row for rid, row in open_rows.items()
-                      if rid not in in_overflow
-                      and self._is_due(row, now) and self._mention_hit(row, mention_set)]
-        ordered.extend(sorted(candidates, key=self._category))
+
+        def rank(row: _Row) -> tuple[int, int, float, int]:
+            priority = 0 if row.always else 1 if row.at is not None else 2
+            span = matched_span(row.keys, queries) if priority == 2 else 0
+            ts = row.last_shown.timestamp() if row.last_shown else -1.0
+            return (priority, -span, ts, row.shown_seq)
+
+        candidates = [row for row in open_rows
+                      if row.keys not in in_overflow and self._is_due(row, now)
+                      and (row.always or row.at is not None or hits(row.keys, queries))]
+        ordered.extend(sorted(candidates, key=rank))
         for row in ordered:
             if len(lines) >= limit:
                 break
             emit(row)
-        # Rows that ran out of room stay queued (old queue order first, new
-        # overflow appended behind them).
-        self._overflow = [row.id for row in ordered if row.id not in rendered]
+        self._overflow = [row.keys for row in ordered if row.keys not in rendered]
         return lines
 
     def due_reminders(self, now: datetime) -> list[dict[str, Any]]:
         out = []
         for row in self._rows.values():
-            if row.status != "open" or "reminder" not in row.fields:
+            if row.status != "open" or row.at is None:
                 continue
-            when = row.fields["reminder"]
-            if isinstance(when, datetime) and when <= now:
-                out.append({"id": row.id, "time": when, "desc": row.desc,
-                            "rendered": row.render()})
+            if row.at <= now:
+                out.append({"id": key_id(row.keys), "time": row.at, "desc": row.desc,
+                            "rendered": format_reminder_time(row.at)})
         return out
 
-    def match_rows(self, terms: set[str]) -> list[str]:
-        """flashback: surface every row (open or closed) that mentions any of
-        ``terms`` in a field value or in its desc. Memory rows sort first, then
-        concepts, then everything else; ties keep surfacing order."""
-        wanted = {term for term in terms if term}
+    def close_scheduled(self, row_id: str) -> None:
+        for row in self._rows.values():
+            if key_id(row.keys) == row_id:
+                row.status = "closed"
+                if row.keys in self._overflow:
+                    self._overflow.remove(row.keys)
+                return
+
+    def match_rows(self, queries: Any, limit: int | None = None) -> list[str]:
+        """flashback: every row (open or closed) whose keys match the query,
+        longest match first — the actor's own past, not a log lookup."""
+        query_list = list(queries) if isinstance(queries, (list, tuple, set)) else [queries]
+        matches = [row for row in self._rows.values() if hits(row.keys, query_list)]
+        matches.sort(key=lambda row: (-matched_span(row.keys, query_list),
+                                      row.last_shown.timestamp() if row.last_shown else -1.0,
+                                      row.shown_seq))
+        return [row.render() for row in (matches[:limit] if limit else matches)]
+
+    def force_recall(self, keys: list[str] | None, closed: bool = False,
+                     limit: int = 8) -> list[str]:
+        """recall: explicitly surface rows selected by keyword. Accepts text
+        keys and directive keys (``!always`` lists every obligation)."""
+        wanted = [str(k).strip() for k in (keys or []) if str(k).strip()]
         if not wanted:
             return []
-        matches: list[_Row] = []
-        for row in self._rows.values():
-            hay = "\n".join([*(str(v) for v in row.fields.values()), row.desc])
-            if any(term in hay for term in wanted):
-                matches.append(row)
-
-        def rank(row: _Row) -> tuple[int, float, int]:
-            key, _ = _main_field(row.fields)
-            priority = {"memory": 0, "concept": 1}.get(key, 2)
-            ts = row.last_shown.timestamp() if row.last_shown else -1.0
-            return (priority, ts, row.shown_seq)
-
-        matches.sort(key=rank)
-        return [row.render() for row in matches]
-
-    def force_recall(self, kinds: list[str] | None, ids: list[str] | None,
-                     closed: bool = False, limit: int = 8) -> list[str]:
-        """recall: explicitly surface the requested kinds/ids in the next
-        #knowledge block. Rows are queued (rendered again next turn even if
-        not yet due) and returned immediately for the engine's use; closed
-        rows only when ``closed`` is true. Ordering: oldest last_shown first."""
-        kind_set = set(kinds or ())
-        id_set = set(ids or ())
-        if not kind_set and not id_set:
-            return []
         matches = [row for row in self._rows.values()
-                   if row.status == "open" or closed]
-        matches = [row for row in matches
-                   if (row.id in id_set) or (bool(kind_set & set(row.fields)))]
-        matches.sort(key=lambda r: (r.last_shown.timestamp() if r.last_shown else -1.0,
-                                    r.shown_seq))
+                   if (row.status == "open" or closed)
+                   and (hits(row.keys, wanted)
+                        or any(w == k for w in wanted for k in row.keys))]
+        matches.sort(key=lambda row: (row.last_shown.timestamp() if row.last_shown else -1.0,
+                                      row.shown_seq))
         picked = matches[:limit]
         for row in picked:
-            if row.id not in self._pending_recall:
-                self._pending_recall.append(row.id)
+            if row.keys not in self._pending_recall:
+                self._pending_recall.append(row.keys)
         return [row.render() for row in picked]
 
     def on_compaction(self) -> None:
@@ -413,21 +494,16 @@ class ActorKB:
     # -------------------------------------------------------------- persist
 
     def snapshot(self) -> dict[str, Any]:
-        def field_value(value: Any) -> Any:
-            if isinstance(value, datetime):
-                return format_reminder_time(value)
-            return value
-
         return {"actor_id": self.actor_id,
-                "rows": [{"id": r.id,
-                          "fields": {k: field_value(v) for k, v in r.fields.items()},
-                          "desc": r.desc,
-                          "status": r.status,
-                          "last_shown": r.last_shown.isoformat() if r.last_shown else None,
-                          "shown_seq": r.shown_seq}
-                         for r in self._rows.values()],
-                "overflow": list(self._overflow),
-                "pending_recall": list(self._pending_recall),
+                "rows": [{"keys": sorted(row.keys),
+                          "desc": row.desc,
+                          "status": row.status,
+                          "last_shown": row.last_shown.isoformat() if row.last_shown else None,
+                          "shown_seq": row.shown_seq}
+                         for row in self._rows.values()],
+                "overflow": [sorted(row.keys) for row in self._rows.values()
+                             if row.keys in self._overflow],
+                "pending_recall": [sorted(keys) for keys in self._pending_recall],
                 "shown_seq": next(self._shown_seq)}
 
     @classmethod
@@ -440,20 +516,28 @@ class ActorKB:
         except (TypeError, ValueError) as exc:
             raise ValueError(f"invalid kb snapshot shown_seq: {exc}") from exc
         kb._rows = {}
-        for row in state["rows"]:
-            fields = dict(row["fields"])
-            if "reminder" in fields and isinstance(fields["reminder"], str):
-                fields["reminder"] = (parse_reminder_time(fields["reminder"], now)
-                                      or fields["reminder"])
-            last = row.get("last_shown")
+        kb._overflow = []
+        kb._pending_recall = []
+        for entry in state["rows"]:
+            keys = _row_keys(entry)
+            if not keys:
+                continue  # pre-migration row with no derivable key
+            row = _make_row(keys, str(entry.get("desc", "")), now)
+            # A legacy checkpoint can collapse distinct rows onto one key set
+            # (e.g. two `todo: true` rows); keep the first and skip the rest
+            # rather than failing the resume.
+            if row.keys in kb._rows:
+                continue
+            last = entry.get("last_shown")
             try:
-                shown = datetime.fromisoformat(last) if last else None
-                seq = int(row.get("shown_seq", 0))
+                row.last_shown = datetime.fromisoformat(last) if last else None
+                row.shown_seq = int(entry.get("shown_seq", 0))
+                row.status = str(entry.get("status", "open"))
             except (TypeError, ValueError) as exc:
-                raise ValueError(f"invalid kb snapshot row {row.get('id')}: {exc}") from exc
-            kb._rows[str(row["id"])] = _Row(str(row["id"]), fields,
-                                            str(row["desc"]), str(row.get("status", "open")),
-                                            shown, seq)
-        kb._overflow = [str(x) for x in state.get("overflow", ())]
-        kb._pending_recall = [str(x) for x in state.get("pending_recall", ())]
+                raise ValueError(f"invalid kb snapshot row {key_id(row.keys)}: {exc}") from exc
+            kb._rows[row.keys] = row
+        kb._overflow = [frozenset(k) for k in state.get("overflow", ())
+                        if frozenset(k) in kb._rows]
+        kb._pending_recall = [frozenset(k) for k in state.get("pending_recall", ())
+                              if frozenset(k) in kb._rows]
         return kb

@@ -5,7 +5,7 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 ## 0. 原则
 
 - 引擎 = 匹配器 + 渲染器 + 调度器。模型输出工具调用；引擎只匹配字段、渲染行、按序执行。desc 对引擎不透明——永不解读记忆内容。
-- 一切从种子来：身份、世界事实、初始目标全部是 KB 行（种子初始化，见 §6）。system prompt 全角色通用一字不差，不含身份/世界事实/工具 schema 文档。
+- 一切从种子来：身份、私人过往、初始目标、具体的人/事/物全部是 KB 行（种子初始化，见 §6）。system prompt 全角色通用一字不差，不含身份也不含工具 schema 文档；其后仅追加一段由世界包生成的**静态世界设定**（§1，地点/连通/时间尺度），不含任何角色私有信息。
 - append-only：system prompt 与消息前缀永不变；动态内容只追加在每回合 user 消息尾部。
 - 无 judge、无宽容解析：模型输出原生工具调用，参数由 API 结构化解析；严格校验，失败 = 该调用报错跳过，其余继续，世界不停。
 - 语言分工：沉浸内容（对话、描述、心声——全部由模型或种子创作）中文；工具调用机制（动作名、参数、错误消息）英文，错误必须具体（"no match"、"wrong state"、"out of range"，不写 "or" 混合含糊）。
@@ -30,15 +30,17 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 你输出的每一句话（回复里的普通文字）就是你当面说出的话——周围的人都听得见；只想心里想、不出口的内容用思考完成，不要说出来。等一下再说的内容，先在心里打好腹稿。等待随时可行，不必等谁批准；夜里困了就找个有床的地方睡下。陌生人凑近耳语会显得可疑；耳语（speak 的 whisper）只对亲近的人用。消息里时间写作 9/16(周三) 7:00。
 ```
 
+以上逐字段落全角色逐字相同、永不变更。其后追加**一段本世界静态设定**（`world_loader.world_primer`：地点清单、地点间步行分钟数、时间尺度、耳语/打听/心声的分寸）。该段由世界包生成、与世界无关状态下静态，因此仍对 provider 缓存友好；**不含任何角色私有信息**。具体的人/事/物不写在这里——它们由 keyed KB 行在被提及时供给（§6）。
+
 ## 2. 工具（tools 参数，静态全量声明）
 
 一次性声明全部工具，永不增删（cache 安全）。当回合哪些世界动作**可做**不需要枚举——动作空间是静态知识（本表 + 工具 schema），实体是当前感知（表头在场/身上/附近）与 KB 信念行；对不可行的动作发起调用会被引擎拒绝并给出具体原因（拒绝本身是信息）。每次调用的结果（内容、明确说明或具体错误）由引擎以 role:"tool" 消息回填会话——没有 ok 占位。`harness/action_schema.py` 与本表一一对应。
 
 | 工具 | 消耗时间 | 说明 |
 | --- | --- | --- |
-| update_memory | 否 | 把事实或要紧的事写进私人记事本（引擎保管，只有你能看）：rows[{fields,id,op:open/edit/close,desc?}]；字段是保留名 person:/location:/item:/concept:/memory:/todo:true/reminder:"M/D(周X) HH:MM" 或自由标签，id 用英文短横线小写（可省略，fields 唯一匹配时自动定位）；只写事实和要紧的事——发生的事世界会自动重现。**鼓励：每获得值得记住的新信息就 update_memory。**部分成功，失败逐行报错 |
-| recall | 否 | 立刻翻看记事本：用 kinds 或 ids 选择行（两者必填其一），匹配的行逐字回进该调用的 tool 结果（closed 行需 closed:true；无匹配则明确说明） |
-| flashback | 否 | 手动闪回：把关于 entity 的、你知道或亲历过的一切逐字回进该调用的 tool 结果。来源与优先序：① 你私人记事本里的 memory 行（前史／往事）与 concept 行（它是什么）；② relevant 的 person/item/location 行；③ 本次经历里已投递的历史行。entity 支持注册别名（如 "老街坊" 命中 "老家属院"）与子串匹配；确实没有则明确说明——绝不为空的查询编造历史 |
+| update_memory | 否 | 把事实或要紧的事写进私人记事本（引擎保管，只有你能看）：rows[{keys,op:open/edit/close,desc?}]。**keys 是这行的关键词表**（一个或多个，每个 ≥2 字）——既是它的**定位符**也是它的**唤起词**：以后任何消息里出现其中一个词，这行就回到你眼前。特殊 key：`!always` = 不论提没提到都定期提醒（要紧的事、欠着的承诺）；`!at=9/16(周三) 08:30` = 到点提醒（会打断手上的事）。**keys 不可改**——要改 key 就 close 旧的、open 新的。部分成功，失败逐行报错 |
+| recall | 否 | 立刻翻看记事本：keys=[关键词]（必填），任一行只要含其中一个关键词就逐字回进该调用的 tool 结果（closed 行需 closed:true）；也可用 `!always` 列出所有常提行。平时不必用——被提到的行会自动回到你眼前 |
+| flashback | 否 | 手动闪回：把关于 entity 的、你知道或亲历过的一切逐字回进该调用的 tool 结果。先用同一套 key 匹配你的全部记事本行（含前史 memory 与「那是什么」的定义），再回放本次经历中相关的已投递历史。匹配容错：整串/子串皆可、`的` 等虚词省略、别名已注册为 key（如 "老街坊" 命中 "老家属院"）。确实没有则明确说明——绝不为空的查询编造历史 |
 | wait | 是 | 唯一的时间流逝工具（已并入 sleep）；时长向上取整到 tick 倍数；等待期间事件照常长轮询投递 |
 | speak | 是 | 仅用于**修饰性说话**：volume=whisper（仅 to 指定的在场者听得见文本，其他人只见耳语动作）。普通说话不用工具——直接输出文字即是开口（见 §1） |
 | text | 是 | 发手机短信：target=收件人，无视距离，1 tick 后送达；正文只投递给收件方 |
@@ -66,11 +68,11 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 9/16(周三) 7:16 陈默 说："豆浆，双份。今天店里就你一个？"
 
 # knowledge
-[scene=半坡咖啡馆]: 校门口的独立咖啡馆，门面窄……
-[item=校报草稿]: 压在吧台，无署名
-[person=唐小岚]: That's me, 二十三岁，咖啡师，试用期第四个月……
-[todo=true]: 弄清吧台上那份校报草稿是谁放的
-[reminder=9/16(周三) 08:30]: 去后街糕点铺帮老板娘带话
+[半坡咖啡馆]: 校门口的独立咖啡馆，门面窄……
+[校报草稿]: 压在吧台，无署名
+[唐小岚 瑶姐]: 我，唐小岚，二十三岁，咖啡师，试用期第四个月……
+[!always 校报草稿]: 弄清吧台上那份校报草稿是谁放的
+[!at=9/16(周三) 08:30 糕点铺]: 去后街糕点铺帮老板娘带话
 ```
 
 块规则：
@@ -78,10 +80,11 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 - **表头**（恒在，无计时器）：时间 @地点、在场（self 标 `(you)`）、身上、附近（本地点可见但不在手上的物品）。这些是**当前感知**（永远为真），每回合机械重渲，永不遗漏——位置与在场是持续感知，不是记忆。
 - **tool 结果**：不存在 #error 块。每次工具调用的结果由引擎以 role:"tool" 消息回填会话：n 条 tool_call = n 条 tool 结果 + 下一条 user 世界消息。每个结果都携带真实内容（read 正文、recall 记事本行、flashback 历史、leave_note/trash 完成说明）或具体错误原文（机制类错误为英文：未知动作、缺参数等）。世界侧私有投递（耳语文本、消息正文）不属于 tool 结果，以 └ 私有投递行仅收件人可见——└ 是唯一的私有投递语法。
 - **#events**（长轮询）：自上次同步以来所有**未投递且可投递**的定向事件。可投递 = 电话/远程定向事件（无距离限制、录下后在醒时投递，非 force-interrupt）或发生时在场的公共事件。**不存在 asleep 过滤**——等待/睡眠期间在场的公共事件照常投递。
-- **#knowledge**：到期行（`now - last_shown ≥ 该行 interval`）按类型排序注入，每回合上限 8 行。**提及集（M7 裁决）**= 本回合表头结构化实体（在场者/身上/附近）∪ 本回合 #events 事件的 structured payload 实体（一跳，不递归、不解析自由文本）——行字段命中提及集且计时到期则回放；仅 id 的行无条件按期回放。**溢出行优先于新到期行**（顺延队列先清）。**KB 行的重逢不强制重放**——重挂全量回放仅作用于表头状态行。**compaction：全部 last_shown 清零**（下一轮全量重放；closed 行除外——永不回放）。update_memory 的 open/edit 刷新该行 last_shown；close 的行不再出现。
-- **行间隔（m3 裁决）**：多字段行取其字段对应间隔的 **max**。
-- **字段不可变（M8 裁决）**：`edit` 只改 desc；fields+id 是不可变定位器。重新归档 = close + open（last_shown 重置，可接受）。
-- **reminder 时间表达式（m7 裁决）**：严格解析，失败即该行 open/edit 拒绝并报具体解析错误（`unparseable reminder time: …`）——提醒必须准时，不容错。
+- **#knowledge**：行渲染为 `[<key 列表>]: desc`——key 全列出（它们是定位符），`!at=` 显示为格式化时间。注入条件：① `!always` 行按 `always_replay_minutes` 到期无条件下发；② `!at=` 行按 `scheduled_replay_minutes` 到期下发（另有到点 force-interrupt 通知）；③ 其余行按 `knowledge_replay_minutes` 到期**且**任一 text key 命中本回合**提及文本**。每回合上限 8 行；溢出行优先于新到期行（顺延队列先清）。
+- **提及文本（替代旧“提及集”）**：= 本回合世界消息（表头 + #events + 私有投递）去掉 #knowledge 块，再拼上**上一回合 tool 结果正文**。匹配函数唯一：`any(k in normalize(q) for q in queries for k in text_keys)`——双向子串、忽略 `的` 等虚词与标点。**不扫 #knowledge 自身**（否则行内描述会自我触发），也不扫全局文本（每人只看自己的消息）。
+- **key 不可变（M8）**：`edit` 只改 desc；要改 key = close + open。定位顺序：精确 key 集 → 唯一超集（成功但 tool 结果附 warning）→ 多义（报错并列出候选）→ 无匹配。
+- **`!at=` 时间表达式（m7）**：严格解析，失败即拒绝并报具体错误——提醒必须准时，不容错。
+- **compaction：全部 last_shown 清零**（下一轮全量重放；closed 行除外）。update_memory 的 open/edit 刷新该行 last_shown；close 的行不再出现。
 
 事件渲染模板（封闭集，每种 kind 一条，槽位 = 实体全名；新增事件 kind 必须先在本文登记模板，再实现）：
 
@@ -106,9 +109,9 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 - 模型一次响应可以包含：**普通文字输出**（= 当面说出的话，见下）+ **多个工具调用**（原生 tool_calls，按序逐个执行）。
 - **文本即说话**：响应中的普通文字输出按提交时刻的在场听众渲染为 speech 事件——周围的人都听得见。只想心里想的内容不要输出为文字（用原生思考完成）。文字先于工具调用提交（_provider 流式顺序_），全部文字合并为一次说话。
 - **工具结果**：每个 tool 结果都携带真实内容（read 正文、recall 行、flashback 历史、leave_note/trash 完成说明）或具体错误原文——没有 ok 占位。
-- `update_memory` 补丁语义：合法行应用，失败行原文进该调用的 tool 结果，其余继续。同一 patch 内出现两行相同 (fields,id)：第一行生效，其余该行报 `duplicate row in patch`。对已是 open 状态的行再次 open：视为 edit（宽容）+ 遥测计数，不报错、不产生第二行。close 的行只能 reopen（`op:"open"`），不能 edit；close 的行不计入 todo 上限。
-- todo 上限 **12** 只数 open 状态的 todo 行。
-- `reminder` 到期 = **force-interrupt**（V4-ENGINE §3）：在执行位置挂起当前动作 → 下回合 continue-or-cancel；通知播放后该行自动 close。挂起动作的继续/放弃用工具 `continue_action` / `abandon_action` 表达（二者常驻工具清单，仅在挂起时可用——不可行调用会被拒绝）。
+- `update_memory` 补丁语义：合法行应用，失败行原文进该调用的 tool 结果，其余继续。**同一 patch 内出现两行相同 key 集**：第一行生效，其余报 `duplicate key set in patch`。对已是 open 状态的行再次 open：视为 edit（宽容）+ 遥测计数。close 的行只能 reopen（`op:"open"`），不能 edit；close 的行不计入 `!always` 上限。
+- `!always` 上限 **12** 只数 open 状态的 `!always` 行。
+- `!at=` 到期 = **force-interrupt**（V4-ENGINE §3）：在执行位置挂起当前动作 → 下回合 continue-or-cancel；通知播放后该行自动 close。挂起动作的继续/放弃用工具 `continue_action` / `abandon_action` 表达（二者常驻工具清单，仅在挂起时可用——不可行调用会被拒绝）。
 - **世界动作**：按序执行、时间累加、各自 ≥1 tick 且向上取整到 tick 倍数。同一回合允许动作链（说完再走）。
 - 每回合工具调用上限 **8**（m9 裁决）：截断发生在调用边界——已执行的调用与其时间消耗照常结算，被截断的调用整条不执行，其 tool 结果报 `truncated: N calls dropped`。
 - 一回合既无文字输出也无世界动作 → 角色发呆 1 tick。
@@ -121,83 +124,76 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 
 ## 5. NPC 与 extras 的接口（M9/M10 裁决）
 
-- **NPC**：唤醒回合收到与 MC **结构完全一致**的每回合消息（表头/#events/#knowledge/#actions），仅额外多一个置顶的 `[director]` 块（导演简报：本场目标、知识注记）。NPC 的 KB 与 MC 同机制（含 person=self 身份行、todo、reminder）——**无独立滚动摘要**（旧机制废除）。MC 永远看不到 [director] 块——不可分辨保持。
+- **NPC**：唤醒回合收到与 MC **结构完全一致**的每回合消息（表头/#events/#knowledge），仅额外多一个置顶的 `[director]` 块（导演简报：本场目标、知识注记）。NPC 的 KB 与 MC 同机制（含身份行、`!always`、`!at=`）——**无独立滚动摘要**（旧机制废除）。MC 永远看不到 [director] 块——不可分辨保持。
 - **extras**：**无 KB**（会话期记忆即其全部记忆，销毁即失）。消息 = `[director]` 简报（身份碎片+知识注记）+ 场景行 + 发起者的提问。工具面仅 `speak`。多轮对话由发起者与 extra 轮流收消息；销毁时会话与其记忆一并丢弃。
 - **台账（超自然 NPC）**：案件默认已接下（无 accept/decline 仪式），由启动时 system_case_accepted 事件开场（含条款与报酬的完整叙述）。它是**世界内对话者**：受约束角色用 ask/系统通道向它提问，它只回答种子事实表内的条目（答不了就说不知道）；查询次数硬上限，超限即闭口。它不是工具——没有 system_query；所有交互走对话。它的每一次回答以系统私有事件仅投递给受约束角色。
 
-## 6. 种子行 schema（M2 裁决——KB 行在开局前如何声明）
+## 6. 种子行 schema（KB 行在开局前如何声明）
 
-种子包中每角色一个 KB 初始行列表（manifest 集中声明 `kb:` 段，世界加载器校验）：
+**一行的全部身份 = 它的 key 集。** 行模型：
+
+```python
+{"keys": frozenset[str], "desc": str, "status": "open" | "closed"}
+```
+
+- `keys` 既是**定位符**（open/edit/close、快照、去重）也是**唤起词**（提及匹配）。key 不可变；要改 key 就 close + open。
+- 文本 key ≥2 字（唯一例外：本角色自己的身份 key 可以是角色名本身）。整串/子串皆可命中；比较前去掉 `的`/`之`/空白/标点。
+- 指令 key（`!` 前缀，机制层 ASCII）：`!always` = 无条件按间隔重提（计入上限 12）；`!at=M/D(周X) HH:MM` = 到点提醒 + force-interrupt，通知后自动 close。禁止其他 `!` key。
+- 无 id、无 person/location/item/concept/memory 匹配类型：一行可带多个 key（如 `["陈默", "常客"]`），任一命中即回放。同一角色内两个行不得共用同一 key 集（key 集即身份）。
+- **身份行（M2）**：每角色必须恰有一行其 key 含自己的名字，desc 以第一人称"我，"开头；引擎拒绝 close 这一行。
+
+manifest 的 `kb:` 段示例：
 
 ```
 kb:
-  - fields: {person: 唐小岚, self: true}
-    id: identity
+  唐小岚:
+  - keys: [唐小岚]
     desc: 我，唐小岚，二十三岁，半坡咖啡馆咖啡师，试用期第四个月……
-  - fields: {todo: true}
-    id: draft_claim
+  - keys: ["!always", 校报草稿]
     desc: 弄清吧台上那份校报草稿是谁放的
-  - fields: {location: 半坡咖啡馆}
-    id: map
+  - keys: [半坡咖啡馆]
     desc: 食堂→教学楼约12分钟穿中庭……（信念行，无物理效果）
-  - fields: {reminder: 9/16(周三) 08:30}
-    id: bread_run
+  - keys: ["!at=9/16(周三) 08:30", 糕点铺]
     desc: 去后街糕点铺帮老板娘带话
 ```
 
-规则：
+其他规则：
 
-- **身份行锚定（M2）**：每角色恰一行 `self: true`（保留字段），desc 以第一人称"我，…"开头——这是"我"的锚；模型同时每回合在表头在场行看到自己的名字（`(you)`）。引擎校验：有且仅有一行 self:true，否则加载失败。
-- fields 的键为保留名或自由次要标签（受控主键：person/location/item/concept/memory/todo/reminder/self；自由键钳为 knowledge + 遥测）。
-- `concept:` = 世界知识（那地方／那人／那事是什么）；`memory:` = 私人回忆（我和它的来历）。二者由 `concepts:` 注册表自动展开（见下）。
-- 行在 turn 0 全部 last_shown=0 → 无条件行（self/todo/reminder/**concept**）灌入首条消息；实体行（person/location/item/document）与 **memory 行**按提及集门控。
-- public_knowledge（manifest）自动展开为**每角色一条对应 KB 行**（各角色独立副本，可各自 edit）。world 包 items/documents 的描述同样按 known_to 自动展开为对应角色的 item KB 行（KB 行统一用 item=，不再有独立 document 类型——内容型物品由 read 承载）。**知识是私人的**：个人关联的物品/文档必须标 known_to；未标 known_to 者只展开可见层描述。首轮泛洪只覆盖无条件行（self/todo/reminder）——实体行一律提及集门控。
-- id 全角色 KB 内唯一；定位用 (fields,id)，update_memory 允许省略 id 而以 fields 唯一匹配（引擎自动解析，避免角色需要记忆内部 id）。
+- public_knowledge（manifest）自动展开为每角色一条对应 KB 行。world 包 items/documents/locations 的描述按 known_to 自动展开为**以实体名为 key** 的行。**知识是私人的**：个人关联的物品/文档必须标 known_to；未标者只展开可见层描述。
+- 旧 `fields:` 写法仍可被加载器读入（向下兼容），但新种子一律写 `keys:`；`fields` 将在后续清理。
 
 ### 6.1 concepts: 注册表（自洽规则）
 
-**规则：种子里出现的每一个有名之物都必须注册。** 不是 actor/location/item/document
-的长住实体，一律进入 manifest 的 `concepts:` 段，拿到「它是什么」（desc）、谁「知道」
-（known_to）与谁「有来历」（memory）。散文里不允许出现只有文本、运行时拿不到的名字——
-这正是 `flashback` 返回空、模型放弃记忆工具的根因。
+**规则：种子里出现的每一个有名之物都必须注册。** 不是 actor/location/item/document 的常驻实体，一律进入 manifest 的 `concepts:` 段，拿到定义（desc）、谁"知道"（known_to）与谁"有来历"（memory）。散文里不允许出现只有文本、运行时拿不到的名字——这正是 `flashback` 返回空、模型放弃记忆工具的根因。
 
 ```
 concepts:
-- id: old-compound            # ascii kebab，全局唯一
-  name: 老家属院                # 规范名 = 提及键
-  aliases: [家属院, 老街坊, 地下室]  # flashback 与名字检查都认得
-  kind: place                  # place|person|item|event|org|thing|generic
-  known_to: [陈默, 林瑶, 下棋大爷]      # 得到无条件 concept 知识行
-  desc: 陈默长大的旧居民区……      # 「它是什么」（generic 可免）
-  memory:                      # 可选；键必须是 known_to 的子集
-    陈默: 我在那儿长到九岁……    # 私下第一人称回忆 → memory 行（提及集门控）
+- id: old-compound
+  name: 老家属院
+  aliases: [家属院, 老街坊, 地下室]   # 别名会成为 key
+  kind: place                        # place|person|item|event|org|thing|generic
+  known_to: [陈默, 林瑶, 下棋大爷]
+  desc: 陈默长大的旧居民区……
+  memory:
+    陈默: 我在那儿长到九岁……
 ```
 
-- `known_to` 非空的 concept，除 `generic` 外，每角色展开一行 `fields: {concept: <name>}`
-  （无条件、按 knowledge 间隔重放）；`memory` 每角色展开一行 `fields: {memory: <name>}`
-  （提及集门控 + flashback 可检索）。id 形如 `kb-concept-<id>`、`kb-memory-<id>`。
-- **name 等于已有实体 id 时**（如 `红色哨子`、`林瑶`）为“补充条目”：不重复生成知识行
-  （实体自带描述），只贡献 memory。
-- `kind: generic` = 仅注册、不展开行：用于确实只是名称（校门口、教务处）或 Tier-C 纹理
-  （糖罐子、催稿单），使名字检查有一个合法目标、而不给角色加无意义负担。
-- **名字检查（pre-run gate）**：`scripts/seed_lint.py` 扫描全部作者散文，凡出现「名字样」
-  token（姓氏+身份、小/老+姓、地点后缀、物品后缀、事件词）而未解析到任一实体 id、
-  concept 名或 alias，即失败并列出 `file:line`。**没有旁路白名单**——该进世界的名字就注册；
-  这不只防止忘改，也让 `rg`/`flashback`/模型三方看到同一套名字。`test_seed_names_all_resolve`
-  把当前种子锁成绿灯。
+- 展开：`known_to ∪ memory` 中的每个角色得到**一行**——`keys = [name, *aliases]`，`desc = 定义` +（若有）`"\n我：" + 该角色的 memory`。⚠️ 定义与私人回忆**合并成一行**：key 集即身份，两行会同 key 冲突。
+- **name 等于已有实体 id 时**（如 `红色哨子`、`林瑶`）：把 memory 并进那条已有行，不新建。
+- `kind: generic` = 仅注册、不展开行：用于确实只是名称（校门口、教务处）或纹理（糖罐子、催稿单），让名字检查有合法目标而不给角色加负担。
+- **名字检查（pre-run gate）**：`scripts/seed_lint.py` 扫描全部作者散文，凡出现「名字样」token 而未解析到任一实体 id、concept 名或 alias，即失败并列出 `file:line`。**没有旁路白名单**——该进世界的名字就注册；这不只防止忘改，也让 `rg`/`flashback`/模型三方看到同一套名字。`test_seed_names_all_resolve` 把当前种子锁成绿灯。
 
 ## 7. 常数表
 
 | 常数 | 值 | 管什么 |
 | --- | --- | --- |
-| `knowledge_replay_minutes` | 120 | knowledge 各类型行（scene/item/person）的 last_shown 间隔（模拟时间分钟） |
-| `todo_replay_minutes` | 60 | todo 行回放间隔 |
-| `reminder_replay_minutes` | 30 | reminder 行回放间隔 |
-| `flashback_limit` | 5 | 闪回行数（memory/concept 优先，其次已投递历史）|
-| `flashback_horizon_minutes` | 保留 | 旧地平线语义已废止：闪回是“回忆”不是“查日志”，前史无时间戳，一律可回 |
+| `knowledge_replay_minutes` | 120 | 普通（text-key）行命中提及后的重放间隔（模拟时间分钟） |
+| `always_replay_minutes` | 60 | `!always` 行的无条件重放间隔 |
+| `scheduled_replay_minutes` | 30 | `!at=` 行的重放间隔 |
+| `flashback_limit` | 5 | 闪回行数（key 匹配的记事本行优先，其次已投递历史） |
 | `compaction_threshold` | 30000 字符 | 会话压缩触发 |
 | `recent_messages` | 4 | 压缩保留的最近非 world 消息 |
-| todo 行上限 | 12 | 只数 open 状态 |
+| `!always` 行上限 | 12 | 只数 open 状态 |
 | 每回合 knowledge 行上限 | 8 | 防突发，溢出顺延（溢出优先） |
 | 每回合工具调用上限 | 8 | 防失控，边界截断 |
 | `idle_slice_seconds` | 60（1 tick） | 无世界动作回合的发呆时长 |

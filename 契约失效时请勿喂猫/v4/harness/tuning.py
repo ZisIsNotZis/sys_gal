@@ -25,6 +25,23 @@ from datetime import datetime
 from typing import Any
 
 
+def env_int(name: str, default: int) -> int:
+    """Parse an integer environment knob, falling back to ``default`` on a
+    missing or malformed value (a bad env var must not crash a run)."""
+    try:
+        return int(os.environ[name])
+    except (KeyError, TypeError, ValueError):
+        return default
+
+
+def env_float(name: str, default: float) -> float:
+    """Parse a float environment knob, falling back to ``default``."""
+    try:
+        return float(os.environ[name])
+    except (KeyError, TypeError, ValueError):
+        return default
+
+
 def idle_wait_seconds(default: int = 3600) -> int:
     value = os.environ.get("V3_IDLE_WAIT_SECONDS", str(default))
     try:

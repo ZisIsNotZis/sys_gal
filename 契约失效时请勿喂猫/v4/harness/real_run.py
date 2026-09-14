@@ -15,7 +15,8 @@ from .engine import AsyncEngine
 from .seed import create_world, load_story_pack
 from .system import Ledger
 from .trace import Trace, new_run_id
-from .tuning import apply_idle_wait, effective_clock_stop
+from .tuning import apply_idle_wait, effective_clock_stop, env_float, env_int
+from .world_loader import world_primer
 import traceback
 
 
@@ -32,7 +33,7 @@ def main() -> None:
     # A turn may need compaction retries; the v4 protocol needs no GM judge
     # (V4-AGENT-INTERFACE §0) and no persona primer (KB rows carry identity).
     provider = provider_from_env(
-        max_concurrency=min(len(world.actors), int(os.environ.get("V3_PROVIDER_CONCURRENCY", "8"))))
+        max_concurrency=min(len(world.actors), env_int("V3_PROVIDER_CONCURRENCY", 8)))
     decision_timeout = provider.worst_case_seconds() * 8 + 5.0
     if decision_timeout <= provider.worst_case_seconds() * 8:
         raise RuntimeError("provider decision budget is not bounded")
@@ -42,6 +43,9 @@ def main() -> None:
     # native tool calls, KB rows rendered by the engine.
     schedule_text = schedule_digest(pack.scheduled, now=world.now)
     npc_director_notes = pack.manifest.get("npc_director_notes", {})
+    # Per-world static primer (V4-AGENT-INTERFACE §1): locations, walk times,
+    # time scale, privacy rules — appended to the verbatim system prompt.
+    primer = world_primer(pack)
 
     def director_brief(actor_id: str) -> str | None:
         goal = str(npc_director_notes.get("beat_goals", {}).get(actor_id, ""))
@@ -54,9 +58,10 @@ def main() -> None:
     agents = {}
     for actor_id, actor in world.actors.items():
         if actor.role == "npc":
-            agents[actor_id] = make_npc_agent_v4(seeds[actor_id], provider)
+            agents[actor_id] = make_npc_agent_v4(seeds[actor_id], provider, world_primer=primer)
         else:
-            agents[actor_id] = make_persistent_agent_v4(seeds[actor_id], provider)
+            agents[actor_id] = make_persistent_agent_v4(seeds[actor_id], provider,
+                                                        world_primer=primer)
     run_id = new_run_id("real")
     trace = Trace("v3", run_id)
     ledger = Ledger(pack.system.get("facts", {}), pack.system)
@@ -76,18 +81,17 @@ def main() -> None:
             save_checkpoint(checkpoint_output,
                             trace.checkpoint_snapshot(world, runner))
     checkpoint()
-    max_wall = float(os.environ.get("V3_MAX_WALL_SECONDS", "7200"))
+    max_wall = env_float("V3_MAX_WALL_SECONDS", 7200.0)
     print(f"[real_run] max_wall_seconds={max_wall} decision_timeout={decision_timeout:.0f}")
     # V4-ENGINE §8: the async DES engine is the production driver.
     runner = AsyncEngine(world, agents, states, trace, ledger,
                          decision_timeout=decision_timeout,
-                         max_transient_failures=int(os.environ.get("V3_MAX_TRANSIENT_FAILURES", "3")),
+                         max_transient_failures=env_int("V3_MAX_TRANSIENT_FAILURES", 3),
                          max_wall_seconds=max_wall,
-                         mc_idle_heartbeat=int(os.environ.get("V4_MC_IDLE_HEARTBEAT", "1800")),
-                         stall_budget_ratio=float(os.environ.get("V4_STALL_BUDGET_RATIO", "0.25")),
+                         mc_idle_heartbeat=env_int("V4_MC_IDLE_HEARTBEAT", 1800),
+                         stall_budget_ratio=env_float("V4_STALL_BUDGET_RATIO", 0.25),
                          checkpoint=checkpoint, extra_call=provider,
-                         kb_seeds=pack.kb, director_brief=director_brief,
-                         lexicon=pack.lexicon)
+                         kb_seeds=pack.kb, director_brief=director_brief)
     holder["runner"] = runner
     try:
         reason = runner.run(stop_at=endpoint, max_turns=20_000)

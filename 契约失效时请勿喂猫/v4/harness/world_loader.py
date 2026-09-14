@@ -56,6 +56,27 @@ class DescriptionStore(Mapping[str, str]):
         return len(self._owners)
 
 
+def _as_int(value: Any, where: str) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{where} must be an integer: {value!r}") from exc
+
+
+def _as_float(value: Any, where: str) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{where} must be a number: {value!r}") from exc
+
+
+def _as_str(value: Any, where: str) -> str:
+    try:
+        return str(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{where} must be a string: {value!r}") from exc
+
+
 @dataclass(frozen=True)
 class WorldPack:
     root: Path
@@ -77,35 +98,43 @@ class WorldPack:
 
     def build_world(self) -> World:
         locations = [LocationState(
-            str(row["id"]), bool(row.get("open", True)), float(row.get("x", 0)),
-            float(row.get("y", 0)), float(row.get("sound_radius", 0)),
-            float(row.get("sound_loss", 0)),
+            _as_str(row.get("id"), "location id"), bool(row.get("open", True)),
+            _as_float(row.get("x", 0), "location x"),
+            _as_float(row.get("y", 0), "location y"),
+            _as_float(row.get("sound_radius", 0), "location sound_radius"),
+            _as_float(row.get("sound_loss", 0), "location sound_loss"),
             {str(verb): dict(spec or {}) for verb, spec in row.get("physical_capabilities", {}).items()},
             bool(row.get("controllable", False)),
             tuple(dict(x) for x in row.get("extras", ())))
             for row in self.locations]
-        actors = [ActorState(str(row["id"]), str(row["location"]),
+        actors = [ActorState(_as_str(row.get("id"), "actor id"),
+                             _as_str(row.get("location"), "actor location"),
                              set(row.get("inventory", ())),
                              known_contacts=set(row.get("known_contacts", ())),
-                             role=str(row.get("role", "mc")))
+                             role=_as_str(row.get("role", "mc"), "actor role"))
                   for row in self.actors]
-        item_locations = {str(row["id"]): str(row["location"])
+        item_locations = {_as_str(row.get("id"), "item id"): _as_str(row.get("location"), "item location")
                           for row in self.items if row.get("location") is not None}
         inventory_items = {str(item) for row in self.actors for item in row.get("inventory", ())}
         item_locations = {item: location for item, location in item_locations.items()
                           if item not in inventory_items}
-        document_defs = {str(row["id"]): {
-            "title": str(row.get("title", row["id"])),
-            "content": str(row.get("content", "")),
-            "reading_seconds": int(row.get("reading_seconds", 30)),
+        document_defs = {_as_str(row.get("id"), "document id"): {
+            "title": _as_str(row.get("title", row.get("id")), "document title"),
+            "content": _as_str(row.get("content", ""), "document content"),
+            "reading_seconds": _as_int(row.get("reading_seconds", 30), "reading_seconds"),
             **({"labels": list(row["labels"])} if "labels" in row else {}),
         } for row in self.documents}
         for row in self.documents:
             if row.get("location") is not None and str(row["id"]) not in inventory_items:
-                item_locations[str(row["id"])] = str(row["location"])
-        routes = {(str(row["from"]), str(row["to"])): int(row["duration_seconds"])
+                item_locations[_as_str(row.get("id"), "document id")] = _as_str(
+                    row.get("location"), "document location")
+        routes = {(_as_str(row.get("from"), "route from"),
+                   _as_str(row.get("to"), "route to")):
+                  _as_int(row.get("duration_seconds"), "route duration_seconds")
                   for row in self.routes}
-        barriers = {(str(row["from"]), str(row["to"])): float(row["loss"])
+        barriers = {(_as_str(row.get("from"), "barrier from"),
+                     _as_str(row.get("to"), "barrier to")):
+                    _as_float(row.get("loss"), "barrier loss")
                     for row in self.barriers}
         world = World(
             start=datetime.fromisoformat(str(self.manifest["clock"]["start"])),
@@ -118,11 +147,14 @@ class WorldPack:
                            if row.get("known_to")},
             public_knowledge=self.manifest.get("public_knowledge", {}),
             private_knowledge=self.manifest.get("private_knowledge", {}),
-            longest_wait_seconds=int(self.manifest.get("engine", {}).get("idle_wait_seconds", 3600)),
+            longest_wait_seconds=_as_int(self.manifest.get("engine", {}).get("idle_wait_seconds", 3600),
+                                         "engine.idle_wait_seconds"),
         )
         engine_cfg = self.manifest.get("engine", {})
-        world.state_refresh_rounds = int(engine_cfg.get("state_refresh_rounds", 20))
-        world.description_refresh_rounds = int(engine_cfg.get("description_refresh_rounds", 99999))
+        world.state_refresh_rounds = _as_int(engine_cfg.get("state_refresh_rounds", 20),
+                                            "engine.state_refresh_rounds")
+        world.description_refresh_rounds = _as_int(engine_cfg.get("description_refresh_rounds", 99999),
+                                                  "engine.description_refresh_rounds")
         return world
 
 
@@ -172,33 +204,29 @@ def _expand_entity_rows(kb: dict[str, list[dict[str, Any]]],
                         fields: dict[str, Any],
                         descriptions: dict[str, DescriptionCatalog]
                         ) -> dict[str, list[dict[str, Any]]]:
-    """V4-AGENT-INTERFACE §6 (修订): world item/document descriptions auto-
-    expand into per-actor **item** KB rows — the KB has no separate document
-    type; content-bearing things are carried by read/copy/compare. Gating:
+    """World item/document/location descriptions auto-expand into per-actor
+    KB rows keyed by the entity name (V4-AGENT-INTERFACE §6). Gating:
     known_to-limited entities expand only for those actors; unmarked ones
-    expand for everyone (public visible layer). Manual rows win."""
-    entity_rows: list[tuple[str, str, str, list[str] | None]] = []
-    for kind, field in (("items", "item"), ("documents", "item"),
-                        ("locations", "location")):
+    expand for everyone (the public visible layer). Manual rows win."""
+    entity_rows: list[tuple[str, str, list[str] | None]] = []
+    for kind in ("items", "documents", "locations"):
         for row in fields[kind]:
             entity_id = str(row["id"])
             markdown = descriptions[kind].get(entity_id, "")
             if not markdown:
                 continue
-            entity_rows.append((field, entity_id, _plain_description(markdown),
+            entity_rows.append((entity_id, _plain_description(markdown),
                                 row.get("known_to")))
     for actor, rows in kb.items():
-        existing = {(next(iter(r["fields"])), r["id"]) for r in rows}
-        for field, entity_id, desc, known_to in entity_rows:
-            # Entity ids are Chinese; auto-expanded row ids must stay ASCII
-            # kebab (docs M2) — derive them deterministically from the pair.
-            digest = hashlib.md5(f"{field}:{entity_id}".encode("utf-8")).hexdigest()[:8]
-            row = {"fields": {field: entity_id}, "id": f"kb-auto-{digest}", "desc": desc}
-            if (field, row["id"]) in existing:
-                continue
+        present = {frozenset(str(k) for k in r["keys"]) for r in rows}
+        for entity_id, desc, known_to in entity_rows:
             if known_to is not None and actor not in known_to:
                 continue
-            rows.append(row)
+            keys = frozenset({entity_id})
+            if keys in present:
+                continue
+            rows.append({"keys": [entity_id], "desc": desc})
+            present.add(keys)
     return kb
 
 
@@ -264,9 +292,6 @@ def _validate_concepts(concepts: Any, *, actors: set[str],
         memory = row.get("memory", {}) or {}
         if not isinstance(memory, dict) or any(a not in actors for a in memory):
             raise ValueError(f"concept {cid} memory references an unknown actor")
-        unknown_memory = [a for a in memory if a not in known]
-        if unknown_memory:
-            raise ValueError(f"concept {cid} memory for {unknown_memory} requires known_to")
         desc = str(row.get("desc", "")).strip()
         if kind != "generic" and not desc and name not in entity_ids:
             raise ValueError(f"concept {cid} needs a desc (what it is)")
@@ -279,29 +304,34 @@ def _validate_concepts(concepts: Any, *, actors: set[str],
 def _expand_concept_rows(kb: dict[str, list[dict[str, Any]]],
                          concepts: tuple[dict[str, Any], ...],
                          entity_ids: set[str]) -> dict[str, list[dict[str, Any]]]:
-    """Expand the concepts registry into per-actor KB rows: one knowledge row
-    (fields: {concept: name}) per known_to actor — unconditional, so the actor
-    always knows what the thing is — and one memory row (fields: {memory: name})
-    per actor in memory. Concepts whose name is an existing entity skip the
-    knowledge row (the entity already carries a public description) and only
-    contribute personal memory. Manual rows win."""
+    """Expand the concepts registry into per-actor KB rows (V4-AGENT-INTERFACE
+    §6.1). One row per actor: keys = {name, *aliases}, desc = definition plus the
+    actor's first-person memory. When a row with that key set already exists
+    (e.g. an auto-expanded entity row), the memory is appended to it instead of
+    creating a colliding row. Manual/auto rows win on desc."""
     for actor, rows in kb.items():
-        present = {str(r["id"]) for r in rows}
+        index = {frozenset(str(k) for k in r["keys"]): r for r in rows}
         for concept in concepts:
-            name = concept["name"]
-            if (actor in concept["known_to"] and concept["kind"] != "generic"
-                    and name not in entity_ids):
-                row_id = f"kb-concept-{concept['id']}"
-                if row_id not in present:
-                    rows.append({"fields": {"concept": name}, "id": row_id,
-                                 "desc": concept["desc"]})
-                    present.add(row_id)
-            if actor in concept["memory"]:
-                row_id = f"kb-memory-{concept['id']}"
-                if row_id not in present:
-                    rows.append({"fields": {"memory": name}, "id": row_id,
-                                 "desc": str(concept["memory"][actor]).strip()})
-                    present.add(row_id)
+            if concept["kind"] == "generic":
+                continue
+            if actor not in concept["known_to"] and actor not in concept["memory"]:
+                continue
+            keys = [concept["name"], *concept["aliases"]]
+            key_set = frozenset(keys)
+            memory = str(concept["memory"].get(actor) or "").strip()
+            existing = index.get(key_set)
+            if existing is not None:
+                if memory and memory not in existing["desc"]:
+                    existing["desc"] = existing["desc"].rstrip() + "\n我：" + memory
+                continue
+            desc = concept["desc"]
+            if memory:
+                desc = (desc + "\n我：" + memory).strip()
+            if not desc:
+                continue
+            row = {"keys": keys, "desc": desc}
+            rows.append(row)
+            index[key_set] = row
     return kb
 
 
@@ -334,7 +364,7 @@ def _validate(fields: dict[str, tuple[dict[str, Any], ...]], manifest: dict[str,
         raise ValueError("clock.stop must not precede clock.start")
     for row in fields["locations"]:
         for key in ("x", "y", "sound_radius", "sound_loss"):
-            value = float(row.get(key, 0))
+            value = _as_float(row.get(key, 0), f"location {row.get('id')} {key}")
             if not math.isfinite(value) or value < 0 and key != "x" and key != "y":
                 raise ValueError(f"location {row['id']} has invalid {key}")
         capabilities = row.get("physical_capabilities", {})
@@ -378,7 +408,7 @@ def _validate(fields: dict[str, tuple[dict[str, Any], ...]], manifest: dict[str,
     for row in fields["barriers"]:
         if row.get("from") not in locations or row.get("to") not in locations:
             raise ValueError("barrier references an unknown location")
-        if float(row.get("loss", -1)) < 0:
+        if _as_float(row.get("loss", -1), "barrier loss") < 0:
             raise ValueError("barrier loss must be non-negative")
     route_keys = [(row.get("from"), row.get("to")) for row in fields["routes"]]
     barrier_keys = [(row.get("from"), row.get("to")) for row in fields["barriers"]]
@@ -436,7 +466,14 @@ def _reminder_time_ok(value: Any) -> bool:
 
 
 def _validate_kb(kb: Any, actors: set[str]) -> dict[str, list[dict[str, Any]]]:
-    """Validate the manifest kb: section (V4-AGENT-INTERFACE §6/M2)."""
+    """Validate the manifest kb: section (V4-AGENT-INTERFACE §6).
+
+    Rows are normalized to the key-set model: ``{keys: [...], desc: str}``.
+    Legacy ``fields`` rows are accepted so pre-migration seeds still load
+    (text fields become keys, ``todo: true`` becomes ``!always``,
+    ``reminder: <time>`` becomes ``!at=<time>``, ``self: true`` is dropped)."""
+    from .kb import (ALWAYS_KEY, _AT_PREFIX, _DIRECTIVE, _MIN_KEY_CHARS,
+                     _row_keys)
     if not isinstance(kb, dict):
         raise ValueError("kb: section must be a mapping of actor id to row list")
     missing = sorted(set(actors) - set(kb))
@@ -449,43 +486,43 @@ def _validate_kb(kb: Any, actors: set[str]) -> dict[str, list[dict[str, Any]]]:
     for actor_id, rows in kb.items():
         if not isinstance(rows, list) or not rows:
             raise ValueError(f"kb rows for {actor_id} must be a non-empty list")
-        seen_ids: set[str] = set()
-        self_rows = 0
+        seen: set[frozenset[str]] = set()
         normalized: list[dict[str, Any]] = []
         for row in rows:
             if not isinstance(row, dict):
                 raise ValueError(f"kb rows for {actor_id} must be mappings")
-            fields = row.get("fields")
-            if not isinstance(fields, dict) or not fields:
-                raise ValueError(f"kb row for {actor_id} needs a non-empty fields mapping")
-            for key in fields:
-                if not isinstance(key, str) or not key:
-                    raise ValueError(f"kb row for {actor_id} has an invalid field key: {key!r}")
-            if any(not isinstance(fields[key], (str, int, bool)) for key in fields):
-                raise ValueError(f"kb row for {actor_id} has a non-scalar field value")
-            row_id = row.get("id")
-            if not isinstance(row_id, str) or not re.match(r"^[a-z0-9-]+$", row_id):
-                raise ValueError(
-                    f"kb row for {actor_id} needs an id of lowercase letters/digits/hyphens: {row_id!r}")
-            if row_id in seen_ids:
-                raise ValueError(f"kb row id {row_id!r} is duplicated for actor {actor_id}")
-            seen_ids.add(row_id)
+            keys = _row_keys(row)
+            if not keys:
+                raise ValueError(f"kb row for {actor_id} needs at least one key")
+            for key in keys:
+                if not key:
+                    raise ValueError(f"kb row for {actor_id} has an empty key")
+                if key.startswith(_DIRECTIVE):
+                    if key.startswith(_AT_PREFIX):
+                        if not _reminder_time_ok(key[len(_AT_PREFIX):]):
+                            raise ValueError(
+                                f"kb row for {actor_id} has an unparseable scheduled "
+                                f"key: {key!r}")
+                    elif key != ALWAYS_KEY:
+                        raise ValueError(
+                            f"kb row for {actor_id} has an unknown directive key: {key!r}")
+                elif len(key) < _MIN_KEY_CHARS and key != actor_id:
+                    raise ValueError(
+                        f"kb row for {actor_id} has a key shorter than "
+                        f"{_MIN_KEY_CHARS} chars: {key!r}")
+            key_set = frozenset(keys)
+            if key_set in seen:
+                raise ValueError(f"kb rows for {actor_id} share the key set "
+                                 f"{sorted(key_set)}; add a distinguishing key")
+            seen.add(key_set)
             desc = row.get("desc")
             if not isinstance(desc, str) or not desc.strip():
-                raise ValueError(f"kb row {row_id!r} for {actor_id} needs a non-empty desc")
-            if fields.get("self") is True:
-                self_rows += 1
-                if not str(desc).startswith("我，"):
-                    raise ValueError(
-                        f"identity row {row_id!r} for {actor_id} must start with first-person '我，'")
-            if "reminder" in fields and not _reminder_time_ok(fields["reminder"]):
-                raise ValueError(
-                    f"kb row {row_id!r} for {actor_id} has an unparseable reminder time: "
-                    f"{fields['reminder']!r}")
-            normalized.append({"fields": dict(fields), "id": row_id, "desc": str(desc)})
-        if self_rows != 1:
-            raise ValueError(
-                f"actor {actor_id} must have exactly one self:true kb row, found {self_rows} (docs §6/M2)")
+                raise ValueError(f"kb row {sorted(key_set)} for {actor_id} needs a "
+                                 f"non-empty desc")
+            normalized.append({"keys": sorted(key_set), "desc": str(desc)})
+        if not any(actor_id in row["keys"] for row in normalized):
+            raise ValueError(f"actor {actor_id} needs an identity kb row keyed by "
+                             f"their own name ({actor_id!r})")
         result[str(actor_id)] = normalized
     return result
 
@@ -505,9 +542,12 @@ def _validate_descriptions(fields: dict[str, tuple[dict[str, Any], ...]],
 
 
 def world_primer(pack: WorldPack) -> str:
-    """世界常识段（V4-DESIGN 首验日反馈 #4）：从世界包自动生成的中文常识，
-    进入每个角色的 system prompt。静态事实（地点/连通/时间规矩/分寸），
-    不含任何会变化的状态。"""
+    """世界设定段（V4-DESIGN 首验日反馈 #4）：从世界包自动生成的中文常识，
+    作为**逐字公共前言之后的世界段**进入每个角色的 system prompt。
+
+    只放静态、人人皆知的设定（地点、连通、时间尺度、分寸）；不放任何角色
+    私有信息，也不放会变化的状态——具体的人/事/物由 keyed KB 行在提起时供给。
+    """
     lines: list[str] = ["【这个世界】"]
     for row in pack.locations:
         place = str(row["id"])
@@ -522,14 +562,17 @@ def world_primer(pack: WorldPack) -> str:
         if pair in seen_pairs:
             continue
         seen_pairs.add(pair)
-        minutes = int(row["duration_seconds"]) // 60
+        try:
+            minutes = int(row["duration_seconds"]) // 60
+        except (KeyError, TypeError, ValueError):
+            continue
         lines.append(f"- {row['from']} ↔ {row['to']}：步行约 {minutes} 分钟")
     lines.append("【时间的规矩】")
-    lines.append("- 一条消息从发出到送到要 5 分钟；说话当场就能听见，所以当面说话最省时间。")
+    lines.append("- 世界一分钟一分钟地走：说一句话花一分钟，走一段路按上面的分钟数算，"
+                 "发一条短信一分钟后送到。当面说话永远最快。")
     lines.append("- 时间是你唯一的花费：一次等待就是真的一段人生，把它花在值得的人和事上。")
     lines.append("【分寸】")
-    lines.append("- 陌生人凑近耳语会显得可疑；耳语（whisper）只对亲近的人用。")
-    lines.append("- 初到一处你会看清四周；之后世界只把变化告诉你。想重新细看，可以 observe。")
-    lines.append("- 店里、路上总有别人。想打听什么，可以用 ask_stranger 随手问一个在场的人；勤快多问，偶尔会遇上恰好知情的人。")
-    lines.append("- 心声（inner）只属于你，谁也听不见。")
+    lines.append("- 陌生人凑近耳语会显得可疑；耳语（speak 的 whisper）只对亲近的人用。")
+    lines.append("- 想打听什么，可以用 ask 搭话在场的人；勤快多问，偶尔会遇上恰好知情的人。")
+    lines.append("- 你脑子里想的事谁也听不见；说出口的话在场的人都听得见。")
     return "\n".join(lines)

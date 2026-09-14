@@ -35,7 +35,7 @@ from .engine import AsyncEngine
 from .seed import load_story_pack
 from .system import Ledger
 from .trace import Trace, new_run_id
-from .tuning import apply_idle_wait, clock_stop
+from .tuning import apply_idle_wait, clock_stop, env_float, env_int
 
 
 def resume(checkpoint_path: Path, *, out: Path | None = None,
@@ -59,7 +59,7 @@ def resume(checkpoint_path: Path, *, out: Path | None = None,
     if call is None:
         provider = provider_from_env(
             max_concurrency=min(len(world.actors),
-                                int(os.environ.get("V3_PROVIDER_CONCURRENCY", "8"))))
+                                env_int("V3_PROVIDER_CONCURRENCY", 8)))
         gm = make_provider_gm(provider)
     else:
         provider = call
@@ -136,14 +136,11 @@ def resume(checkpoint_path: Path, *, out: Path | None = None,
                         if hasattr(provider, "worst_case_seconds") else 60.0)
     runner = AsyncEngine(world, agents, states, trace, ledger,
                          decision_timeout=decision_timeout,
-                         max_transient_failures=int(
-                             os.environ.get("V3_MAX_TRANSIENT_FAILURES", "3")),
-                         max_wall_seconds=float(
-                             os.environ.get("V3_MAX_WALL_SECONDS", "7200")),
-                         mc_idle_heartbeat=int(os.environ.get("V4_MC_IDLE_HEARTBEAT", "1800")),
+                         max_transient_failures=env_int("V3_MAX_TRANSIENT_FAILURES", 3),
+                         max_wall_seconds=env_float("V3_MAX_WALL_SECONDS", 7200.0),
+                         mc_idle_heartbeat=env_int("V4_MC_IDLE_HEARTBEAT", 1800),
                          checkpoint=checkpoint,
-                         extra_call=provider,
-                         lexicon=pack.lexicon)
+                         extra_call=provider)
     runner.restore_checkpoint(cp["runner"])
     holder["runner"] = runner
     trace.save(world, out_path)  # checkpoint at resume start

@@ -32,7 +32,7 @@ class ToolsTests(unittest.TestCase):
         names = {tool["function"]["name"] for tool in TOOLS}
         expected = {"update_memory", "recall", "flashback", "wait", "speak",
                     "text", "move", "read", "take", "place", "give", "knock",
-                    "leave_note", "trash", "ask_stranger",
+                    "leave_note", "trash", "ask",
                     "continue_action", "abandon_action"}
         self.assertEqual(names, expected)
         self.assertNotIn("sleep", SCHEMAS)  # M1: sleep merged into wait
@@ -46,12 +46,14 @@ class ToolsTests(unittest.TestCase):
         rows_err = validate_action_args("update_memory", {})
         self.assertIsNotNone(rows_err)
         self.assertIn("needs the 'rows' argument", rows_err or "")
-        fields_err = validate_action_args("update_memory", {"rows": [{"id": "x"}]})
-        self.assertIsNotNone(fields_err)
-        self.assertIn("needs the 'fields' argument", fields_err or "")
+        keys_err = validate_action_args("update_memory", {"rows": [{"op": "open"}]})
+        self.assertIsNotNone(keys_err)
+        self.assertIn("needs the 'keys' argument", keys_err or "")
         self.assertIsNone(validate_action_args(
-            "update_memory", {"rows": [{"fields": {"todo": True}, "id": "x", "op": "open"}]}))
-        self.assertIsNone(validate_action_args("recall", {"kinds": ["todo"]}))
+            "update_memory", {"rows": [{"keys": ["草稿", "!always"], "op": "open",
+                                        "desc": "弄清是谁放的"}]}))
+        self.assertIsNone(validate_action_args("recall", {"keys": ["草稿"]}))
+        self.assertIsNotNone(validate_action_args("recall", {}))
         entity_err = validate_action_args("flashback", {})
         self.assertIsNotNone(entity_err)
         self.assertIn("needs the 'entity' argument", entity_err or "")

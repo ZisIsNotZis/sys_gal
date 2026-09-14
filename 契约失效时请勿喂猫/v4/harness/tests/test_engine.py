@@ -213,7 +213,9 @@ class MultiHopMoveTests(unittest.TestCase):
         world.submit(Intention("b", "speak", {"text": "站住", "volume": "whisper", "to": ["a"]}, world.version,
                                interrupt=("a",)))
         self.assertIsNotNone(world.actors["a"].pending)
-        self.assertEqual(world.actors["a"].pending["remaining_path"], ["B", "C"])
+        pending = world.actors["a"].pending
+        assert pending is not None
+        self.assertEqual(pending["remaining_path"], ["B", "C"])
         world.submit(Intention("a", "continue_action", {}, world.version))
         world.advance()
         self.assertIsNone(world.actors["a"].pending)
@@ -330,26 +332,24 @@ class V4ProtocolTests(unittest.TestCase):
 
     def test_kb_seed_renders_knowledge_and_update_memory_queues_errors(self):
         world = _world()
-        rows = [{"fields": {"person": "陈默", "self": True}, "id": "identity",
-                 "desc": "我，测试角色。"},
-                {"fields": {"todo": True}, "id": "check", "desc": "查一下台账"}]
+        rows = [{"keys": ["a"], "desc": "我，测试角色。"},
+                {"keys": ["!always", "台账"], "desc": "查一下台账"}]
         agent = FakeV4Agent([
             [{"name": "update_memory",
-              "arguments": {"rows": [{"id": "check", "op": "edit", "desc": "改了"}]}}],
+              "arguments": {"rows": [{"keys": ["台账"], "op": "edit", "desc": "改了"}]}}],
         ])
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])},
                               kb_seeds={"a": rows})
         engine.run(stop_at=START + timedelta(seconds=200), max_turns=30)
         first = agent.seen_messages[0]
         self.assertIn("# knowledge", first)
-        self.assertIn("[person=", first)
+        self.assertIn("[a]", first)
         self.assertIn("查一下台账", first)
 
     def test_due_reminder_force_interrupts_and_notifies(self):
         world = _world()
-        rows = [{"fields": {"person": "陈默", "self": True}, "id": "identity",
-                 "desc": "我，测试角色。"},
-                {"fields": {"reminder": "1/1(周四) 00:03"}, "id": "ring", "desc": "该动了"}]
+        rows = [{"keys": ["a"], "desc": "我，测试角色。"},
+                {"keys": ["!at=1/1(周四) 00:03", "该动了"], "desc": "该动了"}]
         agent = FakeV4Agent([
             [{"name": "wait", "arguments": {"duration_seconds": 60}}],
             [{"name": "wait", "arguments": {"duration_seconds": 180}}],
@@ -384,8 +384,10 @@ class RenderSemanticsTests(unittest.TestCase):
         # a normal-volume speak Intention; verify via parse of the same shape
         # the engine submits (no whisper fields).
         world = self._world()
-        world.submit(parse_decision(
-            "a", '{"type":"speak","args":{"text":"你们好","volume":"normal","to":["b"]}}', None)[0])
+        speak = parse_decision(
+            "a", '{"type":"speak","args":{"text":"你们好","volume":"normal","to":["b"]}}', None)[0]
+        assert speak is not None
+        world.submit(speak)
         world.advance()
         perception = world.poll("b")
         text = render_world_message(perception, world.affordances("b"), observer="b")

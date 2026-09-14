@@ -11,11 +11,14 @@ from __future__ import annotations
 
 import json
 import random
-from typing import Any, Callable, Iterable, Mapping
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping
 
 from .adapter import parse_decision
 from .character_loader import CharacterSeed
 from .action_schema import SPEAK_TOOLS
+
+if TYPE_CHECKING:  # runtime import stays local to avoid an import cycle
+    from .natural_agent import V4Session
 
 # Event kinds eligible for the MC public-behavior digest. Deliberately
 # excludes document_read/documents_compared payloads (private analysis) —
@@ -245,14 +248,15 @@ def make_npc_agent(seed: CharacterSeed, call: Callable, context_provider: Callab
 
 
 def make_npc_agent_v4(seed: CharacterSeed, provider: Any, *,
-                      session: "V4Session | None" = None):
+                      session: "V4Session | None" = None,
+                      world_primer: str = ""):
     from .natural_agent import V4Session
     """V4 protocol NPC agent (V4-AGENT-INTERFACE §5): identical message
-    structure to MCs — the same verbatim system prompt, no persona prompt;
-    the director briefing arrives inside the rendered world message. Returns
-    agent(world_message_text, state) -> parsed tool-call list."""
+    structure to MCs — the same verbatim system prompt plus the per-world
+    primer, no persona prompt; the director briefing arrives inside the
+    rendered world message. Returns agent(world_message_text, state) -> dict."""
     
-    sess = session or V4Session(seed.actor_id, provider)
+    sess = session or V4Session(seed.actor_id, provider, world_primer=world_primer)
 
     def agent(world_message_text: str, state: Any) -> dict[str, Any]:
         return sess.decide(world_message_text)

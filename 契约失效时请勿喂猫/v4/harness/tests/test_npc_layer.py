@@ -1,7 +1,7 @@
 """V4-CAST 两层演员制的引擎行为测试。
 
 合成世界，不依赖 v4/world；覆盖：角色分层调度、各唤醒触发器、冷清检测、
-唤醒预算、简报无泄漏、滚动记忆有界、ask_stranger 对话期生命周期（多轮 +
+唤醒预算、简报无泄漏、滚动记忆有界、ask 对话期生命周期（多轮 +
 会话内记忆 + 结束销毁）、路人池 weight/rarity 抽样。
 """
 
@@ -244,7 +244,7 @@ class ExtraLifecycleTests(unittest.TestCase):
                         states, trace, extra_call=stub)
         return world, runner
 
-    def test_ask_stranger_spawns_answers_and_destroys_on_departure(self):
+    def test_ask_spawns_answers_and_destroys_on_departure(self):
         asked = []
         answers = ["登记本在值班台抽屉里。"]
 
@@ -253,7 +253,7 @@ class ExtraLifecycleTests(unittest.TestCase):
             text = answers.pop(0) if answers else "这个我真不知道。"
             return '{"name":"speak","arguments":{"text":"%s"}}' % text
 
-        ask = parse_decision("陈默", '{"name":"ask_stranger",'
+        ask = parse_decision("陈默", '{"name":"ask",'
                                     '"arguments":{"question":"晚安归登记本在哪？"}}', None)[0]
         wait = _wait(300)
         reply = parse_decision("陈默", '{"name":"speak",'

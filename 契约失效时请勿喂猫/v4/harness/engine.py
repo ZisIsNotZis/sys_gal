@@ -72,7 +72,6 @@ class AsyncEngine:
                  max_transient_failures: int = 3,
                  kb_seeds: Mapping[str, list[dict]] | None = None,
                  director_brief: Callable[[str], str | None] | None = None,
-                 lexicon: Mapping[str, Sequence[str]] | None = None,
                  flashback_horizon_minutes: int = 120) -> None:
         # Extras restored from a checkpoint have no agent/state of their own
         # (they run on extra_call with session-local memory, V4-CAST §1).
@@ -122,14 +121,10 @@ class AsyncEngine:
         self._kb_seeds = dict(kb_seeds or {})
         self.director_brief = director_brief
         self.flashback_horizon_minutes = _as_int(flashback_horizon_minutes, 'flashback_horizon_minutes')
-        # Name lexicon (canonical -> aliases): flashback resolves a queried
-        # entity to every registered alias group it belongs to, so "家属院"
-        # and "老街坊" reach the same memory rows (V4-AGENT-INTERFACE §2).
-        self._lexicon_terms: dict[str, frozenset[str]] = {}
-        for canonical, aliases in (lexicon or {}).items():
-            group = frozenset({canonical, *(str(a) for a in aliases)})
-            for term in group:
-                self._lexicon_terms[term] = group
+        # Last chain's tool-result text, folded into the next turn's mention
+        # haystack (V4-AGENT-INTERFACE §3): what you just read is what you are
+        # thinking about.
+        self._last_tool_text: dict[str, str] = {}
         self._recall_lines: dict[str, list[str]] = {}
         self._flashback_pool: dict[str, list[tuple[datetime, str, frozenset[str]]]] = {}
         self._pending_notices: dict[str, list[str]] = {}
@@ -305,40 +300,22 @@ class AsyncEngine:
         return min(self._inflight.values()) + timedelta(seconds=TICK_SECONDS)
 
     def _reminder_scan(self) -> None:
-        """Schedule open reminder rows as kernel queue jobs (V4-AGENT-INTERFACE
-        §4): the kernel fires them on time (robust against DES jumps), the
-        engine turns the private reminder_due events into notices and auto-
-        closes the rows when they are perceived."""
-        now = self.world.now
-        from .kb import parse_reminder_time
+        """Schedule open scheduled rows (`!at=` keys) as kernel queue jobs
+        (V4-AGENT-INTERFACE §4): the kernel fires them on time (robust against
+        DES jumps), the engine turns the private reminder_due event into a
+        notice and auto-closes the row when it is perceived."""
+        from .kb import format_reminder_time, key_id
         for actor_id, kb in self._kb.items():
             if actor_id not in self.world.actors:
                 continue
-            for row in kb.snapshot()["rows"]:
-                fields, row_id = row.get("fields", {}), row.get("id")
-                raw = fields.get("reminder")
-                if not raw or row.get("status", "open") != "open":
+            for row in kb.scheduled_rows():
+                rid = key_id(row.keys)
+                if (actor_id, rid) in self._reminder_jobs:
                     continue
-                if (actor_id, row_id) in self._reminder_jobs:
+                if row.at is None or row.at <= self.world.now:
                     continue
-                when = parse_reminder_time(raw, now)
-                if when is None or when <= now:
-                    continue
-                self._reminder_jobs[(actor_id, row_id)] = self.world.schedule_reminder(
-                    actor_id, when, row_id, str(row.get("desc", "")), raw)
-            for row in kb.snapshot()["rows"]:
-                fields, row_id = row.get("fields", {}), row.get("id")
-                status = row.get("status", "open")
-                raw = fields.get("reminder")
-                if not raw or status != "open":
-                    continue
-                if (actor_id, row_id) in self._reminder_jobs:
-                    continue
-                when = parse_reminder_time(raw, now)
-                if when is None or when <= now:
-                    continue
-                self._reminder_jobs[(actor_id, row_id)] = \
-                    self.world.schedule_private_wake(actor_id, when)
+                self._reminder_jobs[(actor_id, rid)] = self.world.schedule_reminder(
+                    actor_id, row.at, rid, row.desc, format_reminder_time(row.at))
 
     def _after_advance(self) -> None:
         for event in self.world.event_log[self._rep_scan:]:
@@ -536,62 +513,51 @@ class AsyncEngine:
 
     def _knowledge_lines(self, actor_id: str, perception: dict,
                          affordances: list[dict]) -> list[str]:
-        """#knowledge block: due KB rows under the M7 mention set, plus due
-        reminder notices (auto-closed after notification, §4)."""
+        """#knowledge block: KB rows whose keys are mentioned in what the actor
+        is currently reading/hearing/saying (V4-AGENT-INTERFACE §3), plus due
+        scheduled-row notices (auto-closed after notification, §4).
+
+        The haystack is this turn's world message with the knowledge block
+        removed — so a surfaced row's own description cannot re-trigger its
+        neighbours — plus the previous turn's tool-result text."""
         if actor_id not in self._kb:
             return []
-        mention = set(perception.get("nearby_actors", [])) | set(perception.get("inventory", []))
-        for option in affordances:
-            for key in ("item", "document", "target"):
-                value = option.get(key)
-                if isinstance(value, str):
-                    mention.add(value)
-        for event in perception.get("events", []):
-            payload = event.get("payload", {})
-            for key in ("document", "item", "target", "first", "second", "from", "to"):
-                value = payload.get(key)
-                if isinstance(value, str):
-                    mention.add(value)
+        base = render_world_message(perception, affordances, observer=actor_id,
+                                    knowledge_lines=[])
+        haystack = base + "\n" + self._last_tool_text.get(actor_id, "")
         kb = self._kb[actor_id]
-        lines = list(kb.due_lines(self.world.now, mention))
+        lines = list(kb.due_lines(self.world.now, haystack))
         lines.extend(self._recall_lines.pop(actor_id, []))
         lines.extend(self._pending_notices.pop(actor_id, []))
         for event in perception.get("events", []):
             if event.get("kind") != "reminder_due":
                 continue
             payload = event.get("payload", {})
-            kb.close_reminder(str(payload.get("row_id", "")))
-            lines.append(f"[reminder={payload.get('rendered', '')}]: "
+            kb.close_scheduled(str(payload.get("row_id", "")))
+            lines.append(f"[!at={payload.get('rendered', '')}]: "
                          f"{payload.get('desc', '')}（到期）")
         return lines
 
     def _flashback_query(self, actor_id: str, entity: str) -> list[str]:
         """flashback tool: recall everything the actor knows or lived that
-        concerns ``entity``. Three sources, in this order: the actor's own KB
-        rows (seeded memory/concept rows first — pre-run life has no event
-        line), then the delivered-history pool. Matching resolves aliases
-        through the lexicon and tolerates substrings, because in-world names
-        appear inside prose ("老街坊" / "2013年台风") rather than as ids."""
+        concerns ``entity``. The KB's own rows come first — pre-run life has no
+        event line — then the delivered-history pool. Matching is the same key
+        matcher as replay, so aliases registered as keys just work."""
         entity = (entity or "").strip()
         if not entity:
             return []
-        terms: set[str] = {entity}
-        terms |= set(self._lexicon_terms.get(entity, ()))
-        for term, group in self._lexicon_terms.items():
-            if entity in term or term in entity:
-                terms |= set(group)
         ordered: list[str] = []
         seen: set[str] = set()
         kb = self._kb.get(actor_id)
         if kb is not None:
-            # match_rows sorts memory/concept first: the actor's own past wins
-            # over the public description of the same thing.
-            for line in kb.match_rows(terms):
+            for line in kb.match_rows([entity]):
                 if line not in seen:
                     seen.add(line)
                     ordered.append(line)
         for _, line, entities in self._flashback_pool.get(actor_id, []):
-            if (entities & terms or any(term in line for term in terms)) and line not in seen:
+            if line in seen:
+                continue
+            if entities & {entity} or entity in line:
                 seen.add(line)
                 ordered.append(line)
         return ordered[:5]
@@ -671,23 +637,25 @@ class AsyncEngine:
                 continue
             if name == "update_memory":
                 if actor_id in self._kb:
-                    errs, _tel = self._kb[actor_id].apply_ops(args.get("rows") or [], world.now)
+                    errs, _tel, warns = self._kb[actor_id].apply_ops(
+                        args.get("rows") or [], world.now)
                     if errs:
-                        fail(call, "; ".join(errs))
+                        fail(call, "; ".join(errs + warns))
                     else:
+                        text = "已记下。" + (("\n" + "\n".join(warns)) if warns else "")
                         results.append({"tool_call_id": call.get("tool_call_id"), "ok": True,
-                                        "text": "已记下。"})
+                                        "text": text})
                 else:
                     fail(call, "no notebook seeded for this actor")
                 continue
             if name == "recall":
-                if not (args.get("kinds") or args.get("ids")):
-                    fail(call, "recall needs 'kinds' or 'ids' to select rows")
+                if not args.get("keys"):
+                    fail(call, "recall needs 'keys' (a list of keywords) to select rows")
                     continue
                 if actor_id in self._kb:
                     lines = self._kb[actor_id].force_recall(
-                        args.get("kinds"), args.get("ids"),
-                        bool(args.get("closed")), _as_int(args.get("limit") or 8, "limit"))
+                        args.get("keys"), bool(args.get("closed")),
+                        _as_int(args.get("limit") or 8, "limit"))
                 else:
                     lines = []
                 results.append({"tool_call_id": call.get("tool_call_id"), "ok": True,
@@ -754,6 +722,8 @@ class AsyncEngine:
         deliver = getattr(self.agents[actor_id], "deliver_tool_results", None)
         if deliver is not None:
             deliver(results)
+        self._last_tool_text[actor_id] = "\n".join(
+            str(r.get("text", "")) for r in results if r.get("text"))
         self._remember_lines(actor_id, perception)
         result = "submitted" if (world_actions or calls) else "none"
         self._repetition.note_turn(actor_id, None, result)
@@ -1128,6 +1098,7 @@ class AsyncEngine:
                 "heartbeat_jobs": dict(self._heartbeat_jobs),
                 "kb": {actor: kb.snapshot() for actor, kb in self._kb.items()},
                 "recall_lines": {k: list(v) for k, v in self._recall_lines.items()},
+                "last_tool_text": dict(self._last_tool_text),
                 "flashback_pool": {actor: [[t.isoformat(), line, sorted(entities)]
                                             for (t, line, entities) in pool]
                                     for actor, pool in self._flashback_pool.items()}}
@@ -1152,6 +1123,7 @@ class AsyncEngine:
         self._extras = {name: {**x, "last_active": _dt.fromisoformat(x["last_active"])}
                         for name, x in state.get("extras", {}).items()}
         self._recall_lines = {k: list(v) for k, v in state.get("recall_lines", {}).items()}
+        self._last_tool_text = {k: str(v) for k, v in state.get("last_tool_text", {}).items()}
         self._flashback_pool = {
             actor: [(_dt.fromisoformat(row[0]), row[1], frozenset(row[2]))
                     for row in pool]
