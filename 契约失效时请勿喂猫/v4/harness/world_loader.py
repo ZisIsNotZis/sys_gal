@@ -184,6 +184,21 @@ def load_world_pack(root: str | Path) -> WorldPack:
     if "kb" not in manifest:
         raise ValueError("manifest is missing the kb: section (V4-AGENT-INTERFACE §6: identity/KB rows must be seeded)")
     descriptions = _load_descriptions(root)
+    # Strip markers BEFORE snapshotting manifest rows into WorldPack fields;
+    # otherwise pack.scheduled keeps the raw `[[ ]]` notices even though
+    # pack.manifest looks clean (ticket-20 live-run leak).
+    # Strip [[name]] markers from every authored string the model could see
+    # (T5 裁决): the markers are linter-only syntax.
+    for row in manifest.get("scheduled", ()):
+        if isinstance(row, dict) and "notice" in row:
+            row["notice"] = strip_refs(row["notice"])
+    for row in manifest.get("locations", ()):
+        for extra in (row.get("extras") or ()):
+            if isinstance(extra, dict) and "knowledge_notes" in extra:
+                extra["knowledge_notes"] = strip_refs(extra["knowledge_notes"])
+    for key, value in (manifest.get("system", {}).get("facts", {}) or {}).items():
+        manifest["system"]["facts"][key] = strip_refs(value)
+        manifest["system"]["facts"][strip_refs(key)] = strip_refs(value)
     fields = {name: tuple(dict(row) for row in manifest[name]) for name in
               ("locations", "actors", "items", "documents", "routes", "barriers", "scheduled")}
     _validate(fields, manifest)
@@ -197,18 +212,6 @@ def load_world_pack(root: str | Path) -> WorldPack:
                                   entity_ids=entity_ids)
     kb = _validate_kb(manifest["kb"], actors=actor_ids)
     kb = _expand_entity_rows(kb, fields, descriptions)
-    # Strip [[name]] markers from every authored string the model could see
-    # (T5 裁决): the markers are linter-only syntax.
-    for row in manifest.get("scheduled", ()):
-        if isinstance(row, dict) and "notice" in row:
-            row["notice"] = strip_refs(row["notice"])
-    for row in manifest.get("locations", ()):
-        for extra in (row.get("extras") or ()):
-            if isinstance(extra, dict) and "knowledge_notes" in extra:
-                extra["knowledge_notes"] = strip_refs(extra["knowledge_notes"])
-    for key, value in (manifest.get("system", {}).get("facts", {}) or {}).items():
-        manifest["system"]["facts"][key] = strip_refs(value)
-        manifest["system"]["facts"][strip_refs(key)] = strip_refs(value)
     kb = _expand_concept_rows(kb, concepts, entity_ids)
     contacts = _validate_contacts(manifest.get("contacts"), actors=actor_ids)
     kb = _expand_contact_rows(kb, contacts)

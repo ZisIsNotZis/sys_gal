@@ -566,6 +566,18 @@ class ConceptRegistryTests(unittest.TestCase):
                 self.assertNotIn("[[", text)
         for row in pack.manifest.get("scheduled", ()):
             self.assertNotIn("[[", str(row.get("notice", "")))
+        # The WorldPack.scheduled and the built world's events are what the
+        # model actually sees — the live run proved pack.manifest alone is not
+        # enough (ticket-20 leak: build_world schedule rows kept raw markers).
+        for row in pack.scheduled:
+            if isinstance(row, dict):
+                self.assertNotIn("[[", str(row.get("notice", "")))
+            else:
+                self.assertNotIn("[[", str(row))
+        world = pack.build_world()
+        for job in world._queue:
+            notice = str(job.payload.get("notice", ""))
+            self.assertNotIn("[[", notice)
 
     def test_seed_names_all_resolve(self):
         """The name registry gate: every name-like token in authored prose
