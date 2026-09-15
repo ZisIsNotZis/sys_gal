@@ -250,16 +250,32 @@ class _Row:
 
 def _make_row(keys: list[str], desc: str, now: datetime) -> _Row:
     """Dedupe by normalized form (Chinese prior: 的/之、spaces、punctuation
-    collapse to one needle) while keeping first-authored display order —
-    duplicate-normalized keys would double-render and never match twice."""
-    order: list[str] = []
+    collapse to one needle) while keeping first-authored display order.
+
+    Two passes:
+    1. duplicate normalized forms collapse to the first authored key;
+    2. containment: a key whose normalized form CONTAINS another text key's
+       is dropped — matching is substring-based, so 家属院地下室 adds zero
+       discrimination over 地下室 (every text containing the longer contains
+       the shorter). The primary (first text) key never drops: it is the
+       row's name. Addressing by a dropped longer name still resolves — the
+       kept shorter key subset-hits with the usual teaching warning."""
+    directives = [k for k in keys if k.startswith(_DIRECTIVE)]
+    text_keys = [k for k in keys if not k.startswith(_DIRECTIVE)]
+    norms = [normalize(k) for k in text_keys]
+    kept: list[str] = []
     seen: set[str] = set()
-    for key in keys:
-        normalized = normalize(key)
-        if normalized in seen:
+    for i, key in enumerate(text_keys):
+        n = norms[i]
+        if n in seen:
             continue
-        seen.add(normalized)
-        order.append(key)
+        redundant = any(norms[j] in n and j != i
+                        for j in range(len(text_keys)))
+        if redundant and kept:   # the primary (first) text key never drops
+            continue
+        seen.add(n)
+        kept.append(key)
+    order = directives + kept
     unique = frozenset(order)
     at = None
     for key in unique:

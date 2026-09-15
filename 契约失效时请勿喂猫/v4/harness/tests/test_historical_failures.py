@@ -35,6 +35,9 @@ P6  reading a file not at your location ....................... test_kernel (rej
 P7  send_message with a missing/wrong target key (new probe) ... test_send_message_without_target_is_helpful
 P8  document action with wrong key (2-day run, 97 rejections) . test_document_action_with_wrong_key_is_helpful
 P9  flashback returned nothing for seeded backstory ............ test_flashback_recalls_seeded_history_and_resolves_aliases
+T1a world clock races during a slow deliberation (7:35->7:40) ... test_deliberation_pins_the_world_clock
+T1b no auto-wait after text (reply arrives to a departed actor) . test_text_auto_wait_and_npc_reply_followup
+T1c NPC memory-only turn parks with the reply uncomposed ........ test_text_auto_wait_and_npc_reply_followup
 E1  extra turns die silently at trace-record time ............. test_extra_turns_are_recorded_and_conversational
 E2  extra self-wake chatter loop (replies to own speech) ...... test_extra_turns_are_recorded_and_conversational
 E3  extras permanently silent: content-only replies dropped ... test_extra_turns_are_recorded_and_conversational
@@ -44,8 +47,9 @@ H3  failed/truncated artifact mislabeled as clean .............. test_trace_comp
 """
 
 import json
+import time
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -427,6 +431,132 @@ class HistoricalFailureGates(unittest.TestCase):
         crashes = [r for r in trace.system_turns
                    if r["request"].get("kind") == "actor_task_crash"]
         self.assertEqual(crashes, [])
+
+
+    def test_deliberation_pins_the_world_clock(self):
+        """T1a (ticket 23): while an actor's decision is in flight, the world
+        clock may advance at most to that actor's wake + 1 tick. The live
+        run showed instant-decision actors ratcheting the clock one tick per
+        chain (their internal world.advance ignored the horizon) — a 7:35
+        perception committing its action at 7:40."""
+        from harness.engine import TICK_SECONDS
+
+        class SlowFirst:
+            session_obj = True
+
+            def __call__(self, world_message, state):
+                if not hasattr(self, "slept"):
+                    self.slept = True
+                    time.sleep(1.5)   # provider wall latency, in flight
+                return {"text": "", "calls": [
+                    {"name": "wait", "arguments": {"duration_seconds": 3600}}]}
+
+            def deliver_tool_results(self, results):
+                pass
+
+            def consume_compaction(self):
+                return False
+
+        class Instant:
+            session_obj = True
+
+            def __call__(self, world_message, state):
+                return {"text": "", "calls": [
+                    {"name": "wait", "arguments": {"duration_seconds": 60}}]}
+
+            def deliver_tool_results(self, results):
+                pass
+
+            def consume_compaction(self):
+                return False
+
+        pack = load_story_pack()
+        world = pack.build_world()
+        trace = Trace("v4-test", "historical-gate-clock-pin")
+        agents = {}
+        for a in world.actors:
+            if world.actors[a].role != "extra":
+                agents[a] = SlowFirst() if a == "陈默" else Instant()
+        states = {a: PrivateState(a) for a in agents}
+        engine = AsyncEngine(world, agents, states, trace, None,
+                             extra_call=None, decision_timeout=30,
+                             max_wall_seconds=60)
+        engine.run(stop_at=datetime.fromisoformat("2026-03-16T07:06:00+08:00"),
+                   max_turns=400)
+        # While 陈默's 1.5 s deliberation was in flight (wake 07:00), no
+        # event may carry a timestamp later than 07:01. Events after his
+        # chain (normal cycling once he resolved) are legitimate — so the
+        # window closes at his first own committed event.
+        his_first = min((e.world_version for e in world.event_log
+                         if e.actor == "陈默"), default=None)
+        self.assertIsNotNone(his_first)
+        during = [e for e in world.event_log
+                  if e.world_version < his_first
+                  and e.time > datetime.fromisoformat("2026-03-16T07:01:00+08:00")]
+        self.assertEqual(during, [])
+
+    def test_text_auto_wait_and_npc_reply_followup(self):
+        """T1b/T1c (ticket 23): after a text the sender auto-waits (a reply
+        wakes it early); an NPC woken by a delivered message that spent its
+        turn on flashback gets exactly one follow-up turn to compose the
+        reply — the live run showed mom recall and then park forever."""
+        class TextThenMom:
+            """陈默 texts mom; 陈默妈 flashes back then (follow-up) texts back."""
+            session_obj = True
+
+            def __init__(self, actor):
+                self.actor = actor
+                self.turns = 0
+
+            def __call__(self, world_message, state):
+                self.turns += 1
+                if self.actor == "陈默":
+                    if self.turns == 1:
+                        return {"text": "", "calls": [
+                            {"name": "text",
+                             "arguments": {"target": "陈默妈",
+                                           "text": "妈，老街坊代表是谁？"}}]}
+                    return {"text": "", "calls": [
+                        {"name": "wait", "arguments": {"duration_seconds": 3600}}]}
+                if self.actor == "陈默妈":
+                    # turn 1 = flashback only (the parked shape); the
+                    # engine's follow-up turn lets her text the answer back.
+                    if self.turns == 1:
+                        return {"text": "", "calls": [
+                            {"name": "flashback",
+                             "arguments": {"entity": "2013年台风"}}]}
+                    return {"text": "", "calls": [
+                        {"name": "text",
+                         "arguments": {"target": "陈默",
+                                       "text": "代表是你李爷爷，他还住老院。"}}]}
+                return {"text": "", "calls": [
+                    {"name": "wait", "arguments": {"duration_seconds": 3600}}]}
+
+            def deliver_tool_results(self, results):
+                pass
+
+            def consume_compaction(self):
+                return False
+
+        pack = load_story_pack()
+        world = pack.build_world()
+        trace = Trace("v4-test", "historical-gate-text-reply")
+        agents = {}
+        for a in world.actors:
+            if world.actors[a].role != "extra":
+                agents[a] = TextThenMom(a)
+        states = {a: PrivateState(a) for a in agents}
+        engine = AsyncEngine(world, agents, states, trace, None,
+                             extra_call=None, decision_timeout=10,
+                             max_wall_seconds=60)
+        engine.run(stop_at=datetime.fromisoformat("2026-03-16T07:10:00+08:00"),
+                   max_turns=400)
+        # Mom's reply reached 陈默's phone.
+        delivered = [e for e in world.event_log if e.kind == "message_delivered"
+                     and e.actor == "陈默妈"]
+        self.assertTrue(delivered, "mom never texted back")
+        self.assertTrue(any("李爷爷" in str(e.payload.get("text", ""))
+                            for e in delivered))
 
 
 if __name__ == "__main__":

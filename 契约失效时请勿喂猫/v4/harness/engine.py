@@ -560,7 +560,8 @@ class AsyncEngine:
                 if limit is not None and limit > world.now:
                     world.advance(until=limit)
             self._execute_chain(actor_id, chain_calls or [], perception,
-                                affordances, version_before)
+                                affordances, version_before,
+                                spoken_text=spoken_text)
         else:
             self._submit(actor_id, perception, affordances, intention, version_before)
         self._rearm_heartbeat(actor_id)
@@ -664,7 +665,8 @@ class AsyncEngine:
         del pool[:-50]
 
     def _execute_chain(self, actor_id: str, calls: Any, perception: dict,
-                       affordances: list[dict], version_before: int) -> None:
+                       affordances: list[dict], version_before: int,
+                       *, spoken_text: str = "") -> None:
         """V4-AGENT-INTERFACE §4: execute the turn's tool calls in order —
         memory tools are engine-side and free; world actions submit through
         the kernel with time accumulating between calls; a chain with no
@@ -760,11 +762,20 @@ class AsyncEngine:
                 if a.busy_until and a.busy_until > world.now:
                     # The chain's own committed time: advance to the action's
                     # completion so the next call starts after it — clamped to
-                    # the run's stop horizon so a chain never crosses the
-                    # endpoint the completion gate checks.
+                    # the run's stop horizon (endpoint gate) AND to the
+                    # horizon bound (ticket 23): another actor's deliberation
+                    # pins the world at its moment + 1 tick. Without the
+                    # clamp, instant-decision actors ratchet the clock one
+                    # tick per chain while a slower actor is mid-thought —
+                    # the 7:35->7:40 slip. A call that lands while its actor
+                    # is still mid-action is rejected with teaching (busy);
+                    # under contention chains degrade to one action per turn.
                     limit = a.busy_until
                     if self._stop_horizon is not None:
                         limit = min(limit, self._stop_horizon)
+                    horizon = self._horizon_bound()
+                    if horizon is not None:
+                        limit = min(limit, horizon)
                     if limit > world.now:
                         world.advance(until=limit)
                 if a.busy_until and self._stop_horizon is not None and a.busy_until > self._stop_horizon:
@@ -802,8 +813,9 @@ class AsyncEngine:
         idle_now = a_after.busy_until is None or a_after.busy_until <= world.now
         if world_actions and idle_now:
             spoke_to = [c for c in calls
-                        if str(c.get("name")) == "speak"
-                        and isinstance((c.get("arguments") or {}).get("to"), list)
+                        if str(c.get("name")) in {"speak", "text"}
+                        and (str(c.get("name")) != "speak"
+                             or isinstance((c.get("arguments") or {}).get("to"), list))
                         and (c.get("arguments") or {}).get("wait_response", True)]
             if spoke_to:
                 try:
@@ -830,6 +842,16 @@ class AsyncEngine:
                                        world.version))
             except ActionRejected:
                 pass
+        # Ticket 23: an NPC woken to answer (e.g. by a delivered text) that
+        # spent its turn recalling (flashback/recall) but produced no world
+        # action would park with the answer uncomposed — nothing would wake
+        # it again. Give it exactly one follow-up turn.
+        memory_only = (self._role(actor_id) == "npc" and not world_actions
+                       and not spoken_text.strip()
+                       and any(str(c.get("name")) in {"flashback", "recall"}
+                               for c in calls))
+        if memory_only and actor_id not in self._force_turn:
+            self._force_turn.add(actor_id)
         deliver = getattr(self.agents[actor_id], "deliver_tool_results", None)
         if deliver is not None:
             deliver(results)

@@ -74,7 +74,8 @@ SCHEMAS: dict[str, dict[str, Any]] = {
               "additionalProperties": False},
     "text": {"type": "object", "required": ["target", "text"],
              "properties": {"target": _STR,
-                            "text": {"type": "string", "minLength": 1}},
+                            "text": {"type": "string", "minLength": 1},
+                            "wait_response": {"type": "boolean"}},
              "additionalProperties": False},
     # V4-DESIGN §5.6: intent only - the walk time is the map's fact.
     "move": _schema(target=_STR),
@@ -118,7 +119,9 @@ _TOOL_DESCRIPTIONS: dict[str, str] = {
              "话说出口需要 1 分钟；对方听到并回应最快也要再过 1 分钟。默认 wait_response=true："
              "说完你会自动原地等回应（最多约 2 分钟，有人回应会立刻叫醒你）；"
              "说完就走就 wait_response=false",
-    "text": "发手机短信：target=收件人，无视距离，1 tick 后送达；正文只有收件人看得到",
+    "text": "发手机短信：target=收件人，无视距离，1 tick 后送达；正文只有收件人看得到。"
+             "默认 wait_response=true：发出后自动原地等回应（约 2 分钟，对方回复会立刻叫醒你）——"
+             "对方看到、想到、再回，最快也要两三分钟；发完就走用 wait_response=false",
     "move": "只用于地图中的大地点（世界消息 @地点、你知道的 location 行）：target=地点全名。"
             "不要用来靠近柜子、桌子、服务台、房间角落或物品——同一地点内无需 move，直接 read/take/knock/leave_note",
     "take": "拿起一件在这里的物品（含字条）",
