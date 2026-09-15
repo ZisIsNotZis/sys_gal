@@ -52,19 +52,27 @@ class Runner:
                 "turn_sequence": self._turn_sequence, "retry_context": dict(self._retry_context),
                 "repetition": self._repetition.state(), "rep_scan": self._rep_scan}
 
+    @staticmethod
+    def _int_field(value: Any, what: str) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"checkpoint field {what} is not an integer: {value!r}") from exc
+
     def restore_checkpoint(self, state: dict[str, Any]) -> None:
         if set(state.get("transient_failures", {})) != set(self.world.actors):
             raise ValueError("checkpoint runner actor set does not match world")
         self._waiting = set(state.get("waiting", ()))
-        self._transient_failures = {actor: int(value) for actor, value in state["transient_failures"].items()}
+        self._transient_failures = {actor: self._int_field(value, f"transient_failures[{actor}]")
+                                    for actor, value in state["transient_failures"].items()}
         self._operational_facts = {actor: [dict(x) for x in facts]
                                    for actor, facts in state.get("operational_facts", {}).items()}
         self.stop_reason = state.get("stop_reason")
-        self._rejection_sequence = int(state.get("rejection_sequence", 0))
-        self._turn_sequence = int(state.get("turn_sequence", 0))
+        self._rejection_sequence = self._int_field(state.get("rejection_sequence", 0), "rejection_sequence")
+        self._turn_sequence = self._int_field(state.get("turn_sequence", 0), "turn_sequence")
         self._retry_context = dict(state.get("retry_context", {}))
         self._repetition.restore(state.get("repetition", {}))
-        self._rep_scan = int(state.get("rep_scan", len(self.world.event_log)))
+        self._rep_scan = self._int_field(state.get("rep_scan", len(self.world.event_log)), "rep_scan")
 
     def run(self, *, stop_at: datetime | None = None, max_turns: int = 100_000) -> str:
         turns = 0
@@ -78,6 +86,9 @@ class Runner:
             ready = [actor_id for actor_id, actor in self.world.actors.items()
                      if not actor.busy_until or actor.busy_until <= self.world.now]
             eligible = []
+            # Hoisted above the actor loop: must exist even when nobody is
+            # eligible this boundary (pyright possibly-unbound).
+            decisions: dict[str, Any] = {}
             perceptions = {}
             affordances_by_actor = {}
             for actor_id in sorted(ready):
@@ -111,7 +122,6 @@ class Runner:
                 affordances = affordances_by_actor.get(actor_id, affordances)
                 affordances_by_actor[actor_id] = affordances
                 eligible.append(actor_id)
-                decisions = {}
             pool = ThreadPoolExecutor(max_workers=min(self.max_workers, max(1, len(eligible))))
             futures = {actor: pool.submit(self._decide, actor, perceptions[actor], affordances_by_actor[actor]) for actor in eligible}
             try:
@@ -137,14 +147,17 @@ class Runner:
                     try:
                         decisions[actor] = future.result()
                     except Exception as exc:
-                        if getattr(exc, "runner_retryable", False) and self._outer_retry_allowed(actor):
-                            prefix = "retryable: "
-                            decisions[actor] = (None, "retryable_failure",
-                                                prefix + f"{type(exc).__name__}: {exc}")
-                        elif getattr(exc, "runner_retryable", False):
-                            prefix = "retry-exhausted: "
-                            decisions[actor] = (None, "agent_error",
-                                                prefix + f"{type(exc).__name__}: {exc}")
+                        # (nested ifs: no boolean operator inside an except
+                        # block — pi-lens no-boolean-in-except)
+                        if getattr(exc, "runner_retryable", False):
+                            if self._outer_retry_allowed(actor):
+                                prefix = "retryable: "
+                                decisions[actor] = (None, "retryable_failure",
+                                                    prefix + f"{type(exc).__name__}: {exc}")
+                            else:
+                                prefix = "retry-exhausted: "
+                                decisions[actor] = (None, "agent_error",
+                                                    prefix + f"{type(exc).__name__}: {exc}")
                         elif getattr(exc, "retry_exhausted", False):
                             prefix = "retry-exhausted: "
                             decisions[actor] = (None, "agent_error", prefix + f"{type(exc).__name__}: {exc}")
@@ -312,7 +325,7 @@ class Runner:
             for event in self.world.event_log[self._rep_scan:]:
                 if event.kind == "message_delivered":
                     self._repetition.note_message_received(
-                        str(event.payload.get("target")), event.actor)
+                        str(event.payload.get("target")), event.actor or "")
             self._rep_scan = len(self.world.event_log)
             if stop_at is not None and self.world.now >= stop_at:
                 return self._finish("stop_at_reached")

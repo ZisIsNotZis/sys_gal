@@ -68,17 +68,18 @@ class Trace:
                                   "provider_code": getattr(error, "provider_code", None),
                                   "attempts": getattr(error, "attempts", None)}}
 
-    def verify_complete(self, world: World, *, endpoint: str, stop_event: str) -> None:
+    def verify_complete(self, world: World, *, endpoint: str, stop_event: str,
+                        from_turn: int = 0) -> None:
         if world.now.isoformat() != endpoint:
             raise ValueError("trajectory did not reach the requested endpoint")
         if not any(e.kind == "world_event" and e.payload.get("event") == stop_event
                    for e in world.event_log):
             raise ValueError(f"trajectory lacks required stop event: {stop_event}")
-        self.verify_no_agent_errors()
+        self.verify_no_agent_errors(from_turn=from_turn)
         verify_event_log(world.replayable_log())
 
-    def verify_no_agent_errors(self) -> None:
-        errors = [turn for turn in self.agent_turns
+    def verify_no_agent_errors(self, *, from_turn: int = 0) -> None:
+        errors = [turn for turn in self.agent_turns[from_turn:]
                   if turn.get("result") in {"agent_error", "decision_timeout", "engine_error",
                                               "wall_clock_deadline"}]
         if errors:

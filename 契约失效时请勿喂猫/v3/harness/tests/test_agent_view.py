@@ -57,5 +57,112 @@ class AgentViewTests(unittest.TestCase):
                 self.assertGreater(file.stat().st_size, 0)
 
 
+    def test_chatml_view_is_a_flat_ordered_stream(self):
+        from harness.agent_view import render_chatml_view
+        trajectory = {"sessions": {"chen-mo": {"messages": [
+            {"role": "system", "content": "SYS"},
+            {"role": "user", "content": "init"},
+            {"role": "assistant", "content": "{\"kind\":\"wait\",\"args\":{\"seconds\":600}}"},
+            {"role": "user", "name": "world", "content": "The world accepted your wait; it is in progress."},
+            {"role": "assistant", "content": "X" * 5000},
+        ]}}}
+        view = render_chatml_view(trajectory, "chen-mo")
+        tags = [line for line in view.splitlines() if line.startswith("[")]
+        # One flat stream: system, user, assistant, world-as-user, assistant.
+        self.assertEqual(tags, ["[system]", "[user]", "[assistant]", "[user]", "[assistant]"])
+        # World feedback renders as a plain user message with full content.
+        self.assertIn("[user]\nThe world accepted your wait", view)
+        self.assertNotIn("[world]", view)
+        # No analysis sections and no display truncation.
+        self.assertNotIn("Decision log", view)
+        self.assertNotIn("Private state", view)
+        self.assertIn("X" * 5000, view)
+
+
+    def test_history_view_reconstructs_every_turn_in_order(self):
+        from harness.agent_view import render_history_view
+        trajectory = self._small_trajectory()
+        view = render_history_view(trajectory, "lin-yao")
+        # Every lin-yao turn appears: one [assistant] block per turn.
+        turns = [t for t in trajectory["agent_turns"] if t["actor"] == "lin-yao"]
+        self.assertEqual(view.count("\n[assistant]\n"), len(turns))
+        # The rhythm: perception first, then the action; no accept receipt.
+        self.assertIn("The time is", view)
+        chen_view = render_history_view(trajectory, "chen-mo")
+        self.assertIn('{"kind": "send_message"', chen_view)
+        self.assertNotIn("The world accepted your", chen_view)
+        # Chen's delivered message shows up in lin's perception stream.
+        self.assertIn("meet me at the archive", view)
+        # Rejections render as immediate corrective feedback with detail.
+        rejects = [t for t in turns if t["result"] == "rejected"]
+        if rejects:
+            self.assertIn("The world rejects your action", view)
+
+
+    def test_history_view_includes_system_and_compaction_boundary(self):
+        from harness.agent_view import render_history_view
+        trajectory = {
+            "world_events": [{"id": 1, "kind": "action_completed", "actor": "chen-mo",
+                              "payload": {"action": "wait"}}],
+            "sessions": {"chen-mo": {"messages": [
+                {"role": "system", "content": "PERSONA"},
+                {"role": "user", "content": "init"},
+                {"role": "assistant", "content": "{}"},
+            ], "compacted_memories": [
+                {"order": 0, "content": "MEMORY-ONE"},
+                {"order": 1, "content": "MEMORY-TWO"},
+            ]}},
+            "agent_turns": [
+                {"actor": "chen-mo",
+                 "perception": {"time": "2026-03-16T07:00:00+08:00", "location": "dorm",
+                                "events": [], "inbox": []},
+                 "affordances": [{"kind": "wait", "duration_seconds": 900}],
+                 "intention": {"kind": "wait", "args": {"duration_seconds": 900}},
+                 "result": "submitted", "error": None, "event_ids": [1]},
+            ],
+        }
+        view = render_history_view(trajectory, "chen-mo")
+        # The persona prompt the agent saw with every request.
+        self.assertIn("[system]\nPERSONA", view)
+        # No synthesized accept receipts: an accepted action is followed
+        # directly by the next perception; outcomes live in event lines.
+        self.assertNotIn("The world accepted your", view)
+        # Bullet affordances.
+        self.assertIn("  - ", view)
+        # Compaction boundary and verbatim live context are still present.
+        self.assertIn("MEMORY-ONE", view)
+        self.assertIn("MEMORY-TWO", view)
+        self.assertGreaterEqual(view.count("\n---\n"), 3)
+        self.assertIn("Current live context", view)
+        self.assertIn("[assistant]\n{}", view)
+
+    def test_history_view_dedupes_constants_and_filters_other_waits(self):
+        from harness.agent_view import render_history_view
+        events = [{"id": 1, "time": "2026-03-16T07:00:00+08:00", "kind": "action_completed",
+                   "actor": "chen-mo", "payload": {"action": "wait", "duration_seconds": 900}},
+                  {"id": 2, "time": "2026-03-16T07:05:00+08:00", "kind": "action_completed",
+                   "actor": "lin-yao", "payload": {"action": "wait", "duration_seconds": 900}}]
+        turn = {"actor": "chen-mo",
+                "perception": {"time": "2026-03-16T07:05:00+08:00", "location": "dorm",
+                               "observer": "chen-mo", "events": events, "inbox": [],
+                               "descriptions": {"dorm": "A small dorm room."},
+                               "knowledge": {"old-basement": {"public": "Closed."}}},
+                "affordances": [{"kind": "wait", "duration_seconds": 900}],
+                "intention": {"kind": "wait", "args": {"duration_seconds": 900}},
+                "result": "submitted", "error": None, "event_ids": [1, 2]}
+        trajectory = {"world_events": events, "sessions": {"chen-mo": {"messages": []}},
+                      "agent_turns": [dict(turn), dict(turn, perception=dict(
+                          turn["perception"], events=[]))]}
+        view = render_history_view(trajectory, "chen-mo")
+        # Own wait completion is visible; another actor's wait is not an event.
+        self.assertIn("[07:00:00] You finished waiting", view)
+        self.assertNotIn("lin-yao completed wait", view)
+        # Constant description and knowledge appear exactly once across turns.
+        self.assertEqual(view.count("A small dorm room."), 1)
+        self.assertEqual(view.count("old-basement — Closed."), 1)
+        # No accept receipt between action and next perception.
+        self.assertNotIn("The world accepted", view)
+
+
 if __name__ == "__main__":
     unittest.main()
