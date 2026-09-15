@@ -30,7 +30,7 @@ class ActionSchemaTests(unittest.TestCase):
             ("read", {"item": "ledger"}),
             ("leave_note", {"text": "去后街找我"}),
             ("trash", {"item": "ledger"}),
-            ("ask", {"question": "哨子在哪里？"}),
+            ("speak", {"text": "哨子在哪里？", "volume": "normal", "to": ["下棋大爷"]}),
         ]
         for kind, args in cases:
             self.assertIsNone(validate_action_args(kind, args), (kind, args))

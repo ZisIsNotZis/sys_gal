@@ -69,7 +69,8 @@ SCHEMAS: dict[str, dict[str, Any]] = {
     "speak": {"type": "object", "required": ["text", "volume", "to"],
               "properties": {"text": {"type": "string", "minLength": 1},
                              "volume": {"type": "string", "enum": ["whisper", "normal"]},
-                             "to": {"type": "array", "minItems": 1, "items": _STR}},
+                             "to": {"type": "array", "minItems": 1, "items": _STR},
+                             "wait_response": {"type": "boolean"}},
               "additionalProperties": False},
     "text": {"type": "object", "required": ["target", "text"],
              "properties": {"target": _STR,
@@ -86,7 +87,6 @@ SCHEMAS: dict[str, dict[str, Any]] = {
     "read": _ONE_ITEM_CONTENT,
     "leave_note": _schema(text={"type": "string", "minLength": 1}),
     "trash": _ONE_ITEM,
-    "ask": _schema(question={"type": "string", "minLength": 1}),
 }
 
 # 每个工具的中文一句话说明（docs §2）。注意：每个调用的 arguments 都必须带
@@ -112,8 +112,12 @@ _TOOL_DESCRIPTIONS: dict[str, str] = {
         "手动闪回：关于某个地点/物品/人物/事件，把你知道的和亲历过的都翻出来——先是你自己记的事"
         "（前史、旧账、心结），再是这段日子里的经历。名字可用别名（如\"老街坊\"）。想不起某段往事时用",
     "wait": "唯一的时间流逝工具；时长向上取整到 tick 倍数；等待期间事件照常投递。想干等或边等边想时用",
-    "speak": "耳语专用：volume=whisper，仅 to 指定的在场者听得见文本，其他人只见耳语动作。"
-             "普通说话不用这个工具——直接回复文字就是开口",
+    "speak": "对指定的人开口：to=在场的谁（可多个；也可以是 [\"陌生人\"] 向身边的路人搭话）。"
+             "volume=normal 大家都听得见（to 记录话是对谁说的）；volume=whisper 仅 to 名单听得见。"
+             "普通的全场发言不用工具——直接回复文字即可。"
+             "话说出口需要 1 分钟；对方听到并回应最快也要再过 1 分钟。默认 wait_response=true："
+             "说完你会自动原地等回应（最多约 2 分钟，有人回应会立刻叫醒你）；"
+             "说完就走就 wait_response=false",
     "text": "发手机短信：target=收件人，无视距离，1 tick 后送达；正文只有收件人看得到",
     "move": "只用于地图中的大地点（世界消息 @地点、你知道的 location 行）：target=地点全名。"
             "不要用来靠近柜子、桌子、服务台、房间角落或物品——同一地点内无需 move，直接 read/take/knock/leave_note",
@@ -124,7 +128,6 @@ _TOOL_DESCRIPTIONS: dict[str, str] = {
                   "要定向给某人用 text；递到手上用 give",
     "read": "读一份手边的内容型物品；正文和已有批注只在 tool 结果里给你自己看。他人只看见你在读",
     "knock": "敲一个关闭地点的门，探里面有没有人",
-    "ask": "搭话身边的人或随机路人：question=想问的话。对话期对方会回应，结束即散",
     "continue_action": "无损继续被打断的动作（被打断的回合必须先选这个或 abandon）",
     "abandon_action": "放弃被打断的动作（作废；被打断的回合必须先选这个或 continue）",
     "trash": "销毁一件自己身上或当前地点的物品（字条、杂物），不可逆",

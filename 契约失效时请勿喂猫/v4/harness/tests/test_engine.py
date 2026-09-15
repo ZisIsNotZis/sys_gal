@@ -302,9 +302,13 @@ class V4ProtocolTests(unittest.TestCase):
         agent = FakeV4Agent([calls])
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
         engine.run(stop_at=START + timedelta(seconds=200), max_turns=30)
-        # per-call tool results carry the truncation notice (docs §3)
-        texts = " ".join(str(r.get("text")) for r in agent.delivered)
-        self.assertIn("truncated: 2 calls dropped", texts)
+        # Ticket 22: each dropped call gets its OWN tool result (with its
+        # real call_id — strict gateways reject nameless tool messages), so
+        # the model sees exactly which calls never ran.
+        dropped = [r for r in agent.delivered
+                   if "8-calls-per-turn limit" in str(r.get("text"))]
+        self.assertEqual(len(dropped), 2)
+        self.assertTrue(all(r.get("tool_call_id") for r in dropped))
 
     def test_restored_kb_is_not_clobbered_by_seed_rows(self):
         from harness.kb import ActorKB
@@ -421,12 +425,15 @@ class RenderSemanticsTests(unittest.TestCase):
         self.assertIn("耳语内容：\"悄悄话\"", world_b)
 
     def test_solo_speak_when_nobody_present(self):
-        # docs §3 修订：solo speak 是恒可用工具——不列入 #actions（工具清单
-        # 里仍然存在，模型随时可自言自语）。
+        # Ticket 22: speak is always offered — even alone, to=["陌生人"]
+        # asks a passer-by, so the affordance row lists the candidates.
         from harness.prompt import render_world_message
         world = self._world()
         affordances = world.affordances("c")
-        self.assertNotIn("speak", [x.get("kind") for x in affordances])
+        speak_rows = [x for x in affordances if x.get("kind") == "speak"]
+        self.assertEqual(len(speak_rows), 1)
+        self.assertIn("陌生人", speak_rows[0].get("to", []))
+        self.assertNotIn("c", speak_rows[0].get("to", []))
         text = render_world_message({"observer": "c", "time": world.now.isoformat(),
                                      "location": "alone", "events": [],
                                      "nearby_actors": [], "inventory": []},

@@ -320,8 +320,10 @@ class HistoricalFailureGates(unittest.TestCase):
 
 
     def test_extra_turns_are_recorded_and_conversational(self):
-        """E1/E2/E3: a stranger_asked must spawn an extra whose reply reaches
-        the world AND the trace, then park instead of chattering.
+        """E1/E2/E3 + ticket-22 timing: a speak(to=["陌生人"]) must spawn a
+        passer-by when the utterance lands (completion tick, never at
+        submit), whose reply reaches the world AND the trace, then park
+        instead of chattering.
 
         E1 — engine _extra_turn passed a plain dict to Trace.record_agent,
         which reads intention.actor/.kind → AttributeError AFTER the speech
@@ -361,17 +363,22 @@ class HistoricalFailureGates(unittest.TestCase):
         asked = set()
 
         def agent(state, perception, affordances):
+            # Ticket 22: ask is merged into speak — to=["陌生人"] asks the
+            # room's passers-by; auto-wait is engine-side, so this test's
+            # intentions carry it implicitly.
             if state.actor_id == "陈默" and state.actor_id not in asked:
                 asked.add(state.actor_id)
-                return Intention(state.actor_id, "ask",
-                                 {"question": "请问台账的事？"},
+                return Intention(state.actor_id, "speak",
+                                 {"text": "请问台账的事？", "volume": "normal",
+                                  "to": ["陌生人"]},
                                  perception["world_version"])
-            # One follow-up ask to the same stranger (routed to the existing
+            # One follow-up to the same stranger (routed to the existing
             # partner extra), then wait forever.
             if state.actor_id == "陈默" and len(asked) == 1:
                 asked.add(state.actor_id + "-2")
-                return Intention(state.actor_id, "ask",
-                                 {"question": "那签字的人是谁？"},
+                return Intention(state.actor_id, "speak",
+                                 {"text": "那签字的人是谁？", "volume": "normal",
+                                  "to": ["陌生人"]},
                                  perception["world_version"])
             return Intention(state.actor_id, "wait",
                              {"duration_seconds": 3600},
@@ -394,6 +401,16 @@ class HistoricalFailureGates(unittest.TestCase):
         self.assertEqual(len(extra_turns), 2)
         self.assertTrue(all(t["result"] == "submitted" for t in extra_turns))
         self.assertEqual(len({t["actor"] for t in extra_turns}), 1)
+
+        # Ticket 22 timing: the passer-by spawns when the utterance LANDS
+        # (the speak's completion tick, one minute after the ask), and its
+        # answer lands within the pinned 1-tick window — never minutes late.
+        arrived = [e for e in world.event_log if e.kind == "extra_arrived"]
+        self.assertEqual(len(arrived), 1)
+        self.assertEqual(arrived[0].time.strftime("%H:%M"), "07:01")
+        first_answer = next(e for e in world.event_log if e.kind == "speech"
+                            and "那笔记录" in str(e.payload.get("text", "")))
+        self.assertLessEqual((first_answer.time - arrived[0].time).total_seconds(), 60)
 
         # The replies became real speech events; the follow-up answer must be
         # the parsed speak text, NOT the raw decision JSON.

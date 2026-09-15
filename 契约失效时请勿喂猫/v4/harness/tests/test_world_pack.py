@@ -23,7 +23,7 @@ class WorldPackTests(unittest.TestCase):
         self.assertIn("步行约", text)
         self.assertIn("分钟", text)
         self.assertIn("whisper", text)
-        self.assertIn("ask", text)
+        self.assertIn("speak", text)
 
     def test_readiness_rejects_orphan_markdown(self):
         from tempfile import TemporaryDirectory

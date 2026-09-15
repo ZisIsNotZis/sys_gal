@@ -187,7 +187,7 @@ class World:
     """Authoritative, deterministic, event-sourced physical/social world."""
 
     ACTIONS = {"wait", "speak", "text", "move", "take", "place", "give",
-               "read", "leave_note", "knock", "ask", "trash",
+               "read", "leave_note", "knock", "trash",
                "continue_action", "abandon_action"}
 
     def __init__(self, *, start: datetime, actors: Iterable[ActorState],
@@ -538,16 +538,13 @@ class World:
         controllable = self.locations[a.location].controllable
         others_here = sorted(other.id for other in self.actors.values()
                              if other.id != a.id and other.location == a.location)
-        # docs §3（修订）: speak 仅在有其他在场者时列出（whisper 的 to 候选 =
-        # 在场他人）；无人在场时引擎拒绝 speak（没人听得见）——模型用 wait 或
-        # move 去找人。
-        # docs §2: speak 工具 = whisper 专用（普通说话是纯文本输出，不占
-        # 工具面）。affordance 行不再提供 normal 通道。
-        speak_option = ({"kind": "speak", "volume": "whisper", "to": others_here}
-                        if others_here else None)
+        # docs §3（修订，ticket 22）: speak 是唯一带寻址的说话工具。to 候选 =
+        # 在场他人 + ["陌生人"]（向路人搭话，引擎会在话音落地时派一个路人
+        # 回应）；普通的全场发言是纯文本输出，不占工具面。
+        speak_option = {"kind": "speak", "volume": "normal",
+                        "to": [*others_here, "陌生人"]}
         options: list[dict[str, Any]] = [
-            {"kind": "ask", "question": ""},
-            *([speak_option] if speak_option else []),
+            speak_option,
             *({"kind": "text", "target": other} for other in self._message_targets(a)),
             *({"kind": "move", "target": target}
               for (source, target), duration in self.routes.items() if source == a.location),
@@ -578,9 +575,12 @@ class World:
             # Engine-constructed normal speech (T1 文本即说话): the model's
             # plain text output arrives without tool-schema decoration. The
             # listener set is computed at commit; no whisper fields needed.
+            # A `to` the model wrote anyway is preserved (normal, addressed).
+            injected = {"text": intention.args.get("text", ""), "volume": "normal"}
+            if intention.args.get("to"):
+                injected["to"] = list(intention.args["to"])
             intention = Intention(intention.actor, intention.kind,
-                                  {"text": intention.args.get("text", ""),
-                                   "volume": "normal"},
+                                  injected,
                                   intention.expected_version,
                                   interrupt=intention.interrupt,
                                   uninterruptable=intention.uninterruptable)
@@ -602,12 +602,6 @@ class World:
             return self._resume(a)
         if intention.kind == "abandon_action":
             return self._abandon(a)
-        if intention.kind == "ask":
-            question = str(intention.args.get("question", "")).strip()
-            if not question:
-                raise ActionRejected("ask 需要写明你想问什么（question）。")
-            self._commit("stranger_asked", a.id, {"question": question}, None)
-            # 打听花一个 tick：答案以在场路人的 speech 事件出现。
         duration = self._duration(a, intention)
         if intention.kind == "wait" and self._unseen_social_event(a):
             # V4-ENGINE §3: a waiter does not sleep through a social act it
@@ -658,6 +652,14 @@ class World:
                 speech_payload["to"] = list(intention.args["to"])
             self._commit("speech", a.id, speech_payload,
                          started.id if started else None)
+            # Merged ask (ticket 22): to=["陌生人"] asks the room's passers-by.
+            # The spawn fires at the utterance's completion tick (the moment
+            # the message is heard), keyed by cause so _handle_extras can
+            # match it — never at submit time.
+            if "陌生人" in (intention.args.get("to") or []):
+                self._commit("stranger_asked", a.id,
+                             {"question": intention.args["text"]},
+                             started.id if started else None)
         elif intention.kind == "text":
             self._commit("message_sent", a.id, {"target": str(intention.args["target"])},
                          started.id if started else None)
@@ -945,17 +947,24 @@ class World:
             volume = x.get("volume", "normal")
             if volume not in {"whisper", "normal"}:
                 raise ActionRejected("volume 只能是 whisper（低声，仅指定对象听见）或 normal（全地点）。")
-            if volume == "whisper":
-                targets = x.get("to")
+            here = {other.id for other in self.actors.values() if other.location == a.location}
+            targets = x.get("to")
+            if targets is not None:
                 if not isinstance(targets, list) or not targets or not all(isinstance(t, str) for t in targets):
                     raise ActionRejected(
-                        "低声说话必须用 to 指定你说过给谁听（同处一地的人）。",
-                        context={"volume": "whisper", "missing": "to"})
-                here = {other.id for other in self.actors.values() if other.location == a.location}
-                unknown = [t for t in targets if t not in here]
+                        "to 必须是名字列表（在场的人，或 [\"陌生人\"] 向路人搭话）。",
+                        context={"missing": "to"})
+                named = [t for t in targets if t != "陌生人"]
+                unknown = [t for t in named if t not in here]
                 if unknown:
                     raise ActionRejected(
-                        f"低声说话的对象必须和你在一起。不在场：{', '.join(unknown)}。")
+                        f"说话对象必须和你在一起。不在场：{', '.join(unknown)}。",
+                        alternatives=[f"speak to {other}" for other in sorted(here)],
+                        context={"absent": unknown})
+            elif volume == "whisper":
+                raise ActionRejected(
+                    "低声说话必须用 to 指定你说过给谁听（同处一地的人）。",
+                    context={"volume": "whisper", "missing": "to"})
             # One utterance = one tick (V4-ENGINE §4): conversation rounds
             # cost M ticks for M exchanges regardless of length.
             return timedelta(seconds=TICK_SECONDS)
@@ -980,7 +989,7 @@ class World:
             # tick to arrive, common knowledge, so sending words has a real
             # time cost.
             return timedelta(seconds=TICK_SECONDS)
-        if i.kind in {"read", "leave_note", "ask", "trash"}:
+        if i.kind in {"read", "leave_note", "trash"}:
             return self._item_duration(a, i)
         if i.kind == "knock":
             target = str(x.get("target"))
@@ -1083,11 +1092,6 @@ class World:
             if not isinstance(text, str) or not text.strip():
                 raise ActionRejected("leave_note 需要非空文本（text）。")
             return timedelta(seconds=3)
-        if kind == "ask":
-            question = intention.args.get("question")
-            if not isinstance(question, str) or not question.strip():
-                raise ActionRejected("ask 需要写明你想问什么（question）。")
-            return timedelta(seconds=3)
         if kind == "trash":
             item = str(intention.args.get("item"))
             if item not in actor.inventory and self.item_locations.get(item) != actor.location:
@@ -1141,7 +1145,7 @@ class World:
     def _interaction_event(self, kind: str) -> str:
         return {"knock": "knock", "give": "item_given",
                 "read": "document_read", "leave_note": "note_left",
-                "trash": "item_trashed", "ask": "asked"}[kind]
+                "trash": "item_trashed"}[kind]
 
     def _interaction_payload(self, actor: ActorState, intention: Mapping[str, Any]) -> dict[str, Any]:
         kind = str(intention["action"])
@@ -1339,6 +1343,11 @@ class World:
             if isinstance(to, list):
                 resolved_to, notes = [], []
                 for entry in to:
+                    if entry == "陌生人":
+                        # Ask-the-room token (ticket 22): routed to the extras
+                        # machinery, never name-resolved.
+                        resolved_to.append(entry)
+                        continue
                     resolved, note = self._resolve_person(actor, entry)
                     if resolved is None:
                         notes.append(note or str(entry))
@@ -1348,7 +1357,7 @@ class World:
                             changed = True
                 if notes:
                     raise ActionRejected(
-                        f"低声说话的对象无法识别：{'; '.join(notes)}。",
+                        f"说话对象无法识别：{'; '.join(notes)}。",
                         context={"unknown": notes})
                 if resolved_to != to:
                     args["to"] = resolved_to

@@ -65,13 +65,19 @@ class RowModelTests(unittest.TestCase):
         self.assertTrue(any("!always" in line for line in lines))
         self.assertTrue(any("!at=" in line for line in lines))
 
-    def test_render_labels_the_first_key_and_counts_the_rest(self):
+    def test_render_lists_every_key_fully(self):
+        # Ticket 22: the model cannot expand a `+N` abbreviation — every
+        # addressable key is spelled out on the label.
         kb = ActorKB("唐小岚", [
             {"keys": ["唐小岚"], "desc": "我"},
             {"keys": ["老家属院", "家属院", "老街坊"], "desc": "旧居民区"},
+            {"keys": ["重复", "重复"], "desc": "normalize 去重"},
         ], T0)
         line = next(l for l in kb.due_lines(T0, "老家属院", limit=8) if "旧居民区" in l)
-        self.assertTrue(line.startswith("[老家属院 +2]"), line)
+        self.assertTrue(line.startswith("[老家属院 家属院 老街坊]"), line)
+        self.assertNotIn("+", line.split("]")[0])
+        dup_line = next(l for l in kb.due_lines(T0, "重复", limit=8) if "去重" in l)
+        self.assertEqual(dup_line.split("]")[0].count("重复"), 1)
 
     def test_reminder_parsing_is_strict(self):
         self.assertEqual(parse_reminder_time("3/16(周一) 08:30", T0),

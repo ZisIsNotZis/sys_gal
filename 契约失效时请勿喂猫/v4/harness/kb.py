@@ -237,27 +237,35 @@ class _Row:
         return ALWAYS_KEY in self.keys
 
     def render(self) -> str:
-        """`[<directives> <label> +N]: desc`. The key set is the row's handle,
-        but listing six aliases on every line is noise: the label is the first
-        key as authored (concept name for registry rows) and `+N` counts the
-        rest. Any single key still addresses the row (fuzzy locate)."""
+        """`[<directives> k1 k2 …]: desc` — EVERY key, fully spelled out.
+        The model has no way to expand a `+N` abbreviation, so hiding keys
+        hides addressable handles; the seed audit showed 322/323 rows already
+        have non-overlapping keys (the one dup is deduped at construction)."""
         ordered = list(self.order) or sorted(self.keys)
         directives = [render_key(k, self.at) for k in ordered if k.startswith(_DIRECTIVE)]
         texts = [k for k in ordered if not k.startswith(_DIRECTIVE)]
-        label = directives + texts[:1]
-        if len(texts) > 1:
-            label.append(f"+{len(texts) - 1}")
+        label = directives + texts
         return f"[{' '.join(label) or key_id(self.keys)}]: {self.desc}"
 
 
 def _make_row(keys: list[str], desc: str, now: datetime) -> _Row:
-    order = tuple(dict.fromkeys(keys))
+    """Dedupe by normalized form (Chinese prior: 的/之、spaces、punctuation
+    collapse to one needle) while keeping first-authored display order —
+    duplicate-normalized keys would double-render and never match twice."""
+    order: list[str] = []
+    seen: set[str] = set()
+    for key in keys:
+        normalized = normalize(key)
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        order.append(key)
     unique = frozenset(order)
     at = None
     for key in unique:
         if key.startswith(_AT_PREFIX):
             at = parse_reminder_time(key[len(_AT_PREFIX):], now)
-    return _Row(unique, desc, at=at, order=order)
+    return _Row(unique, desc, at=at, order=tuple(order))
 
 
 class ActorKB:
@@ -309,12 +317,14 @@ class ActorKB:
         candidates = [r for r in self._rows.values()
                       if r.status == "open" and target <= r.keys]
         if len(candidates) == 1:
-            return candidates[0], (f"matched by unique subset: "
-                                   f"the row's keys are [{sorted(candidates[0].keys)}]"), []
+            # Plain comma rendering — a Python list repr here would render
+            # [['!always', 'x']] which reads like a [[...]] reference marker.
+            shown = " ".join(candidates[0].order or sorted(candidates[0].keys))
+            return candidates[0], (f"matched by unique subset; the row's keys: {shown}"), []
         if len(candidates) > 1:
-            listed = " / ".join(str(sorted(r.keys)) for r in candidates[:5])
-            return None, None, [f"keys {sorted(target)} are ambiguous; you might mean: {listed}"]
-        return None, None, [f"no row keyed {sorted(target)}"]
+            listed = " / ".join(" ".join(r.order or sorted(r.keys)) for r in candidates[:5])
+            return None, None, [f"keys '{" ".join(sorted(target))}' are ambiguous; you might mean: {listed}"]
+        return None, None, [f"no row keyed '{" ".join(sorted(target))}'"]
 
     # ------------------------------------------------------------- mutation
 

@@ -30,7 +30,7 @@ from __future__ import annotations
 import asyncio
 import time
 from datetime import datetime, timedelta
-from typing import Any, Callable, Iterable, Mapping, Sequence
+from typing import Any, Callable, Iterable, Mapping, Protocol, Sequence
 
 from .adapter import parse_decision
 from .agent_state import PrivateState
@@ -43,6 +43,14 @@ from .kb import CONTACT_KEY
 from .repetition import RepetitionMonitor
 
 AgentFn = Callable[[PrivateState, dict, list[dict]], Any]
+
+
+class ExtraCall(Protocol):
+    """The v4 extras provider shape: an object exposing chat_with_tools
+    (legacy v3 callers may instead pass a bare callable — both are accepted
+    by AsyncEngine.extra_call)."""
+
+    def chat_with_tools(self, messages: list[dict], tools: list[dict]) -> dict: ...
 
 def _as_int(value: Any, what: str = "value") -> int:
     try:
@@ -61,7 +69,7 @@ def _as_float(value: Any, what: str = "value") -> float:
 class AsyncEngine:
     def __init__(self, world: World, agents: dict[str, AgentFn],
                  states: dict[str, PrivateState], trace: Any,
-                 system: Any = None, *, extra_call: Callable | None = None,
+                 system: Any = None, *, extra_call: ExtraCall | Callable | None = None,
                  decision_timeout: float = 60.0,
                  max_wall_seconds: float | None = None,
                  max_turns: int = 20_000,
@@ -106,6 +114,13 @@ class AsyncEngine:
         self._rep_scan = 0
         self._extras: dict[str, dict[str, Any]] = {}
         self._extra_tasks: dict[str, asyncio.Task] = {}
+        # Ticket 22: an extra whose answer is in flight pins the world clock
+        # (same 1-tick skew rule as MC decisions) — provider wall time must
+        # never turn into minutes of fast-forwarded world time.
+        self._extra_inflight: dict[str, datetime] = {}
+        # Asks whose passer-by spawns at the utterance's completion tick,
+        # keyed by the action_started event id the completion will carry.
+        self._pending_spawns: dict[int, dict[str, Any]] = {}
         self._failures: dict[str, int] = {actor: 0 for actor in world.actors}
         self._turns = 0
         self._rejection_sequence = 0
@@ -305,8 +320,11 @@ class AsyncEngine:
         return any(self._ready_now(actor) for actor in self._persistent_actors())
 
     def _quiescent(self) -> bool:
-        """True when no actor can still create an event on its own."""
-        return (not self._inflight and not self._force_turn and not self._any_ready())
+        """True when no actor can still create an event on its own. An extra
+        with an answer in flight still owns an event (ticket 22) — the clock
+        must not jump to stop_at over its head."""
+        return (not self._inflight and not self._extra_inflight
+                and not self._force_turn and not self._any_ready())
 
     def _has_pending_turns(self) -> bool:
         """True when some actor owes a turn at the current moment (woken or
@@ -656,17 +674,22 @@ class AsyncEngine:
         results: list[dict[str, Any]] = []
         failures: list[str] = []
         world_actions = 0
-        calls = list(calls or [])
-        truncated = max(0, len(calls) - 8)
-        if truncated:
-            calls = calls[:8]
+        full_calls = list(calls or [])
+        # Every tool result must be attributable (strict gateways reject
+        # tool messages without call_id): synthesize ids for calls that
+        # arrive without one.
+        for pos, c in enumerate(full_calls):
+            if not c.get("tool_call_id"):
+                c["tool_call_id"] = f"{actor_id}-chain-{pos + 1}"
+        calls = full_calls[:8]
+        truncated = max(0, len(full_calls) - 8)
         a = world.actors[actor_id]
 
         def fail(call: dict[str, Any], text: str) -> None:
             results.append({"tool_call_id": call.get("tool_call_id"), "ok": False, "text": text})
             failures.append(f"{call.get('name')}: {text}")
 
-        for call in calls:
+        for pos, call in enumerate(calls):
             name = str(call.get("name", ""))
             args = dict(call.get("arguments") or {})
             if call.get("parse_error"):
@@ -674,12 +697,17 @@ class AsyncEngine:
                 continue
             if name in {"think", "system_query", "copy", "annotate", "compare",
                         "observe", "search", "inspect", "label", "interact",
-                        "open", "close", "send_message", "drop",
+                        "open", "close", "send_message", "drop", "ask",
                         "system_accept", "system_decline"}:
-                # retired tools (ticket 14 / earlier rulings): teach, don't fail
-                # silently — the model may carry them from older sessions.
-                fail(call, f"unknown action '{name}' (retired); "
-                           "see your tool list for the current actions")
+                # retired tools (ticket 14 / ticket 22 / earlier rulings):
+                # teach, don't fail silently — the model may carry them from
+                # older sessions.
+                teaching = ("ask 已合并进 speak：用 speak(to=[...], text=...) 提问，"
+                            "to 可以是在场的人或 [\"陌生人\"]"
+                            if name == "ask" else
+                            f"unknown action '{name}' (retired); "
+                            "see your tool list for the current actions")
+                fail(call, teaching)
                 continue
             if name == "update_memory":
                 if actor_id in self._kb:
@@ -713,15 +741,17 @@ class AsyncEngine:
                                 "text": "\n".join(lines) or "（没有与你经历相关的可回放历史。）"})
                 continue
             if name == "speak":
-                if args.get("volume") != "whisper":
-                    fail(call, "speak is whisper-only: normal speech is plain "
-                               "text output (just write what you say)")
+                # Merged ask (ticket 22): speak is the only addressed speech
+                # tool. to is schema-required (present people or ["陌生人"]);
+                # volume=whisper is private, normal is heard by the room.
+                # Plain-text output (T1) stays the unaddressed broadcast.
+                to = args.get("to")
+                if not isinstance(to, list) or not to:
+                    fail(call, "speak 需要 to：你要对谁说？在场的人，或 [\"陌生人\"] 向路人搭话。"
+                               "对全场的发言直接回复文字即可。")
                     continue
-                co = [x.id for x in world.actors.values()
-                      if x.id != actor_id and x.location == world.actors[actor_id].location]
-                if not co or not args.get("to"):
-                    fail(call, "speak 是耳语专用：需要在场听众（to）。普通说话直接回复文字即可。")
-                    continue
+                if not isinstance(args.get("volume"), str):
+                    args.setdefault("volume", "normal")
             try:
                 world.submit(Intention(actor_id, name, args, world.version))
                 world_actions += 1
@@ -738,10 +768,13 @@ class AsyncEngine:
                     if limit > world.now:
                         world.advance(until=limit)
                 if a.busy_until and self._stop_horizon is not None and a.busy_until > self._stop_horizon:
-                    remaining = len(calls) - calls.index(call) - 1
-                    results.append({"tool_call_id": None, "ok": False,
-                                    "text": (f"endpoint reached: {remaining} calls dropped"
-                                             if remaining else "endpoint reached")})
+                    remaining = calls[pos + 1:]
+                    # Per-call results with real ids — a tool message without
+                    # call_id/name is rejected by strict gateways.
+                    for rest in remaining:
+                        results.append({"tool_call_id": rest.get("tool_call_id"),
+                                        "ok": False,
+                                        "text": "endpoint reached; not executed"})
                     break  # the run's endpoint cut this chain short
             except ActionRejected as exc:
                 fail(call, str(exc))
@@ -750,13 +783,45 @@ class AsyncEngine:
             if a.pending is not None:
                 # A reminder (or another force interrupt) suspended the chain:
                 # the actor must answer continue-or-cancel before anything else.
-                for rest in calls[calls.index(call) + 1:]:
+                for rest in calls[pos + 1:]:
                     results.append({"tool_call_id": rest.get("tool_call_id"), "ok": False,
                                     "text": "interrupted; not executed"})
                 break
         if truncated:
-            results.append({"tool_call_id": None, "ok": False,
-                            "text": f"truncated: {truncated} calls dropped"})
+            # Per-call results with each dropped call's real id (strict
+            # gateways reject tool messages without call_id).
+            for rest in full_calls[8:]:
+                results.append({"tool_call_id": rest.get("tool_call_id"), "ok": False,
+                                "text": "not executed: over the 8-calls-per-turn limit"})
+            failures.append(f"truncated: {truncated} calls dropped")
+        # Auto-wait (ticket 22, default on): after speaking to someone you
+        # stay put for ~2 ticks; a reply wakes you early (V4-ENGINE §3), so
+        # control returns with the answer heard — or with explicit silence at
+        # the 2-tick mark. Opt out per call with wait_response=false.
+        a_after = world.actors[actor_id]
+        idle_now = a_after.busy_until is None or a_after.busy_until <= world.now
+        if world_actions and idle_now:
+            spoke_to = [c for c in calls
+                        if str(c.get("name")) == "speak"
+                        and isinstance((c.get("arguments") or {}).get("to"), list)
+                        and (c.get("arguments") or {}).get("wait_response", True)]
+            if spoke_to:
+                try:
+                    world.submit(Intention(actor_id, "wait",
+                                           {"duration_seconds": 2 * TICK_SECONDS},
+                                           world.version))
+                    # Fold the teaching note into the speak call's own tool
+                    # result — a synthetic result without call_id makes strict
+                    # gateways (github copilot) reject the whole request.
+                    last_id = spoke_to[-1].get("tool_call_id")
+                    note = ("（你留在原地等回应，最多约 2 分钟；"
+                            "有人回应你会立刻听到。说完就走请用 wait_response=false）")
+                    for entry in reversed(results):
+                        if entry.get("tool_call_id") == last_id and entry.get("ok"):
+                            entry["text"] = f"{entry['text']}{note}"
+                            break
+                except ActionRejected:
+                    pass
         if not world_actions:
             # 一回合没有任何世界动作 = 发呆 1 tick (V4-AGENT-INTERFACE §0/§4).
             try:
@@ -947,6 +1012,13 @@ class AsyncEngine:
                 for npc in event.payload.get("to", ()) or ():
                     if self._role(str(npc)) == "npc":
                         self._npc_pending.setdefault(str(npc), "有人当面对你说话")
+                # Ambient nearby speech (ticket 22): co-located NPCs are free
+                # to react per persona — usually nothing, but their persona
+                # decides. Budget-bound.
+                if event.actor and event.actor in self.world.actors:
+                    self._wake_nearby_npcs(
+                        event.actor,
+                        f"{event.actor} 说：{str(event.payload.get('text', ''))[:40]}")
             elif event.kind in {"message_sent", "message_delivered"}:
                 npc = str(event.payload.get("target", ""))
                 if self._role(npc) == "npc":
@@ -968,6 +1040,32 @@ class AsyncEngine:
                 for npc_id, actor in self.world.actors.items():
                     if self._role(npc_id) == "npc" and actor.location == loc:
                         self._npc_pending.setdefault(npc_id, "附近刚有人起了冲突")
+            elif event.actor and event.actor in self.world.actors and (
+                    event.kind in {"enter", "item_given", "extra_arrived"}
+                    or (event.kind == "action_started"
+                        and event.payload.get("action") in {"take", "place"})):
+                summary = {"enter": f"{event.actor} 进来了",
+                           "item_given": f"{event.actor} 递出了东西",
+                           "extra_arrived": f"{event.actor} 出现在这里",
+                           "take": f"{event.actor} 拿起了 {event.payload.get('item', '一样东西')}",
+                           "place": f"{event.actor} 放下了 {event.payload.get('item', '一样东西')}"}.get(
+                    event.kind, f"{event.actor} 有动作")
+                self._wake_nearby_npcs(event.actor, f"附近发生：{summary}")
+
+    def _wake_nearby_npcs(self, source: str, reason: str) -> None:
+        """Wake co-located NPCs for a nearby happening (ticket 22). They are
+        free agents: usually the right response is nothing, but their persona
+        decides (e.g. someone taking what isn't theirs). Budget-bound like
+        every other NPC wake."""
+        if source not in self.world.actors or not self._npc_budget_ok():
+            return
+        loc = self.world.actors[source].location
+        for npc_id, actor in self.world.actors.items():
+            if (npc_id != source and self._role(npc_id) == "npc"
+                    and actor.location == loc and npc_id not in self._npc_pending
+                    and not (actor.busy_until and actor.busy_until > self.world.now)):
+                self._npc_pending[npc_id] = reason
+                self._wake_times.append(self.world.now)
 
     def _cold_scene_check(self) -> None:
         now = self.world.now
@@ -1015,6 +1113,15 @@ class AsyncEngine:
             answered = info.get("has_spoken", False)
             if not alive or (idle and answered):
                 self._despawn(name, "idle" if (idle and answered) else "partner_gone")
+        # Ticket 22: a passer-by spawns when the utterance LANDS (the speak's
+        # action_completed tick), never at submit time. stranger_asked parks
+        # here keyed by its cause; the matching completion triggers the spawn.
+        done = {e.cause for e in new_events
+                if e.kind == "action_completed" and e.cause is not None}
+        for cause, ask in list(self._pending_spawns.items()):
+            if cause in done:
+                del self._pending_spawns[cause]
+                self._spawn_extra(ask["asker"], ask["question"], loop)
         for event in new_events:
             if event.kind == "stranger_asked" and event.actor:
                 asker = event.actor
@@ -1033,23 +1140,38 @@ class AsyncEngine:
                     continue
                 if self.extra_call is None or asker not in self.world.actors:
                     continue
-                location = self.world.actors[asker].location
-                entry = sample_extra(self.world.locations[location].extras or
-                                     [{"fragment": "一个路过的同学", "rarity": "common",
-                                       "knowledge_notes": ""}])
-                name = generate_stranger_name()
-                while name in self.world.actors:
-                    name = generate_stranger_name()
-                self.world.add_extra(name, location)
-                self._extras[name] = {"fragment": str(entry.get("fragment", "路人")),
-                                      "knowledge_notes": str(entry.get("knowledge_notes", "")),
-                                      "partner": asker, "last_active": self.world.now,
-                                      "rarity": str(entry.get("rarity", "common")),
-                                      "start": len(self.world.event_log),
-                                      "has_spoken": False}
-                self._wake_events[name] = asyncio.Event()
-                self._extra_tasks[name] = loop.create_task(
-                    self._extra_loop(name, str(event.payload.get("question", ""))))
+                if event.cause is None:
+                    # Legacy event without a cause: spawn now (old behavior).
+                    self._spawn_extra(asker, str(event.payload.get("question", "")), loop)
+                    continue
+                self._pending_spawns[event.cause] = {
+                    "asker": asker,
+                    "question": str(event.payload.get("question", ""))}
+
+    def _spawn_extra(self, asker: str, question: str, loop: asyncio.AbstractEventLoop) -> None:
+        """Create the conversation-scoped stranger and start its answer loop.
+        Called at the ask's completion tick, so extra_arrived carries the
+        same timestamp as the moment the question was heard."""
+        if (self.extra_call is None or asker not in self.world.actors
+                or any(x["partner"] == asker for x in self._extras.values())):
+            return
+        location = self.world.actors[asker].location
+        entry = sample_extra(self.world.locations[location].extras or
+                             [{"fragment": "一个路过的同学", "rarity": "common",
+                               "knowledge_notes": ""}])
+        name = generate_stranger_name()
+        while name in self.world.actors:
+            name = generate_stranger_name()
+        self.world.add_extra(name, location)
+        self._extras[name] = {"fragment": str(entry.get("fragment", "路人")),
+                              "knowledge_notes": str(entry.get("knowledge_notes", "")),
+                              "partner": asker, "last_active": self.world.now,
+                              "rarity": str(entry.get("rarity", "common")),
+                              "start": len(self.world.event_log),
+                              "has_spoken": False,
+                              "pending_question": question}
+        self._wake_events[name] = asyncio.Event()
+        self._extra_tasks[name] = loop.create_task(self._extra_loop(name, question))
 
     def _despawn(self, name: str, reason: str) -> None:
         if name in self.world.actors:
@@ -1072,7 +1194,16 @@ class AsyncEngine:
                 if info is None:
                     return
                 asked = str(info.pop("pending_question", "") or "")
-                await self._extra_turn(name, asked)
+                # Ticket 22: while the answer is in flight the world clock
+                # pins at the question moment (same 1-tick skew rule as MC
+                # decisions) — the provider's wall latency must not turn
+                # into fast-forwarded world minutes.
+                self._extra_inflight[name] = self.world.now
+                try:
+                    await self._extra_turn(name, asked)
+                finally:
+                    self._extra_inflight.pop(name, None)
+                    self._scheduler_wake.set()
                 # The extra's own speech is visible to itself; drain its
                 # cursor so only NEW events (the partner's reply, an
                 # arrival) wake it again — otherwise it chatters forever.
@@ -1088,6 +1219,8 @@ class AsyncEngine:
                 event.clear()
         except asyncio.CancelledError:
             raise
+        finally:
+            self._extra_inflight.pop(name, None)
 
     async def _extra_turn(self, name: str, question: str) -> None:
         info = self._extras[name]
@@ -1109,7 +1242,7 @@ class AsyncEngine:
                     extra_tool_calls, extra_call, system, briefing)
             else:
                 legacy_extra = self.extra_call
-                assert legacy_extra is not None
+                assert legacy_extra is not None and callable(legacy_extra)
                 raw = await asyncio.to_thread(
                     legacy_extra, [{"role": "system", "content": system},
                                    {"role": "user", "content": briefing}])

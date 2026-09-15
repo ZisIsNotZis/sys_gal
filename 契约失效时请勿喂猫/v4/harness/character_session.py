@@ -81,9 +81,11 @@ class CharacterSession:
                 # accepted by Runner. Retrying an exhausted transient request
                 # is therefore safe: it cannot duplicate an action, unlike a
                 # retry after an intention has been submitted.
-                if (getattr(exc, "retryable", False) and attempt < self.max_retries):
-                    continue
+                # (nested ifs: no boolean operator inside an except block —
+                # pi-lens no-boolean-in-except)
                 if getattr(exc, "retryable", False):
+                    if attempt < self.max_retries:
+                        continue
                     # The provider exhausted its HTTP attempts, but the
                     # character has not submitted anything. Let Runner make
                     # a small number of outer-turn retries without confusing
@@ -203,9 +205,11 @@ class CharacterSession:
             try:
                 return self.call(self._bounded_messages(request))
             except Exception as exc:
-                if getattr(exc, "retryable", False) and attempt < self.compaction_retries:
-                    continue
+                # (nested ifs: no boolean operator inside an except block —
+                # pi-lens no-boolean-in-except)
                 if getattr(exc, "retryable", False):
+                    if attempt < self.compaction_retries:
+                        continue
                     exc.runner_retryable = True  # type: ignore[attr-defined]
                 raise
         raise AssertionError("unreachable")
@@ -283,7 +287,9 @@ class CharacterSession:
             "inner 是你心里没说出口的话——写它，然后照着它行动。name 必须是供给列表里的动作；"
             "参数名照抄供给列表（take/drop/give/read/annotate 用 item；compare "
             "用 first 和 second；move 用 target；wait 用 duration_seconds；send_message "
-            "和 give 用 target；speak 可带 volume，whisper 时必须带 to=[在场的听众]）。move 不用"
+            "和 give 用 target）。对具体的人说话用 speak：to=[对谁说]（在场的名字，"
+            "或 [\"陌生人\"] 向路人搭话）；volume=normal 大家都听得见，volume=whisper "
+            "仅 to 名单听见。同一条消息里的多个调用按顺序串行执行、各自计时。move 不用"
             "填时长，路有多远世界说了算。打断参数 interrupt=[你要叫住的人] 放在 arguments 里，"
             "仅限在场的。意图无法用动作表达时，直接用自然语言"
             "描述它，不要硬凑 JSON。消息发出后五分钟才送到，别把话浪费在废话上。"
