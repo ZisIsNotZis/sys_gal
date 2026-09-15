@@ -25,7 +25,7 @@ from pathlib import Path
 from .agent_state import PrivateState
 from .character_loader import load_story_characters
 from .character_session import CharacterSession
-from .checkpoint import load_checkpoint
+from .checkpoint import load_checkpoint, save_checkpoint
 from .kernel import World
 from .natural_agent import make_persistent_agent, make_provider_gm
 from .provider import provider_from_env
@@ -55,9 +55,12 @@ def resume(checkpoint_path: Path, *, out: Path | None = None,
     #    only the code that runs it may have changed. ``call`` is a test hook
     #    for a mock model; production uses the env-tuned resilient provider.
     if call is None:
+        try:
+            concurrency = int(os.environ.get("V3_PROVIDER_CONCURRENCY", "8"))
+        except ValueError as exc:
+            raise SystemExit(f"resume: V3_PROVIDER_CONCURRENCY must be an integer: {exc}") from exc
         provider = provider_from_env(
-            max_concurrency=min(len(world.actors),
-                                int(os.environ.get("V3_PROVIDER_CONCURRENCY", "8"))))
+            max_concurrency=min(len(world.actors), concurrency))
         gm = make_provider_gm(provider)
     else:
         provider = call
@@ -78,6 +81,18 @@ def resume(checkpoint_path: Path, *, out: Path | None = None,
     trace.restore_from_snapshot(cp["trace"])
     out_path = (out or root / "runs" / f"{run_id}.json")
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    checkpoint_output = out_path.with_name(out_path.stem + ".checkpoint.json")
+    holder: dict = {}
+
+    def checkpoint() -> None:
+        # The trajectory is for inspection; the checkpoint file is the next
+        # resume point, so a multi-cycle grind (run -> resume -> resume ...)
+        # stays resumable instead of redoing the segment.
+        trace.save(world, out_path)
+        runner = holder.get("runner")
+        if runner is not None:
+            save_checkpoint(checkpoint_output,
+                            trace.checkpoint_snapshot(world, runner))
 
     # 4) Endpoint: explicit --clock-stop, else V3_CLOCK_STOP env, else seed stop.
     #    Ensure a world_stops marker at that time so the completion gate holds.
@@ -95,22 +110,34 @@ def resume(checkpoint_path: Path, *, out: Path | None = None,
     ledger = Ledger(pack.system.get("facts", {}), pack.system)
     decision_timeout = (provider.worst_case_seconds() * 8 + 5.0
                         if hasattr(provider, "worst_case_seconds") else 60.0)
+    try:
+        max_transient = int(os.environ.get("V3_MAX_TRANSIENT_FAILURES", "3"))
+        max_wall = float(os.environ.get("V3_MAX_WALL_SECONDS", "7200"))
+    except ValueError as exc:
+        raise SystemExit(f"resume: invalid V3_* numeric environment value: {exc}") from exc
     runner = Runner(world, agents, states, trace, ledger,
                     decision_timeout=decision_timeout,
-                    max_transient_failures=int(
-                        os.environ.get("V3_MAX_TRANSIENT_FAILURES", "3")),
+                    max_transient_failures=max_transient,
                     retry_delay_seconds=300,
-                    max_wall_seconds=float(
-                        os.environ.get("V3_MAX_WALL_SECONDS", "7200")),
-                    checkpoint=lambda: trace.save(world, out_path),
+                    max_wall_seconds=max_wall,
+                    checkpoint=checkpoint,
                     fail_fast=True)
     runner.restore_checkpoint(cp["runner"])
+    holder["runner"] = runner
     trace.save(world, out_path)  # checkpoint at resume start
+    resume_start = len(trace.agent_turns)
     reason = runner.run(stop_at=stop_time, max_turns=100_000)
-    trace.verify_no_agent_errors()
+    # Only the resumed segment may fail the run; the carried-over history may
+    # legitimately end in a wall-clock error (that is why we resumed).
+    new_errors = [turn for turn in trace.agent_turns[resume_start:]
+                  if turn.get("result") in {"agent_error", "decision_timeout",
+                                             "engine_error", "wall_clock_deadline"}]
+    if new_errors:
+        raise RuntimeError(f"resumed segment contained {len(new_errors)} agent execution errors")
     if reason != "stop_at_reached":
         raise RuntimeError(f"resumed run stopped before endpoint: {reason}")
-    trace.verify_complete(world, endpoint=stop_time.isoformat(), stop_event="world_stops")
+    trace.verify_complete(world, endpoint=stop_time.isoformat(), stop_event="world_stops",
+                          from_turn=resume_start)
     trace.finish(reason=reason, world=world)
     trace.save(world, out_path)
     print(f"{out_path} reason={reason} events={len(world.event_log)} "

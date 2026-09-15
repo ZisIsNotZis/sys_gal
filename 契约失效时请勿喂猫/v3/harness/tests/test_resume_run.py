@@ -10,7 +10,7 @@ from harness.checkpoint import save_checkpoint
 from harness.character_loader import load_story_characters
 from harness.kernel import Intention
 from harness.natural_agent import make_persistent_agent
-from harness.runner import Runner
+from harness.runner import AgentFn, Runner
 from harness.seed import load_story_pack
 from harness.system import Ledger
 from harness.trace import Trace, verify_event_log
@@ -31,8 +31,8 @@ class ResumeRunTests(unittest.TestCase):
         # 1) Run the original a little, then checkpoint.
         world = pack.build_world()
         states = {actor: PrivateState(actor) for actor in world.actors}
-        agents = {actor: make_persistent_agent(seeds[actor], self._mock_call)
-                  for actor in world.actors}
+        agents: dict[str, AgentFn] = {actor: make_persistent_agent(seeds[actor], self._mock_call)
+                                      for actor in world.actors}
         trace = Trace("v3", "resume-original")
         runner = Runner(world, agents, states, trace, ledger, max_workers=8)
         runner.run(stop_at=datetime.fromisoformat("2026-03-16T07:10:00+08:00"), max_turns=50)
@@ -45,6 +45,8 @@ class ResumeRunTests(unittest.TestCase):
             out_path = Path(directory) / "resumed.json"
             resumed = resume(cp_path, out=out_path,
                              endpoint="2026-03-16T07:20:00+08:00", call=self._mock_call)
+            # The resume also writes its own checkpoint for the next cycle.
+            self.assertTrue(out_path.with_name(out_path.stem + ".checkpoint.json").is_file())
             import json
             data = json.loads(out_path.read_text(encoding="utf-8"))
 
@@ -59,6 +61,39 @@ class ResumeRunTests(unittest.TestCase):
             self.assertGreaterEqual(len(session["messages"]), 2)  # system + init at least
             self.assertEqual(session["actor"], row["id"])
         # The resumed run reached the (shortened) endpoint cleanly.
+        self.assertEqual(data["outcome"]["time"], "2026-03-16T07:20:00+08:00")
+
+    def test_resume_from_wall_deadline_history_does_not_fail_verification(self):
+        """A checkpoint whose carried history ends in a wall-clock error (the
+        reason we resumed) must not fail the resumed segment's verification."""
+        from harness.resume_run import resume
+        from harness.kernel import World
+        pack = load_story_pack()
+        seeds = load_story_characters(Path("world"))
+        ledger = Ledger(pack.system.get("facts", {}), pack.system)
+
+        world = pack.build_world()
+        states = {actor: PrivateState(actor) for actor in world.actors}
+        agents: dict[str, AgentFn] = {actor: make_persistent_agent(seeds[actor], self._mock_call)
+                                      for actor in world.actors}
+        trace = Trace("v3", "resume-from-wall")
+        runner = Runner(world, agents, states, trace, ledger, max_workers=8)
+        runner.run(stop_at=datetime.fromisoformat("2026-03-16T07:10:00+08:00"), max_turns=50)
+        checkpoint = trace.checkpoint_snapshot(world, runner)
+        # Simulate the original run having ended in a wall-clock error.
+        trace.record_agent(state=PrivateState("lin-yao"), perception={}, affordances=[],
+                           intention=None, result="wall_clock_deadline",
+                           error="runner wall-clock deadline exceeded")
+        checkpoint = trace.checkpoint_snapshot(world, runner)
+
+        with TemporaryDirectory() as directory:
+            cp_path = Path(directory) / "checkpoint.json"
+            save_checkpoint(cp_path, checkpoint)
+            out_path = Path(directory) / "resumed.json"
+            resume(cp_path, out=out_path,
+                   endpoint="2026-03-16T07:20:00+08:00", call=self._mock_call)
+            import json
+            data = json.loads(out_path.read_text(encoding="utf-8"))
         self.assertEqual(data["outcome"]["time"], "2026-03-16T07:20:00+08:00")
 
     def test_trace_restore_carries_prior_history(self):

@@ -1,18 +1,12 @@
 # 《契约失效时请勿喂猫》v3
 
-v3 is an emergent romance-component story simulation. It is not yet a
-galgame and does not project a novel while running.
+v3 is an emergent romance-component story simulation. It is not yet a galgame and does not project a novel while running.
 
-The run consists of an objective world, a bound System, and independent
-character agents. A later authoring stage may turn a selected trajectory into
-prose. A later game-design stage may sample trajectories and discover useful
-player actions.
+The run consists of an objective world, a bound System, and independent character agents. A later authoring stage may turn a selected trajectory into prose. A later game-design stage may sample trajectories and discover useful player actions.
 
 ## Non-goals
 
-The engine has no romance score, affection score, hate score, plot chapter,
-scene label, protagonist privilege, route, scripted resolution, or narrative
-quality claim. It does not know whether an event is romantic or funny.
+The engine has no romance score, affection score, hate score, plot chapter, scene label, protagonist privilege, route, scripted resolution, or narrative quality claim. It does not know whether an event is romantic or funny.
 
 ## Causal seam
 
@@ -24,28 +18,15 @@ seed -> mindless world -> private perception -> concrete intention
 
 ## World-pack seam
 
-The neutral harness is under `harness/`. Story data is under `world/`.
-`manifest.yml` is authoritative machine-readable state, schedules, routes,
-acoustic barriers, entities, and document contents. Markdown descriptions live
-under the corresponding `locations/`, `items/`, and `documents/` directories.
-`harness/world_loader.py` validates references and builds the generic kernel;
-the kernel does not contain the city's names or plot facts.
+The neutral harness is under `harness/`. Story data is under `world/`. `manifest.yml` is authoritative machine-readable state, schedules, routes, acoustic barriers, entities, and document contents. Markdown descriptions live under the corresponding `locations/`, `items/`, and `documents/` directories. `harness/world_loader.py` validates references and builds the generic kernel; the kernel does not contain the city's names or plot facts.
 
-Documents are objective entities. Reading, copying, labeling, and comparing
-are timed actions with actor-scoped results. Copies carry a `copied_from`
-provenance link, and unavailable descriptions are not resolvable through the
-engine.
+Documents are objective entities. Reading, copying, labeling, and comparing are timed actions with actor-scoped results. Copies carry a `copied_from` provenance link, and unavailable descriptions are not resolvable through the engine.
 
-Agents submit concrete actions such as sending a specified message to a named
-person. They do not submit vague intentions such as “apologize” or “increase
-affection”. The world records the message, delivery, location, timing, and
-other objective consequences. The recipient decides what it means.
+Agents submit concrete actions such as sending a specified message to a named person. They do not submit vague intentions such as “apologize” or “increase affection”. The world records the message, delivery, location, timing, and other objective consequences. The recipient decides what it means.
 
 ## Current status
 
-This version begins with the engine and world-pack contract. No expensive
-experiment should start until the harness tests establish privacy, determinism,
-coroutine time, and absence of narrative state.
+This version begins with the engine and world-pack contract. No expensive experiment should start until the harness tests establish privacy, determinism, coroutine time, and absence of narrative state.
 
 ## Run scripts
 
@@ -67,6 +48,7 @@ can react (pause, change tactic, drop it); it never forbids anything. The
 notice is per-turn frontier text that compaction naturally drops. Counters
 reset when a reply arrives or the action succeeds, and they survive
 checkpoint/resume (see ``harness/repetition.py``).
+
 - `python3 -m harness.scenario_run --anchors all --hours 6`: several game-hours
   of simulated time, each resumed from a checkpoint snapshot taken just before
   an "interesting boundary" (a scheduled world event that changes objective
@@ -90,7 +72,7 @@ about 55% of turns in the last large run. Three independent knobs cut it
 (measured deterministically; provider already sends `thinking: none`):
 
 | config | agent turns | est. wall @ ~3.3 s/turn |
-|---|---|---|
+| --- | --- | --- |
 | full arc (3/27), 1 h idle | 2232 | ~2 h (missed budget, as observed) |
 | short arc (3/21 12:00), 1 h idle | 1000 | ~55 min |
 | short arc (3/21 12:00), 6 h idle | 169 | ~9 min |
