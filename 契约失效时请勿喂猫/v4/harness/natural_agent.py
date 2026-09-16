@@ -106,11 +106,13 @@ class V4Session:
         if len(results) > 1 and last is not None and last.get("role") == "assistant":
             first_id = results[0].get("tool_call_id")
             calls = last.get("tool_calls") or []
+            names = {c.get("id"): str((c.get("function") or {}).get("name", "call"))
+                     for c in calls}
             last["tool_calls"] = [c for c in calls
                                   if (c.get("id")) == first_id] or calls[:1]
             body = "\n".join(
-                f"[{c.get('name', 'call')}] {str(r.get('text', 'ok'))}"
-                for c, r in zip(calls, results))
+                f"[{names.get(r.get('tool_call_id'), 'call')}] {str(r.get('text', 'ok'))}"
+                for r in results)
             self.messages.append({"role": "tool", "tool_call_id": first_id,
                                   "content": body})
             return
