@@ -38,6 +38,7 @@ P9  flashback returned nothing for seeded backstory ............ test_flashback_
 T1a world clock races during a slow deliberation (7:35->7:40) ... test_deliberation_pins_the_world_clock
 T1b no auto-wait after text (reply arrives to a departed actor) . test_text_auto_wait_and_npc_reply_followup
 T1c NPC memory-only turn parks with the reply uncomposed ........ test_text_auto_wait_and_npc_reply_followup
+T2  compaction leaves an orphaned tool message at the head ...... test_compaction_never_keeps_an_orphaned_tool_message
 E1  extra turns die silently at trace-record time ............. test_extra_turns_are_recorded_and_conversational
 E2  extra self-wake chatter loop (replies to own speech) ...... test_extra_turns_are_recorded_and_conversational
 E3  extras permanently silent: content-only replies dropped ... test_extra_turns_are_recorded_and_conversational
@@ -557,6 +558,45 @@ class HistoricalFailureGates(unittest.TestCase):
         self.assertTrue(delivered, "mom never texted back")
         self.assertTrue(any("李爷爷" in str(e.payload.get("text", ""))
                             for e in delivered))
+
+
+    def test_compaction_never_keeps_an_orphaned_tool_message(self):
+        """T2 (ticket 23, full-day run): compaction kept the last N messages
+        verbatim — if the window opened on a role:tool entry (its assistant
+        trigger folded into the memory), every later request carried an
+        orphaned tool message and the strict gateway rejected them all day
+        (930 dead turns from 10:13 to 22:00)."""
+        from harness.natural_agent import V4Session
+
+        class CountingProvider:
+            def __init__(self):
+                self.calls = 0
+
+            def __call__(self, messages):
+                self.calls += 1
+                return "第一人称记忆正文。"
+
+            def chat_with_tools(self, messages, tools):
+                self.calls += 1
+                return {"role": "assistant", "content": "", "tool_calls": []}
+
+        provider = CountingProvider()
+        session = V4Session("陈默", provider, compaction_threshold=300,
+                            recent_messages=4)
+        session.messages.append({"role": "user", "content": "x" * 100})
+        for i in range(10):
+            session.messages.append({"role": "assistant", "content": "",
+                                     "tool_calls": [{"id": f"c{i}", "type": "function",
+                                                     "function": {"name": "wait",
+                                                                  "arguments": "{}"}}]})
+            session.messages.append({"role": "tool", "tool_call_id": f"c{i}",
+                                     "content": "ok"})
+        session._maybe_compact()
+        # No role:tool may sit at the head of the kept tail (right after the
+        # system prompt and the memory summary).
+        body = session.messages[1:]
+        self.assertFalse(body and body[0].get("role") == "tool",
+                         "compaction kept an orphaned tool message at the head")
 
 
 if __name__ == "__main__":

@@ -101,7 +101,13 @@ class V4Session:
         if sum(len(str(m.get("content", ""))) for m in self.messages) <= self.compaction_threshold:
             return
         system = self.messages[:1]
-        old = self.messages[1:-self.recent_messages]
+        kept = self.messages[-self.recent_messages:]
+        # An orphaned tool message at the head of the kept tail (its
+        # assistant trigger was folded into the memory) makes every later
+        # request invalid on strict gateways — drop leading tool entries.
+        while kept and kept[0].get("role") == "tool":
+            kept.pop(0)
+        old = self.messages[1:-len(kept)] if kept else self.messages[1:]
         if not old:
             return
         request = system + old + [{"role": "user", "content": (
@@ -117,7 +123,7 @@ class V4Session:
                                         "actor": self.actor_id, "content": memory_text})
         self.messages = (system + [{"role": "user", "content":
             "此前早些的记忆，从你自己的经历里压缩而来：\n" + memory_text}]
-                         + self.messages[-self.recent_messages:])
+                         + kept)
         # V4-AGENT-INTERFACE §3: compaction zeroes all last_shown (the engine
         # consumes this flag to reset its KB replay state).
         self._compacted_since_decision = True

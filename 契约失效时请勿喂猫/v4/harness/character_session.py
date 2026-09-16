@@ -168,6 +168,8 @@ class CharacterSession:
         fixed = self.messages[:2]
         tail = [message for message in self.messages[-self.recent_messages:]
                 if message.get("name") != "world"]
+        while tail and tail[0].get("role") == "tool":
+            tail.pop(0)   # no orphaned tool message at the head (ticket 23)
         old = self.messages[2:-self.recent_messages]
         if not old:
             return

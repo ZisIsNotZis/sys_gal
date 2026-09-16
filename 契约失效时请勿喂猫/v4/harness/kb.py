@@ -360,7 +360,7 @@ class ActorKB:
                 errors.append(f"keys {sorted(keys)}: unknown op: {kind or '(missing)'}")
                 telemetry["rejected"] += 1
                 continue
-            error = _validate_keys(keys, where=f"[{sorted(keys)}]", now=now)
+            error = _validate_keys(keys, where=" ".join(sorted(keys)) or "?", now=now)
             if error:
                 errors.append(error)
                 telemetry["rejected"] += 1
