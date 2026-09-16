@@ -257,7 +257,7 @@ class V4SessionTests(unittest.TestCase):
         merged = session_messages(agent)[3]
         self.assertEqual(merged["tool_call_id"], "t1")
         self.assertIn("[think] ok", merged["content"])
-        self.assertIn("[speak] unparseable", merged["content"])
+        self.assertIn("[speak] speak: unparseable", merged["content"])
         # Structurally parsed calls; malformed arguments carry parse_error.
         self.assertEqual(calls[0], {"name": "think", "arguments": {},
                                     "tool_call_id": "t1"})
