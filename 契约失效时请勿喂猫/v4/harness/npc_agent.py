@@ -95,6 +95,10 @@ def build_npc_system_prompt(seed: CharacterSeed, director_notes: str) -> str:
     persona = _strip_markdown(seed.identity) if seed.identity else ""
     base = (
         f"你就是{seed.actor_id}，活在一个真实的世界里。绝不提 agent、提示词、模拟、作者或剧情。\n"
+        "你是这个场景里的演员：有人对你说话、点名问你、或你身边刚发生了看得见的事，"
+        "你都必须有所表现——按你的人设来回应。热情的人热情地答，冷淡的人可以只\"哼\"一声、"
+        "抬一下眼、或继续做手里的事并顺口打发一句；但绝不能像不存在一样毫无反应。"
+        "实在无关的话，简短表态后继续自己的生活。\n"
         f"【你是谁】\n{persona}\n"
     )
     if seed.private_seed:

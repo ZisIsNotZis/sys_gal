@@ -1017,6 +1017,10 @@ class AsyncEngine:
         self._cold_scene_check()
 
     def _npc_budget_ok(self) -> bool:
+        """Caps only COLD-SCENE speculative wakes (ticket 24): starting a
+        conversation out of nothing on a quiet map is the expensive path.
+        Event-driven wakes (speech, arrivals, directed questions) are never
+        budgeted — reacting to what actually happened is an actor's job."""
         now = self.world.now
         self._wake_times = [t for t in self._wake_times
                             if (now - t).total_seconds() < 3600]
@@ -1079,15 +1083,18 @@ class AsyncEngine:
         free agents: usually the right response is nothing, but their persona
         decides (e.g. someone taking what isn't theirs). Budget-bound like
         every other NPC wake."""
-        if source not in self.world.actors or not self._npc_budget_ok():
+        if source not in self.world.actors:
             return
         loc = self.world.actors[source].location
         for npc_id, actor in self.world.actors.items():
             if (npc_id != source and self._role(npc_id) == "npc"
                     and actor.location == loc and npc_id not in self._npc_pending
                     and not (actor.busy_until and actor.busy_until > self.world.now)):
+                # Ticket 24: no global wake budget. NPCs are actors —
+                # silence must be a choice made in character, never a
+                # counter running out. The pending-dedup above still
+                # prevents stacking while an NPC already owes a turn.
                 self._npc_pending[npc_id] = reason
-                self._wake_times.append(self.world.now)
 
     def _cold_scene_check(self) -> None:
         now = self.world.now
@@ -1140,10 +1147,13 @@ class AsyncEngine:
         # here keyed by its cause; the matching completion triggers the spawn.
         done = {e.cause for e in new_events
                 if e.kind == "action_completed" and e.cause is not None}
+        now = self.world.now
         for cause, ask in list(self._pending_spawns.items()):
             if cause in done:
                 del self._pending_spawns[cause]
                 self._spawn_extra(ask["asker"], ask["question"], loop)
+            elif (now - ask["parked"]).total_seconds() > 5 * 60:
+                del self._pending_spawns[cause]   # interrupted utterance
         for event in new_events:
             if event.kind == "stranger_asked" and event.actor:
                 asker = event.actor
@@ -1162,13 +1172,16 @@ class AsyncEngine:
                     continue
                 if self.extra_call is None or asker not in self.world.actors:
                     continue
-                if event.cause is None:
-                    # Legacy event without a cause: spawn now (old behavior).
+                if event.cause is None or event.cause in done:
+                    # Legacy event, or the completion is in this very batch
+                    # (the asker's own chain advance): the utterance has
+                    # landed — spawn now, not in a later pass.
                     self._spawn_extra(asker, str(event.payload.get("question", "")), loop)
                     continue
                 self._pending_spawns[event.cause] = {
                     "asker": asker,
-                    "question": str(event.payload.get("question", ""))}
+                    "question": str(event.payload.get("question", "")),
+                    "parked": self.world.now}
 
     def _spawn_extra(self, asker: str, question: str, loop: asyncio.AbstractEventLoop) -> None:
         """Create the conversation-scoped stranger and start its answer loop.
