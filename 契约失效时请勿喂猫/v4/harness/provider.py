@@ -73,8 +73,21 @@ class OpenAICompatible:
         # for intentions requiring world interpretation.
         # Session-local names are useful to the harness but are not accepted
         # by the compatible Responses endpoint.
-        api_messages = [{key: message[key] for key in ("role", "content")}
-                        for message in messages]
+        # The Responses input accepts only assistant/system/developer/user
+        # roles (ticket 23): a role:tool entry — e.g. the compaction call
+        # summarizing a history that contains tool results — must be
+        # flattened to a user message or the endpoint rejects the whole
+        # request, and since compaction re-triggers every turn the actor
+        # would stay dead for the rest of the run.
+        api_messages = []
+        for message in messages:
+            role = message.get("role")
+            content = message.get("content", "")
+            if role == "tool":
+                api_messages.append({"role": "user",
+                                     "content": f"[工具结果] {content}"})
+            else:
+                api_messages.append({"role": role, "content": content})
         # Two API shapes (V4-DESIGN §1 reasoning matrix): the Responses API
         # for OpenAI-style channels, Chat Completions for local
         # llama-server (its /v1/responses parser is picky about bare

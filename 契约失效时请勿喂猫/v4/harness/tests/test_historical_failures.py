@@ -39,6 +39,7 @@ T1a world clock races during a slow deliberation (7:35->7:40) ... test_deliberat
 T1b no auto-wait after text (reply arrives to a departed actor) . test_text_auto_wait_and_npc_reply_followup
 T1c NPC memory-only turn parks with the reply uncomposed ........ test_text_auto_wait_and_npc_reply_followup
 T2  compaction leaves an orphaned tool message at the head ...... test_compaction_never_keeps_an_orphaned_tool_message
+T3  compaction call sends role:tool to the Responses endpoint ... test_compaction_call_translates_tool_roles_for_responses
 E1  extra turns die silently at trace-record time ............. test_extra_turns_are_recorded_and_conversational
 E2  extra self-wake chatter loop (replies to own speech) ...... test_extra_turns_are_recorded_and_conversational
 E3  extras permanently silent: content-only replies dropped ... test_extra_turns_are_recorded_and_conversational
@@ -597,6 +598,59 @@ class HistoricalFailureGates(unittest.TestCase):
         body = session.messages[1:]
         self.assertFalse(body and body[0].get("role") == "tool",
                          "compaction kept an orphaned tool message at the head")
+
+
+    def test_compaction_call_translates_tool_roles_for_responses(self):
+        """T3 (ticket 23): the compaction memory call rides the plain-text
+        Responses path, which accepts only assistant/system/developer/user
+        roles. A history containing role:tool entries made every compaction
+        request 400 ("Invalid value: 'tool'") — and since compaction
+        re-triggers each turn, the actor stayed dead all day."""
+        import urllib.request
+        from harness.provider import OpenAICompatible
+
+        captured = {}
+
+        class FakeHTTP:
+            def __init__(self, provider):
+                self.provider = provider
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def read(self):
+                return json.dumps({"output": [{"type": "message", "content": [
+                    {"type": "output_text", "text": "记忆正文。"}]}]}).encode()
+
+        def fake_urlopen(request, timeout=None):
+            captured["body"] = json.loads(request.data)
+            captured["headers"] = dict(request.headers)
+            return FakeHTTP(None)
+
+        provider = OpenAICompatible(base_url="http://probe/v1", model="probe",
+                                    api_key="k", timeout=5, retries=0)
+        old_urlopen = provider.__class__.__module__  # placeholder, unused
+        import harness.provider as provider_mod
+        saved = provider_mod.urlopen
+        provider_mod.urlopen = fake_urlopen
+        try:
+            out = provider([{"role": "system", "content": "S"},
+                            {"role": "user", "content": "历史"},
+                            {"role": "assistant", "content": "", "tool_calls": [
+                                {"id": "c1", "type": "function",
+                                 "function": {"name": "read", "arguments": "{}"}}]},
+                            {"role": "tool", "tool_call_id": "c1",
+                             "content": "工具的正文"}])
+        finally:
+            provider_mod.urlopen = saved
+        self.assertIn("记忆正文", out)
+        input_items = captured["body"]["input"]
+        self.assertTrue(all(item.get("role") != "tool" for item in input_items))
+        self.assertIn("[工具结果]", input_items[-1]["content"])
+        self.assertIn("工具的正文", input_items[-1]["content"])
 
 
 if __name__ == "__main__":
