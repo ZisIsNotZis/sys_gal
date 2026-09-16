@@ -90,8 +90,30 @@ class V4Session:
         return {"text": spoken, "calls": calls}
 
     def deliver_tool_results(self, results: list[dict[str, Any]]) -> None:
-        """Append one role:tool message per tool call (V4-AGENT-INTERFACE §3):
-        content is "ok" or the concrete error text for that call."""
+        """Report each tool call's result (V4-AGENT-INTERFACE §3): content is
+        "ok" or the concrete error text for that call.
+
+        A chain's n results are COALESCED into ONE tool message: strict
+        gateways (github copilot via litellm) reject a tool message that
+        follows another tool message, and the full history is re-sent on
+        every request — a single TT pair would poison the session for the
+        rest of the run. The preceding assistant message keeps only the
+        first call, so the call/result counts still match; every result's
+        text is preserved, prefixed by its call name."""
+        if not results:
+            return
+        last = self.messages[-1] if self.messages else None
+        if len(results) > 1 and last is not None and last.get("role") == "assistant":
+            first_id = results[0].get("tool_call_id")
+            calls = last.get("tool_calls") or []
+            last["tool_calls"] = [c for c in calls
+                                  if (c.get("id")) == first_id] or calls[:1]
+            body = "\n".join(
+                f"[{c.get('name', 'call')}] {str(r.get('text', 'ok'))}"
+                for c, r in zip(calls, results))
+            self.messages.append({"role": "tool", "tool_call_id": first_id,
+                                  "content": body})
+            return
         for result in results:
             self.messages.append({"role": "tool",
                                   "tool_call_id": result.get("tool_call_id"),

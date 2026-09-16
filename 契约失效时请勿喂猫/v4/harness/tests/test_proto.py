@@ -245,12 +245,19 @@ class V4SessionTests(unittest.TestCase):
             {"tool_call_id": "t1", "ok": True, "text": "ok"},
             {"tool_call_id": "t2", "ok": False, "text": "speak: unparseable arguments"},
         ])
+        # Ticket 23: a chain's n results COALESCE into one tool message —
+        # strict gateways reject tool-follows-tool, and the history is
+        # re-sent forever. The assistant message keeps only the first call
+        # so call/result counts match; every result text survives, keyed by
+        # call name.
         self.assertEqual([m["role"] for m in session_messages(agent)][2:],
-                         ["assistant", "tool", "tool"])
-        self.assertEqual(session_messages(agent)[3]["tool_call_id"], "t1")
-        self.assertEqual(session_messages(agent)[3]["content"], "ok")
-        self.assertEqual(session_messages(agent)[4]["tool_call_id"], "t2")
-        self.assertIn("unparseable", session_messages(agent)[4]["content"])
+                         ["assistant", "tool"])
+        assistant_msg = session_messages(agent)[2]
+        self.assertEqual([c["id"] for c in assistant_msg["tool_calls"]], ["t1"])
+        merged = session_messages(agent)[3]
+        self.assertEqual(merged["tool_call_id"], "t1")
+        self.assertIn("[think] ok", merged["content"])
+        self.assertIn("[speak] unparseable", merged["content"])
         # Structurally parsed calls; malformed arguments carry parse_error.
         self.assertEqual(calls[0], {"name": "think", "arguments": {},
                                     "tool_call_id": "t1"})
