@@ -96,7 +96,7 @@ def _event_lines(perception: Mapping[str, Any], observer: str) -> list[str]:
     lines: list[str] = []
     location = str(perception.get("location", ""))
     for event in perception.get("events", []):
-        sentence = _event_sentence(event, location)
+        sentence = _event_sentence(event, location, observer=observer)
         private = _private_line(event, observer)
         if not sentence and not private:
             continue
@@ -110,8 +110,13 @@ def _event_lines(perception: Mapping[str, Any], observer: str) -> list[str]:
     return lines
 
 
-def _event_sentence(event: Mapping[str, Any], location: str = "") -> str | None:
-    """第三人称编年体：同一事件对所有可见者逐字相同（docs §0/§3）。"""
+def _event_sentence(event: Mapping[str, Any], location: str = "",
+                    observer: str | None = None) -> str | None:
+    """第三人称编年体：同一事件对所有可见者逐字相同（docs §0/§3）。
+
+    惟一的观察者例外（ticket 23）：短信的送达行——收件人读到"收到来自 X
+    的短信"，发件人读到送达回执；双方各自的行不同，但各自的行对同一观察者
+    仍然确定、与渲染时点无关。"""
     payload = event.get("payload", {})
     kind = event.get("kind")
     who = str(event.get("actor", ""))
@@ -127,6 +132,12 @@ def _event_sentence(event: Mapping[str, Any], location: str = "") -> str | None:
     if kind == "leave":
         return f"{who} 离开 {payload.get('location')}"
     if kind == "message_delivered":
+        # Ticket 23: the recipient reads this as the SMS THEY received, not
+        # as a third party's action; the sender reads the delivery receipt.
+        if observer == str(payload.get("target")):
+            return f"收到来自 {who} 的短信"
+        if observer == who:
+            return f"短信已送达 {payload.get('target')}（手机）"
         return f"{who} 发消息给 {payload.get('target')}（手机）"
     if kind == "take":
         return f"{who} 拿起 {payload.get('item')}"

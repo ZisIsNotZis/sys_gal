@@ -112,7 +112,7 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 | enter / leave | {actor} 进入 / 离开 {location} |
 | speech | {actor} 说（{听众} 听见）："{text}"——听众 = 提交时刻在场的全部他人，客观事实，各行逐字相同；模型的普通文字回复即 speech |
 | whisper | {actor} 凑近 {target} 耳语了几句 —— 其他人只看见耳语动作，文本仅投递给 to 指定者 |
-| text（送达） | {actor} 发消息给 {target}（手机）——text 仅投递给收件方 |
+| text（送达） | 收件人视角：收到来自 {actor} 的短信（正文经 └ 私有投递）；发件人视角：短信已送达 {target}（手机）。正文仅投递给收件方 |
 | take / place | {actor} 拿起 / 放下 {item} |
 | give | {actor} 把 {item} 交给 {target} |
 | leave_note | {actor} 留下一张字条 —— 字条作为新物品出现在该地点；内容仅经 read 私有投递 |
