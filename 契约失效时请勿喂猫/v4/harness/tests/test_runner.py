@@ -475,7 +475,7 @@ class RunnerTests(unittest.TestCase):
         # breakfast_rush (07:10) + mom_call (07:35, targeted 陈默) +
         # class_bell (08:00) + 校史档案室_shift (08:10, targeted 陈默);
         # NPCs stay event-driven and are not clock-polled.
-        self.assertEqual(calls["陈默"], 5)
+        self.assertEqual(calls["陈默"], 6)
         self.assertEqual(calls["林瑶"], 3)
         self.assertEqual(calls["唐小岚"], 3)
         self.assertTrue(all(v == 0 for k, v in calls.items()
@@ -747,10 +747,11 @@ class RunnerTests(unittest.TestCase):
         Runner(world, {actor: agent for actor in world.actors}, states, trace).run(  # type: ignore[arg-type]
             stop_at=datetime.fromisoformat("2026-03-16T08:20:00+08:00"), max_turns=100)
 
-        # schedule after ticket 10: 陈默 wakes for breakfast_rush (07:10),
-        # mom_call (07:35, targeted), class_bell (08:00) and his targeted
-        # shift notice (08:10); 林瑶/唐小岚 only for the two broadcasts.
-        self.assertEqual(polls["陈默"], 5)
+        # schedule after ticket 10 + ticket 24: 陈默 wakes for breakfast_rush
+        # (07:10), his targeted shift reminder (07:30), mom_call (07:35,
+        # targeted), class_bell (08:00) and his targeted shift notice (08:10);
+        # 林瑶/唐小岚 only for the two broadcasts.
+        self.assertEqual(polls["陈默"], 6)
         self.assertEqual(polls["林瑶"], 3)
         self.assertEqual(polls["唐小岚"], 3)
 
