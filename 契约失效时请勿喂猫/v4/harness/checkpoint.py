@@ -22,7 +22,7 @@ def save_checkpoint(path: str | Path, snapshot: Mapping[str, Any]) -> None:
 def load_checkpoint(path: str | Path) -> dict[str, Any]:
     try:
         value = json.loads(Path(path).read_text(encoding="utf-8"))
-        if not isinstance(value, dict) or value.get("format") != "v3-checkpoint-1":
+        if not isinstance(value, dict) or value.get("format") not in {"v3-checkpoint-1", "v4-checkpoint-2"}:
             raise CheckpointError("unsupported checkpoint format")
         for key in ("world", "runner", "states", "sessions"):
             if key not in value:

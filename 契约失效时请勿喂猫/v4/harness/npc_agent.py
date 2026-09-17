@@ -269,6 +269,16 @@ def make_npc_agent_v4(seed: CharacterSeed, provider: Any, *,
     agent.session_snapshot = lambda: sess.snapshot()  # type: ignore[attr-defined]
     agent.deliver_tool_results = sess.deliver_tool_results  # type: ignore[attr-defined]
     agent.session_obj = sess  # type: ignore[attr-defined]
+
+    def restore_session(snapshot: dict[str, Any]) -> None:
+        nonlocal sess
+        sess = V4Session.from_snapshot(snapshot, provider)
+        agent.session_obj = sess  # type: ignore[attr-defined]
+        agent.session_snapshot = lambda: sess.snapshot()  # type: ignore[attr-defined]
+        agent.deliver_tool_results = sess.deliver_tool_results  # type: ignore[attr-defined]
+        agent.consume_compaction = (lambda: sess.consume_compaction())  # type: ignore[attr-defined]
+
+    agent.restore_session = restore_session  # type: ignore[attr-defined]
     return agent
 
 

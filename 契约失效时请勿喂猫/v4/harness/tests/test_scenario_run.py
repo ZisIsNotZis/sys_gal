@@ -33,7 +33,7 @@ class ScenarioRunTests(unittest.TestCase):
             summary = run_scenario(anchor="bank_call", hours=1, policy="active",
                                    prelude="lean", runs_dir=Path(directory))
             checkpoint = load_checkpoint(summary["checkpoint"])
-            self.assertEqual(checkpoint["format"], "v3-checkpoint-1")
+            self.assertEqual(checkpoint["format"], "v4-checkpoint-2")
             trajectory = json.loads(Path(summary["trajectory"]).read_text(encoding="utf-8"))
             self.assertEqual(trajectory["format"], "v3-trajectory-1")
             self.assertTrue(trajectory["replay"]["contiguous"])

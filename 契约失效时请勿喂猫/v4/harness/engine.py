@@ -112,6 +112,8 @@ class AsyncEngine:
         self._extras_scan = 0
         self._wake_scan = 0
         self._rep_scan = 0
+        from .action_schema import TOOLS as _TOOLS_SNAPSHOT
+        self._tools_snapshot = [dict(tool) for tool in _TOOLS_SNAPSHOT]
         self._extras: dict[str, dict[str, Any]] = {}
         self._extra_tasks: dict[str, asyncio.Task] = {}
         # Ticket 22: an extra whose answer is in flight pins the world clock
@@ -619,13 +621,30 @@ class AsyncEngine:
                 if line not in seen:
                     seen.add(line)
                     ordered.append(line)
+        # Ticket 25: pre-run history is REAL events in the world's history
+        # log — replay the ones visible to this actor exactly like memories
+        # of the past. The runtime delivered pool still follows.
+        for event in self.world.history_log:
+            if actor_id not in event.visible_to:
+                continue
+            detail = (str(event.payload.get("detail")
+                          or event.payload.get("text")
+                          or event.payload.get("notice") or "")).strip()
+            if not detail:
+                continue
+            line = f"{event.time.strftime('%Y-%m-%d %H:%M')} {detail}"
+            if line in seen:
+                continue
+            if entity in line:
+                seen.add(line)
+                ordered.append(line)
         for _, line, entities in self._flashback_pool.get(actor_id, []):
             if line in seen:
                 continue
             if entities & {entity} or entity in line:
                 seen.add(line)
                 ordered.append(line)
-        return ordered[:5]
+        return ordered[:8]
 
     def _tool_yield(self, name: str, args: Mapping[str, Any], world: World) -> str:
         """The caller-facing yield of a world action (V4-AGENT-INTERFACE §3):
@@ -1341,7 +1360,20 @@ class AsyncEngine:
                 "last_tool_text": dict(self._last_tool_text),
                 "flashback_pool": {actor: [[t.isoformat(), line, sorted(entities)]
                                             for (t, line, entities) in pool]
-                                    for actor, pool in self._flashback_pool.items()}}
+                                    for actor, pool in self._flashback_pool.items()},
+                # Ticket 25: the checkpoint carries everything needed to
+                # reproduce — each actor's session (system prompt at
+                # messages[0]) and the tools array as they were at this point.
+                "sessions": {actor: snap for actor in self.world.actors
+                             if (snap_fn := getattr(self.agents.get(actor),
+                                                    "session_snapshot", None))
+                             and (snap := snap_fn())},
+                "prompts": {actor: ((sess.messages[0] or {}).get("content", "")
+                                    if (sess := getattr(self.agents.get(actor),
+                                                        "session_obj", None))
+                                    and getattr(sess, "messages", None) else "")
+                            for actor in self.world.actors},
+                "tools": list(self._tools_snapshot)}
 
     def restore_checkpoint(self, state: dict[str, Any]) -> None:
         from datetime import datetime as _dt
@@ -1373,3 +1405,11 @@ class AsyncEngine:
             for actor, snap in state["kb"].items():
                 if actor in self.world.actors:
                     self._kb[actor] = ActorKB.from_snapshot(snap, self.world.now)
+        # Ticket 25: sessions travel inside the checkpoint. The agent wrappers
+        # expose restore_session so the live closures rebind to the restored
+        # V4Session (containment here; the resume driver may also do it).
+        for actor, snap in (state.get("sessions") or {}).items():
+            agent = self.agents.get(actor)
+            restore = getattr(agent, "restore_session", None)
+            if restore is not None:
+                restore(snap)

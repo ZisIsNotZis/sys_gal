@@ -40,6 +40,7 @@ T1b no auto-wait after text (reply arrives to a departed actor) . test_text_auto
 T1c NPC memory-only turn parks with the reply uncomposed ........ test_text_auto_wait_and_npc_reply_followup
 T2  compaction leaves an orphaned tool message at the head ...... test_compaction_never_keeps_an_orphaned_tool_message
 T3  compaction call sends role:tool to the Responses endpoint ... test_compaction_call_translates_tool_roles_for_responses
+T4  authored pre-run history compiles + flashback replays it .... test_authored_history_compiles_and_flashback_replays_it
 E1  extra turns die silently at trace-record time ............. test_extra_turns_are_recorded_and_conversational
 E2  extra self-wake chatter loop (replies to own speech) ...... test_extra_turns_are_recorded_and_conversational
 E3  extras permanently silent: content-only replies dropped ... test_extra_turns_are_recorded_and_conversational
@@ -57,12 +58,28 @@ from tempfile import TemporaryDirectory
 
 from harness.agent_state import PrivateState
 from harness.engine import AsyncEngine
-from harness.kernel import Intention
+from harness.kernel import Intention, World
 from harness.runner import AgentFn, Runner
 from harness.seed import load_story_pack
 from harness.system import Ledger
 from harness.trace import Trace, verify_event_log
 from harness.replay import replay_world
+
+
+class _FlashbackProbe:
+    """Binds AsyncEngine._flashback_query to a bare world (the method touches
+    only self.world.history_log and self._flashback_pool)."""
+
+    def __init__(self, world, kb=None):
+        self.world = world
+        self._flashback_pool = {}
+        self._kb = kb or {}
+
+    flashback_for = AsyncEngine._flashback_query
+
+
+def engine_of(world):
+    return _FlashbackProbe(world)
 
 
 def _lean_wait_agents(world) -> "dict[str, AgentFn]":
@@ -651,6 +668,68 @@ class HistoricalFailureGates(unittest.TestCase):
         self.assertTrue(all(item.get("role") != "tool" for item in input_items))
         self.assertIn("[工具结果]", input_items[-1]["content"])
         self.assertIn("工具的正文", input_items[-1]["content"])
+
+
+    def test_authored_history_compiles_and_flashback_replays_it(self):
+        """T4 (ticket 25): the manifest `history:` section compiles into the
+        world's history log as REAL past events (negative id space, real
+        2013 timestamps), flashback replays them for exactly the actors who
+        lived through them, and a checkpoint round-trip preserves the log.
+
+        Before this, the typhoon night existed only as concept-memory prose —
+        flashback had nothing real to replay, so the past was narration, not
+        history. History (the log) and memory (per-agent KB latest-state)
+        are two different things; this gate keeps both honest."""
+        pack = load_story_pack()
+        world = pack.build_world()
+        # 11 authored typhoon-night events, negative ids, real 2013 stamps.
+        self.assertEqual(len(world.history_log), 11)
+        self.assertTrue(all(e.id < 0 for e in world.history_log))
+        self.assertEqual(world.history_log[0].time.year, 2013)
+        # Runtime log untouched: no event at compile, cursors park after the
+        # history segment (history is never re-delivered as new).
+        self.assertEqual(len(world.event_log), 0)
+
+        # Visibility follows who lived through it: 老赵头's shouting was
+        # 下棋大爷's private witness; 林瑶 was not there.
+        zhao = [e for e in world.history_log if "老赵头" in str(e.payload)]
+        self.assertEqual(len(zhao), 1)
+        self.assertIn("下棋大爷", zhao[0].visible_to)
+        self.assertNotIn("林瑶", zhao[0].visible_to)
+
+        # Flashback replays the authored history for the witness…
+        lines = engine_of(world).flashback_for("下棋大爷", "老赵头")
+        self.assertTrue(any("2013-03-16 21:58" in line and "老赵头" in line
+                            for line in lines), lines)
+        # …and says nothing about it to someone it never reached.
+        self.assertEqual(engine_of(world).flashback_for("林瑶", "老赵头"), [])
+
+        # Checkpoint round-trip preserves the history log verbatim.
+        state = world.checkpoint_state()
+        self.assertEqual(len(state["history_log"]), 11)
+        restored = World.from_checkpoint(pack.build_world(), state)
+        self.assertEqual([e.time for e in restored.history_log],
+                         [e.time for e in world.history_log])
+        self.assertEqual([e.id for e in restored.history_log],
+                         [e.id for e in world.history_log])
+
+    def test_flashback_surfaces_prerun_history_in_engine(self):
+        """T4 live-path: a real AsyncEngine whose actor flashbacks the seeded
+        lead (老赵头) gets the authored 2013 history lines — the same query
+        the live run serves."""
+        pack = load_story_pack()
+        world = pack.build_world()
+        trace = Trace("v4-test", "prerun-flashback")
+        agents = {a: (lambda *a_, **k_: {"text": "", "calls": [
+            {"name": "wait", "arguments": {"duration_seconds": 3600}}]})
+            for a in world.actors if world.actors[a].role != "extra"}
+        states = {a: PrivateState(a) for a in agents}
+        engine = AsyncEngine(world, agents, states, trace, None,
+                             decision_timeout=10, max_wall_seconds=30)
+        probe = _FlashbackProbe(engine.world)
+        lines = probe.flashback_for("下棋大爷", "老赵头")
+        self.assertTrue(any("2013-03-16 21:58" in line for line in lines), lines)
+        self.assertEqual(probe.flashback_for("林瑶", "老赵头"), [])
 
 
 if __name__ == "__main__":

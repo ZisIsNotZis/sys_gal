@@ -95,6 +95,19 @@ def main() -> None:
                          checkpoint=checkpoint, extra_call=provider,
                          kb_seeds=pack.kb, director_brief=director_brief)
     holder["runner"] = runner
+    # Ticket 25 — one state-loading path: compile the authored seed into the
+    # initial v4-checkpoint-2 artifact, persist it, then load the run state
+    # BACK from that checkpoint. The engine never runs on a privately-built
+    # world: what it runs on is checkpoint-borne.
+    from .compile_seed import build_initial_checkpoint
+    runner._init_kb(world.now)
+    seed_checkpoint = build_initial_checkpoint(runner, pack, run_id, root=root)
+    seed_checkpoint_path = root / "runs" / f"{run_id}.seed-checkpoint.json"
+    save_checkpoint(seed_checkpoint_path, seed_checkpoint)
+    print(f"[real_run] initial checkpoint -> {seed_checkpoint_path} "
+          f"(history events: {seed_checkpoint['meta']['history_count']})")
+    world.restore_checkpoint(seed_checkpoint["world"])
+    runner.restore_checkpoint(seed_checkpoint["runner"])
     try:
         reason = runner.run(stop_at=endpoint, max_turns=20_000)
     except BaseException as exc:

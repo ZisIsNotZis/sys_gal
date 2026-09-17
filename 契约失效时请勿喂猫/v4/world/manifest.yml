@@ -692,6 +692,8 @@ kb:
   陈默妈:
   - keys: [陈默妈]
     desc: 我，[[陈默]]的妈妈，四十九岁，在[[老家县城]]。每周日晚我给儿子打电话，开场三句话固定：吃饭没有、钱够不够、隔壁[[李阿姨]]家孩子相亲了；第六句开始才是我真正想说的。
+  - keys: [老街坊代表]
+    desc: 2013 年台风后[[家属院]]推出来的代表，大家在撤离文书上签了字。具体姓名我记不清了——不该猜的就不猜。
   林瑶室友:
   - keys: [林瑶室友, 小满]
     desc: 我，[[小满]]，大三，睡[[林瑶]]对铺。追剧和嗑糖是主业，宿舍夜谈是副业；表面没心没肺，其实整栋楼数我最先发现"[[瑶姐]]最近不太对"。
@@ -702,7 +704,77 @@ kb:
     desc: 我，[[老周]]，六十八岁，退休校工，[[中庭]]石桌的常客。我棋品好，话密，记性挑着坏——三十年前的人名记得一清二楚，昨天早饭吃什么要想半天。
   - keys: [中庭]
     desc: "[[中庭]]石桌是我的棋摊，下午常有人来杀两盘。"
-# contacts: initial contact rows (V4-AGENT-INTERFACE T3). `of` is the formal
+# 前史（ticket 25）：2013 台风夜的真实事件条目——与运行时事件同一日志格式。
+# 闪回按角色可见性重放这些事件；正文里的 [[名字]] 参与 seed_lint 检查。
+history:
+  - time: "2013-03-16 21:35"
+    kind: storm_intensifies
+    actor: null
+    visible_to: [陈默, 林瑶]   # 台账半行目击：只有读过台账的人知道
+    payload:
+      detail: 台风雨骤然加剧，[[家属院]]低洼处开始积水，[[小学]]地下室地势更低。
+  - time: "2013-03-16 21:40"
+    kind: call_received
+    actor: null
+    visible_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 下棋大爷, 食堂大妈, 林瑶室友, 班长, 辅导员, 陈默妈]
+    payload:
+      detail: "[[小学]]打来紧急电话：地下室进水，请求援助。这是当晚第一通呼入。"
+  - time: "2013-03-16 21:55"
+    kind: evacuation
+    actor: null
+    visible_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 下棋大爷, 食堂大妈, 林瑶室友, 班长, 辅导员, 陈默妈]
+    payload:
+      detail: "[[家属院]]居民开始向高处撤离，家家往外搬电器和旧物。"
+  - time: "2013-03-16 21:58"
+    kind: shouting
+    actor: 下棋大爷
+    visible_to: [下棋大爷]
+    payload:
+      detail: "[[老赵头]]在[[家属院]]楼下喊人喊哑了嗓子，挨家拍门催撤离。"
+  - time: "2013-03-16 22:05"
+    kind: aid_dispatched
+    actor: null
+    visible_to: [陈默, 林瑶, 下棋大爷]
+    payload:
+      detail: "[[器材室]]借出两台抽水泵运往[[小学]]，经手人签名潦草。"
+  - time: "2013-03-16 22:20"
+    kind: eye_witness
+    actor: null
+    visible_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 下棋大爷, 食堂大妈, 林瑶室友, 班长, 辅导员, 陈默妈]
+    payload:
+      detail: 有人在台账末行匆匆记下一句目击：\"[[地下室]]外站着一个老人，手里……\"墨迹到此中断。
+  - time: "2013-03-16 22:21"
+    kind: child_fragment
+    actor: 陈默
+    visible_to: [陈默]
+    payload:
+      detail: 九岁的[[陈默]]被大人牵着往高处走。雨里他只记得一根水管、一只[[红色哨子]]和一个走得很慢的大人。
+  - time: "2013-03-16 22:40"
+    kind: aid_arrived
+    actor: null
+    visible_to: [陈默, 林瑶, 下棋大爷]
+    payload:
+      detail: 两台抽水泵运抵[[小学]]，地下室积水开始抽排——[[小学]]保住了。
+  - time: "2013-03-16 23:00"
+    kind: flooding
+    actor: null
+    visible_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 下棋大爷, 食堂大妈, 林瑶室友, 班长, 辅导员, 陈默妈]
+    payload:
+      detail: "[[家属院]][[地下室]]进水，旧物从此堆存在里头，多年没人认真清过。"
+  - time: "2013-03-16 23:10"
+    kind: item_lost
+    actor: 陈默
+    visible_to: [陈默]
+    payload:
+      detail: 混乱中那只[[红色哨子]]从九岁的[[陈默]]手里失落。此后它一直在[[家属院]]的旧物堆里。
+  - time: "2013-03-17 09:00"
+    kind: signing
+    actor: null
+    visible_to: [陈默, 陈默妈, 下棋大爷]
+    payload:
+      detail: 风后清点，[[家属院]]推举出一位老街坊代表，大家在[[邻里撤离通知书]]上签名确认撤离与互助事项。
+
+contacts: initial contact rows (V4-AGENT-INTERFACE T3). `of` is the formal
 # actor name, `as` lists this actor's private nicknames; each expands into one
 # `!contact` KB row. Remote contact requires such a row; co-presence does not.
 contacts:

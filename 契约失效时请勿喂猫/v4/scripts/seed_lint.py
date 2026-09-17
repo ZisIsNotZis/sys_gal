@@ -83,6 +83,9 @@ def _manifest_prose(pack) -> str:
     for row in manifest.get("scheduled", ()):
         parts.append(str(row.get("notice", "")))
         parts.append(str(row.get("event", "")))
+    for row in manifest.get("history", ()) or ():
+        detail = (row.get("payload") or {}).get("detail", "")
+        parts.append(str(detail))
     for row in manifest.get("locations", ()):
         for extra in row.get("extras", ()) or ():
             parts.append(str(extra.get("fragment", "")))
@@ -226,6 +229,15 @@ def lint(world_root: str | Path) -> list[str]:
         # to the actor who owns it (that is the point of personal memory).
         check_text(concept["desc"], f"concept {concept['id']}",
                    [a for a in concept["known_to"] if a in kb_keys])
+    for row in manifest.get("history", ()) or ():
+        # History events are model-visible via flashback: their [[ ]] names
+        # must resolve for exactly the audience that lived through them.
+        targets = row.get("visible_to") or []
+        holders = ([str(t) for t in targets] if isinstance(targets, list)
+                   else [str(targets)])
+        detail = str((row.get("payload") or {}).get("detail", ""))
+        check_text(detail, f"history {row.get('time', '')}", holders or None)
+
         for owner, memory in concept["memory"].items():
             if owner in kb_keys:
                 check_text(memory, f"concept {concept['id']} memory[{owner}]",

@@ -223,6 +223,11 @@ class World:
         self._cancelled: set[int] = set()
         self._sequence = itertools.count(1)
         self._event_id = itertools.count(1)
+        # Pre-run authored history (ticket 25): real past events, same Event
+        # shape, negative id space. Never delivered, never replayed for `now`
+        # — but flashback replays them like any memory of the past.
+        self._history_id = itertools.count(-1, -1)
+        self.history_log: list[Event] = []
         self._cursor = {a.id: 0 for a in actor_list}
         # Two refresh cadences (V4-DESIGN §5.7 + 首验日反馈): state (layout,
         # knowledge, presence) every N rounds; item descriptions far rarer —
@@ -251,6 +256,24 @@ class World:
     @property
     def has_pending_events(self) -> bool:
         return bool(self._queue)
+
+    def inject_history(self, history) -> int:
+        """Compile authored pre-run history (manifest `history:`) into the
+        world's history log (ticket 25). These are REAL past events with real
+        timestamps — the 2013 typhoon night is as true as anything that will
+        happen at runtime — but they live in their own log: never delivered
+        as new, never counted by `now`. Flashback scans this log plus the
+        runtime log."""
+        added = 0
+        for row in history:
+            when = datetime.fromisoformat(str(row["time"]))
+            visible = row.get("visible_to") or [a.id for a in self.actors.values()]
+            event = Event(next(self._history_id), when, str(row["kind"]),
+                          row.get("actor"), dict(row.get("payload") or {}), None,
+                          frozenset(str(v) for v in visible), 0)
+            self.history_log.append(event)
+            added += 1
+        return added
 
     def checkpoint_state(self) -> dict[str, Any]:
         """Return all mutable state needed to continue at the same boundary."""
@@ -293,6 +316,11 @@ class World:
                            "visible_to": sorted(event.visible_to), "world_version": event.world_version}
                           for event in self.event_log],
             "cursor": dict(self._cursor),
+            "history_log": [{"id": event.id, "time": event.time.isoformat(),
+                              "kind": event.kind, "actor": event.actor,
+                              "payload": dict(event.payload), "cause": event.cause,
+                              "visible_to": sorted(event.visible_to)}
+                             for event in self.history_log],
         }
 
     @classmethod
@@ -346,6 +374,11 @@ class World:
             self.version = int(state["version"]); self.actors = actors; self.locations = locations
             self.item_locations = dict(state["item_locations"]); self.document_defs = copy.deepcopy(state["document_defs"])
             self.event_log = events; self._cursor = {str(k): int(v) for k, v in state["cursor"].items()}
+            self.history_log = [
+                Event(int(row["id"]), datetime.fromisoformat(row["time"]), row["kind"],
+                      row.get("actor"), dict(row.get("payload") or {}), row.get("cause"),
+                      frozenset(row["visible_to"]), 0)
+                for row in state.get("history_log", [])]
             self._cancelled = set(int(x) for x in state.get("cancelled_sequences", ()))
             self._queue = [_Scheduled(datetime.fromisoformat(row["time"]), int(row["sequence"]),
                 str(row["kind"]), row["actor"], dict(row["payload"]), row["cause"]) for row in state["queue"]]

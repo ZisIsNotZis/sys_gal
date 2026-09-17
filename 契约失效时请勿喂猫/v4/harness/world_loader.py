@@ -96,6 +96,7 @@ class WorldPack:
     kb: dict[str, list[dict[str, Any]]]
     concepts: tuple[dict[str, Any], ...]
     contacts: dict[str, list[dict[str, Any]]]
+    history: tuple[dict[str, Any], ...]
     # canonical name -> aliases, for every actor/location/item/document/concept.
     # flashback uses it to resolve "老街坊" to its registered concept.
     lexicon: dict[str, tuple[str, ...]]
@@ -167,6 +168,10 @@ class WorldPack:
                 world.actors[actor_id].known_contacts = {row["of"] for row in rows}
                 world.actors[actor_id].contact_aliases = {
                     alias: row["of"] for row in rows for alias in row["as"]}
+        # Pre-run history compiles into the event log's first segment
+        # (ticket 25): flashback replays it exactly like runtime events.
+        if self.history:
+            world.inject_history(self.history)
         return world
 
 
@@ -199,6 +204,18 @@ def load_world_pack(root: str | Path) -> WorldPack:
     for key, value in (manifest.get("system", {}).get("facts", {}) or {}).items():
         manifest["system"]["facts"][key] = strip_refs(value)
         manifest["system"]["facts"][strip_refs(key)] = strip_refs(value)
+    # Pre-run history (ticket 25): authored real events (2013 typhoon night)
+    # that compile into the event log's first segment. [[ ]] markers are
+    # linter-only syntax here too — flashback shows this text to actors.
+    history = []
+    for row in manifest.get("history", ()) or ():
+        row = dict(row)
+        payload = dict(row.get("payload") or {})
+        for key, value in list(payload.items()):
+            payload[key] = strip_refs(value)
+        row["payload"] = payload
+        history.append(row)
+
     fields = {name: tuple(dict(row) for row in manifest[name]) for name in
               ("locations", "actors", "items", "documents", "routes", "barriers", "scheduled")}
     _validate(fields, manifest)
@@ -216,8 +233,8 @@ def load_world_pack(root: str | Path) -> WorldPack:
     contacts = _validate_contacts(manifest.get("contacts"), actors=actor_ids)
     kb = _expand_contact_rows(kb, contacts)
     lexicon = _build_lexicon(fields, concepts)
-    return WorldPack(root, manifest, descriptions, **fields,
-                     system=dict(manifest.get("system", {})), kb=kb,
+    return WorldPack(root, manifest, descriptions, history=tuple(history),
+                     **fields, system=dict(manifest.get("system", {})), kb=kb,
                      concepts=concepts, lexicon=lexicon, contacts=contacts)
 
 

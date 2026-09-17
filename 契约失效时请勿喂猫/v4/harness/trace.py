@@ -5,7 +5,7 @@ from copy import deepcopy
 import json
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -149,7 +149,25 @@ class Trace:
         self.tools = list(snapshot.get("tools", []))
 
     def checkpoint_snapshot(self, world: World, runner: Any) -> dict[str, Any]:
-        return {"format": "v3-checkpoint-1", "world": world.checkpoint_state(),
+        """v4-checkpoint-2 (ticket 25): everything needed to reproduce —
+        world (incl. the pre-run history log), runner state, per-actor
+        private states, sessions (system prompt at messages[0]), plus the
+        code provenance meta. The sessions/prompts/tools inside
+        runner.checkpoint_state() are the reproduction-critical payload."""
+        import subprocess
+        from datetime import datetime as _dt
+        try:
+            git_hash = subprocess.run(
+                ["git", "rev-parse", "--short", "HEAD"],
+                cwd=Path(__file__).parents[1], capture_output=True, text=True,
+                timeout=10, check=True).stdout.strip()
+        except Exception:
+            git_hash = "unknown"
+        return {"format": "v4-checkpoint-2",
+                "meta": {"git_hash": git_hash,
+                         "created_at": _dt.now(timezone.utc).isoformat(),
+                         "run_id": self.run_id},
+                "world": world.checkpoint_state(),
                 "runner": runner.checkpoint_state(),
                 "states": {actor: state.snapshot() for actor, state in runner.states.items()},
                 "sessions": deepcopy(self.sessions), "trace": self.snapshot(world)}

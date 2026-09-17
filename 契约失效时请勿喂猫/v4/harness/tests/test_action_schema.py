@@ -82,9 +82,11 @@ class ActionSchemaTests(unittest.TestCase):
         from io import BytesIO
         from harness.provider import provider_from_env
         saved = {k: os.environ.get(k) for k in
-                 ("V3_PROVIDER_RETRIES", "V3_PROVIDER_MAX_BACKOFF", "V3_PROVIDER_MAX_DURATION")}
+                 ("OPENAI_MODEL", "V3_PROVIDER_RETRIES", "V3_PROVIDER_MAX_BACKOFF",
+                  "V3_PROVIDER_MAX_DURATION")}
         try:
-            os.environ.update({"V3_PROVIDER_RETRIES": "8",
+            os.environ.update({"OPENAI_MODEL": "unit-test-model",
+                               "V3_PROVIDER_RETRIES": "8",
                                "V3_PROVIDER_MAX_BACKOFF": "120",
                                "V3_PROVIDER_MAX_DURATION": "600"})
             provider = provider_from_env()
