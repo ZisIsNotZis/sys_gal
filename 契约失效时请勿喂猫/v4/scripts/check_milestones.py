@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -26,6 +27,16 @@ DAY_DATES = {
     1: "2026-03-16", 2: "2026-03-17", 3: "2026-03-18", 4: "2026-03-19",
     5: "2026-03-20", 6: "2026-03-21", 7: "2026-03-22",
 }
+
+# 半天粒度（ticket：里程碑=检查点）：am = 07:00–12:59，pm = 13:00–22:00。
+HALF_HOURS = {"am": (0, 13), "pm": (13, 24)}
+
+
+def _in_half(ev, day: int, half: str) -> bool:
+    lo, hi = HALF_HOURS[half]
+    hour = int(str(ev.get("time", ""))[11:13])
+    date_ok = str(ev.get("time", "")).startswith(DAY_DATES[day])
+    return date_ok and lo <= hour < hi
 
 
 # ---------------------------------------------------------------- helpers
@@ -83,8 +94,8 @@ def _distinct_actors(hits) -> list[str]:
     return order
 
 
-def _mk_check(cid, desc, fn):
-    return {"id": cid, "desc": desc, "fn": fn}
+def _mk_check(cid, desc, fn, half: str):
+    return {"id": cid, "desc": desc, "fn": fn, "half": half}
 
 
 # ---------------------------------------------------------------- day 1
@@ -368,51 +379,182 @@ def _d7_bond_tested(ev, turns, sess):
     return ok, evd
 
 
+# ------------------------------------------------- romance (galgame axis)
+
+def _same_place_exchanged(ev, day, half, a: str, b: str,
+                          task_words=("台账", "登记", "审计", "值班",
+                                      "说明", "材料", "导出件", "字条")):
+    """双方同地出现且互有发言；non-task 模式下排除案件关键词。"""
+    enters = {}
+    for e in _day_events(ev, day):
+        if e.get("kind") == "enter" and e.get("actor") in (a, b):
+            enters.setdefault(e["actor"], []).append(e["time"][11:16])
+    if not (a in enters and b in enters):
+        return False, "双方未同地"
+    lines_a = [(x[0], x[2]) for x in _day_texts(ev, day) if x[1] == a]
+    lines_b = [(x[0], x[2]) for x in _day_texts(ev, day) if x[1] == b]
+    if half:
+        h_lo, h_hi = HALF_HOURS[half]
+        lines_a = [x for x in lines_a if h_lo <= int(x[0][:2]) < h_hi]
+        lines_b = [x for x in lines_b if h_lo <= int(x[0][:2]) < h_hi]
+    if task_words:
+        lines_a = [x for x in lines_a if not any(w in x[1] for w in task_words)]
+        lines_b = [x for x in lines_b if not any(w in x[1] for w in task_words)]
+    ok = bool(lines_a) and bool(lines_b)
+    return ok, (f"{a}×{len(lines_a)} / {b}×{len(lines_b)} 条非任务发言"
+                + (f"（{lines_a[0][0]} 起）" if lines_a else ""))
+
+
+def _d1_romance_side_by_side(ev, turns, sess):
+    ok, evd = _same_place_exchanged(ev, 1, "am", "陈默", "林瑶")
+    return ok, "档案室并肩：" + evd
+
+
+def _d1_romance_review():
+    return "恋爱温度：档案室并肩与'字条程序'中两人一致的谨慎——是默契还是回避？（人工审阅）"
+
+
+def _d1_comedy_canteen(ev, turns, sess):
+    lines = [(t, a, x) for t, a, x in _day_texts(ev, 1)
+             if a == "食堂大妈" and int(t[:2]) < 13]
+    chen = [(t, x) for t, a, x in _day_texts(ev, 1)
+            if a == "陈默" and int(t[:2]) < 13 and "排骨" in x or "茄子" in x
+            and a == "陈默"]
+    ok = len(lines) >= 3
+    evd = f"食堂午饭戏：大妈 {len(lines)} 条（{lines[0][0] if lines else '-'} 起）"
+    return ok, evd
+
+
+def _d1_comedy_review():
+    return "喜剧质量：食堂大妈的一本正经与大妈转达老周托话的Community gossip——哪个更有效？（人工审阅）"
+
+
+def _d2_romance_private_talk(ev, turns, sess):
+    ok, evd = _same_place_exchanged(ev, 2, None, "陈默", "林瑶")
+    return ok, "首次私人对话（非任务）：" + evd
+
+
+def _d2_comedy_review():
+    return "喜剧质量：猫/路人的出场是否自然？（人工审阅；猫概念落地后升为机械检查）"
+
+
+def _d3_romance_xiangqin_seed(ev, turns, sess):
+    lines = [(t, a, x) for t, a, x in _day_texts(ev, 3) if a == "陈默妈"]
+    n, hits = _mentioning(lines, "相亲", "姑娘", "李阿姨", all_of=False)
+    ok = n >= 1
+    evd = f"相亲压力埋线 {n} 次（{hits[0][0] if hits else '-'}）"
+    return ok, evd
+
+
+def _d3_comedy_review():
+    return "喜剧质量：本日设计笑点（室友起哄/猫）是否成立？（人工审阅）"
+
+
+def _d5_romance_xiangqin_press(ev, turns, sess):
+    lines = _day_texts(ev, 5)
+    n, hits = _mentioning(lines, "相亲", "李阿姨", "见一面", all_of=False)
+    ok = n >= 1
+    evd = f"相亲逼问/压力 {n} 次（{hits[0][0] if hits else '-'}）"
+    return ok, evd
+
+
+def _d5_comedy_review():
+    return "喜剧质量：大雨/室内场景的窘迫喜剧是否成立？（人工审阅）"
+
+
+def _d6_romance_review():
+    return "恋爱温度：'那句完整的话'的措辞与时机（人工审阅——本日核心 romance 节拍）"
+
+
+def _d7_romance_date(ev, turns, sess):
+    enters = [(e["time"][11:16], e.get("actor"))
+              for e in _day_events(ev, 7)
+              if e.get("kind") == "enter" and e.get("actor") in ("陈默", "林瑶")]
+    who = {a for _, a in enters}
+    lines = [(t, a, x) for t, a, x in _day_texts(ev, 7) if a in ("陈默", "林瑶")]
+    non_task = [x for a, x in ((x[1], x[2]) for x in lines)
+                if not any(w in x for w in ("台账", "登记", "审计", "说明"))]
+    ok = len(who) >= 2 and len(non_task) >= 1
+    evd = (f"纪念活动同游：{'、'.join(sorted(who))}；非任务交流 {len(non_task)} 条")
+    return ok, evd
+
+
 # ---------------------------------------------------------------- registry
 MILESTONES = {
     1: [
-        _mk_check("d1-登记缺失知晓", "登记本/值班表缺失被 ≥3 角色知晓", _d1_register_missing_known),
-        _mk_check("d1-台账差异记录", "陈默与林瑶都读台账+导出件，22:05/23:30 差异被发言记录", _d1_discrepancy_recorded),
-        _mk_check("d1-辅导员介入", "辅导员 ≥5 条发言并出现程序纪律语句", _d1_counselor_intervention),
-        _mk_check("d1-三份个人说明", "≥3 角色提交个人情况说明", _d1_three_statements),
-        _mk_check("d1-字条留痕程序", "临时字条被读取且编号被提及", _d1_note_procedure),
-        _mk_check("d1-纪念活动通知", "台风纪念活动通知播发并被讨论", _d1_anniversary_discussed),
-        _mk_check("d1-老周托话", "食堂大妈转达老周托话且林瑶确认", _d1_laozhou_relay),
-        _mk_check("d1-妈妈承诺", "陈默妈承诺回老家属院打听（问不到就说问不到）", _d1_mom_promise),
-        _mk_check("d1-审计催办转达", "16:00 催办单被陈默原样转达辅导员", _d1_audit_relayed),
-        _mk_check("d1-林瑶自查审计包", "林瑶自主核对审计包并记录凭证缺失事实", _d1_linyao_self_audit),
+        _mk_check("d1-登记缺失知晓", "登记本/值班表缺失被 ≥3 角色知晓", _d1_register_missing_known, half="am"),
+        _mk_check("d1-台账差异记录", "陈默与林瑶都读台账+导出件，22:05/23:30 差异被发言记录", _d1_discrepancy_recorded, half="am"),
+        _mk_check("d1-辅导员介入", "辅导员 ≥5 条发言并出现程序纪律语句", _d1_counselor_intervention, half="am"),
+        _mk_check("d1-三份个人说明", "≥3 角色提交个人情况说明", _d1_three_statements, half="am"),
+        _mk_check("d1-字条留痕程序", "临时字条被读取且编号被提及", _d1_note_procedure, half="am"),
+        _mk_check("d1-纪念活动通知", "台风纪念活动通知播发并被讨论", _d1_anniversary_discussed, half="pm"),
+        _mk_check("d1-老周托话", "食堂大妈转达老周托话且林瑶确认", _d1_laozhou_relay, half="pm"),
+        _mk_check("d1-妈妈承诺", "陈默妈承诺回老家属院打听（问不到就说问不到）", _d1_mom_promise, half="pm"),
+        _mk_check("d1-审计催办转达", "16:00 催办单被陈默原样转达辅导员", _d1_audit_relayed, half="pm"),
+        _mk_check("d1-林瑶自查审计包", "林瑶自主核对审计包并记录凭证缺失事实", _d1_linyao_self_audit, half="pm"),
     ],
     2: [
-        _mk_check("d2-审计说明提交", "审计书面说明按时提交", _d2_audit_statement_filed),
-        _mk_check("d2-管理员正式答复", "管理员/接手方正式答复出现", _d2_admin_answer),
-        _mk_check("d2-妈妈打听结果", "妈妈的打听结果回到陈默", _d2_mom_result),
+        _mk_check("d2-审计说明提交", "审计书面说明按时提交", _d2_audit_statement_filed, half="am"),
+        _mk_check("d2-恋爱私人对话", "陈默与林瑶第一次非任务私人对话（galgame轴）", _d2_romance_private_talk, half="pm"),
+        _mk_check("d2-管理员正式答复", "管理员/接手方正式答复出现", _d2_admin_answer, half="am"),
+        _mk_check("d2-妈妈打听结果", "妈妈的打听结果回到陈默", _d2_mom_result, half="pm"),
     ],
     3: [
-        _mk_check("d3-并肩核查", "陈默与林瑶并肩核查台账/抄件", _d3_side_by_side),
-        _mk_check("d3-抄件压力", "林瑶的抄件秘密开始承压（被提及）", _d3_copy_pressure),
-        _mk_check("d3-登记本下落", "借阅登记本的下落被追踪", _d3_register_trail),
+        _mk_check("d3-并肩核查", "陈默与林瑶并肩核查台账/抄件", _d3_side_by_side, half="am"),
+        _mk_check("d3-抄件压力", "林瑶的抄件秘密开始承压（被提及）", _d3_copy_pressure, half="pm"),
+        _mk_check("d3-相亲埋线", "妈妈的相亲/姑娘压力埋线（阻力线）", _d3_romance_xiangqin_seed, half="pm"),
+        _mk_check("d3-登记本下落", "借阅登记本的下落被追踪", _d3_register_trail, half="pm"),
     ],
     4: [
-        _mk_check("d4-老赵头钩子", "老赵头被点名（大爷的钩子激活）", _d4_laozhaotou_hook),
-        _mk_check("d4-林瑶走老路线", "林瑶亲赴老路线地点", _d4_old_route_walk),
-        _mk_check("d4-陈默坦白窗口", "陈默的当年/对不起发言出现", _d4_chen_confession),
+        _mk_check("d4-老赵头钩子", "老赵头被点名（大爷的钩子激活）", _d4_laozhaotou_hook, half="am"),
+        _mk_check("d4-林瑶走老路线", "林瑶亲赴老路线地点", _d4_old_route_walk, half="am"),
+        _mk_check("d4-陈默坦白窗口", "陈默的当年/对不起发言出现", _d4_chen_confession, half="pm"),
     ],
     5: [
-        _mk_check("d5-抽水泵去向", "抽水泵→小学 被证实", _d5_pumps_confirmed),
-        _mk_check("d5-23:30追责", "23:30 改动追责讨论", _d5_who_altered),
-        _mk_check("d5-审计合作社线", "发票/合作社 线索与审计合流", _d5_audit_coop_link),
+        _mk_check("d5-抽水泵去向", "抽水泵→小学 被证实", _d5_pumps_confirmed, half="am"),
+        _mk_check("d5-23:30追责", "23:30 改动追责讨论", _d5_who_altered, half="am"),
+        _mk_check("d5-审计合作社线", "发票/合作社 线索与审计合流", _d5_audit_coop_link, half="pm"),
+        _mk_check("d5-相亲逼问", "相亲压力逼问/正面提及（阻力线）", _d5_romance_xiangqin_press, half="pm"),
     ],
     6: [
-        _mk_check("d6-筹备聚集", "纪念活动筹备在中庭聚集 ≥3 人", _d6_prep_gathering),
-        _mk_check("d6-陈默完整的话", "对不起+当年/为什么 一句完整的话", _d6_chen_full_sentence),
-        _mk_check("d6-小岚的抉择", "小岚面对草稿的抉择", _d6_xiaolan_choice),
+        _mk_check("d6-筹备聚集", "纪念活动筹备在中庭聚集 ≥3 人", _d6_prep_gathering, half="am"),
+        _mk_check("d6-陈默完整的话", "对不起+当年/为什么 一句完整的话", _d6_chen_full_sentence, half="pm"),
+        _mk_check("d6-小岚的抉择", "小岚面对草稿的抉择", _d6_xiaolan_choice, half="pm"),
     ],
     7: [
-        _mk_check("d7-纪念活动举行", "3·16台风纪念活动当日举行", _d7_finale_event),
-        _mk_check("d7-真相点名", "老赵头/老街坊代表 真相被 ≥2 角色点名", _d7_truth_named),
-        _mk_check("d7-信物相认", "红色哨子被提及/相认", _d7_keepsake),
-        _mk_check("d7-关系检验", "陈默与林瑶同在中庭并当面交换 ≥2 条发言", _d7_bond_tested),
+        _mk_check("d7-纪念活动举行", "3·16台风纪念活动当日举行", _d7_finale_event, half="am"),
+        _mk_check("d7-真相点名", "老赵头/老街坊代表 真相被 ≥2 角色点名", _d7_truth_named, half="am"),
+        _mk_check("d7-信物相认", "红色哨子被提及/相认", _d7_keepsake, half="am"),
+        _mk_check("d7-纪念活动同游", "纪念活动同游+非任务交流（关系确认，galgame轴）", _d7_romance_date, half="pm"),
+        _mk_check("d7-关系检验", "陈默与林瑶同在中庭并当面交换 ≥2 条发言", _d7_bond_tested, half="pm"),
     ],
+}
+
+
+# ------------------------------------------------- REVIEW items (non-gating)
+# 人工审阅项：在每个半天检查点的审阅环节通读判定（喜剧质量、恋爱温度、
+# NPC 表演质量）。只列出，不影响退出码。
+REVIEWS = {
+    1: {"am": ["恋爱温度：档案室并肩与字条程序中两人一致的谨慎——默契还是回避？",
+               "喜剧质量：食堂午饭戏的一本正经"],
+        "pm": ["喜剧/温度：老周托话的转达戏与'只记已确认事实'的谨慎反差",
+               "阻力线：妈妈催婚电话与恋爱轴的对照"]},
+    2: {"am": ["正式答复到来时各角色的程序感（导演视角：机构压力是否到位）"],
+        "pm": ["喜剧质量：猫/路人出场是否自然（猫概念落地后升为机械检查）",
+               "恋爱温度：首次私人对话的内容与分寸"]},
+    3: {"am": ["并肩核查的默契程度"],
+        "pm": ["喜剧质量：室友起哄/相亲埋线的尴尬喜剧",
+               "恋爱阻力：相亲压力下陈默的反应是否真实"]},
+    4: {"am": ["老赵头钩子的讲古质量（大爷分寸线：传说不是证词）"],
+        "pm": ["恋爱温度：陈默坦白窗口的措辞"]},
+    5: {"am": ["抽水泵证实的揭示节奏"],
+        "pm": ["喜剧质量：大雨/室内窘迫喜剧；相亲逼问的张力"]},
+    6: {"am": ["筹备聚集的群像感"],
+        "pm": ["恋爱核心节拍：'那句完整的话'的措辞与时机（本弧最重要 romance 审阅）",
+               "喜剧质量：小岚抉择前夜的自我调侃"]},
+    7: {"am": ["纪念活动的群像与真相点名的分量"],
+        "pm": ["恋爱终局：同游与关系确认的 galgame 收束感",
+               "喜剧收束：猫在终局的出现"]},
 }
 
 
@@ -436,13 +578,30 @@ def health_report(data, day: int):
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("artifact", type=Path)
-    ap.add_argument("--day", type=int, required=True, choices=sorted(DAY_DATES))
+    ap.add_argument("--day", type=int, choices=sorted(DAY_DATES))
+    ap.add_argument("--half", help="dN-am | dN-pm：半天里程碑（检查点边界）")
     args = ap.parse_args()
+    if bool(args.day) == bool(args.half):
+        ap.error("请二选一：--day N 或 --half dN-am|dN-pm")
+    if args.half:
+        m = re.fullmatch(r"d(\d+)-(am|pm)", args.half)
+        if not m or int(m.group(1)) not in DAY_DATES:
+            ap.error(f"无效的 --half：{args.half}")
+        args.day, half = int(m.group(1)), m.group(2)
+    else:
+        half = None
     data = json.loads(args.artifact.read_text(encoding="utf-8"))
     ev, turns, sess = data.get("world_events", []), data.get("agent_turns", []), data.get("sessions", {})
 
-    checks = MILESTONES[args.day]
-    print(f"== 第 {args.day} 天（{DAY_DATES[args.day]}）故事里程碑 ==")
+    if half:
+        lo, hi = HALF_HOURS[half]
+        ev = [e for e in ev
+              if str(e.get("time", "")).startswith(DAY_DATES[args.day])
+              and lo <= int(str(e.get("time", ""))[11:13]) < hi]
+
+    checks = [c for c in MILESTONES[args.day] if half is None or c["half"] == half]
+    label = f"第 {args.day} 天 {'上午' if half == 'am' else '下午' if half else ''}（{DAY_DATES[args.day]}）"
+    print(f"== {label}故事里程碑 ==")
     failed = []
     for c in checks:
         try:
@@ -453,6 +612,13 @@ def main() -> int:
               f"          {evd}")
         if not ok:
             failed.append(c["id"])
+
+    review_half = half or "am"
+    reviews = REVIEWS.get(args.day, {}).get(review_half, [])
+    if reviews:
+        print(f"\n== REVIEW（人工审阅项，{review_half}，不计入退出码）==")
+        for r in reviews:
+            print(f"  [REVIEW] {r}")
 
     print(f"\n== 系统健康（第 {args.day} 天，不计入退出码）==")
     for k, v in health_report(data, args.day).items():
