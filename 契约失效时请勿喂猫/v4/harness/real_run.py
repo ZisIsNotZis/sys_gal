@@ -101,13 +101,25 @@ def main() -> None:
     # world: what it runs on is checkpoint-borne.
     from .compile_seed import build_initial_checkpoint
     runner._init_kb(world.now)
-    seed_checkpoint = build_initial_checkpoint(runner, pack, run_id, root=root)
-    seed_checkpoint_path = root / "runs" / f"{run_id}.seed-checkpoint.json"
-    save_checkpoint(seed_checkpoint_path, seed_checkpoint)
-    print(f"[real_run] initial checkpoint -> {seed_checkpoint_path} "
-          f"(history events: {seed_checkpoint['meta']['history_count']})")
-    world.restore_checkpoint(seed_checkpoint["world"])
-    runner.restore_checkpoint(seed_checkpoint["runner"])
+    # 半天检查点方法论 (ticket 25): V3_RESUME_CHECKPOINT 指向上一个里程碑
+    # 检查点即从该点续跑 (世界/运行器/会话/追溯一体恢复)；未设置则编译种子
+    # 为初始检查点。同一条恢复路径，两个入口。
+    resume_source = os.environ.get("V3_RESUME_CHECKPOINT")
+    if resume_source:
+        from .checkpoint import load_checkpoint
+        seed_checkpoint = load_checkpoint(Path(resume_source))
+        if "trace" in seed_checkpoint:
+            trace.restore_from_snapshot(seed_checkpoint["trace"])
+        print(f"[real_run] resuming from {resume_source} "
+              f"(world now: {seed_checkpoint['world'].get('now', '?')})")
+    else:
+        seed_checkpoint = build_initial_checkpoint(runner, pack, run_id, root=root)
+        seed_checkpoint_path = root / "runs" / f"{run_id}.seed-checkpoint.json"
+        save_checkpoint(seed_checkpoint_path, seed_checkpoint)
+        print(f"[real_run] initial checkpoint -> {seed_checkpoint_path} "
+              f"(history events: {seed_checkpoint['meta']['history_count']})")
+        world.restore_checkpoint(seed_checkpoint["world"])
+        runner.restore_checkpoint(seed_checkpoint["runner"])
     try:
         reason = runner.run(stop_at=endpoint, max_turns=20_000)
     except BaseException as exc:
@@ -125,7 +137,9 @@ def main() -> None:
                                                   "engine_error"})
         if agent_errors:
             print(f"note: {agent_errors} agent errors survived as lost turns")
-        if reason != "stop_at_reached":
+        if reason not in {"stop_at_reached", "world_stops"}:
+            # world_stops = 当日日界（多日弧线的半天/全天边界），同样是
+            # 设计内的完成。
             raise RuntimeError(f"real experiment stopped before endpoint: {reason}")
         trace.verify_complete(world, endpoint=endpoint.isoformat(), stop_event="world_stops", allow_lost_turns=True)
     except BaseException as exc:
