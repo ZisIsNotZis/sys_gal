@@ -15,7 +15,7 @@ from .engine import AsyncEngine
 from .seed import create_world, load_story_pack
 from .system import Ledger
 from .trace import Trace, new_run_id
-from .tuning import apply_idle_wait, effective_clock_stop, env_float, env_int
+from .tuning import apply_idle_wait, env_float, env_int
 from .world_loader import world_primer
 import traceback
 
@@ -67,7 +67,13 @@ def main() -> None:
     from .action_schema import TOOLS
     trace.record_tools([tool["function"]["name"] for tool in TOOLS])
     ledger = Ledger(pack.system.get("facts", {}), pack.system)
-    endpoint = effective_clock_stop(world, str(pack.manifest["clock"]["stop"]))
+    # 多日弧线 (ticket 25)：端点由 manifest 的 clock.stop 定义；world_stops
+    # 标记只由排程本身携带（当前排程的最后一个日界），不再为分段端点注入
+    # 合成标记——它会进入日志、被 actor 看见，并毒化后续检查点恢复。
+    endpoint = datetime.fromisoformat(str(pack.manifest["clock"]["stop"]))
+    arc_end = max(str(row["time"]) for row in pack.manifest["scheduled"]
+                  if row.get("event") == "world_stops")
+    endpoint_is_arc_end = endpoint.isoformat() == arc_end
     output = root / "runs" / f"{run_id}.json"
     checkpoint_output = root / "runs" / f"{run_id}.checkpoint.json"
     holder: dict = {}
@@ -144,7 +150,9 @@ def main() -> None:
             # world_stops = 当日日界（多日弧线的半天/全天边界），同样是
             # 设计内的完成。
             raise RuntimeError(f"real experiment stopped before endpoint: {reason}")
-        trace.verify_complete(world, endpoint=endpoint.isoformat(), stop_event="world_stops", allow_lost_turns=True)
+        trace.verify_complete(world, endpoint=endpoint.isoformat(),
+                              stop_event="world_stops" if endpoint_is_arc_end else None,
+                              allow_lost_turns=True)
     except BaseException as exc:
         # Reaching the clock endpoint is not a healthy run if any character
         # failed. Persist a failed outcome instead of mislabeling the trace.

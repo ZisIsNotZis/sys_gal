@@ -97,12 +97,16 @@ class Trace:
                                   "provider_code": getattr(error, "provider_code", None),
                                   "attempts": getattr(error, "attempts", None)}}
 
-    def verify_complete(self, world: World, *, endpoint: str, stop_event: str,
+    def verify_complete(self, world: World, *, endpoint: str,
+                        stop_event: str | None = "world_stops",
                         from_turn: int = 0, allow_lost_turns: bool = False) -> None:
         if world.now.isoformat() != endpoint:
             raise ValueError("trajectory did not reach the requested endpoint")
-        if not any(e.kind == "world_event" and e.payload.get("event") == stop_event
-                   for e in world.event_log):
+        # stop_event=None：半天检查点段（多日弧线的内部边界）没有也不需要
+        # world_stops 事件——只校验到达端点。
+        if stop_event is not None and not any(
+                e.kind == "world_event" and e.payload.get("event") == stop_event
+                for e in world.event_log):
             raise ValueError(f"trajectory lacks required stop event: {stop_event}")
         if not allow_lost_turns:
             self.verify_no_agent_errors(from_turn=from_turn)
