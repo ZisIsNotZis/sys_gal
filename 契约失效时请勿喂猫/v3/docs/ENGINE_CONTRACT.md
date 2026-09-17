@@ -112,3 +112,10 @@ visibility follows exactly the listed actors. This lets the world announce
 meetings or reopenings to the people they concern without leaking to everyone.
 The loader rejects effects that reference unknown locations, items, or
 documents before a run starts.
+
+## Ideal interaction design (planned, not implemented)
+
+The next-version design (immersive narration, location-wide visibility,
+interrupt semantics, social economy, session segments, minimal interfaces) now
+lives in `../v4/docs/V4-DESIGN.md`. Nothing there is implemented; this contract
+describes current behavior.

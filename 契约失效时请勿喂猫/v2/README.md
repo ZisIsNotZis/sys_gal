@@ -1,18 +1,12 @@
 # 《契约失效时请勿喂猫》v2
 
-v2 is an emergent romance-component story simulation. It is not yet a
-galgame and does not project a novel while running.
+v2 is an emergent romance-component story simulation. It is not yet a galgame and does not project a novel while running.
 
-The run consists of an objective world, a bound System, and independent
-character agents. A later authoring stage may turn a selected trajectory into
-prose. A later game-design stage may sample trajectories and discover useful
-player actions.
+The run consists of an objective world, a bound System, and independent character agents. A later authoring stage may turn a selected trajectory into prose. A later game-design stage may sample trajectories and discover useful player actions.
 
 ## Non-goals
 
-The engine has no romance score, affection score, hate score, plot chapter,
-scene label, protagonist privilege, route, scripted resolution, or narrative
-quality claim. It does not know whether an event is romantic or funny.
+The engine has no romance score, affection score, hate score, plot chapter, scene label, protagonist privilege, route, scripted resolution, or narrative quality claim. It does not know whether an event is romantic or funny.
 
 ## Causal seam
 

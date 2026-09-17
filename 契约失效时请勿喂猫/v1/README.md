@@ -35,11 +35,4 @@ The Ledger offers contracts rather than commands. It rewards precisely defined v
 
 The playable seed begins on **2026-03-16 at 07:00**, ten days before the planned community fair. The initial implementation provides an event log, immutable-ish world snapshots, event-driven time, typed intentions, deterministic affordance generation, private perception packets, visibility/audibility checks, and the Ledger's initial case data.
 
-The deterministic cast runner now exercises nine independent participants:
-Chen, Gao, Lin, He Qian, Luo, Qiao, Xu, Amani, and a non-speaking stray cat.
-The intended complete v1 arc runs from 2026-03-16 07:00 through the fair's
-close on 2026-03-27 21:30, records private agent trajectories and the
-authoritative world log, and terminates only after every major participant has
-an explicit outcome. The current policy agents are a
-cheap reproducible harness stand-in; model-backed agents and constrained
-semantic adjudication remain later work.
+The deterministic cast runner now exercises nine independent participants: Chen, Gao, Lin, He Qian, Luo, Qiao, Xu, Amani, and a non-speaking stray cat. The intended complete v1 arc runs from 2026-03-16 07:00 through the fair's close on 2026-03-27 21:30, records private agent trajectories and the authoritative world log, and terminates only after every major participant has an explicit outcome. The current policy agents are a cheap reproducible harness stand-in; model-backed agents and constrained semantic adjudication remain later work.
