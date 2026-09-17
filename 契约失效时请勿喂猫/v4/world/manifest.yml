@@ -16,7 +16,7 @@ system:
     当前记录的期限是什么？: 学生会审计核对，2026-03-16T16:00:00+08:00
 clock:
   start: '2026-03-16T07:00:00+08:00'
-  stop: '2026-03-16T22:00:00+08:00'
+  stop: '2026-03-27T21:30:00+08:00'
 engine:
   idle_wait_seconds: 900
 locations:
@@ -637,8 +637,36 @@ scheduled:
   time: '2026-03-16T21:30:00+08:00'
   target: 唐小岚
   notice: 打烊前最后一小时。椅子倒扣上桌之前，是盘点今天听来的东西的时候。
-- event: world_stops
+- event: day_boundary
   time: '2026-03-16T22:00:00+08:00'
+- event: cat_mischief
+  time: '2026-03-17T07:20:00+08:00'
+  target: [陈默, 林瑶, 唐小岚]
+  notice: 那只[[三花流浪猫]]又出现了。它叼着一件亮晶晶的小东西从墙头掠过，落地时叮的一声——有人看清了，那像是一只旧哨套的搭扣。
+- event: admin_reply
+  time: '2026-03-17T09:30:00+08:00'
+  target: 陈默
+  notice: 教务处书面答复到达：经核，档案室当日值班确由你临时负责，现正式委托你为临时负责人，负责登记补录与材料清点，辅导员协办；原管理员因家事请假，返岗时间另行通知。
+- event: statement_receipt
+  time: '2026-03-17T10:00:00+08:00'
+  target: [林瑶, 唐小岚, 陈默]
+  notice: 辅导员在群里确认：三份个人情况说明已收齐并分别封存，今日向院系办公室正式报备。
+- event: mom_text_result
+  time: '2026-03-17T16:10:00+08:00'
+  target: 陈默
+  notice: 妈妈回信：'问到了。当年通知上的字不是你王爷爷本人签的——他那天手抖得厉害，是他儿子替他签的。老街坊们都知道这事，我以前竟没想起来。'
+- event: matchmaking_followup
+  time: '2026-03-17T19:30:00+08:00'
+  target: 陈默
+  notice: 妈妈又来电话，声音很随意：'对了，李阿姨说的那个姑娘，周六下午在[[半坡咖啡馆]]见面，你就去坐半小时，敷衍一下也行啊。'
+- event: library_evening
+  time: '2026-03-17T19:30:00+08:00'
+  target: 林瑶
+  notice: "[[图书馆]]晚自习区灯光亮起来。适合把无障碍方案的稿子最后过一遍。"
+- event: world_stops
+  time: '2026-03-17T22:00:00+08:00'
+  day: 2
+  notice: 第二天的观察到此为止。（当前排程到此为止；3/18 起的排程待补）
 kb:
   陈默:
   - keys: [陈默]
@@ -710,7 +738,7 @@ history:
   - time: "2013-03-16 21:35"
     kind: storm_intensifies
     actor: null
-    visible_to: [陈默, 林瑶]   # 台账半行目击：只有读过台账的人知道
+    visible_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 下棋大爷, 食堂大妈, 林瑶室友, 班长, 辅导员, 陈默妈]
     payload:
       detail: 台风雨骤然加剧，[[家属院]]低洼处开始积水，[[小学]]地下室地势更低。
   - time: "2013-03-16 21:40"
@@ -740,7 +768,7 @@ history:
   - time: "2013-03-16 22:20"
     kind: eye_witness
     actor: null
-    visible_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 下棋大爷, 食堂大妈, 林瑶室友, 班长, 辅导员, 陈默妈]
+    visible_to: [陈默, 林瑶]   # 台账末行的目击半句：只有读过台账原件的人知道
     payload:
       detail: 有人在台账末行匆匆记下一句目击：\"[[地下室]]外站着一个老人，手里……\"墨迹到此中断。
   - time: "2013-03-16 22:21"
@@ -772,7 +800,7 @@ history:
     actor: null
     visible_to: [陈默, 陈默妈, 下棋大爷]
     payload:
-      detail: 风后清点，[[家属院]]推举出一位老街坊代表，大家在[[邻里撤离通知书]]上签名确认撤离与互助事项。
+      detail: 风后清点，[[家属院]]推举出一位老街坊代表，大家在[[邻里撤离通知书]]上签名确认撤离与互助事项。经手人年事已高，签名是由他儿子代笔的——这一层，签名的潦草里看不出来。
 
 contacts: initial contact rows (V4-AGENT-INTERFACE T3). `of` is the formal
 # actor name, `as` lists this actor's private nicknames; each expands into one
@@ -1195,3 +1223,15 @@ concepts:
   name: 家属院
   kind: generic
   aliases: [地下室]
+- id: stray-cat
+  name: 三花流浪猫
+  kind: generic
+  aliases: [流浪猫, 猫]
+  known_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 食堂大妈, 林瑶室友, 下棋大爷]
+  desc: 宿舍区出没的一只三花流浪猫，不怕人，手快，对亮晶晶的小东西有执念。没人喂得熟它，也没人抓得住它。
+- id: whistle-case
+  name: 哨子旧哨套
+  kind: generic
+  aliases: [哨套]
+  known_to: [陈默]
+  desc: 一只磨白了边的红色帆布哨套，[[红色哨子]]原来的套子，丢了很多年。

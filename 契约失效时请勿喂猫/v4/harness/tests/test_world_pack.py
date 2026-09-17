@@ -77,7 +77,7 @@ class WorldPackTests(unittest.TestCase):
         self.assertEqual(world.document_defs["2013年台风台账"]["title"], "2013年台风台账")
         self.assertEqual(world.actors["陈默"].inventory,
                          {"2013年邻里撤离通知书"})
-        self.assertEqual(pack.manifest["clock"]["stop"], "2026-03-16T22:00:00+08:00")
+        self.assertEqual(pack.manifest["clock"]["stop"], "2026-03-27T21:30:00+08:00")
         # 内容层全中文，协议层 id 保持 ASCII（V4-DESIGN §0）。
         self.assertTrue(any("\u4e2d" in text or text for text in
                             [world.document_defs["2013年台风台账"]["content"]]))

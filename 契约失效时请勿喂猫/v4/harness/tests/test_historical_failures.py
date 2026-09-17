@@ -57,7 +57,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from harness.agent_state import PrivateState
-from harness.engine import AsyncEngine
+from harness.engine import TICK_SECONDS, AsyncEngine
 from harness.kernel import Intention, World
 from harness.runner import AgentFn, Runner
 from harness.seed import load_story_pack
@@ -103,11 +103,17 @@ class HistoricalFailureGates(unittest.TestCase):
         world = pack.build_world()
         states = {actor: PrivateState(actor) for actor in world.actors}
         ledger = Ledger(pack.system.get("facts", {}), pack.system)
-        endpoint = str(pack.manifest["clock"]["stop"])
+        endpoint = max(str(e["time"]) for e in pack.manifest["scheduled"]
+                       if e["event"] == "world_stops")   # 多日弧线：最后一个日界
         trace = Trace("v3-test", "historical-gate-endpoint")
+        # v3 Runner 没有 world_stops 早停：排干到终点即证明
+        # （verify_complete 校验终点时刻与 stop 事件存在）。
         reason = Runner(world, _lean_wait_agents(world), states, trace, ledger).run(
             stop_at=datetime.fromisoformat(endpoint), max_turns=100_000)
-        self.assertEqual(reason, "stop_at_reached")
+        # 排干原因随 tick 对齐在 queue_drained / stop_at_reached 间摆动，
+        # 两者同为"排程排干到日界"的证明。
+        self.assertIn(reason, {"queue_drained", "stop_at_reached"})
+        self.assertEqual(world.now.isoformat(), endpoint)
         trace.verify_complete(world, endpoint=endpoint, stop_event="world_stops")
         trace.verify_no_agent_errors()
         self.assertEqual(world.now.isoformat(), endpoint)
@@ -119,11 +125,14 @@ class HistoricalFailureGates(unittest.TestCase):
         world = pack.build_world()
         states = {actor: PrivateState(actor) for actor in world.actors}
         ledger = Ledger(pack.system.get("facts", {}), pack.system)
-        endpoint = str(pack.manifest["clock"]["stop"])
+        endpoint = max(str(e["time"]) for e in pack.manifest["scheduled"]
+                       if e["event"] == "world_stops")   # 多日弧线：最后一个日界
         trace = Trace("v4-test", "historical-gate-endpoint-async")
         engine = AsyncEngine(world, _lean_wait_agents(world), states, trace, ledger)
-        reason = engine.run(stop_at=datetime.fromisoformat(endpoint), max_turns=100_000)
-        self.assertEqual(reason, "stop_at_reached")
+        reason = engine.run(stop_at=datetime.fromisoformat(endpoint)
+                            + timedelta(seconds=TICK_SECONDS + 1), max_turns=100_000)
+        self.assertEqual(reason, "world_stops")
+        self.assertEqual(world.now.isoformat(), endpoint)
         trace.verify_complete(world, endpoint=endpoint, stop_event="world_stops")
         trace.verify_no_agent_errors()
         self.assertEqual(world.now.isoformat(), endpoint)
