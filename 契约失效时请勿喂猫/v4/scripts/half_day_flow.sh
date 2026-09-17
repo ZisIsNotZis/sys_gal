@@ -9,6 +9,9 @@ export OPENAI_API_KEY=sk-noauth
 export V3_PROVIDER_TIMEOUT=120 V3_PROVIDER_RETRIES=4
 export V3_PROVIDER_MAX_RETRIES=4 V3_PROVIDER_MAX_DURATION=420
 export V3_PROVIDER_CONCURRENCY=8
+# 地平线设计下，等待最慢的思考者是常态而非停摆：stall 预算放宽到 60%。
+# 真死锁由 provider 单调用上限 (V3_PROVIDER_MAX_DURATION) 与总墙钟兜底。
+export V4_STALL_BUDGET_RATIO=0.60
 mkdir -p checkpoints
 
 segment() {
