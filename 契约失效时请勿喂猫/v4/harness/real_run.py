@@ -15,6 +15,7 @@ from .engine import AsyncEngine
 from .seed import create_world, load_story_pack
 from .system import Ledger
 from .trace import Trace, new_run_id
+from datetime import datetime
 from .tuning import apply_idle_wait, env_float, env_int
 from .world_loader import world_primer
 import traceback
