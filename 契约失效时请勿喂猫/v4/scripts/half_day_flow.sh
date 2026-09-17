@@ -34,8 +34,11 @@ segment() {
   artifact=$(ls -t runs/real-*.json 2>/dev/null | grep -v checkpoint | head -1)
   echo "[$name] checkpoint -> checkpoints/$name.json ; artifact -> $artifact"
   if [ -n "$artifact" ]; then
-    python3 scripts/check_milestones.py "$artifact" --half "$name" \
-      || echo "[$name] 检查器有 FAIL —— 停：调种子后从 checkpoints/$name 前一个好点重跑"
+    # 检查器 FAIL = 里程碑未达成：必须停下调种子，不得带病续跑。
+    if ! python3 scripts/check_milestones.py "$artifact" --half "$name"; then
+      echo "[$name] 检查器 FAIL —— 调种子后从上一个好检查点重跑"
+      exit 3
+    fi
   fi
 }
 

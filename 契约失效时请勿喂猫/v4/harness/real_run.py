@@ -110,8 +110,11 @@ def main() -> None:
         seed_checkpoint = load_checkpoint(Path(resume_source))
         if "trace" in seed_checkpoint:
             trace.restore_from_snapshot(seed_checkpoint["trace"])
+        # 世界与运行器状态同样必须从检查点恢复——否则会从种子静默重跑。
+        world.restore_checkpoint(seed_checkpoint["world"])
+        runner.restore_checkpoint(seed_checkpoint["runner"])
         print(f"[real_run] resuming from {resume_source} "
-              f"(world now: {seed_checkpoint['world'].get('now', '?')})")
+              f"(world now: {world.now.isoformat()})")
     else:
         seed_checkpoint = build_initial_checkpoint(runner, pack, run_id, root=root)
         seed_checkpoint_path = root / "runs" / f"{run_id}.seed-checkpoint.json"
