@@ -163,6 +163,7 @@ class AsyncEngine:
         self._wall_started = time.monotonic()
         self._stall_seconds = 0.0
         self._world_stops_seen = False
+        self._stops_latch_floor: datetime | None = None
         tasks = [loop.create_task(self._actor_loop(actor))
                  for actor in self._persistent_actors()]
         # Bootstrap: MCs take a first turn at world start (old runner round-1
@@ -378,7 +379,8 @@ class AsyncEngine:
             if event.kind == "message_delivered":
                 self._repetition.note_message_received(
                     str(event.payload.get("target")), event.actor or "")
-            if event.kind == "world_event" and event.payload.get("event") == "world_stops":
+            if (event.kind == "world_event" and event.payload.get("event") == "world_stops"
+                    and (self._stops_latch_floor is None or event.time > self._stops_latch_floor)):
                 self._world_stops_seen = True
             # An NPC whose (non-wait) action completed gets a follow-up turn
             # within the same wake (V4-CAST §1: 1~N actions per wake); a
@@ -1381,6 +1383,10 @@ class AsyncEngine:
         self._operational_facts = {actor: [dict(x) for x in facts]
                                    for actor, facts in state.get("operational_facts", {}).items()}
         self.stop_reason = None
+        # 已触发过的 world_stops 属于已消费的弧线历史：恢复后只对晚于
+        # 恢复时刻的 world_stops 事件置闩（跨检查点续跑不重复停机）。
+        self._world_stops_seen = False
+        self._stops_latch_floor = self.world.now
         self._rejection_sequence = _as_int(state.get("rejection_sequence", 0), "rejection_sequence")
         self._turns = _as_int(state.get("turn_sequence", 0), "turn_sequence")
         self._repetition.restore(state.get("repetition", {}))
