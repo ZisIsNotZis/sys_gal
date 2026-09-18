@@ -455,10 +455,12 @@ def _d5_audit_coop_link(ev, turns, sess):
 
 def _d6_xiangqin_attended(ev, turns, sess):
     lines = _day_texts(ev, 6)
-    n, _ = _mentioning(lines, "相亲")
-    chen = [(t, x) for t, a, x in lines if a == "陈默" and ("相亲" in x or "咖啡馆" in x or "姑娘" in x)]
-    ok = n >= 2 and len(chen) >= 1
-    evd = f"相亲提及 {n} 次；陈默侧 {len(chen)} 条"
+    # 路线网：相亲压力可见地落在陈默身上即可——赴约、推掉、或向妈妈/林瑶
+    # 表态"可能不合适"都算（用户裁定 2026-09-18：网，不是单线）。
+    chen = [(t, x) for t, a, x in lines if a == "陈默"
+            and ("相亲" in x or "咖啡馆" in x or "姑娘" in x or "合适" in x)]
+    ok = len(chen) >= 1
+    evd = f"陈默对相亲/姑娘/合适的表态 {len(chen)} 条"
     return ok, evd
 
 

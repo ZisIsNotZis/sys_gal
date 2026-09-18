@@ -582,6 +582,33 @@ class World:
             *({"kind": "move", "target": target}
               for (source, target), duration in self.routes.items() if source == a.location),
         ]
+        # 路线提示（issue 26 诊断 2026-09-21）：affordances 只列一跳目的地，
+        # 模型不知道多数地点可经多跳 move 到达（如经中庭去半坡咖啡馆）——
+        # 谨慎人格于是原地等待。附加"目的地 · 经首跳 · 总时长"完整清单。
+        import heapq as _hq
+        first_hop: dict[str, tuple[str, int]] = {}
+        for (source, target), duration in self.routes.items():
+            if source == a.location:
+                first_hop.setdefault(target, (target, duration))
+        best: dict[str, tuple[str, int]] = {}
+        visited = {a.location}
+        queue = [(_d, _t, _v) for _t, (_v, _d) in first_hop.items()]
+        _hq.heapify(queue)
+        while queue:
+            cost, loc, via = _hq.heappop(queue)
+            if loc in visited:
+                continue
+            visited.add(loc)
+            best[loc] = (via, cost)
+            for (s2, t2), d2 in self.routes.items():
+                if s2 == loc and t2 not in visited:
+                    _hq.heappush(queue, (cost + d2, t2, via))
+        hints = [{"target": loc, "via": via, "minutes": round(cost / 60)}
+                 for loc, (via, cost) in sorted(best.items()) if loc not in first_hop]
+        if hints:
+            options.append({"kind": "route_hints",
+                            "note": "非相邻目的地也可经多跳 move 到达",
+                            "routes": hints})
         options += [{"kind": "take", "item": item} for item, loc in self.item_locations.items() if loc == a.location]
         options += [{"kind": "knock", "target": location.id} for location in self.locations.values()
                     if not location.open and (a.location, location.id) in self.routes]
