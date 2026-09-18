@@ -80,3 +80,11 @@ Status: done (1aa999b; business review PASS by independent subagent)
   渲染函数/引擎行为，由 meta.git_hash 标注）
 - history_log 独立日志（负 id）：导演/演员视角零损失
 - 微调已应用：eye_witness 可见性 10 人 → [陈默, 林瑶]；`# #` 注释残留清理
+
+## Day-3 续跑（resume schedule-merge 首战）
+- merge 实现生效：3/18 四节拍全部触发（quest_washer 08:30 / admin_resolution
+  09:40 / mom_son_visit 14:20 / matchmaking_reply 17:00）。
+- 637 轮、15 错误、0 HTTP、0 泄漏；里程碑 4 项中 2 PASS（并肩核查✓ 相亲埋线✓），
+  2 未达（抄件压力、登记本下落——当天剧本未推进到，路线网下记"未走到"）。
+- 待查：outcome=None，19:31 后停止原因（疑似 merge 排程与 world_stops 22:00
+  的处理顺序问题）——下轮诊断。

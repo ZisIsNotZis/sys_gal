@@ -122,6 +122,28 @@ def main() -> None:
         runner.restore_checkpoint(seed_checkpoint["runner"])
         print(f"[real_run] resuming from {resume_source} "
               f"(world now: {world.now.isoformat()})")
+        # Ticket 26: 检查点快照时的队列不含之后新写的排程——把 manifest 里
+        # 晚于恢复时刻、且尚未触发/未排队的节拍合并进来。镜像 kernel 的
+        # 调度方式：整行作为 payload、单任务。
+        merged = 0
+        fired = {(str(e.time)[:10], str(e.payload.get("event", "")))
+                 for e in world.event_log if e.kind == "world_event"}
+        queued = {(j.time.isoformat()[:16], str((j.payload or {}).get("event", "")))
+                  for j in world._queue if j.kind == "world_event"}
+        for row in pack.manifest.get("scheduled", ()) or ():
+            when = datetime.fromisoformat(str(row["time"]))
+            if when <= world.now:
+                continue
+            name = str(row.get("event", ""))
+            if (str(row["time"])[:16], name) in queued:
+                continue
+            if (str(row["time"])[:10], name) in fired:
+                continue
+            world._schedule(when, str(row.get("kind", "world_event")),
+                            None, dict(row), None)
+            merged += 1
+        if merged:
+            print(f"[real_run] schedule merge: +{merged} manifest beat(s) after resume")
     else:
         seed_checkpoint = build_initial_checkpoint(runner, pack, run_id, root=root)
         seed_checkpoint_path = root / "runs" / f"{run_id}.seed-checkpoint.json"
