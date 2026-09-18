@@ -328,6 +328,62 @@ def _d4_chen_confession(ev, turns, sess):
     return ok, evd
 
 
+def _d4_ledger_found(ev, turns, sess):
+    lines = _day_texts(ev, 4)
+    n, hits = _mentioning(lines, "登记本")
+    miss_n, _ = _mentioning(lines, "缺")
+    ok = n >= 2 and miss_n >= 1
+    evd = f"'登记本'提及 {n} 次，缺页提及 {miss_n} 次（{hits[0][0] if hits else '-'}）"
+    return ok, evd
+
+
+def _d4_photocopy_statement(ev, turns, sess):
+    lines = _day_texts(ev, 4)
+    who = {a for t, a, x in lines if "抄件" in x or "书面说明" in x}
+    lin_n, hits = _mentioning([(t, a, x) for t, a, x in lines if a == "林瑶"],
+                              "书面说明", "抄件", all_of=False)
+    ok = lin_n >= 1 and "林瑶" in who
+    evd = f"抄件/书面说明提及者：{'、'.join(sorted(who)) or '无'}；林瑶侧 {lin_n} 条"
+    return ok, evd
+
+
+def _d4_mom_stand(ev, turns, sess):
+    lines = _day_texts(ev, 4)
+    mom_n, _ = _mentioning(lines, "讨说法", "闲事", all_of=False)
+    chen = [(t, x) for t, a, x in lines if a == "陈默" and ("妈妈" in x or "说法" in x)]
+    ok = mom_n >= 1 and len(chen) >= 1
+    evd = f"讨说法/闲事提及 {mom_n} 条；陈默回应 {len(chen)} 条"
+    return ok, evd
+
+
+def _d4_matchmaking_spread(ev, turns, sess):
+    lines = _day_texts(ev, 4)
+    n, hits = _mentioning(lines, "相亲")
+    lin = [(t, x) for t, a, x in lines if a == "林瑶" and "相亲" in x]
+    ok = n >= 1 and len(lin) >= 1
+    evd = f"相亲提及 {n} 次；林瑶侧 {len(lin)} 条（{hits[0][0] if hits else '-'}）"
+    return ok, evd
+
+
+def _d4_cat_keepsake(ev, turns, sess):
+    lines = _day_texts(ev, 4)
+    n, _ = _mentioning(lines, "哨套")
+    cat_n, _ = _mentioning(lines, "猫")
+    ok = n >= 1 and cat_n >= 1
+    evd = f"'哨套'提及 {n} 次，'猫'提及 {cat_n} 次"
+    return ok, evd
+
+
+def _d4_rooftop_future(ev, turns, sess):
+    talks = [(t, a, x) for t, a, x in _day_texts(ev, 4)
+             if a in ("陈默", "林瑶") and "以后" in x]
+    pair = [(t, a, x) for t, a, x in _day_texts(ev, 4)
+            if a == "陈默" and "林瑶" in x and ("以后" in x or "周六" in x or "周末" in x)]
+    ok = len(talks) >= 1 or len(pair) >= 1
+    evd = f"'以后'发言 {len(talks)} 条；陈默对林瑶的未来向发言 {len(pair)} 条"
+    return ok, evd
+
+
 # ---------------------------------------------------------------- day 5
 def _d5_pumps_confirmed(ev, turns, sess):
     lines = _day_texts(ev, 5)
@@ -553,9 +609,14 @@ MILESTONES = {
         _mk_check("d3-登记本下落", "借阅登记本的下落被追踪", _d3_register_trail, half="pm"),
     ],
     4: [
-        _mk_check("d4-老赵头钩子", "老赵头被点名（大爷的钩子激活）", _d4_laozhaotou_hook, half="am"),
-        _mk_check("d4-林瑶走老路线", "林瑶亲赴老路线地点", _d4_old_route_walk, half="am"),
-        _mk_check("d4-陈默坦白窗口", "陈默的当年/对不起发言出现", _d4_chen_confession, half="pm"),
+        _mk_check("d4-登记本下落", "借阅登记本被找到且缺页被提及", _d4_ledger_found, half="am"),
+        _mk_check("d4-抄件书面说明", "林瑶面对抄件来源的书面说明压力", _d4_photocopy_statement, half="am"),
+        _mk_check("d4-妈妈线升温", "讨说法压力出现且陈默不再立刻顺从", _d4_mom_stand, half="pm"),
+        _mk_check("d4-相亲消息扩散", "相亲消息传到林瑶并被正面提及（阻力线）", _d4_matchmaking_spread, half="pm"),
+        _mk_check("d4-猫哨套相认", "三花猫/哨套被认领线索提及（猫线×哨子线）", _d4_cat_keepsake, half="pm"),
+        _mk_check("d4-天台以后", "任务以外的'以后'对话出现（恋爱轴）", _d4_rooftop_future, half="pm"),
+        _mk_check("d4-老赵头钩子", "老赵头被点名（大爷钩子，可跨日）", _d4_laozhaotou_hook, half="am"),
+        _mk_check("d4-林瑶走老路线", "林瑶亲赴老路线地点（可跨日）", _d4_old_route_walk, half="am"),
     ],
     5: [
         _mk_check("d5-抽水泵去向", "抽水泵→小学 被证实", _d5_pumps_confirmed, half="am"),
@@ -602,6 +663,16 @@ ROUTES = {
         "routes": [],   # 管理员答复滚入 day-3 锚点（排程未接住时的余量设计）
         "flavor": ["d2-管理员正式答复"],
     },
+    3: {
+        "anchors": ["d3-并肩核查", "d3-相亲埋线"],
+        "routes": [],
+        "flavor": ["d3-抄件压力", "d3-登记本下落"],  # 两者滚入 day-4 锚点（ledger_found/photocopy_statement）
+    },
+    4: {
+        "anchors": ["d4-登记本下落", "d4-抄件书面说明", "d4-猫哨套相认", "d4-天台以后"],
+        "routes": [],
+        "flavor": ["d4-妈妈线升温", "d4-相亲消息扩散", "d4-老赵头钩子", "d4-林瑶走老路线"],
+    },
 }
 # d1-妈妈线：复用 d2-妈妈打听结果（可跨日达成）——锚点在线程闭环。
 ROUTES[1]["anchors"][4] = "d2-妈妈打听结果"
@@ -617,8 +688,10 @@ REVIEWS = {
     3: {"am": ["并肩核查的默契程度"],
         "pm": ["喜剧质量：室友起哄/相亲埋线的尴尬喜剧",
                "恋爱阻力：相亲压力下陈默的反应是否真实"]},
-    4: {"am": ["老赵头钩子的讲古质量（大爷分寸线：传说不是证词）"],
-        "pm": ["恋爱温度：陈默坦白窗口的措辞"]},
+    4: {"am": ["登记本缺页悬念的分寸（新钩子是否自然）",
+               "林瑶面对书面说明压力的程序感与内心戏"],
+        "pm": ["恋爱温度：天台'以后'对话的分寸与心跳感",
+               "喜剧质量：洗衣房相亲闲话与猫的抢戏"]},
     5: {"am": ["抽水泵证实的揭示节奏"],
         "pm": ["喜剧质量：大雨/室内窘迫喜剧；相亲逼问的张力"]},
     6: {"am": ["筹备聚集的群像感"],
