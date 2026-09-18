@@ -384,6 +384,49 @@ def _d4_rooftop_future(ev, turns, sess):
     return ok, evd
 
 
+def _d5_admin_return(ev, turns, sess):
+    lines = _day_texts(ev, 5)
+    n, hits = _mentioning(lines, "移交", "返岗", all_of=False)
+    ok = n >= 1
+    evd = f"返岗/移交提及 {n} 次（{hits[0][0] if hits else '-'}）"
+    return ok, evd
+
+
+def _d5_son_pressure(ev, turns, sess):
+    lines = _day_texts(ev, 5)
+    n, _ = _mentioning(lines, "说法", "旧账", all_of=False)
+    chen = [(t, x) for t, a, x in lines if a == "陈默" and ("妈妈" in x or "说法" in x or "王爷爷" in x)]
+    ok = n >= 1 and len(chen) >= 1
+    evd = f"讨说法/旧账提及 {n} 次；陈默回应 {len(chen)} 条"
+    return ok, evd
+
+
+def _d5_memorial_prep(ev, turns, sess):
+    lines = _day_texts(ev, 5)
+    lin = [(t, x) for t, a, x in lines if a == "林瑶" and ("纪念" in x or "筹备" in x)]
+    pair = [(t, a, x) for t, a, x in lines if a == "陈默" and ("照片" in x or "纪念" in x)]
+    ok = len(lin) >= 1 and len(pair) >= 1
+    evd = f"林瑶筹备侧 {len(lin)} 条；陈默侧 {len(pair)} 条"
+    return ok, evd
+
+
+def _d5_xiangqin_eve(ev, turns, sess):
+    lines = _day_texts(ev, 5)
+    n, _ = _mentioning(lines, "相亲")
+    ok = n >= 1
+    evd = f"相亲提及 {n} 次"
+    return ok, evd
+
+
+def _d5_cat_photo(ev, turns, sess):
+    lines = _day_texts(ev, 5)
+    n, _ = _mentioning(lines, "照片")
+    cat_n, _ = _mentioning(lines, "猫")
+    ok = n >= 1 and cat_n >= 1
+    evd = f"'照片'提及 {n} 次，'猫'提及 {cat_n} 次"
+    return ok, evd
+
+
 # ---------------------------------------------------------------- day 5
 def _d5_pumps_confirmed(ev, turns, sess):
     lines = _day_texts(ev, 5)
@@ -619,10 +662,14 @@ MILESTONES = {
         _mk_check("d4-林瑶走老路线", "林瑶亲赴老路线地点（可跨日）", _d4_old_route_walk, half="am"),
     ],
     5: [
-        _mk_check("d5-抽水泵去向", "抽水泵→小学 被证实", _d5_pumps_confirmed, half="am"),
-        _mk_check("d5-23:30追责", "23:30 改动追责讨论", _d5_who_altered, half="am"),
-        _mk_check("d5-审计合作社线", "发票/合作社 线索与审计合流", _d5_audit_coop_link, half="pm"),
-        _mk_check("d5-相亲逼问", "相亲压力逼问/正面提及（阻力线）", _d5_romance_xiangqin_press, half="pm"),
+        _mk_check("d5-管理员返岗", "管理员 W 返岗与移交清单线被提及", _d5_admin_return, half="am"),
+        _mk_check("d5-讨说法落地", "王爷爷儿子一方的压力落地且陈默回应", _d5_son_pressure, half="am"),
+        _mk_check("d5-纪念筹备合流", "林瑶筹备物料与陈默在档案室对流程", _d5_memorial_prep, half="pm"),
+        _mk_check("d5-相亲前夜", "相亲压力在周五被正面提及（阻力/喜剧线）", _d5_xiangqin_eve, half="pm"),
+        _mk_check("d5-猫照片边角", "猫叼来照片边角（哨子线推进）", _d5_cat_photo, half="pm"),
+        _mk_check("d5-抽水泵去向", "抽水泵→小学 被证实（可跨日）", _d5_pumps_confirmed, half="am"),
+        _mk_check("d5-23:30追责", "23:30 改动追责讨论（可跨日）", _d5_who_altered, half="am"),
+        _mk_check("d5-审计合作社线", "发票/合作社 线索与审计合流（可跨日）", _d5_audit_coop_link, half="pm"),
     ],
     6: [
         _mk_check("d6-筹备聚集", "纪念活动筹备在中庭聚集 ≥3 人", _d6_prep_gathering, half="am"),
@@ -673,6 +720,11 @@ ROUTES = {
         "routes": [],
         "flavor": ["d4-妈妈线升温", "d4-相亲消息扩散", "d4-老赵头钩子", "d4-林瑶走老路线"],
     },
+    5: {
+        "anchors": ["d5-管理员返岗", "d5-讨说法落地", "d5-纪念筹备合流"],
+        "routes": [],
+        "flavor": ["d5-相亲前夜", "d5-猫照片边角", "d5-抽水泵去向", "d5-23:30追责", "d5-审计合作社线"],
+    },
 }
 # d1-妈妈线：复用 d2-妈妈打听结果（可跨日达成）——锚点在线程闭环。
 ROUTES[1]["anchors"][4] = "d2-妈妈打听结果"
@@ -692,8 +744,8 @@ REVIEWS = {
                "林瑶面对书面说明压力的程序感与内心戏"],
         "pm": ["恋爱温度：天台'以后'对话的分寸与心跳感",
                "喜剧质量：洗衣房相亲闲话与猫的抢戏"]},
-    5: {"am": ["抽水泵证实的揭示节奏"],
-        "pm": ["喜剧质量：大雨/室内窘迫喜剧；相亲逼问的张力"]},
+    5: {"am": ["管理员 W 的分寸：含糊其辞还是真不知情"],
+        "pm": ["喜剧质量：相亲前夜出主意的尴尬喜剧；猫叼照片的悬念节奏"]},
     6: {"am": ["筹备聚集的群像感"],
         "pm": ["恋爱核心节拍：'那句完整的话'的措辞与时机（本弧最重要 romance 审阅）",
                "喜剧质量：小岚抉择前夜的自我调侃"]},
