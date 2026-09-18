@@ -163,7 +163,9 @@ class AsyncEngine:
         self._wall_started = time.monotonic()
         self._stall_seconds = 0.0
         self._world_stops_seen = False
-        self._stops_latch_floor: datetime | None = None
+        # world_stops 闩锁地板（issue 26）：检查点日志里已消费的历史标记
+        # （时刻 <= 本轮起点）不再触发停机；只有未来的日界标记才置闩。
+        self._stops_latch_floor: datetime = self.world.now
         tasks = [loop.create_task(self._actor_loop(actor))
                  for actor in self._persistent_actors()]
         # Bootstrap: MCs take a first turn at world start (old runner round-1
@@ -1386,7 +1388,6 @@ class AsyncEngine:
         # 已触发过的 world_stops 属于已消费的弧线历史：恢复后只对晚于
         # 恢复时刻的 world_stops 事件置闩（跨检查点续跑不重复停机）。
         self._world_stops_seen = False
-        self._stops_latch_floor = self.world.now
         self._rejection_sequence = _as_int(state.get("rejection_sequence", 0), "rejection_sequence")
         self._turns = _as_int(state.get("turn_sequence", 0), "turn_sequence")
         self._repetition.restore(state.get("repetition", {}))
