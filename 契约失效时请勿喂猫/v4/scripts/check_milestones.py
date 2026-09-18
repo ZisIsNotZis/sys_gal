@@ -154,6 +154,51 @@ def _d1_note_procedure(ev, turns, sess):
     return ok, evd
 
 
+def _d1_mutual_verification(ev, turns, sess):
+    """现场互证程序路线（ticket 26）：陈默与林瑶在档案室相互核证（双向、
+    多条、围绕登记本/台账/核对），并出现边界/留痕表述（不补写、按原样、
+    边界清单）。这是"短信升级辅导员"之外的另一条有效路线。"""
+    lines = _day_texts(ev, 1)
+    chen = [(t, a, x) for t, a, x in lines if a == "陈默"
+            and any(w in x for w in ("登记本", "台账", "导出件", "核对", "抽屉"))]
+    lin = [(t, a, x) for t, a, x in lines if a == "林瑶"
+           and any(w in x for w in ("登记本", "台账", "导出件", "核对", "抽屉"))]
+    boundary = any(a in ("陈默", "林瑶")
+                   and any(w in x for w in ("边界", "原样", "不补写", "留痕"))
+                   for t, a, x in lines)
+    ok = len(chen) >= 2 and len(lin) >= 2 and boundary
+    evd = (f"陈默核证发言 {len(chen)} 条；林瑶核证发言 {len(lin)} 条；"
+           f"边界/留痕表述：{'有' if boundary else '无'}")
+    return ok, evd
+
+
+def _d1_romance_presence(ev, turns, sess):
+    """恋爱并肩（day-1 节拍，恋爱轴锚点）：陈默与林瑶当面双向对话。"""
+    n = {"陈默": 0, "林瑶": 0}
+    for e in _day_events(ev, 1):
+        if e.get("kind") == "speech" and e.get("actor") in n:
+            other = "林瑶" if e["actor"] == "陈默" else "陈默"
+            if other in (e.get("payload") or {}).get("heard", []) or                other in (e.get("payload") or {}).get("to", []) or []:
+                n[e["actor"]] += 1
+    ok = n["陈默"] >= 1 and n["林瑶"] >= 1 and (n["陈默"] + n["林瑶"]) >= 3
+    evd = f"陈默→林瑶 {n['陈默']} 条；林瑶→陈默 {n['林瑶']} 条（当面双向）"
+    return ok, evd
+
+
+def _d1_mom_thread(ev, turns, sess):
+    """妈妈线进展（锚点，可跨日）：陈默↔妈妈任一方向的联系，或妈妈线
+    发言提及（等待/打听/回信）。"""
+    msgs = [e for e in _day_events(ev, 1)
+            if e.get("kind") in ("message_sent", "message_delivered")
+            and "陈默妈" in (str(e.get("payload", {}).get("target", ""))
+                             + str(e.get("actor", "")))]
+    mentions = [(t, a, x) for t, a, x in _day_texts(ev, 1)
+                if a == "陈默" and "妈妈" in x]
+    ok = bool(msgs) or len(mentions) >= 1
+    evd = f"短信往来 {len(msgs)}；陈默的妈妈线发言 {len(mentions)} 条"
+    return ok, evd
+
+
 def _d1_anniversary_discussed(ev, turns, sess):
     notice = any((e.get("payload") or {}).get("event") == "typhoon_anniversary_notice"
                  for e in _day_events(ev, 1))
@@ -487,6 +532,8 @@ MILESTONES = {
         _mk_check("d1-辅导员介入", "辅导员 ≥5 条发言并出现程序纪律语句", _d1_counselor_intervention, half="pm"),
         _mk_check("d1-三份个人说明", "≥3 角色提交个人情况说明", _d1_three_statements, half="pm"),
         _mk_check("d1-字条留痕程序", "临时字条被读取且编号被提及", _d1_note_procedure, half="pm"),
+        _mk_check("d1-现场互证", "陈默与林瑶相互核证 + 边界/留痕表述（现场互证路线）", _d1_mutual_verification, half="pm"),
+        _mk_check("d1-恋爱并肩", "陈默与林瑶当面双向对话（恋爱轴 day-1 节拍）", _d1_romance_presence, half="am"),
         _mk_check("d1-纪念活动通知", "台风纪念活动通知播发并被讨论", _d1_anniversary_discussed, half="pm"),
         _mk_check("d1-老周托话", "食堂大妈转达老周托话且林瑶确认", _d1_laozhou_relay, half="pm"),
         _mk_check("d1-妈妈承诺", "陈默妈承诺回老家属院打听（问不到就说问不到）", _d1_mom_promise, half="pm"),
@@ -496,7 +543,7 @@ MILESTONES = {
     2: [
         _mk_check("d2-审计说明提交", "审计书面说明按时提交", _d2_audit_statement_filed, half="am"),
         _mk_check("d2-恋爱私人对话", "陈默与林瑶第一次非任务私人对话（galgame轴）", _d2_romance_private_talk, half="pm"),
-        _mk_check("d2-管理员正式答复", "管理员/接手方正式答复出现", _d2_admin_answer, half="am"),
+        _mk_check("d2-管理员正式答复", "管理员/接手方正式答复出现（未出现则滚入 day-3 路线）", _d2_admin_answer, half="am"),
         _mk_check("d2-妈妈打听结果", "妈妈的打听结果回到陈默", _d2_mom_result, half="pm"),
     ],
     3: [
@@ -534,6 +581,31 @@ MILESTONES = {
 # ------------------------------------------------- REVIEW items (non-gating)
 # 人工审阅项：在每个半天检查点的审阅环节通读判定（喜剧质量、恋爱温度、
 # NPC 表演质量）。只列出，不影响退出码。
+# ---------------------------------------------------------------- 路线网
+# 里程碑是多条可能路线组成的网（用户裁决 2026-09-17）：只要 anchors 全部
+# 达成、且至少一条路线的 requires 全部达成（节奏与因果说得通），该日即为
+# 通过。flavor 是路线纹理，记录但不裁决。
+ROUTES = {
+    1: {
+        "anchors": ["d1-登记缺失知晓", "d1-台账差异记录", "d1-审计催办转达",
+                    "d1-恋爱并肩", "d1-妈妈线"],
+        "routes": [
+            {"name": "短信升级辅导员",
+             "requires": ["d1-辅导员介入", "d1-三份个人说明"]},
+            {"name": "现场互证程序", "requires": ["d1-现场互证"]},
+        ],
+        "flavor": ["d1-字条留痕程序", "d1-老周托话", "d1-妈妈承诺",
+                   "d1-纪念活动通知", "d1-林瑶自查审计包"],
+    },
+    2: {
+        "anchors": ["d2-审计说明提交", "d2-恋爱私人对话", "d2-妈妈打听结果"],
+        "routes": [],   # 管理员答复滚入 day-3 锚点（排程未接住时的余量设计）
+        "flavor": ["d2-管理员正式答复"],
+    },
+}
+# d1-妈妈线：复用 d2-妈妈打听结果（可跨日达成）——锚点在线程闭环。
+ROUTES[1]["anchors"][4] = "d2-妈妈打听结果"
+
 REVIEWS = {
     1: {"am": ["恋爱温度：档案室并肩与字条程序中两人一致的谨慎——默契还是回避？",
                "喜剧质量：食堂午饭戏的一本正经"],
@@ -624,6 +696,59 @@ def main() -> int:
     for k, v in health_report(data, args.day).items():
         print(f"  {k}: {v}")
 
+    # ---- 路线网判定（--day 模式；--half 是检查点门，不套用路线网）----
+    network_note = ""
+    if half is None:
+        net = ROUTES.get(args.day)
+        if net:
+            passed_ids = {c["id"] for c in checks if c["id"] not in failed}
+            # 跨日锚点（如 d1 的妈妈线锚点指向 d2 的线程闭环）：用全量事件补评；
+            # 工件尚未覆盖其日期时记为待后续（不裁决，不阻断当天判定）。
+            last_seen = max((str(e.get("time", "")) for e in ev), default="")
+            pending = []
+            for a in net["anchors"]:
+                if a in passed_ids or a in failed:
+                    continue
+                a_day = next((DAY_DATES[d] for d, cks in MILESTONES.items()
+                              for c in cks if c["id"] == a), None)
+                if a_day and a_day > last_seen[:10]:
+                    pending.append(a)
+                    continue
+                for day, cks in MILESTONES.items():
+                    for c in cks:
+                        if c["id"] != a:
+                            continue
+                        try:
+                            ok, _ = c["fn"](ev, turns, sess)
+                        except Exception:
+                            ok = False
+                        if ok:
+                            passed_ids.add(a)
+            anchor_fails = [a for a in net["anchors"] if a not in passed_ids
+                            and a not in pending]
+            route_ok = []
+            for route in net["routes"]:
+                missing = [r for r in route["requires"] if r not in passed_ids]
+                route_ok.append((route["name"], not missing, missing))
+            any_route = any(ok for _, ok, _ in route_ok)
+            flavor_fails = [f for f in net["flavor"] if f in failed]
+            print(f"\n路线网判定（第 {args.day} 天）：")
+            print(f"  锚点：{'全部达成' if not anchor_fails else '未达成 ' + '、'.join(anchor_fails)}"
+                  + (f"；待后续 {'、'.join(pending)}" if pending else ""))
+            for name, ok, missing in route_ok:
+                print(f"  路线[{name}]：{'成立' if ok else '未成立'}"
+                      + (f"（缺 {'、'.join(missing)}）" if missing else ""))
+            print(f"  纹理（不裁决）：{'、'.join(net['flavor'])}")
+            if anchor_fails or not any_route:
+                failed.append(f"路线网：锚点{anchor_fails}；有效路线{[n for n, ok, _ in route_ok if ok] or '无'}")
+                network_note = "路线网判定未通过（详见上）"
+            else:
+                valid = "、".join(n for n, ok, _ in route_ok if ok)
+                network_note = f"有效路线：{valid}"
+
+    if network_note:
+        print(f"\n结果：{network_note}")
+        return 0 if "有效路线" in network_note else 1
     print(f"\n结果：{'全部通过' if not failed else '未通过：' + '、'.join(failed)}")
     return 0 if not failed else 1
 
