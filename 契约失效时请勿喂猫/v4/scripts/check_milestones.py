@@ -730,7 +730,8 @@ def main() -> int:
             for route in net["routes"]:
                 missing = [r for r in route["requires"] if r not in passed_ids]
                 route_ok.append((route["name"], not missing, missing))
-            any_route = any(ok for _, ok, _ in route_ok)
+            # 无路线分歧的日（routes 为空）按锚点判定即可。
+            any_route = any(ok for _, ok, _ in route_ok) if net["routes"] else True
             flavor_fails = [f for f in net["flavor"] if f in failed]
             print(f"\n路线网判定（第 {args.day} 天）：")
             print(f"  锚点：{'全部达成' if not anchor_fails else '未达成 ' + '、'.join(anchor_fails)}"
