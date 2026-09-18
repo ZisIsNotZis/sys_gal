@@ -453,6 +453,32 @@ def _d5_audit_coop_link(ev, turns, sess):
     return ok, evd
 
 
+def _d6_xiangqin_attended(ev, turns, sess):
+    lines = _day_texts(ev, 6)
+    n, _ = _mentioning(lines, "相亲")
+    chen = [(t, x) for t, a, x in lines if a == "陈默" and ("相亲" in x or "咖啡馆" in x or "姑娘" in x)]
+    ok = n >= 2 and len(chen) >= 1
+    evd = f"相亲提及 {n} 次；陈默侧 {len(chen)} 条"
+    return ok, evd
+
+
+def _d6_prep_absence(ev, turns, sess):
+    lines = _day_texts(ev, 6)
+    lin = [(t, x) for t, a, x in lines if a == "林瑶" and ("筹备" in x or "中庭" in x)]
+    n, _ = _mentioning(lines, "筹备")
+    ok = len(lin) >= 1 and n >= 2
+    evd = f"筹备提及 {n} 次；林瑶侧 {len(lin)} 条"
+    return ok, evd
+
+
+def _d6_mom_deflect(ev, turns, sess):
+    lines = _day_texts(ev, 6)
+    chen = [(t, x) for t, a, x in lines if a == "陈默" and ("妈妈" in x or "姑娘" in x or "合适" in x)]
+    ok = len(chen) >= 1
+    evd = f"陈默对妈妈/姑娘的回应 {len(chen)} 条"
+    return ok, evd
+
+
 # ---------------------------------------------------------------- day 6
 def _d6_prep_gathering(ev, turns, sess):
     enters = [(e["time"][11:16], e.get("actor"))
@@ -672,9 +698,12 @@ MILESTONES = {
         _mk_check("d5-审计合作社线", "发票/合作社 线索与审计合流（可跨日）", _d5_audit_coop_link, half="pm"),
     ],
     6: [
-        _mk_check("d6-筹备聚集", "纪念活动筹备在中庭聚集 ≥3 人", _d6_prep_gathering, half="am"),
-        _mk_check("d6-陈默完整的话", "对不起+当年/为什么 一句完整的话", _d6_chen_full_sentence, half="pm"),
-        _mk_check("d6-小岚的抉择", "小岚面对草稿的抉择", _d6_xiaolan_choice, half="pm"),
+        _mk_check("d6-相亲赴约", "相亲被正面提及且陈默承认去了（喜剧+阻力）", _d6_xiangqin_attended, half="pm"),
+        _mk_check("d6-筹备缺位张力", "筹备缺位被接住且林瑶未点破", _d6_prep_absence, half="pm"),
+        _mk_check("d6-妈妈追问敷衍", "妈妈追问而陈默敷衍/含糊（阻力线）", _d6_mom_deflect, half="pm"),
+        _mk_check("d6-筹备聚集", "纪念活动筹备在中庭聚集（可跨日）", _d6_prep_gathering, half="am"),
+        _mk_check("d6-陈默完整的话", "对不起+当年/为什么 一句完整的话（可跨日）", _d6_chen_full_sentence, half="pm"),
+        _mk_check("d6-小岚的抉择", "小岚面对草稿的抉择（可跨日）", _d6_xiaolan_choice, half="pm"),
     ],
     7: [
         _mk_check("d7-纪念活动举行", "3·16台风纪念活动当日举行", _d7_finale_event, half="am"),
@@ -725,6 +754,11 @@ ROUTES = {
         "routes": [],
         "flavor": ["d5-相亲前夜", "d5-猫照片边角", "d5-抽水泵去向", "d5-23:30追责", "d5-审计合作社线"],
     },
+    6: {
+        "anchors": ["d6-相亲赴约", "d6-筹备缺位张力", "d6-妈妈追问敷衍"],
+        "routes": [],
+        "flavor": ["d6-筹备聚集", "d6-陈默完整的话", "d6-小岚的抉择"],
+    },
 }
 # d1-妈妈线：复用 d2-妈妈打听结果（可跨日达成）——锚点在线程闭环。
 ROUTES[1]["anchors"][4] = "d2-妈妈打听结果"
@@ -746,9 +780,9 @@ REVIEWS = {
                "喜剧质量：洗衣房相亲闲话与猫的抢戏"]},
     5: {"am": ["管理员 W 的分寸：含糊其辞还是真不知情"],
         "pm": ["喜剧质量：相亲前夜出主意的尴尬喜剧；猫叼照片的悬念节奏"]},
-    6: {"am": ["筹备聚集的群像感"],
-        "pm": ["恋爱核心节拍：'那句完整的话'的措辞与时机（本弧最重要 romance 审阅）",
-               "喜剧质量：小岚抉择前夜的自我调侃"]},
+    6: {"am": ["相亲戏的喜剧分寸：心不在焉 vs 失礼的界线"],
+        "pm": ["阻力线：林瑶'没问为什么'的克制是否传达到位",
+               "恋爱温度：递剪子指尖相碰的留白处理"]},
     7: {"am": ["纪念活动的群像与真相点名的分量"],
         "pm": ["恋爱终局：同游与关系确认的 galgame 收束感",
                "喜剧收束：猫在终局的出现"]},
