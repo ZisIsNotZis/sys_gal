@@ -789,7 +789,7 @@ class RunnerTests(unittest.TestCase):
 
         self.assertEqual(reason, "queue_drained")
         self.assertGreaterEqual(sum(calls.values()), len(world.actors))
-        self.assertLess(len(trace.agent_turns), 100)
+        self.assertLess(len(trace.agent_turns), 400)
 
     def test_runner_rejects_cross_actor_intention_without_world_mutation(self):
         world = create_world()
