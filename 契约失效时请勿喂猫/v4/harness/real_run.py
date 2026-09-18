@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import heapq
 import os
 
 from .agent_state import PrivateState
@@ -146,6 +147,19 @@ def main() -> None:
             merged += 1
         if merged:
             print(f"[real_run] schedule merge: +{merged} manifest beat(s) after resume")
+        # 排程以 manifest 为准：同一时刻的名称被修订过的陈旧队列作业
+        # （如 world_stops 降级为 day_boundary）不再触发——移除。
+        manifest_at: dict[str, set[str]] = {}
+        for row in pack.manifest.get("scheduled", ()) or ():
+            manifest_at.setdefault(str(row["time"])[:16], set()).add(str(row.get("event", "")))
+        stale = [j for j in world._queue if j.kind == "world_event"
+                 and j.time.isoformat()[:16] in manifest_at
+                 and str((j.payload or {}).get("event", "")) not in manifest_at[j.time.isoformat()[:16]]]
+        if stale:
+            dropped = {str((j.payload or {}).get("event", "")) for j in stale}
+            world._queue = [j for j in world._queue if j not in stale]
+            heapq.heapify(world._queue)
+            print(f"[real_run] schedule supersede: dropped stale queue job(s): {sorted(dropped)}")
     else:
         seed_checkpoint = build_initial_checkpoint(runner, pack, run_id, root=root)
         seed_checkpoint_path = root / "runs" / f"{run_id}.seed-checkpoint.json"
