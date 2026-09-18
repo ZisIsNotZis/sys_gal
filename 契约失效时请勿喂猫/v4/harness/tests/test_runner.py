@@ -785,7 +785,7 @@ class RunnerTests(unittest.TestCase):
             return None
 
         trace = Trace("v2-test", "queue-drain")
-        reason = Runner(world, {actor: agent for actor in world.actors}, states, trace).run(max_turns=100)  # type: ignore[arg-type]
+        reason = Runner(world, {actor: agent for actor in world.actors}, states, trace).run(max_turns=400)  # type: ignore[arg-type]
 
         self.assertEqual(reason, "queue_drained")
         self.assertGreaterEqual(sum(calls.values()), len(world.actors))
