@@ -462,6 +462,38 @@ def _d8_saturday_invite(ev, turns, sess):
     return ok, evd
 
 
+def _d9_records_shared(ev, turns, sess):
+    lines = _day_texts(ev, 9)
+    chen = [(t, x) for t, a, x in lines if a == "陈默" and ("账本" in x or "复印件" in x)]
+    ok = len(chen) >= 1
+    evd = f"陈默对账本/复印件的表述 {len(chen)} 条"
+    return ok, evd
+
+
+def _d9_invoice_linked(ev, turns, sess):
+    lines = _day_texts(ev, 9)
+    n, _ = _mentioning(lines, "发票")
+    ok = n >= 1
+    evd = f"发票对应关系提及 {n} 次"
+    return ok, evd
+
+
+def _d9_mom_closure(ev, turns, sess):
+    lines = _day_texts(ev, 9)
+    chen = [(t, x) for t, a, x in lines if a == "陈默" and ("李阿姨" in x or ("回" in x and "相亲" in x))]
+    ok = len(chen) >= 1
+    evd = f"陈默对相亲的明确表态 {len(chen)} 条"
+    return ok, evd
+
+
+def _d9_whistle_story(ev, turns, sess):
+    lines = _day_texts(ev, 9)
+    pair = [(t, a, x) for t, a, x in lines if a in ("陈默", "林瑶") and ("哨套" in x or "哨子" in x or "故事" in x)]
+    ok = len(pair) >= 1
+    evd = f"哨子/故事交流 {len(pair)} 条"
+    return ok, evd
+
+
 # ---------------------------------------------------------------- day 5
 def _d5_pumps_confirmed(ev, turns, sess):
     lines = _day_texts(ev, 5)
@@ -755,6 +787,12 @@ MILESTONES = {
         _mk_check("d8-和解松动", "王爷爷儿子一方的松动信号出现（代签线）", _d8_son_invite, half="pm"),
         _mk_check("d8-周六之约", "陈默主动开口约河堤且林瑶回应（恋爱轴）", _d8_saturday_invite, half="pm"),
     ],
+    9: [
+        _mk_check("d9-账本交接", "账本复印件交接被陈默接住（审计线）", _d9_records_shared, half="am"),
+        _mk_check("d9-发票对应", "发票号对应关系被记录（审计线）", _d9_invoice_linked, half="pm"),
+        _mk_check("d9-相亲了结", "陈默明确回掉相亲（阻力线收束）", _d9_mom_closure, half="pm"),
+        _mk_check("d9-哨子故事", "哨子/故事在两人间流转（恋爱轴前夜）", _d9_whistle_story, half="pm"),
+    ],
 }
 
 
@@ -809,6 +847,11 @@ ROUTES = {
     },
     8: {
         "anchors": ["d8-移交存根闭环", "d8-合作社开门", "d8-和解松动", "d8-周六之约"],
+        "routes": [],
+        "flavor": [],
+    },
+    9: {
+        "anchors": ["d9-账本交接", "d9-发票对应", "d9-相亲了结", "d9-哨子故事"],
         "routes": [],
         "flavor": [],
     },
