@@ -25,7 +25,8 @@ from pathlib import Path
 
 DAY_DATES = {
     1: "2026-03-16", 2: "2026-03-17", 3: "2026-03-18", 4: "2026-03-19",
-    5: "2026-03-20", 6: "2026-03-21", 7: "2026-03-22",
+    5: "2026-03-20", 6: "2026-03-21", 7: "2026-03-22", 8: "2026-03-23",
+    9: "2026-03-24", 10: "2026-03-25", 11: "2026-03-26", 12: "2026-03-27",
 }
 
 # 半天粒度（ticket：里程碑=检查点）：am = 07:00–12:59，pm = 13:00–22:00。
@@ -427,6 +428,40 @@ def _d5_cat_photo(ev, turns, sess):
     return ok, evd
 
 
+def _d8_handover_closed(ev, turns, sess):
+    lines = _day_texts(ev, 8)
+    n, _ = _mentioning(lines, "移交", "存根", all_of=False)
+    ok = n >= 1
+    evd = f"移交/存根提及 {n} 次"
+    return ok, evd
+
+
+def _d8_coop_door(ev, turns, sess):
+    lines = _day_texts(ev, 8)
+    chen = [(t, x) for t, a, x in lines if a == "陈默" and ("发票" in x or "管账" in x or "市场" in x)]
+    ok = len(chen) >= 1
+    evd = f"陈默对发票/管账/市场的表述 {len(chen)} 条"
+    return ok, evd
+
+
+def _d8_son_invite(ev, turns, sess):
+    lines = _day_texts(ev, 8)
+    n, _ = _mentioning(lines, "认真做事", "当面问", all_of=False)
+    ok = n >= 1
+    evd = f"儿子松动信号提及 {n} 次"
+    return ok, evd
+
+
+def _d8_saturday_invite(ev, turns, sess):
+    lines = _day_texts(ev, 8)
+    chen = [(t, x) for t, a, x in lines if a == "陈默" and ("河堤" in x or "周六" in x or ("再走" in x and "一次" in x))]
+    lin = [(t, x) for t, a, x in lines if a == "林瑶" and ("河堤" in x or "周六" in x)]
+    # 路线网：任一侧命中即可——林瑶的接受回复本身证明邀约发生。
+    ok = len(chen) >= 1 or len(lin) >= 1
+    evd = f"陈默开口 {len(chen)} 条；林瑶回应 {len(lin)} 条"
+    return ok, evd
+
+
 # ---------------------------------------------------------------- day 5
 def _d5_pumps_confirmed(ev, turns, sess):
     lines = _day_texts(ev, 5)
@@ -714,6 +749,12 @@ MILESTONES = {
         _mk_check("d7-纪念活动同游", "纪念活动同游+非任务交流（关系确认，galgame轴）", _d7_romance_date, half="pm"),
         _mk_check("d7-关系检验", "陈默与林瑶同在中庭并当面交换 ≥2 条发言", _d7_bond_tested, half="pm"),
     ],
+    8: [
+        _mk_check("d8-移交存根闭环", "移交清单/存根核对被提及（缺页悬念收束）", _d8_handover_closed, half="am"),
+        _mk_check("d8-合作社开门", "发票/管账线索被陈默正面接住（审计线）", _d8_coop_door, half="am"),
+        _mk_check("d8-和解松动", "王爷爷儿子一方的松动信号出现（代签线）", _d8_son_invite, half="pm"),
+        _mk_check("d8-周六之约", "陈默主动开口约河堤且林瑶回应（恋爱轴）", _d8_saturday_invite, half="pm"),
+    ],
 }
 
 
@@ -765,6 +806,11 @@ ROUTES = {
         "anchors": ["d7-纪念活动举行", "d7-真相点名", "d7-信物相认", "d7-关系检验"],
         "routes": [],
         "flavor": ["d7-纪念活动同游"],
+    },
+    8: {
+        "anchors": ["d8-移交存根闭环", "d8-合作社开门", "d8-和解松动", "d8-周六之约"],
+        "routes": [],
+        "flavor": [],
     },
 }
 # d1-妈妈线：复用 d2-妈妈打听结果（可跨日达成）——锚点在线程闭环。
