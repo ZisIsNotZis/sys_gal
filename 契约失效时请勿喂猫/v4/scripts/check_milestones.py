@@ -494,6 +494,74 @@ def _d9_whistle_story(ev, turns, sess):
     return ok, evd
 
 
+def _d10_mom_echo_answered(ev, turns, sess):
+    # 跨日（9-10）：相亲回掉在任一天被正面表达即可。
+    for dd in (9, 10):
+        lines = _day_texts(ev, dd)
+        chen = [(t, x) for t, a, x in lines if a == "陈默"
+                and ("李阿姨" in x or "回了" in x or "相亲" in x)]
+        if len(chen) >= 1:
+            return True, f"第{dd}天陈默正面表态 {len(chen)} 条"
+    return False, "第9-10天陈默均未正面回掉相亲"
+
+
+def _d10_walk_confirmed(ev, turns, sess):
+    lines = _day_texts(ev, 10)
+    lin = [(t, x) for t, a, x in lines if a == "林瑶" and ("周五" in x or "河堤" in x)]
+    ok = len(lin) >= 1
+    evd = f"林瑶确认改期 {len(lin)} 条"
+    return ok, evd
+
+
+def _d10_cat_home(ev, turns, sess):
+    lines = _day_texts(ev, 10)
+    n, _ = _mentioning(lines, "哨套")
+    cat_n, _ = _mentioning(lines, "猫")
+    ok = n >= 1 and cat_n >= 1
+    evd = f"哨套 {n} 次；猫 {cat_n} 次"
+    return ok, evd
+
+
+def _d11_audit_reply(ev, turns, sess):
+    lines = _day_texts(ev, 11)
+    n, _ = _mentioning(lines, "存档", "院系", all_of=False)
+    ok = n >= 1
+    evd = f"存档/院系回复提及 {n} 次"
+    return ok, evd
+
+
+def _d11_wang_full_story(ev, turns, sess):
+    lines = _day_texts(ev, 11)
+    lin = [(t, x) for t, a, x in lines if a == "林瑶" and ("账本" in x or "哨" in x or "记" in x)]
+    ok = len(lin) >= 1
+    evd = f"林瑶记录侧 {len(lin)} 条"
+    return ok, evd
+
+
+def _d12_files_closed(ev, turns, sess):
+    lines = _day_texts(ev, 12)
+    n, _ = _mentioning(lines, "归档", "补录", "移交单", all_of=False)
+    ok = n >= 1
+    evd = f"归档/补录/移交单提及 {n} 次"
+    return ok, evd
+
+
+def _d12_farewell(ev, turns, sess):
+    lines = _day_texts(ev, 12)
+    who = {a for t, a, x in lines if a in ("唐小岚", "下棋大爷", "宿管阿姨")}
+    ok = len(who) >= 1
+    evd = f"退役小聚在场：{'、'.join(sorted(who)) or '无'}"
+    return ok, evd
+
+
+def _d12_riverside_future(ev, turns, sess):
+    lines = _day_texts(ev, 12)
+    chen = [(t, x) for t, a, x in lines if a == "陈默" and "以后" in x]
+    ok = len(chen) >= 1
+    evd = f"陈默'以后'发言 {len(chen)} 条"
+    return ok, evd
+
+
 # ---------------------------------------------------------------- day 5
 def _d5_pumps_confirmed(ev, turns, sess):
     lines = _day_texts(ev, 5)
@@ -793,6 +861,20 @@ MILESTONES = {
         _mk_check("d9-相亲了结", "陈默明确回掉相亲（阻力线收束）", _d9_mom_closure, half="pm"),
         _mk_check("d9-哨子故事", "哨子/故事在两人间流转（恋爱轴前夜）", _d9_whistle_story, half="pm"),
     ],
+    10: [
+        _mk_check("d10-相亲回掉", "相亲线正面闭合（跨 9-10 日）", _d10_mom_echo_answered, half="am"),
+        _mk_check("d10-河堤改期确认", "林瑶确认周五傍晚河堤（恋爱轴）", _d10_walk_confirmed, half="pm"),
+        _mk_check("d10-猫安家", "哨套入盒/猫留中庭（猫线收束）", _d10_cat_home, half="pm"),
+    ],
+    11: [
+        _mk_check("d11-审计回复", "院系存档备查回复出现（审计线收束）", _d11_audit_reply, half="am"),
+        _mk_check("d11-账本全story", "老人在场讲全/林瑶记录（代签线收束）", _d11_wang_full_story, half="pm"),
+    ],
+    12: [
+        _mk_check("d12-归档结束", "补录归档/移交签字（主线收束）", _d12_files_closed, half="am"),
+        _mk_check("d12-退役小聚", "中庭小聚街坊在场", _d12_farewell, half="pm"),
+        _mk_check("d12-以后", "陈默说出自己的'以后'（恋爱轴终拍）", _d12_riverside_future, half="pm"),
+    ],
 }
 
 
@@ -852,6 +934,21 @@ ROUTES = {
     },
     9: {
         "anchors": ["d9-账本交接", "d9-发票对应", "d9-相亲了结", "d9-哨子故事"],
+        "routes": [],
+        "flavor": [],
+    },
+    10: {
+        "anchors": ["d10-相亲回掉", "d10-河堤改期确认", "d10-猫安家"],
+        "routes": [],
+        "flavor": [],
+    },
+    11: {
+        "anchors": ["d11-审计回复", "d11-账本全story"],
+        "routes": [],
+        "flavor": [],
+    },
+    12: {
+        "anchors": ["d12-归档结束", "d12-退役小聚", "d12-以后"],
         "routes": [],
         "flavor": [],
     },
