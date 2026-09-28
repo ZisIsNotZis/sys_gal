@@ -43,7 +43,7 @@ SSOT：引擎时序语义、并发架构、冻结/唤醒/中断机制、失败�
 - **静默弃权**：`decision_timeout` 内无意图 → 该回合视为发呆：无世界效果，挂起动作**自动 continue**（沉默 ≠ 同意取消；被敲门者沉默就是继续走过去），计时器重挂，失败计数 +1。
 - **deadline 重置**：中断投递给运行中角色时，其回答 continue-or-cancel 的新 deadline 从投递点重新起算 1 tick。
 - **空闲心跳**：等事件状态的角色若无事件永不再醒。MC 有空闲心跳 `mc_idle_heartbeat`（默认 30 分钟，醒来时世界消息照常渲染）；NPC 无心跳（只由 CAST §2 触发器唤醒）；extra 无心跳（对话期生命周期，`extra_idle_timeout` 无新对话即销毁，不要求它此前必须说过话）。
-- **extra 场景上下文**：一次对话只保留 scene-local、有界 transcript（最近至多 8 句/单句 180 字/总计 1200 字），从提交时的 `speech.payload.heard` 受众记录筛选；speaker 自己刚说的话也可保留。绝不凭当前共处推测历史受众，不向 extra 投递其未听到的 whisper/private speech。对额外角色的公开发言会唤醒同场 extra，即使 speaker 不是最初搭话者；提供方在途期间抵达的可听 speech 要保留为待处理唤醒，不能被清游标吞掉。system 与 speak-only 工具前缀在一个 extra 生命周期中固定；没有新可听 speech 时不发模型回合、不伪造空问题；extra 可沉默/告别，超时即销毁，不写长程记忆（AGENT-INTERFACE §5）。
+- **extra 场景上下文**：一次对话只保留 scene-local、有界 transcript（最近至多 8 句/单句 180 字/总计 1200 字），以世界事件 `visible_to` 的实际投递名单筛选（`speech.payload.heard` 只是与之保持一致的镜像）；speaker 自己刚说的话也可保留。绝不凭当前共处推测历史受众，不向 extra 投递其未听到的 whisper/private speech。对额外角色的公开发言会唤醒同场 extra，即使 speaker 不是最初搭话者；提供方在途期间抵达的可听 speech 要保留为待处理唤醒，不能被清游标吞掉。system 与 speak-only 工具前缀在一个 extra 生命周期中固定；没有新可听 speech 时不发模型回合、不伪造空问题；extra 可沉默/告别，超时即销毁，不写长程记忆（AGENT-INTERFACE §5）。
 
 ## 4. 对话节奏
 
