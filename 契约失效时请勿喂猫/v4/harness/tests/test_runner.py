@@ -14,6 +14,25 @@ from harness.natural_agent import make_persistent_agent
 
 
 class RunnerTests(unittest.TestCase):
+    def test_extra_wake_uses_delivery_audience_not_stale_heard_payload(self):
+        from unittest.mock import patch
+        from harness.kernel import World, ActorState, LocationState, Event
+        world = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
+                      actors=[ActorState("a", "room")], locations=[LocationState("room")])
+        world.add_extra("x", "room")
+        agents = {"a": lambda *_: None, "x": lambda *_: None}
+        states = {name: PrivateState(name) for name in agents}
+        runner = Runner(world, agents, states, Trace("v4-test", "extra-audience"),
+                        extra_call=lambda *_: None)
+        runner._extras["x"] = {"partner": "a", "last_active": world.now}
+        runner._extras_scan = len(world.event_log)
+        world.event_log.append(Event(len(world.event_log) + 1, world.now, "speech", "a",
+                                     {"text": "你听得到", "heard": []}, None,
+                                     frozenset({"a", "x"}), world.version))
+        with patch.object(runner, "_extra_turn") as extra_turn:
+            runner._handle_extras()
+        extra_turn.assert_called_once_with("x", "")
+
     def test_trace_failure_checkpoint_is_auditable_and_does_not_add_fake_event(self):
         world = create_world()
         trace = Trace("v2-test", "failed-checkpoint")

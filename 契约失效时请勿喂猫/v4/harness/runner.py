@@ -447,9 +447,9 @@ class Runner:
                                           str(entry.get("knowledge_notes", "")), location)}
                 self._extra_turn(name, str(event.payload.get("question", "")))
             elif event.kind == "speech" and event.actor:
-                heard = set(event.payload.get("heard") or ())
+                delivered = event.visible_to
                 for name, info in list(self._extras.items()):
-                    if (name != event.actor and name in heard
+                    if (name != event.actor and name in delivered
                             and name in self.world.actors):
                         info["last_active"] = self.world.now
                         self._extra_turn(name, "")

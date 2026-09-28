@@ -313,6 +313,25 @@ class WorldTests(unittest.TestCase):
         self.assertEqual(speech.visible_to, frozenset({"a"}))
         self.assertEqual(speech.payload["heard"], [])
 
+    def test_stranger_question_requires_audible_open_normal_speech(self):
+        w = self.world()
+        w.locations["room"] = LocationState("room", False)
+        before = len(w.event_log)
+        with self.assertRaises(ActionRejected) as closed:
+            w.submit(Intention("a", "speak", {"to": ["陌生人"], "text": "有人吗？",
+                                                 "volume": "normal"}, w.version))
+        self.assertIn("封闭", str(closed.exception))
+        self.assertEqual(len(w.event_log), before)
+        w.locations["room"] = LocationState("room", True)
+        with self.assertRaises(ActionRejected) as whisper:
+            w.submit(Intention("a", "speak", {"to": ["陌生人"], "text": "私下问你",
+                                                 "volume": "whisper"}, w.version))
+        self.assertIn("耳语", str(whisper.exception))
+        self.assertEqual(len(w.event_log), before)
+        w.submit(Intention("a", "speak", {"to": ["陌生人"], "text": "有人吗？",
+                                           "volume": "normal"}, w.version))
+        self.assertTrue(any(e.kind == "stranger_asked" for e in w.event_log[before:]))
+
     def test_invalid_ledger_query_does_not_consume_quota(self):
         w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
                   actors=[ActorState("陈默", "room")], locations=[LocationState("room")])

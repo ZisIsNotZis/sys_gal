@@ -1100,6 +1100,12 @@ class World:
                     raise ActionRejected(
                         "to 必须是名字列表（在场的人，或 [\"陌生人\"] 向路人搭话）。",
                         context={"missing": "to"})
+                if "陌生人" in targets and (volume == "whisper" or not self.locations[a.location].open):
+                    reason = ("耳语不会传给尚未出现的路人" if volume == "whisper" else
+                              "当前地点封闭，路人听不到这里的话")
+                    raise ActionRejected(
+                        f"{reason}；未发起搭话。请在开放地点用 "
+                        f"{self._tool_call_json('speak', {'to': ['陌生人'], 'text': x['text'], 'volume': 'normal'})}。")
                 named = [t for t in targets if t != "陌生人"]
                 unknown = [t for t in named if t not in here]
                 if unknown:
