@@ -86,6 +86,20 @@ class ToolsTests(unittest.TestCase):
             sent = [e for e in world.event_log if e.kind == "message_sent"]
             self.assertTrue(sent, f"text({nickname!r}) must send")
             self.assertEqual(sent[0].payload["target"], "陈默妈")
+        # A fuzzy formal-name fragment is not proof of identity; a unique
+        # alias hit is safe because this actor personally registered it.
+        with self.assertRaises(ActionRejected):
+            fresh().submit(Intention("陈默", "text",
+                                     {"target": "陈妈", "text": "私事"},
+                                     fresh().version))
+        for verified_alias_match in ("我想找妈妈", "我"):
+            world = fresh()
+            world.submit(Intention("陈默", "text",
+                                   {"target": verified_alias_match, "text": "私事"},
+                                   world.version))
+            world.advance()
+            sent = [e for e in world.event_log if e.kind == "message_sent"]
+            self.assertEqual(sent[0].payload["target"], "陈默妈")
         # uncontactable names are rejected with the addressable list
         for stranger in ("林瑶", "爸"):
             with self.assertRaises(ActionRejected) as ctx:
@@ -96,6 +110,23 @@ class ToolsTests(unittest.TestCase):
                                          {"target": stranger, "text": "hi"},
                                          fresh().version))
             self.assertIn("available", str(ctx.exception))
+
+    def test_partial_formal_name_is_not_corrected_without_a_registered_alias(self):
+        from datetime import datetime, timezone
+        from harness.kernel import ActorState, ActionRejected, LocationState, World, Intention
+
+        start = datetime(2026, 3, 16, 7, 0, tzinfo=timezone.utc)
+        world = World(start=start,
+                      actors=[ActorState("陈默", "男生宿舍"),
+                              ActorState("陈默妈", "陈默家")],
+                      locations=[LocationState("男生宿舍"), LocationState("陈默家")])
+        world.actors["陈默"].known_contacts = {"陈默妈"}
+        with self.assertRaises(ActionRejected) as caught:
+            world.submit(Intention("陈默", "text",
+                                   {"target": "妈", "text": "私事正文"}, world.version))
+        self.assertIn("unverified partial name", str(caught.exception))
+        self.assertEqual(caught.exception.context["recipient_candidates"], ["陈默妈"])
+        self.assertFalse(any(event.kind == "message_sent" for event in world.event_log))
 
     def test_memory_tool_descriptions_match_the_key_set_schema(self):
         """Guard a real miss: the schemas moved to key sets while the
@@ -108,6 +139,12 @@ class ToolsTests(unittest.TestCase):
                 self.assertNotIn(banned, desc, f"{name} description still mentions {banned!r}")
         self.assertIn("keys", _TOOL_DESCRIPTIONS["update_memory"])
         self.assertIn("keys", _TOOL_DESCRIPTIONS["recall"])
+        update_desc = _TOOL_DESCRIPTIONS["update_memory"]
+        self.assertIn("!contact", update_desc)
+        self.assertIn("!always", update_desc)
+        self.assertIn("周几必须一致", update_desc)
+        self.assertNotIn("陈默妈", update_desc,
+                         "the static tool prefix must not expose character-specific contacts")
 
     def test_trace_records_the_offered_tool_list(self):
         from datetime import datetime

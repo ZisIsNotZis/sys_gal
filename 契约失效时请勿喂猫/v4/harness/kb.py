@@ -17,7 +17,7 @@ immutable; changing them means close + open.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 import difflib
 import itertools
 import re
@@ -140,9 +140,12 @@ def resolve_name(query: Any, candidates: Any) -> tuple[str | None, str | None]:
     if not text:
         return None, "empty name"
     names = [str(c) for c in candidates if str(c).strip()]
-    for name in names:
-        if normalize(name) == text:
-            return name, None
+    exact = sorted({name for name in names if normalize(name) == text})
+    if len(exact) == 1:
+        return exact[0], None
+    if len(exact) > 1:
+        listed = " / ".join(exact[:6])
+        return None, f"ambiguous exact name '{query}': {listed}"
     fuzzy = [name for name in names
              if hits([name], [text]) or hits([text], [name])]
     if len(fuzzy) == 1:
@@ -201,19 +204,50 @@ def _validate_keys(keys: list[str], *, where: str, now: datetime,
                    actor_id: str | None = None) -> str | None:
     if not keys:
         return f"{where}: needs at least one key"
+    directives = [key for key in keys if key.startswith(_DIRECTIVE)]
+    text_keys = [key for key in keys if not key.startswith(_DIRECTIVE)]
+    tomorrow = now + timedelta(days=1)
+    scheduled_example = format_reminder_time(
+        tomorrow.replace(hour=8, minute=30, second=0, microsecond=0))
     for key in keys:
         if not key:
             return f"{where}: empty key"
         if key.startswith(_DIRECTIVE):
             if key.startswith(_AT_PREFIX):
                 if parse_reminder_time(key[len(_AT_PREFIX):], now) is None:
-                    return f"{where}: unparseable scheduled key: {key}"
+                    example = ('{"keys": ["!at=' + scheduled_example + '", "要办的事"], '
+                               '"op": "open", "desc": "到点要做的事"}')
+                    return (f"{where}: unparseable scheduled key: {key}; expected "
+                            "!at=M/D(周X) HH:MM with a weekday matching the date. "
+                            f"Example: {example}.")
             elif key not in _KNOWN_DIRECTIVES:
-                return f"{where}: unknown directive key: {key}"
+                return (f"{where}: unknown directive key: {key}; allowed directives are "
+                        "!always, !contact, and !at=M/D(周X) HH:MM. "
+                        'Examples: keys=["!always", "要紧的事"] or '
+                        'keys=["!contact", "<exact formal name you know>", "<your nickname>"].')
         elif len(key) < _MIN_KEY_CHARS and key != actor_id:
             # Short keys match too much; the actor's own identity key is the
             # one legitimate exception (its name may be one character).
             return f"{where}: key too short (min {_MIN_KEY_CHARS} chars): {key!r}"
+    schedules = [key for key in directives
+                 if key == ALWAYS_KEY or key.startswith(_AT_PREFIX)]
+    if len(schedules) > 1:
+        return (f"{where}: use only one reminder schedule per row. "
+                'Examples: keys=["!always", "要紧的事"] or '
+                'keys=["!at=M/D(周X) HH:MM", "要办的事"].')
+    if directives and not text_keys:
+        directive = directives[0]
+        if directive == ALWAYS_KEY:
+            example = '{"keys": ["!always", "要紧的事"], "op": "open", "desc": "记住这件重要的事"}'
+            return (f"{where}: !always needs at least one text key. Example: {example}.")
+        if directive == CONTACT_KEY:
+            example = ('{"keys": ["!contact", "<exact formal name you know>", '
+                       '"<your nickname>"], "op": "open", "desc": "我认识这个人"}')
+            return (f"{where}: !contact needs the exact formal name as its first text key. "
+                    f"Example shape: {example}.")
+        example = ('{"keys": ["!at=' + scheduled_example + '", "要办的事"], '
+                   '"op": "open", "desc": "到点要做的事"}')
+        return f"{where}: a scheduled reminder needs at least one text key. Example: {example}."
     return None
 
 
@@ -288,9 +322,12 @@ def _make_row(keys: list[str], desc: str, now: datetime) -> _Row:
 class ActorKB:
     """One actor's private KB. Not thread-safe; owned by the engine loop."""
 
-    def __init__(self, actor_id: str, rows: list[dict[str, Any]], now: datetime) -> None:
+    def __init__(self, actor_id: str, rows: list[dict[str, Any]], now: datetime,
+                 *, valid_contact_names: Any = None) -> None:
         self.actor_id = actor_id
         self._now = now
+        self.valid_contact_names = (set(map(str, valid_contact_names))
+                                    if valid_contact_names is not None else None)
         self._rows: dict[frozenset[str], _Row] = {}
         self._overflow: list[frozenset[str]] = []
         self._pending_recall: list[frozenset[str]] = []
@@ -304,6 +341,9 @@ class ActorKB:
             row = _make_row(keys, str(entry.get("desc", "")), now)
             if row.keys in self._rows:
                 raise ValueError(f"[{actor_id}] duplicate key set: {key_id(row.keys)}")
+            contact_error = self._contact_validation_error(keys)
+            if contact_error:
+                raise ValueError(f"[{actor_id}] {contact_error}")
             self._rows[row.keys] = row
         # Identity anchor (M2 without a magic key): every actor keeps one row
         # keyed by their own name, so the model always has an "I am X" line.
@@ -325,6 +365,53 @@ class ActorKB:
     def _open_always(self) -> int:
         return sum(1 for row in self._rows.values()
                    if row.status == "open" and row.always)
+
+    def _contact_validation_error(self, keys: list[str], *,
+                                  exclude: frozenset[str] | None = None) -> str | None:
+        if CONTACT_KEY not in keys:
+            return None
+        text_keys = [key for key in keys if not key.startswith(_DIRECTIVE)]
+        if not text_keys:
+            return None  # _validate_keys reports the actionable shape error
+        formal = text_keys[0]
+        if self.valid_contact_names is not None and (
+                formal not in self.valid_contact_names or formal == self.actor_id):
+            known_names: set[str] = set()
+            for row in self._rows.values():
+                if row.status != "open" or CONTACT_KEY not in row.keys:
+                    continue
+                text_keys = [key for key in row.order
+                             if not key.startswith(_DIRECTIVE)]
+                if text_keys:
+                    known_names.add(text_keys[0])
+            known = sorted(known_names)
+            visible = f" Known formal contacts: {', '.join(known)}." if known else ""
+            example = ('{"keys": ["!contact", "<exact formal name you know>", '
+                       '"<your nickname>"], "op": "open", "desc": "I know this person"}')
+            return (f"!contact formal name {formal!r} is not another registered actor. "
+                    "Use a person's exact formal name you know as the first text key; "
+                    f"optional nicknames follow it. Example shape: {example}.{visible}")
+        for row in self._rows.values():
+            if (row.status != "open" or CONTACT_KEY not in row.keys
+                    or row.keys == exclude):
+                continue
+            old_text = [key for key in row.order if not key.startswith(_DIRECTIVE)]
+            if not old_text:
+                continue
+            other_formal = old_text[0]
+            if normalize(formal) == normalize(other_formal):
+                return (f"!contact already has an open row for {formal!r}; keep one open "
+                        "contact row per person. To change nicknames, close the old row "
+                        "and open one row with the exact formal name first.")
+            old_names = {normalize(key): key for key in old_text}
+            conflicts = [key for key in text_keys
+                         if normalize(key) in old_names]
+            if conflicts:
+                conflict = conflicts[0]
+                return (f"!contact name {conflict!r} is already tied to {other_formal!r}; "
+                        f"it cannot also identify {formal!r}. Use a distinct nickname, e.g. "
+                        f"{formal}本人, in the single {formal!r} contact row.")
+        return None
 
     def _locate(self, target: frozenset[str]) -> tuple[_Row | None, str | None, list[str]]:
         """Exact key set, then a unique superset; ambiguity lists candidates."""
@@ -377,7 +464,8 @@ class ActorKB:
                 errors.append(f"keys {sorted(keys)}: unknown op: {kind or '(missing)'}")
                 telemetry["rejected"] += 1
                 continue
-            error = _validate_keys(keys, where=" ".join(sorted(keys)) or "?", now=now)
+            error = _validate_keys(keys, where=" ".join(sorted(keys)) or "?", now=now,
+                                   actor_id=self.actor_id)
             if error:
                 errors.append(error)
                 telemetry["rejected"] += 1
@@ -385,6 +473,11 @@ class ActorKB:
             target = frozenset(keys)
             desc = op.get("desc")
             if kind == "open":
+                contact_error = self._contact_validation_error(keys, exclude=target)
+                if contact_error:
+                    errors.append(f"keys {sorted(keys)}: {contact_error}")
+                    telemetry["rejected"] += 1
+                    continue
                 existing = self._rows.get(target)
                 if existing is not None and existing.status == "open":
                     telemetry["tolerated_open_on_open"] += 1
@@ -595,10 +688,13 @@ class ActorKB:
                 "shown_seq": next(self._shown_seq)}
 
     @classmethod
-    def from_snapshot(cls, state: dict[str, Any], now: datetime) -> "ActorKB":
+    def from_snapshot(cls, state: dict[str, Any], now: datetime, *,
+                      valid_contact_names: Any = None) -> "ActorKB":
         kb = cls.__new__(cls)
         kb.actor_id = str(state["actor_id"])
         kb._now = now
+        kb.valid_contact_names = (set(map(str, valid_contact_names))
+                                  if valid_contact_names is not None else None)
         try:
             kb._shown_seq = itertools.count(int(state.get("shown_seq", 1)))
         except (TypeError, ValueError) as exc:

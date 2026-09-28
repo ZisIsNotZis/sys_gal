@@ -203,8 +203,10 @@ class AsyncEngine:
         actor = self.world.actors.get(actor_id)
         if kb is None or actor is None:
             return
+        from .kb import normalize
         names: set[str] = set()
-        aliases: dict[str, str] = {}
+        alias_targets: dict[str, set[str]] = {}
+        alias_spellings: dict[str, set[str]] = {}
         for row in kb.snapshot()["rows"]:
             if row.get("status", "open") != "open":
                 continue
@@ -214,12 +216,29 @@ class AsyncEngine:
             texts = [k for k in keys if not k.startswith("!")]
             if not texts:
                 continue
-            # First key as authored is the formal name; the rest are the
-            # actor's private nicknames for that person.
+            # First text key is the formal name; only registered people can be
+            # addressable. Nicknames remain private to this actor.
             formal = texts[0]
+            if formal not in self.world.actors or formal == actor_id:
+                continue
             names.add(formal)
             for alias in texts[1:]:
-                aliases.setdefault(alias, formal)
+                norm = normalize(alias)
+                alias_targets.setdefault(norm, set()).add(formal)
+                alias_spellings.setdefault(norm, set()).add(alias)
+        formal_names = {normalize(name): name for name in names}
+        aliases: dict[str, str] = {}
+        for norm, targets in alias_targets.items():
+            if len(targets) != 1:
+                continue
+            formal = next(iter(targets))
+            collision = formal_names.get(norm)
+            if collision is not None and collision != formal:
+                continue
+            # Store one display spelling for each normalized personal alias;
+            # otherwise equivalent spellings could look like ambiguous names.
+            alias = sorted(alias_spellings[norm])[0]
+            aliases[alias] = formal
         actor.known_contacts = names
         actor.contact_aliases = aliases
 
@@ -235,7 +254,8 @@ class AsyncEngine:
         from .kb import ActorKB
         for actor, rows in self._kb_seeds.items():
             if actor in self.world.actors and actor not in self._kb:
-                self._kb[actor] = ActorKB(actor, rows, now)
+                self._kb[actor] = ActorKB(
+                    actor, rows, now, valid_contact_names=set(self.world.actors))
 
     def _persistent_actors(self) -> list[str]:
         return [actor for actor, a in self.world.actors.items() if a.role != "extra"]
@@ -648,7 +668,30 @@ class AsyncEngine:
 
     def _action_rejection_text(self, actor_id: str, exc: ActionRejected, name: str,
                                args: Mapping[str, Any]) -> str:
-        """Keep kernel suggestions and legal current entities in tool results."""
+        """Keep kernel suggestions actionable without changing a recipient."""
+        context = exc.context
+        if name in {"text", "speak", "give"} and (
+                context.get("name_resolution") or context.get("recipient_unavailable")
+                or context.get("missing") == "target"):
+            candidates = context.get("recipient_candidates", ())
+            shown = ", ".join(str(person) for person in candidates if person)
+            message = str(exc)
+            if shown:
+                message += f" Names in your personal knowledge or here: {shown}."
+            message += " No message, speech, or transfer was redirected to another person."
+            if context.get("name_resolution"):
+                message += " Confirm the intended person's exact formal name or a registered personal nickname."
+            elif context.get("missing") == "target":
+                message += " Specify the intended recipient; do not reuse private content for a candidate."
+            return message
+        if name in {"text", "speak"}:
+            # Shape failures can precede name resolution. A candidate list is
+            # still useful, but no executable call may carry the supplied body.
+            candidates = self.world._person_candidates(self.world.actors[actor_id])
+            message = str(exc)
+            if candidates:
+                message += f" Names in your personal knowledge or here: {', '.join(candidates)}."
+            return message + " No message or speech was redirected to another person."
         import json
         calls: list[dict[str, Any]] = []
         for alternative in exc.alternatives:
@@ -680,7 +723,7 @@ class AsyncEngine:
         if not calls and exc.context.get("busy_until") is None and name == "wait":
             calls.append({"name": "wait", "arguments": {
                 "duration_seconds": TICK_SECONDS}})
-        if not calls and exc.context.get("busy_until") is None:
+        if not calls and exc.context.get("busy_until") is None and name not in {"text", "speak", "give"}:
             for option in self.world.affordances(actor_id):
                 if str(option.get("kind")) != name:
                     continue
@@ -1549,7 +1592,8 @@ class AsyncEngine:
             from .kb import ActorKB
             for actor, snap in state["kb"].items():
                 if actor in self.world.actors:
-                    self._kb[actor] = ActorKB.from_snapshot(snap, self.world.now)
+                    self._kb[actor] = ActorKB.from_snapshot(
+                        snap, self.world.now, valid_contact_names=set(self.world.actors))
         # Ticket 25: sessions travel inside the checkpoint. The agent wrappers
         # expose restore_session so the live closures rebind to the restored
         # V4Session (containment here; the resume driver may also do it).

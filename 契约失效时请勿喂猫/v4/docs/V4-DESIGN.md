@@ -82,7 +82,9 @@ The configured `github_copilot/gpt-6-luna` LiteLLM route is Responses-only: nati
 - 世界消息永不出现 "The world accepts your X" 式回执——结果以带时间戳的感知
   事件出现；拒绝保留即时纠正行。
 - 参数名别名容忍 + 遥测：同义词命中即执行并计数；高频命中的参数名是坏命名，
-  改名。（与 no-silent-aliasing 原则的调和：当场宽容，聚合上大声。）
+  改名。（与 no-silent-aliasing 原则的调和：当场宽容，聚合上大声。）**人名/收件人地址
+  不属于可模糊修正的普通参数**：通信和递交只接受本角色联系人行中明确登记的称呼或准确正式名；
+  错误只能列出本角色可联系/当前在场的人名，绝不把原消息正文改填给另一人。
 
 ## 3. Location-wide visibility and communication physics
 

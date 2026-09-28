@@ -362,6 +362,74 @@ class V4ProtocolTests(unittest.TestCase):
         self.assertIn("[a]", first)
         self.assertIn("查一下台账", first)
 
+    def test_unknown_private_message_recipient_lists_names_without_retargeting_body(self):
+        from harness.kb import ActorKB
+
+        world = World(start=START,
+                      actors=[ActorState("陈默妈", "room"), ActorState("林瑶", "far"),
+                              ActorState("陈默", "far")],
+                      locations=[LocationState("room"), LocationState("far")])
+        body = "2013年那份家属院撤离文书是谁签的？别告诉别人。"
+        agent = FakeV4Agent([])
+        rows = [{"keys": ["陈默妈"], "desc": "我，陈默妈。"},
+                {"keys": ["!contact", "林瑶"], "desc": "我认识林瑶。"},
+                {"keys": ["!contact", "陈默"], "desc": "我认识陈默。"}]
+        engine = self._engine(world, {"陈默妈": agent, "林瑶": FakeV4Agent([]),
+                                      "陈默": FakeV4Agent([])}, kb_seeds={"陈默妈": rows})
+        engine._init_kb(world.now)
+        engine._sync_contacts("陈默妈")
+        args = {"target": "李阿姨", "text": body}
+        with self.assertRaises(ActionRejected) as caught:
+            world.submit(Intention("陈默妈", "text", args, world.version))
+        rejection = engine._action_rejection_text("陈默妈", caught.exception, "text", args)
+        self.assertIn("李阿姨", rejection)
+        self.assertIn("陈默", rejection)
+        self.assertIn("林瑶", rejection)
+        self.assertNotIn(body, rejection)
+        self.assertNotIn("Valid call", rejection)
+        self.assertNotIn('"text":', rejection)
+        self.assertFalse(any(event.kind == "message_sent" for event in world.event_log))
+
+    def test_unknown_speak_and_give_recipients_are_not_rewritten(self):
+        world = World(start=START,
+                      actors=[ActorState("陈默妈", "room"), ActorState("林瑶", "far"),
+                              ActorState("陈默", "far")],
+                      locations=[LocationState("room"), LocationState("far")])
+        agent = FakeV4Agent([])
+        rows = [{"keys": ["陈默妈"], "desc": "我，陈默妈。"},
+                {"keys": ["!contact", "林瑶"], "desc": "我认识林瑶。"},
+                {"keys": ["!contact", "陈默"], "desc": "我认识陈默。"}]
+        engine = self._engine(world, {"陈默妈": agent, "林瑶": FakeV4Agent([]),
+                                      "陈默": FakeV4Agent([])}, kb_seeds={"陈默妈": rows})
+        engine._init_kb(world.now)
+        engine._sync_contacts("陈默妈")
+        body = "请把这件私事只告诉李阿姨。"
+        for name, args in (("speak", {"text": body, "to": ["李阿姨"], "volume": "normal"}),
+                           ("give", {"target": "李阿姨", "item": "材料"})):
+            with self.subTest(name=name):
+                with self.assertRaises(ActionRejected) as caught:
+                    world.submit(Intention("陈默妈", name, args, world.version))
+                rejection = engine._action_rejection_text(
+                    "陈默妈", caught.exception, name, args)
+                self.assertNotIn(body, rejection)
+                self.assertNotIn("Valid call", rejection)
+                self.assertNotIn('"arguments":', rejection)
+        self.assertFalse(any(event.kind in {"speech", "item_given"}
+                             for event in world.event_log))
+
+    def test_ambiguous_contact_alias_is_rejected_before_it_can_retarget(self):
+        from harness.kb import ActorKB
+
+        rows = [{"keys": ["陈默妈"], "desc": "我，陈默妈。"},
+                {"keys": ["!contact", "林瑶", "李阿姨"], "desc": "认识林瑶。"},
+                {"keys": ["!contact", "陈默", "李阿姨"], "desc": "认识陈默。"}]
+        with self.assertRaisesRegex(ValueError, "already tied to") as caught:
+            ActorKB("陈默妈", rows, START,
+                    valid_contact_names={"陈默妈", "林瑶", "陈默"})
+        self.assertIn("李阿姨", str(caught.exception))
+        self.assertIn("林瑶", str(caught.exception))
+        self.assertIn("陈默", str(caught.exception))
+
     def test_due_reminder_force_interrupts_and_notifies(self):
         world = _world()
         rows = [{"keys": ["a"], "desc": "我，测试角色。"},
@@ -630,7 +698,7 @@ class BusyRecoveryTests(unittest.TestCase):
         self.assertIn('"name": "read"', result["text"])
         self.assertIn('"item": "ledger"', result["text"])
 
-    def test_bad_speech_argument_gets_a_legal_current_target_example(self):
+    def test_bad_speech_argument_lists_recipients_without_reusing_body(self):
         world = self._world()
         engine = self._engine(world)
         engine._execute_chain("a", [{"name": "speak", "arguments": {
@@ -640,9 +708,10 @@ class BusyRecoveryTests(unittest.TestCase):
                               world.affordances("a"), world.version)
         result = engine.agents["a"].delivered[0]
         self.assertFalse(result["ok"])
-        self.assertIn('"name": "speak"', result["text"])
-        self.assertIn('"to": ["b"]', result["text"])
-        self.assertIn('"volume": "normal"', result["text"])
+        self.assertIn("Names in your personal knowledge or here: b", result["text"])
+        self.assertNotIn('"name": "speak"', result["text"])
+        self.assertNotIn('"to": ["b"]', result["text"])
+        self.assertNotIn("Valid call", result["text"])
 
     def test_busy_tool_descriptions_distinguish_wait_and_interruption(self):
         from harness.action_schema import TOOLS

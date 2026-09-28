@@ -1108,9 +1108,9 @@ class World:
                 unknown = [t for t in named if t not in here]
                 if unknown:
                     raise ActionRejected(
-                        f"说话对象必须和你在一起。不在场：{', '.join(unknown)}。",
-                        alternatives=[f"speak to {other}" for other in sorted(here)],
-                        context={"absent": unknown})
+                        f"speak recipient must be here; absent: {', '.join(unknown)}.",
+                        context={"absent": unknown, "recipient_unavailable": True,
+                                 "recipient_candidates": self._person_candidates(a)})
             elif volume == "whisper":
                 raise ActionRejected(
                     "低声说话必须用 to 指定你说过给谁听（同处一地的人）。",
@@ -1123,16 +1123,15 @@ class World:
             if not isinstance(target_id, str) or not target_id:
                 reachable = self._message_targets(a)
                 raise ActionRejected(
-                    "发短信需要用 target 指定收信人。",
-                    alternatives=[f"text {other}" for other in reachable],
-                    context={"missing": "target"})
+                    "text needs an intended recipient in 'target'; no message was sent.",
+                    context={"missing": "target", "recipient_candidates": reachable})
             target = self._actor(target_id)
             if target.id != a.id and target.id not in a.known_contacts and target.location != a.location:
                 reachable = self._message_targets(a)
                 raise ActionRejected(
-                    f"你联系不上{target.id}：对方既不是你的熟人，也不在这里。",
-                    alternatives=[f"text {other}" for other in reachable],
-                    context={"target": target.id})
+                    f"you cannot contact {target.id}: not a known contact and not here.",
+                    context={"target": target.id, "recipient_unavailable": True,
+                             "recipient_candidates": reachable})
             if not isinstance(x.get("text"), str) or not x["text"]:
                 raise ActionRejected("消息正文不能为空（text）。")
             # One communication tick (V4-ENGINE §2): a message takes one
@@ -1156,15 +1155,19 @@ class World:
         if i.kind == "give":
             target_id = x.get("target")
             if not isinstance(target_id, str) or not target_id:
-                raise ActionRejected("give 需要 target 指定递交对象。",
-                                     context={"missing": "target"})
+                raise ActionRejected(
+                    "give needs an intended recipient in 'target'.",
+                    context={"missing": "target",
+                             "recipient_candidates": self._person_candidates(a)})
             target = self._actor(target_id)
             if target.id == a.id or target.location != a.location:
-                alternatives = [f"text {target.id}"] if target.id in a.known_contacts else []
                 raise ActionRejected(
                     f"{target.id}不在这里，你没法把东西递给对方。",
-                    alternatives=alternatives,
-                    context={"target": target.id, "co_located": False})
+                    context={"target": target.id, "recipient_unavailable": True,
+                             "recipient_candidates": sorted(
+                                 {other.id for other in self.actors.values()
+                                  if other.id != a.id and (other.location == a.location
+                                     or other.id in a.known_contacts)})})
             item = str(x.get("item"))
             if item not in a.inventory:
                 held = sorted(a.inventory)
@@ -1507,15 +1510,25 @@ class World:
         silently; a fuzzy hit is used with a teaching note; ambiguity or
         nothing is a rejection."""
         from .kb import resolve_name
-        candidates = set(actor.known_contacts) | set(actor.contact_aliases)
-        candidates.update(other.id for other in self.actors.values()
-                          if other.location == actor.location)
-        resolved, note = resolve_name(query, candidates)
-        # A nickname resolves to the formal id; that mapping is the point of
-        # the contact system.
-        if resolved is not None:
-            resolved = actor.contact_aliases.get(resolved, resolved)
-        return resolved, note
+        formal_names = set(actor.known_contacts)
+        formal_names.update(other.id for other in self.actors.values()
+                            if other.id != actor.id and other.location == actor.location)
+        formal, formal_note = resolve_name(query, formal_names)
+        if formal is not None and formal_note is None:
+            return formal, None
+
+        # An alias is verified only because this actor explicitly recorded it
+        # for one formal contact. A unique fuzzy hit among those personal aliases
+        # can safely correct to that same identity; arbitrary formal-name
+        # substrings cannot.
+        alias, alias_note = resolve_name(query, actor.contact_aliases)
+        if alias is not None:
+            return actor.contact_aliases[alias], alias_note
+        note = formal_note or alias_note or f"unknown name '{query}'"
+        if formal is not None:
+            note = (f"unverified partial name '{query}'; use an exact formal name or "
+                    "a registered personal nickname")
+        return None, note
 
     def _canonicalize_persons(self, actor: ActorState, intention: Intention) -> Intention:
         """Rewrite person-name arguments to formal ids (T4/T3 裁决).
@@ -1531,22 +1544,10 @@ class World:
                 continue
             resolved, note = self._resolve_person(actor, query)
             if resolved is None:
-                if intention.kind == "text":
-                    alternatives = [f"text {person}" for person in self._message_targets(actor)]
-                elif intention.kind == "give":
-                    here = sorted(other.id for other in self.actors.values()
-                                  if other.id != actor.id and other.location == actor.location)
-                    item = args.get("item")
-                    if item in actor.inventory:
-                        alternatives = [f"give {item} to {person}" for person in here]
-                    else:
-                        alternatives = []
-                else:
-                    here = sorted(other.id for other in self.actors.values()
-                                  if other.id != actor.id and other.location == actor.location)
-                    alternatives = [f"speak to {person}" for person in here]
-                raise ActionRejected(str(note), alternatives=alternatives,
-                                     context={key: query})
+                raise ActionRejected(
+                    str(note),
+                    context={key: query, "name_resolution": True,
+                             "recipient_candidates": self._person_candidates(actor)})
             if resolved != query:
                 args[key] = resolved
                 changed = True
@@ -1569,8 +1570,9 @@ class World:
                             changed = True
                 if notes:
                     raise ActionRejected(
-                        f"说话对象无法识别：{'; '.join(notes)}。",
-                        context={"unknown": notes})
+                        f"unknown or ambiguous speak recipient: {'; '.join(notes)}",
+                        context={"unknown": notes, "name_resolution": True,
+                                 "recipient_candidates": self._person_candidates(actor)})
                 if resolved_to != to:
                     args["to"] = resolved_to
         if not changed:
@@ -1580,11 +1582,15 @@ class World:
                          interrupt=intention.interrupt,
                          uninterruptable=intention.uninterruptable)
 
-    def _message_targets(self, actor: ActorState) -> list[str]:
-        """Expose only addressable people; the world does not reveal its roster."""
+    def _person_candidates(self, actor: ActorState) -> list[str]:
+        """Names this actor can personally address, never the global roster."""
         return sorted({other.id for other in self.actors.values()
                        if other.id != actor.id and (
                            other.id in actor.known_contacts or other.location == actor.location)})
+
+    def _message_targets(self, actor: ActorState) -> list[str]:
+        """Expose only addressable people; the world does not reveal its roster."""
+        return self._person_candidates(actor)
 
     def _require_location(self, location: str) -> None:
         if location not in self.locations: raise ValueError(f"unknown location: {location}")

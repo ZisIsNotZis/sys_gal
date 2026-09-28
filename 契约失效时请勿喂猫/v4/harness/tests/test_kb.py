@@ -9,7 +9,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 
 from harness.kb import (ALWAYS_OPEN_LIMIT, ActorKB, format_reminder_time, hits,
-                        key_id, parse_reminder_time)
+                        key_id, parse_reminder_time, resolve_name)
 
 T0 = datetime(2026, 3, 16, 7, 0, tzinfo=timezone(timedelta(hours=8)))  # 周一
 
@@ -44,6 +44,47 @@ class RowModelTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unparseable scheduled"):
             ActorKB("唐小岚", [{"keys": ["唐小岚"]},
                                {"keys": ["!at=13/45(周八) 99:99"], "desc": "y"}], T0)
+
+    def test_unknown_directive_is_rejected_with_supported_shapes(self):
+        kb = ActorKB("唐小岚", [{"keys": ["唐小岚"], "desc": "我"}], T0)
+        errors, telemetry, _ = kb.apply_ops(
+            [{"keys": ["!contactx", "李阿姨"], "op": "open", "desc": "联系人"}], T0)
+        self.assertEqual(telemetry["applied"], 0)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("unknown directive key", errors[0])
+        self.assertIn('keys=["!always", "要紧的事"]', errors[0])
+        self.assertIn('keys=["!contact", "<exact formal name you know>"', errors[0])
+        self.assertFalse(any("李阿姨" in row["keys"] for row in kb.snapshot()["rows"]))
+
+    def test_invalid_directives_explain_valid_actor_visible_shapes(self):
+        kb = ActorKB("唐小岚", [{"keys": ["唐小岚"], "desc": "我"}], T0)
+        errors, _, _ = kb.apply_ops(
+            [{"keys": ["!always"], "op": "open", "desc": "记得"},
+             {"keys": ["!contact"], "op": "open", "desc": "联系人"}], T0)
+        self.assertEqual(len(errors), 2)
+        self.assertIn('["!always", "要紧的事"]', errors[0])
+        self.assertIn('["!contact", "<exact formal name you know>", "<your nickname>"]', errors[1])
+        self.assertIn('"op": "open"', errors[1])
+
+    def test_contact_must_name_a_registered_person_without_revealing_roster(self):
+        kb = ActorKB("a", [{"keys": ["a"], "desc": "我"}], T0,
+                     valid_contact_names={"a", "全局秘密角色甲", "全局秘密角色乙"})
+        errors, _, _ = kb.apply_ops(
+            [{"keys": ["!contact", "姨妈"], "op": "open", "desc": "认识的人"}], T0)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("not another registered actor", errors[0])
+        self.assertIn("exact formal name you know", errors[0])
+        self.assertNotIn("全局秘密角色甲", errors[0])
+        self.assertNotIn("全局秘密角色乙", errors[0])
+
+    def test_weekday_mismatch_error_includes_a_valid_scheduled_key(self):
+        kb = ActorKB("唐小岚", [{"keys": ["唐小岚"], "desc": "我"}], T0)
+        errors, _, _ = kb.apply_ops(
+            [{"keys": ["!at=3/16(周二) 08:30", "糕点铺"],
+              "op": "open", "desc": "带话"}], T0)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("!at=3/17(周二) 08:30", errors[0])
+        self.assertIn('["!at=3/17(周二) 08:30", "要办的事"]', errors[0])
 
     def test_legacy_fields_rows_are_rejected_for_seeds(self):
         # V4-AGENT-INTERFACE §6: seeds and update_memory speak the key-set
@@ -88,6 +129,12 @@ class RowModelTests(unittest.TestCase):
 
 
 class HitsTests(unittest.TestCase):
+    def test_name_resolution_rejects_exact_normalization_collisions(self):
+        resolved, note = resolve_name("妈妈", {"妈妈", "妈 妈"})
+        self.assertIsNone(resolved)
+        self.assertIn("ambiguous exact name", note or "")
+        self.assertIn("妈妈", note or "")
+
     def test_substring_matches_in_both_directions(self):
         self.assertTrue(hits(["陈默"], ["陈默的爸爸"]))
         self.assertTrue(hits(["2013年台风夜"], ["2013年台风"]))
@@ -194,6 +241,21 @@ class MutationTests(unittest.TestCase):
         errs, _, _ = kb.apply_ops(
             [{"keys": ["!always", "多一件"], "op": "open", "desc": "y"}], T0)
         self.assertTrue(any("limit" in e for e in errs))
+
+    def test_update_memory_rejects_a_contact_alias_already_owned_by_another_person(self):
+        rows = [{"keys": ["陈默妈"], "desc": "我"},
+                {"keys": ["!contact", "林瑶", "李阿姨"], "desc": "认识林瑶"}]
+        kb = ActorKB("陈默妈", rows, T0,
+                     valid_contact_names={"陈默妈", "林瑶", "陈默"})
+        errors, telemetry, _ = kb.apply_ops(
+            [{"keys": ["!contact", "陈默", "李阿姨"],
+              "op": "open", "desc": "认识陈默"}], T0)
+        self.assertEqual(telemetry["applied"], 0)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("already tied to '林瑶'", errors[0])
+        self.assertFalse(any("陈默" in row["keys"]
+                             for row in kb.snapshot()["rows"]
+                             if "!contact" in row["keys"]))
 
     def test_reopen_after_close(self):
         self.kb.apply_ops([{"keys": ["新事"], "op": "open", "desc": "x"}], T0)
