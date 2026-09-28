@@ -118,10 +118,10 @@ class LocationState:
     # knowledge_notes}; rarity "common" | "rare" (rare = happens to know more).
     extras: tuple[Mapping[str, Any], ...] = ()
 
-    # Ruling 2026-09-22: 字条 is a room message, not an item. Multiple notes
-    # allowed, each {author, text, left_at}; delivered read-once (阅后即焚)
-    # to the next enterer / to present actors, then removed. compare=False
-    # keeps the frozen-dataclass hash/eq on identity fields only.
+    # 字条 is a room message, not an item. Multiple notes are kept as
+    # {author, text, left_at}; the next actor to enter receives them privately
+    # and they are then removed. Co-located actors do not receive the content.
+    # compare=False keeps frozen-dataclass equality on identity fields only.
     notes: list[dict[str, Any]] = field(default_factory=list, compare=False)
 
 @dataclass(frozen=True)
@@ -493,9 +493,9 @@ class World:
             return
         a.location = new
         enter = self._commit("enter", actor_id, {"location": new}, None)
-        # Ruling 2026-09-22: the enterer is the next reader — room notes are
-        # delivered privately and burned (阅后即焚) on arrival.
-        self._consume_notes(new, [actor_id], enter.id)
+        # The first actor to enter receives all pending room notes privately;
+        # the event queue's (time, sequence) ordering breaks same-timestamp ties.
+        self._consume_notes(new, actor_id, enter.id)
         if index < len(path) - 1:
             self._commit("leave", actor_id, {"location": new}, None)
 
@@ -631,7 +631,7 @@ class World:
                     for item in sorted(a.inventory)]
         options += [{"kind": "place", "item": item} for item in sorted(a.inventory)]
         options += [{"kind": "leave_note", "text": "",
-                     "hint": "字条是房间留言：下一位进入者立即看到全文并阅后即焚；在场的其他人当场看到"},
+                     "hint": "字条是房间留言：在场的人只知道有人留条；之后第一位进入者私下读到全文并阅后即焚"},
                     *({"kind": "trash", "item": item} for item in sorted(a.inventory))]
         available_documents = [document for document in self.document_defs
                                if self._entity_available(a.id, document)]
@@ -915,14 +915,6 @@ class World:
                     }, event.id))
                 if job.payload["action"] in {"read", "leave_note", "trash"}:
                     out.append(self._commit_interaction(job.actor, job.payload, event.id))
-                if job.payload["action"] == "leave_note":
-                    # Ruling 2026-09-22: co-located actors are "the next person
-                    # present" — they read the note immediately; it burns.
-                    here = self.actors[job.actor].location
-                    self._consume_notes(here,
-                                        [x.id for x in self.actors.values()
-                                         if x.id != job.actor and x.location == here],
-                                        event.id)
             elif job.kind == "world_event":
                 # Seeded world events may carry story-neutral objective
                 # effects (open/close a place, place an item or document).
@@ -970,7 +962,7 @@ class World:
                   "busy_until": a.busy_until.isoformat() if a.busy_until else None,
                   "nearby_actors": sorted(x.id for x in self.actors.values() if x.id != actor_id and x.location == a.location),
                   "nearby_items": sorted(i for i, loc in self.item_locations.items() if loc == a.location),
-                  "inbox": inbox, "events": [self._public(e) for e in visible],
+                  "inbox": inbox, "events": [self._public(e, observer=actor_id) for e in visible],
                   "knowledge": self._knowledge(a) if full_state else {}}
         if full_desc:
             result["descriptions"] = {entity_id: self.entity_descriptions[entity_id]
@@ -1309,8 +1301,7 @@ class World:
             return self._co_located(str(actor))
         if kind in {"action_started", "action_completed"} and payload.get("action") in {
                 "read", "leave_note", "trash"}:
-            # The fact is public; the content never is (carried only by the
-            # private document_read event above).
+            # The fact is public; read/note contents are delivered privately.
             return self._co_located(str(actor))
         if kind in {"action_started", "action_completed"} and payload.get("action") in {
                 "wait", "sleep"}:
@@ -1387,8 +1378,16 @@ class World:
         return dict(payload)
 
     @staticmethod
-    def _public(e: Event) -> dict[str, Any]:
-        return {"id": e.id, "time": e.time.isoformat(), "kind": e.kind, "actor": e.actor, "payload": dict(e.payload), "cause": e.cause}
+    def _public(e: Event, *, observer: str | None = None) -> dict[str, Any]:
+        payload = dict(e.payload)
+        # Keep note text in the authoritative journal for replay, but do not
+        # expose it through another co-located actor's perception. The action
+        # lifecycle events also carry the submitted text internally.
+        is_note_action = (e.kind in {"action_started", "action_completed"}
+                          and payload.get("action") == "leave_note")
+        if (e.kind == "note_left" or is_note_action) and observer is not None and observer != e.actor:
+            payload.pop("text", None)
+        return {"id": e.id, "time": e.time.isoformat(), "kind": e.kind, "actor": e.actor, "payload": payload, "cause": e.cause}
 
     def _actor(self, actor_id: str) -> ActorState:
         if actor_id not in self.actors: raise ActionRejected(f"unknown actor: {actor_id}")
@@ -1477,21 +1476,23 @@ class World:
                 f"item '{entity_id}' appeared without a description "
                 "(entity_descriptions); every appearing item must be described")
 
-    def _consume_notes(self, location_id: str, reader_ids: list[str],
+    def _consume_notes(self, location_id: str, reader_id: str,
                        cause: int | None) -> None:
-        """阅后即焚 (ruling 2026-09-22): deliver each room note privately to
-        the given readers and remove it from the location. With no readers
-        the notes stay for the next enterer."""
+        """Privately deliver and burn all pending room notes for one entrant.
+
+        Called only after an enter event; co-located observers never receive
+        note contents. Sequential enter events make simultaneous arrivals
+        deterministic: the first one consumes the waiting notes.
+        """
         location = self.locations[location_id]
-        readers = [r for r in reader_ids if r in self.actors
-                   and self.actors[r].location == location_id]
-        if not readers:
+        if (reader_id not in self.actors
+                or self.actors[reader_id].location != location_id):
             return
         while location.notes:
             note = location.notes.pop(0)
             self._commit("note_read", note.get("author"),
                          {"location": location_id, "author": note.get("author"),
-                          "text": note.get("text"), "readers": readers},
+                          "text": note.get("text"), "readers": [reader_id]},
                          cause)
 
     def _present_items(self, actor: ActorState) -> tuple[list[str], list[str]]:

@@ -64,8 +64,8 @@ def _apply_consequence(world: World, event: Event) -> None:
         target.inbox.append({"from": event.actor, "text": str(event.payload["text"]),
                              "sent_at": event.time.isoformat()})
     elif event.kind == "note_left" and event.actor:
-        # Ruling 2026-09-22: notes are room messages; replay keeps them on
-        # the location until their note_read burn.
+        # Notes remain in the room until a single enterer receives and burns
+        # them; replay applies the recorded note_read events in event order.
         location_id = str((event.payload or {}).get("location")
                           or world.actors[event.actor].location)
         world.locations[location_id].notes.append(

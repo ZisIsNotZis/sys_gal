@@ -293,60 +293,121 @@ class DocumentInteractionTests(unittest.TestCase):
         with self.assertRaises(ActionRejected):
             world.submit(Intention("a", "read", {"item": "other"}, world.version))
 
-    def test_leave_note_is_a_read_once_room_message(self):
-        """Ruling 2026-09-22: 字条 is a room message, not an item —
-        co-located actors read it immediately and the note burns."""
+    def test_leave_note_waits_for_next_entry_and_hides_text_from_room(self):
+        """A note is a room message, but co-located actors are not readers."""
+        from harness.prompt import render_world_message
+
         world = self.world()
-        world.submit(Intention("a", "leave_note", {"text": "去后街找我"},
-                               world.version))
+        text = "去后街找我"
+        world.submit(Intention("a", "leave_note", {"text": text}, world.version))
         world.advance()
-        # no 字条- item is created; the room held the message and it burned
         self.assertFalse(any(i.startswith("字条-") for i in world.item_locations))
-        self.assertEqual(world.locations["room"].notes, [])
+        self.assertEqual([n["text"] for n in world.locations["room"].notes], [text])
+
         packet = world.poll("b")
-        reads = [e for e in packet["events"] if e["kind"] == "note_read"]
-        self.assertEqual(len(reads), 1)
-        self.assertEqual(reads[0]["payload"]["text"], "去后街找我")
-        self.assertEqual(reads[0]["payload"]["readers"], ["b"])
-        # empty text rejected
+        events = packet["events"]
+        self.assertFalse(any(e["kind"] == "note_read" for e in events))
+        note_events = [e for e in events if e["kind"] == "note_left" or
+                       (e["kind"] in {"action_started", "action_completed"}
+                        and e["payload"].get("action") == "leave_note")]
+        self.assertTrue(note_events)
+        self.assertTrue(all("text" not in e["payload"] for e in note_events))
+        rendered = render_world_message(packet, world.affordances("b"), observer="b")
+        self.assertNotIn(text, rendered)
+
+        # Empty text remains invalid.
         with self.assertRaises(ActionRejected):
             world.submit(Intention("a", "leave_note", {"text": "  "}, world.version))
 
-    def test_note_is_delivered_privately_to_next_enterer(self):
-        """Ruling 2026-09-22: the next enterer reads the note as a private
-        line and the note is removed from the room (阅后即焚)."""
+    def test_note_is_delivered_privately_to_only_the_next_enterer(self):
+        """The entering actor alone gets the private, read-once note line."""
+        from harness.prompt import render_world_message
+
         world = World(
             start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
-            actors=[ActorState("a", "room"), ActorState("b", "far")],
+            actors=[ActorState("a", "room"), ActorState("b", "far"),
+                    ActorState("c", "room")],
             locations=[LocationState("room"), LocationState("far")],
             routes={("room", "far"): 60, ("far", "room"): 60})
-        world.submit(Intention("a", "leave_note", {"text": "灯坏了"}, world.version))
+        text = "灯坏了"
+        world.submit(Intention("a", "leave_note", {"text": text}, world.version))
         world.advance()
-        # nobody else present: the note waits on the room
-        self.assertEqual(len(world.locations["room"].notes), 1)
+        # Another person already in the room sees only that a note was left.
+        c_before = world.poll("c")
+        self.assertNotIn(text, str(c_before["events"]))
+        self.assertFalse(any(e["kind"] == "note_read" for e in c_before["events"]))
+
         world.submit(Intention("b", "move", {"target": "room"}, world.version))
         world.advance()
         self.assertEqual(world.locations["room"].notes, [])
-        packet = world.poll("b")
-        reads = [e for e in packet["events"] if e["kind"] == "note_read"]
+        b_packet = world.poll("b")
+        reads = [e for e in b_packet["events"] if e["kind"] == "note_read"]
         self.assertEqual(len(reads), 1)
-        # the content is private: the leaver never receives it
-        self.assertNotIn(reads[0]["id"],
-                         [e["id"] for e in world.poll("a")["events"]])
+        self.assertEqual(reads[0]["payload"]["readers"], ["b"])
+        self.assertIn(text, render_world_message(
+            b_packet, world.affordances("b"), observer="b"))
 
-    def test_notes_survive_checkpoint_and_replay(self):
+        c_packet = world.poll("c")
+        self.assertFalse(any(e["kind"] == "note_read" for e in c_packet["events"]))
+        self.assertNotIn(text, str(c_packet["events"]))
+        # The author does not receive the private note_read event either.
+        self.assertFalse(any(e["kind"] == "note_read"
+                             for e in world.poll("a")["events"]))
+
+    def test_notes_go_to_first_same_timestamp_entrant_and_survive_checkpoint_replay(self):
+        """Same-time arrivals are serialized; one entrant burns all queued notes."""
+        from harness.replay import replay_world
+
         world = World(
             start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
-            actors=[ActorState("a", "room")],
-            locations=[LocationState("room")])
-        pristin = deepcopy(world)  # pre-run state for the replay baseline
-        world.submit(Intention("a", "leave_note", {"text": "1"}, world.version))
-        world.advance()
-        restored = World.from_checkpoint(world, world.checkpoint_state())
-        self.assertEqual([n["text"] for n in restored.locations["room"].notes], ["1"])
-        from harness.replay import replay_world
-        replayed = replay_world(pristin, world.replayable_log())
-        self.assertEqual([n["text"] for n in replayed.locations["room"].notes], ["1"])
+            actors=[ActorState("author", "room"), ActorState("first", "far"),
+                    ActorState("second", "far")],
+            locations=[LocationState("room"), LocationState("far")],
+            routes={("room", "far"): 60, ("far", "room"): 60})
+        initial = deepcopy(world)
+        for text in ("第一张", "重留的一张"):
+            world.submit(Intention("author", "leave_note", {"text": text},
+                                   world.version))
+            world.advance()
+        pending = World.from_checkpoint(world, world.checkpoint_state())
+        self.assertEqual([n["text"] for n in pending.locations["room"].notes],
+                         ["第一张", "重留的一张"])
+
+        pending.submit(Intention("first", "move", {"target": "room"},
+                                 pending.version))
+        pending.submit(Intention("second", "move", {"target": "room"},
+                                 pending.version))
+        pending.advance()
+        entrants = [e for e in pending.event_log
+                    if e.kind == "enter" and e.actor in {"first", "second"}]
+        self.assertEqual(len(entrants), 2)
+        self.assertEqual(entrants[0].time, entrants[1].time)
+        note_reads = [e for e in pending.event_log if e.kind == "note_read"]
+        self.assertEqual([e.payload["text"] for e in note_reads],
+                         ["第一张", "重留的一张"])
+        self.assertEqual([e.payload["readers"] for e in note_reads],
+                         [[entrants[0].actor], [entrants[0].actor]])
+        self.assertTrue(all(e.cause == entrants[0].id for e in note_reads))
+        self.assertEqual(pending.locations["room"].notes, [])
+
+        first_packet = pending.poll("first")
+        second_packet = pending.poll("second")
+        first_reads = [e for e in first_packet["events"] if e["kind"] == "note_read"]
+        second_reads = [e for e in second_packet["events"] if e["kind"] == "note_read"]
+        if entrants[0].actor == "first":
+            self.assertEqual(len(first_reads), 2)
+            self.assertEqual(second_reads, [])
+        else:
+            self.assertEqual(first_reads, [])
+            self.assertEqual(len(second_reads), 2)
+
+        restored_after_delivery = World.from_checkpoint(
+            initial, pending.checkpoint_state())
+        self.assertEqual(restored_after_delivery.locations["room"].notes, [])
+        replayed = replay_world(initial, pending.replayable_log())
+        self.assertEqual(replayed.locations["room"].notes, [])
+        self.assertEqual([e.kind for e in replayed.event_log if e.kind == "note_read"],
+                         ["note_read", "note_read"])
 
     def test_item_appearing_without_description_fails_loud(self):
         """Ruling 2026-09-22: an undescribed item appearing is an error."""
