@@ -393,6 +393,31 @@ class V4SessionTests(unittest.TestCase):
         self.assertEqual(calls[1]["arguments"], {})
         self.assertIn("parse_error", calls[1])
 
+    def test_responses_model_preserves_repeated_tool_calls_and_results(self):
+        from harness.provider import _chat_messages_to_responses_input
+        provider = _FakeProvider({"content": "", "tool_calls": [
+            {"id": "read-1", "type": "function", "function": {
+                "name": "read", "arguments": '{"item":"甲"}'}},
+            {"id": "read-2", "type": "function", "function": {
+                "name": "read", "arguments": '{"item":"乙"}'}}]})
+        provider.responses_only = True
+        session = V4Session("陈默", provider)
+        session.decide("读两份不同的材料")
+        session.deliver_tool_results([
+            {"tool_call_id": "read-1", "text": "甲的正文"},
+            {"tool_call_id": "read-2", "text": "乙的正文"},
+        ])
+        self.assertEqual([m["role"] for m in session.messages[-3:]],
+                         ["assistant", "tool", "tool"])
+        self.assertEqual(len(session.messages[-3]["tool_calls"]), 2)
+        items = _chat_messages_to_responses_input(session.messages)
+        self.assertEqual([(i["name"], i["arguments"]) for i in items
+                          if i.get("type") == "function_call"],
+                         [("read", '{"item":"甲"}'), ("read", '{"item":"乙"}')])
+        self.assertEqual([(i["call_id"], i["output"]) for i in items
+                          if i.get("type") == "function_call_output"],
+                         [("read-1", "甲的正文"), ("read-2", "乙的正文")])
+
     def test_compaction_fires_at_threshold_and_flags_once(self):
         seed = self._seed()
         provider = _FakeProvider({"content": "", "tool_calls": [

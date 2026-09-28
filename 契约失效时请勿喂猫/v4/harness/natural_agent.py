@@ -93,14 +93,17 @@ class V4Session:
         """Report each tool call's result (V4-AGENT-INTERFACE §3): content is
         "ok" or the concrete error text for that call.
 
-        A chain's n results are COALESCED into ONE tool message: strict
-        gateways (github copilot via litellm) reject a tool message that
-        follows another tool message, and the full history is re-sent on
-        every request — a single TT pair would poison the session for the
-        rest of the run. The preceding assistant message keeps only the
-        first call, so the call/result counts still match; every result's
-        text is preserved, prefixed by its call name."""
+        Responses-only models retain every function-call/result pair, including
+        repeated calls of the same tool with different arguments. Legacy Chat
+        Completions gateways still require coalescing consecutive tool replies;
+        the legacy branch below preserves their existing wire contract."""
         if not results:
+            return
+        if getattr(self.provider, "responses_only", False):
+            for result in results:
+                self.messages.append({"role": "tool",
+                                      "tool_call_id": result.get("tool_call_id"),
+                                      "content": str(result.get("text", "ok"))})
             return
         last = self.messages[-1] if self.messages else None
         if len(results) > 1 and last is not None and last.get("role") == "assistant":
