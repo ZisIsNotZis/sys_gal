@@ -738,7 +738,7 @@ class AsyncEngine:
                 content = f"{content}\n（记录上还有：{notes}）" if content else notes
             return content or "（这份记录没有可读的正文。）"
         if name == "leave_note":
-            return "字条已留下；之后第一位进入这里的人会私下读到全文。"
+            return "字条已留下；作者再次进入不会读到自己的字条，之后第一位非作者进入者会私下读到全文。"
         if name == "trash":
             return "已销毁。"
         if name == "place":

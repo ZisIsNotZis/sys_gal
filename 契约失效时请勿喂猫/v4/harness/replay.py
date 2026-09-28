@@ -74,8 +74,10 @@ def _apply_consequence(world: World, event: Event) -> None:
     elif event.kind == "note_read":
         location = world.locations[str(event.payload["location"])]
         for index, note in enumerate(location.notes):
+            left_at = event.payload.get("left_at")
             if (note.get("author") == event.payload.get("author")
-                    and note.get("text") == event.payload.get("text")):
+                    and note.get("text") == event.payload.get("text")
+                    and (left_at is None or note.get("left_at") == left_at)):
                 location.notes.pop(index)
                 break
     elif event.kind == "world_event":

@@ -120,8 +120,9 @@ class LocationState:
     extras: tuple[Mapping[str, Any], ...] = ()
 
     # 字条 is a room message, not an item. Multiple notes are kept as
-    # {author, text, left_at}; the next actor to enter receives them privately
-    # and they are then removed. Co-located actors do not receive the content.
+    # {author, text, left_at}; each note waits for its first non-author entrant,
+    # who receives it privately before it is removed. Co-located actors do not
+    # receive the content.
     # compare=False keeps frozen-dataclass equality on identity fields only.
     notes: list[dict[str, Any]] = field(default_factory=list, compare=False)
 
@@ -494,8 +495,8 @@ class World:
             return
         a.location = new
         enter = self._commit("enter", actor_id, {"location": new}, None)
-        # The first actor to enter receives all pending room notes privately;
-        # the event queue's (time, sequence) ordering breaks same-timestamp ties.
+        # Each pending note goes to its first non-author entrant. The event
+        # queue's (time, sequence) ordering breaks same-timestamp ties.
         self._consume_notes(new, actor_id, enter.id)
         if index < len(path) - 1:
             self._commit("leave", actor_id, {"location": new}, None)
@@ -634,7 +635,7 @@ class World:
                     for item in sorted(a.inventory)]
         options += [{"kind": "place", "item": item} for item in sorted(a.inventory)]
         options += [{"kind": "leave_note", "text": "",
-                     "hint": "字条是房间留言：在场的人只知道有人留条；之后第一位进入者私下读到全文并阅后即焚"},
+                     "hint": "字条是房间留言：在场的人只知道有人留条；作者返场不算读者，第一位非作者进入者私下读到全文并阅后即焚"},
                     *({"kind": "trash", "item": item} for item in sorted(a.inventory))]
         available_documents = [document for document in self.document_defs
                                if self._entity_available(a.id, document)]
@@ -1598,21 +1599,27 @@ class World:
 
     def _consume_notes(self, location_id: str, reader_id: str,
                        cause: int | None) -> None:
-        """Privately deliver and burn all pending room notes for one entrant.
+        """Deliver each pending note to its first non-author entrant.
 
-        Called only after an enter event; co-located observers never receive
-        note contents. Sequential enter events make simultaneous arrivals
-        deterministic: the first one consumes the waiting notes.
+        Called only after an enter event; an author re-entering leaves their
+        own note pending, while notes by other authors can still be consumed.
+        Co-located observers never receive note contents. Sequential enter
+        events make simultaneous arrivals deterministic.
         """
         location = self.locations[location_id]
         if (reader_id not in self.actors
                 or self.actors[reader_id].location != location_id):
             return
-        while location.notes:
-            note = location.notes.pop(0)
+        pending = list(location.notes)
+        location.notes.clear()
+        for note in pending:
+            if note.get("author") == reader_id:
+                location.notes.append(note)
+                continue
             self._commit("note_read", note.get("author"),
                          {"location": location_id, "author": note.get("author"),
-                          "text": note.get("text"), "readers": [reader_id]},
+                          "left_at": note.get("left_at"), "text": note.get("text"),
+                          "readers": [reader_id]},
                          cause)
 
     def _present_items(self, actor: ActorState) -> tuple[list[str], list[str]]:

@@ -354,6 +354,77 @@ class DocumentInteractionTests(unittest.TestCase):
         self.assertFalse(any(e["kind"] == "note_read"
                              for e in world.poll("a")["events"]))
 
+    def test_note_author_reentry_preserves_own_note_for_a_later_reader(self):
+        """An author may read others' notes but never consumes their own."""
+        from harness.prompt import _clock, render_world_message
+        from harness.replay import replay_world
+
+        start = datetime.fromisoformat("2026-01-01T00:00:00+00:00")
+        world = World(
+            start=start,
+            actors=[ActorState("author", "room"), ActorState("coauthor", "room"),
+                    ActorState("entrant", "far")],
+            locations=[LocationState("room"), LocationState("far")],
+            routes={("room", "far"): 60, ("far", "room"): 60})
+        initial = deepcopy(world)
+        for actor, text in (("author", "留给后来者的第一张"),
+                            ("author", "留给后来者的第二张"),
+                            ("coauthor", "另一位作者的字条")):
+            world.submit(Intention(actor, "leave_note", {"text": text}, world.version))
+            world.advance()
+        own_notes = [dict(note) for note in world.locations["room"].notes
+                     if note["author"] == "author"]
+
+        # The original author returns first: their own two notes stay pending,
+        # while notes from a different author are independently consumable.
+        world.submit(Intention("author", "move", {"target": "far"}, world.version))
+        world.advance()
+        world.submit(Intention("author", "move", {"target": "room"}, world.version))
+        world.advance()
+        self.assertEqual(world.locations["room"].notes, own_notes)
+        author_reads = [event for event in world.event_log if event.kind == "note_read"]
+        self.assertEqual([(event.payload["author"], event.payload["readers"])
+                          for event in author_reads], [("coauthor", ["author"])])
+        self.assertIn("left_at", author_reads[0].payload)
+        author_packet = world.poll("author")
+        author_private = render_world_message(author_packet, observer="author")
+        self.assertIn("另一位作者的字条", author_private)
+        self.assertIn("1/1(四) 0:", author_private)
+
+        # A checkpoint retains the author's notes; the next non-author entrant
+        # privately receives both immutable envelopes, then the notes are gone.
+        checkpointed = World.from_checkpoint(initial, world.checkpoint_state())
+        checkpointed.submit(Intention("entrant", "move", {"target": "room"},
+                                      checkpointed.version))
+        checkpointed.advance()
+        entrant_reads = [event for event in checkpointed.event_log
+                         if event.kind == "note_read" and event.payload["readers"] == ["entrant"]]
+        self.assertEqual([event.payload["text"] for event in entrant_reads],
+                         ["留给后来者的第一张", "留给后来者的第二张"])
+        self.assertEqual([event.payload["author"] for event in entrant_reads],
+                         ["author", "author"])
+        self.assertEqual([event.payload["left_at"] for event in entrant_reads],
+                         [note["left_at"] for note in own_notes])
+        self.assertEqual(checkpointed.locations["room"].notes, [])
+        entrant_packet = checkpointed.poll("entrant")
+        entrant_private = render_world_message(entrant_packet, observer="entrant")
+        for note in own_notes:
+            self.assertIn(note["text"], entrant_private)
+            self.assertIn(_clock(note["left_at"]), entrant_private)
+        author_after_delivery = checkpointed.poll("author")
+        self.assertFalse(any(event["kind"] == "note_read"
+                             for event in author_after_delivery["events"]))
+        self.assertNotIn("留给后来者的第一张", render_world_message(
+            author_after_delivery, observer="author"))
+        self.assertNotIn("留给后来者的第一张", render_world_message(
+            checkpointed.poll("coauthor"), observer="coauthor"))
+        replayed = replay_world(initial, checkpointed.replayable_log())
+        self.assertEqual(replayed.locations["room"].notes, [])
+        self.assertEqual([event.payload for event in replayed.event_log
+                          if event.kind == "note_read"],
+                         [event.payload for event in checkpointed.event_log
+                          if event.kind == "note_read"])
+
     def test_notes_go_to_first_same_timestamp_entrant_and_survive_checkpoint_replay(self):
         """Same-time arrivals are serialized; one entrant burns all queued notes."""
         from harness.replay import replay_world

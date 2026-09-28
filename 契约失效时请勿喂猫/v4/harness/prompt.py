@@ -267,8 +267,12 @@ def _private_line(event: Mapping[str, Any], observer: str) -> str | None:
     if kind == "message_delivered" and observer == str(payload.get("target")):
         return f"消息内容：\"{payload.get('text')}\""
     if kind == "note_read" and observer in [str(r) for r in payload.get("readers", ()) or []]:
-        # 阅后即焚 private delivery (ruling 2026-09-22).
-        return (f"字条内容：\"{payload.get('text')}\"（{payload.get('author')} 留）"
+        # The envelope's author and posting time come from the engine-held note,
+        # not from model-authored text. Keep compatibility with old traces.
+        left_at = payload.get("left_at")
+        authorship = (f"（{payload.get('author')} 于 {_clock(str(left_at))} 留）"
+                      if left_at else f"（{payload.get('author')} 留）")
+        return (f"字条内容：\"{payload.get('text')}\"{authorship}"
                 "（字条已阅，随即化去）")
     # document_read 的 content 不在这里投递——它是 read 调用的 tool 结果
     # （V4-AGENT-INTERFACE §3）：公开行只描述事实。
