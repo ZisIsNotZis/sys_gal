@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+import difflib
 import itertools
 import re
 from typing import Any
@@ -340,7 +341,23 @@ class ActorKB:
         if len(candidates) > 1:
             listed = " / ".join(" ".join(r.order or sorted(r.keys)) for r in candidates[:5])
             return None, None, [f"keys '{" ".join(sorted(target))}' are ambiguous; you might mean: {listed}"]
-        return None, None, [f"no row keyed '{" ".join(sorted(target))}'"]
+        return None, None, [self._no_row_error(target)]
+
+    def _no_row_error(self, target: frozenset[str]) -> str:
+        """Helpful no-match error (ruling 2026-09-22): per unmatched key, the
+        nearest existing keys plus the create-vs-edit guidance, so the agent
+        can recover instead of giving up."""
+        shown = " ".join(sorted(target))
+        existing = sorted({key for row in self._rows.values() for key in row.keys})
+        parts: list[str] = []
+        for key in sorted(target):
+            nearest = [m for m in difflib.get_close_matches(key, existing, n=3, cutoff=0.4)]
+            if nearest:
+                parts.append(f"「{key}」最接近的现有键：" + "、".join(f"「{m}」" for m in nearest))
+        nearby = ("；" + "；".join(parts)) if parts else "；记事本里没有相近的现有键"
+        return (f"no row keyed '{shown}'：记事本里没有这一行{nearby}。"
+                "新建行用 op=open（必须带 desc）；编辑已有行用 op=edit，"
+                "先在 PRIVATE MEMORY 里核对现有行的键。")
 
     # ------------------------------------------------------------- mutation
 

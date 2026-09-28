@@ -407,10 +407,27 @@ class RenderSemanticsTests(unittest.TestCase):
         world.advance()
         perception = world.poll("b")
         text = render_world_message(perception, world.affordances("b"), observer="b")
-        self.assertIn("a 说（b 听见）：\"你们好\"", text)
+        self.assertIn("a对b说：\"你们好\"", text)
+        self.assertNotIn("也听见", text)  # no third party heard: no parenthetical
         # the line is observer-independent (same words for a)
         text_a = render_world_message(world.poll("a"), world.affordances("a"), observer="a")
-        self.assertIn("a 说（b 听见）：\"你们好\"", text_a)
+        self.assertIn("a对b说：\"你们好\"", text_a)
+
+    def test_addressed_speech_lists_third_party_hearers(self):
+        """Ruling 2026-09-22: addressed speech appends a （X也听见）
+        parenthetical naming only the third parties (heard minus to)."""
+        from harness.prompt import render_world_message
+        start = START
+        world = World(start=start,
+                      actors=[ActorState("a", "room"), ActorState("b", "room"),
+                              ActorState("d", "room")],
+                      locations=[LocationState("room")])
+        world.submit(Intention("a", "speak",
+                               {"text": "你们好", "volume": "normal", "to": ["b"]},
+                               world.version))
+        world.advance()
+        text = render_world_message(world.poll("d"), world.affordances("d"), observer="d")
+        self.assertIn("a对b说：\"你们好\"（d也听见）", text)
 
     def test_whisper_public_line_names_target_and_text_is_private(self):
         from harness.prompt import render_world_message
@@ -421,7 +438,7 @@ class RenderSemanticsTests(unittest.TestCase):
         world.advance()
         world_b = render_world_message(world.poll("b"), world.affordances("b"),
                                        observer="b")
-        self.assertIn("a 凑近 b 耳语了几句", world_b)
+        self.assertIn("a凑近b耳语了几句", world_b)
         self.assertIn("耳语内容：\"悄悄话\"", world_b)
 
     def test_solo_speak_when_nobody_present(self):

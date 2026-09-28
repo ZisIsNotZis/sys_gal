@@ -190,8 +190,8 @@ class HistoricalFailureGates(unittest.TestCase):
                             for t in trace.agent_turns if t["actor"] == "陈默")
         self.assertTrue(all("no immediate physical change" not in m for m in feedback))
         self.assertIn("7:01", rendered)      # wait outcome shows as time advanced
-        self.assertIn("陈默 留下一张字条", rendered)  # search action (F3)
-        self.assertIn("陈默 留下一张字条", rendered)    # search result (F3)
+        self.assertIn("陈默 留下一张字条（内容仅对下一位进入者可见，阅后即焚）",
+                      rendered)  # room-message note template (F3, ruling 2026-09-22)
         self.assertIn("放下", rendered)           # drop consequence
         self.assertIn("短信已送达 林瑶（手机）", rendered)  # message delivery (sender receipt)
         self.assertIn("读了 2013年邻里撤离通知书", rendered)  # document read

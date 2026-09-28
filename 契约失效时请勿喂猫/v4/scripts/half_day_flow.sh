@@ -4,7 +4,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 export OPENAI_BASE_URL=http://localhost:4000/v1
-export OPENAI_MODEL=github_copilot/gpt-5.6-luna
+export OPENAI_MODEL=github_copilot/gpt-6-luna
 export OPENAI_API_KEY=sk-noauth
 export V3_PROVIDER_TIMEOUT=120 V3_PROVIDER_RETRIES=4
 export V3_PROVIDER_MAX_RETRIES=4 V3_PROVIDER_MAX_DURATION=420

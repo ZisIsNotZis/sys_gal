@@ -168,6 +168,21 @@ class MutationTests(unittest.TestCase):
         errs, _, _ = self.kb.apply_ops([{"keys": ["草稿"], "op": "rename"}], T0)
         self.assertTrue(any("unknown op" in e for e in errs))
 
+    def test_no_match_error_suggests_nearest_keys_and_ops(self):
+        """Ruling 2026-09-22: the no-row error is actionable — per unmatched
+        key it lists the nearest existing keys and the open/edit guidance."""
+        self.kb.apply_ops([{"keys": ["2013年台风台账"], "op": "open", "desc": "旧账"}],
+                          T0)
+        errs, _, _ = self.kb.apply_ops(
+            [{"keys": ["2013年台风台账", "2013年外借记录导出件"], "op": "edit"}], T0)
+        self.assertEqual(len(errs), 1)
+        message = errs[0]
+        self.assertIn("no row keyed", message)
+        self.assertIn("最接近的现有键", message)
+        self.assertIn("2013年台风台账", message)  # a real existing key is suggested
+        self.assertIn("op=open", message)
+        self.assertIn("op=edit", message)
+
     def test_identity_row_cannot_be_closed(self):
         errs, _, _ = self.kb.apply_ops([{"keys": ["唐小岚"], "op": "close"}], T0)
         self.assertTrue(any("identity" in e for e in errs))

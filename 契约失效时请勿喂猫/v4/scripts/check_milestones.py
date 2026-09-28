@@ -146,12 +146,14 @@ def _d1_three_statements(ev, turns, sess):
 
 
 def _d1_note_procedure(ev, turns, sess):
-    reads = _reads(ev, 1)
-    notes = [r for r in reads if r[2].startswith("字条")]
-    lines = _day_texts(ev, 1)
-    n, hits = _mentioning(lines, "字条-")
-    ok = len(notes) >= 1 and n >= 1
-    evd = f"字条被读取 {len(notes)} 次（{notes[0][0] if notes else '-'} 首次）；提及字条编号 {n} 次"
+    """Ruling 2026-09-22: 字条 is a read-once room message — the
+    leave-and-read procedure is evidenced by a note_left event plus a
+    delivered note_read (阅后即焚) the same day."""
+    lefts = [e for e in _day_events(ev, 1) if e.get("kind") == "note_left"]
+    reads = [e for e in _day_events(ev, 1) if e.get("kind") == "note_read"]
+    ok = len(lefts) >= 1 and len(reads) >= 1
+    evd = (f"字条留下 {len(lefts)} 次（{lefts[0]['time'][11:16] if lefts else '-'} 首次）；"
+           f"被读到并化去 {len(reads)} 次")
     return ok, evd
 
 

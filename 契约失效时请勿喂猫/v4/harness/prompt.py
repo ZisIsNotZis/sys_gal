@@ -123,10 +123,20 @@ def _event_sentence(event: Mapping[str, Any], location: str = "",
     if kind == "speech":
         if payload.get("volume") == "whisper":
             targets = "、".join(str(t) for t in payload.get("to", []) or [])
-            return f"{who} 凑近 {targets} 耳语了几句"
+            return f"{who}凑近{targets}耳语了几句"
+        # Ruling 2026-09-22: no space before 说; addressed speech names the
+        # target(s); a parenthetical appears only when third parties also
+        # heard (heard minus the addressed targets). Plain broadcast has none.
+        to = [str(t) for t in payload.get("to", []) or []]
         heard = [str(x) for x in payload.get("heard", []) or []]
-        audience = f"（{'、'.join(heard)} 听见）" if heard else ""
-        return f"{who} 说{audience}：\"{payload.get('text')}\""
+        text = payload.get("text")
+        if to:
+            others = [x for x in heard if x not in to]
+            line = f"{who}对{'、'.join(to)}说：\"{text}\""
+            if others:
+                line += f"（{'、'.join(others)}也听见）"
+            return line
+        return f"{who}说：\"{text}\""
     if kind == "enter":
         return f"{who} 进入 {payload.get('location')}"
     if kind == "leave":
@@ -150,7 +160,7 @@ def _event_sentence(event: Mapping[str, Any], location: str = "",
     if kind == "document_read":
         return f"{who} 读了 {payload.get('document')}"
     if kind == "note_left":
-        return f"{who} 留下一张字条"
+        return f"{who} 留下一张字条（内容仅对下一位进入者可见，阅后即焚）"
     if kind == "item_trashed":
         return f"{who} 销毁了 {payload.get('item')}"
         return f"{who} 在 {payload.get('document')} 上留下批注"
@@ -209,6 +219,10 @@ def _private_line(event: Mapping[str, Any], observer: str) -> str | None:
         return None
     if kind == "message_delivered" and observer == str(payload.get("target")):
         return f"消息内容：\"{payload.get('text')}\""
+    if kind == "note_read" and observer in [str(r) for r in payload.get("readers", ()) or []]:
+        # 阅后即焚 private delivery (ruling 2026-09-22).
+        return (f"字条内容：\"{payload.get('text')}\"（{payload.get('author')} 留）"
+                "（字条已阅，随即化去）")
     # document_read 的 content 不在这里投递——它是 read 调用的 tool 结果
     # （V4-AGENT-INTERFACE §3）：公开行只描述事实。
     # documents_compared 的判定在 compare 调用的 tool 结果里。

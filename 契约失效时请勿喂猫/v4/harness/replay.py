@@ -63,6 +63,21 @@ def _apply_consequence(world: World, event: Event) -> None:
         target = world.actors[str(event.payload["target"])]
         target.inbox.append({"from": event.actor, "text": str(event.payload["text"]),
                              "sent_at": event.time.isoformat()})
+    elif event.kind == "note_left" and event.actor:
+        # Ruling 2026-09-22: notes are room messages; replay keeps them on
+        # the location until their note_read burn.
+        location_id = str((event.payload or {}).get("location")
+                          or world.actors[event.actor].location)
+        world.locations[location_id].notes.append(
+            {"author": event.actor, "text": str((event.payload or {}).get("text", "")),
+             "left_at": event.time.isoformat()})
+    elif event.kind == "note_read":
+        location = world.locations[str(event.payload["location"])]
+        for index, note in enumerate(location.notes):
+            if (note.get("author") == event.payload.get("author")
+                    and note.get("text") == event.payload.get("text")):
+                location.notes.pop(index)
+                break
     elif event.kind == "world_event":
         # Seeded world events may carry objective effects; replay them so the
         # reconstructed world matches the authoritative run.

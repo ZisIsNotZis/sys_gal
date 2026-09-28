@@ -64,7 +64,7 @@ def tick_ceil(seconds: float) -> int:
 
 WAKE_EVENT_KINDS = frozenset({"speech", "message_delivered", "knock", "interaction",
                               "item_given", "extra_arrived", "extra_removed",
-                              "action_interrupted", "enter"})
+                              "action_interrupted", "enter", "note_read"})
 """Ambient social events that end a light ``wait`` early (V4-ENGINE §3 wake
 class). Movement/observation events only queue for the next turn."""
 
@@ -118,6 +118,12 @@ class LocationState:
     # knowledge_notes}; rarity "common" | "rare" (rare = happens to know more).
     extras: tuple[Mapping[str, Any], ...] = ()
 
+    # Ruling 2026-09-22: 字条 is a room message, not an item. Multiple notes
+    # allowed, each {author, text, left_at}; delivered read-once (阅后即焚)
+    # to the next enterer / to present actors, then removed. compare=False
+    # keeps the frozen-dataclass hash/eq on identity fields only.
+    notes: list[dict[str, Any]] = field(default_factory=list, compare=False)
+
 @dataclass(frozen=True)
 class Intention:
     actor: str
@@ -159,8 +165,9 @@ class _Scheduled:
 def _set_location_open(world: "World", location_id: str, open_: bool) -> None:
     old = world.locations[location_id]
     world.locations[location_id] = LocationState(
-        old.id, open_, old.x, old.y, old.sound_radius, old.sound_loss,
-        old.physical_capabilities, old.controllable)
+        id=old.id, open=open_, x=old.x, y=old.y, sound_radius=old.sound_radius,
+        sound_loss=old.sound_loss, physical_capabilities=old.physical_capabilities,
+        controllable=old.controllable, extras=old.extras, notes=old.notes)
 
 
 def apply_world_effects(world: "World", payload: Mapping[str, Any]) -> None:
@@ -178,6 +185,7 @@ def apply_world_effects(world: "World", payload: Mapping[str, Any]) -> None:
         elif op == "close_location":
             _set_location_open(world, str(effect["id"]), False)
         elif op in {"add_item", "add_document", "move_item"}:
+            world._require_described(str(effect["id"]))
             world.item_locations[str(effect["id"])] = str(effect["location"])
         elif op == "remove_item":
             world.item_locations.pop(str(effect["id"]), None)
@@ -302,7 +310,8 @@ class World:
                                  "sound_loss": value.sound_loss,
                                  "controllable": value.controllable,
                                  "physical_capabilities": dict(value.physical_capabilities),
-                                 "extras": [dict(x) for x in value.extras]}
+                                 "extras": [dict(x) for x in value.extras],
+                                 "notes": [dict(x) for x in value.notes]}
                           for key, value in self.locations.items()},
             "item_locations": dict(self.item_locations),
             "document_defs": copy.deepcopy(self.document_defs),
@@ -363,7 +372,8 @@ class World:
             locations = {key: LocationState(str(row["id"]), bool(row["open"]), float(row["x"]),
                 float(row["y"]), float(row["sound_radius"]), float(row["sound_loss"]),
                 dict(row.get("physical_capabilities", {})), bool(row.get("controllable", False)),
-                tuple(dict(x) for x in row.get("extras", ())))
+                tuple(dict(x) for x in row.get("extras", ())),
+                [dict(x) for x in row.get("notes", ())])
                 for key, row in state["locations"].items()}
             events = [Event(int(row["id"]), datetime.fromisoformat(row["time"]), str(row["kind"]),
                 row["actor"], dict(row["payload"]), row["cause"], frozenset(row["visible_to"]),
@@ -482,7 +492,10 @@ class World:
         if a.location == new:
             return
         a.location = new
-        self._commit("enter", actor_id, {"location": new}, None)
+        enter = self._commit("enter", actor_id, {"location": new}, None)
+        # Ruling 2026-09-22: the enterer is the next reader — room notes are
+        # delivered privately and burned (阅后即焚) on arrival.
+        self._consume_notes(new, [actor_id], enter.id)
         if index < len(path) - 1:
             self._commit("leave", actor_id, {"location": new}, None)
 
@@ -617,7 +630,8 @@ class World:
                     if other.id != actor_id and other.location == a.location
                     for item in sorted(a.inventory)]
         options += [{"kind": "place", "item": item} for item in sorted(a.inventory)]
-        options += [{"kind": "leave_note", "text": ""},
+        options += [{"kind": "leave_note", "text": "",
+                     "hint": "字条是房间留言：下一位进入者立即看到全文并阅后即焚；在场的其他人当场看到"},
                     *({"kind": "trash", "item": item} for item in sorted(a.inventory))]
         available_documents = [document for document in self.document_defs
                                if self._entity_available(a.id, document)]
@@ -901,6 +915,14 @@ class World:
                     }, event.id))
                 if job.payload["action"] in {"read", "leave_note", "trash"}:
                     out.append(self._commit_interaction(job.actor, job.payload, event.id))
+                if job.payload["action"] == "leave_note":
+                    # Ruling 2026-09-22: co-located actors are "the next person
+                    # present" — they read the note immediately; it burns.
+                    here = self.actors[job.actor].location
+                    self._consume_notes(here,
+                                        [x.id for x in self.actors.values()
+                                         if x.id != job.actor and x.location == here],
+                                        event.id)
             elif job.kind == "world_event":
                 # Seeded world events may carry story-neutral objective
                 # effects (open/close a place, place an item or document).
@@ -1179,12 +1201,15 @@ class World:
         elif kind == "take":
             item = str(payload["item"]); a.inventory.add(item); del self.item_locations[item]
         elif kind == "place":
-            item = str(payload["item"]); a.inventory.remove(item); self.item_locations[item] = a.location
+            item = str(payload["item"]); a.inventory.remove(item)
+            self._require_described(item)
+            self.item_locations[item] = a.location
         elif kind == "leave_note":
-            note_id = f"字条-{self.version + 1}"
-            self.document_defs[note_id] = {"title": "一张字条", "content": str(payload["text"]),
-                                           "reading_seconds": 3, "left_by": actor_id}
-            self.item_locations[note_id] = a.location
+            # Ruling 2026-09-22: a note is a room message attribute, not an
+            # item — it joins the location's notes list and burns when read.
+            note = {"author": actor_id, "text": str(payload["text"]),
+                    "left_at": self.now.isoformat()}
+            self.locations[a.location].notes.append(note)
         elif kind == "trash":
             item = str(payload["item"])
             self.item_locations.pop(item, None)
@@ -1226,7 +1251,9 @@ class World:
             return {"target": target, "verb": str(intention.get("verb", "knock")),
                     "parameters": dict(intention.get("parameters", {})),
                     "responded": bool(occupants)}
-        if kind in {"leave_note", "trash"}:
+        if kind == "leave_note":
+            return {"location": actor.location, "text": str(intention.get("text", ""))}
+        if kind in {"trash"}:
             # these payloads carry no "target" key
             return {"target": ""}
         return {"target": str(intention["target"]) if "target" in intention else ""}
@@ -1323,6 +1350,11 @@ class World:
         if kind in {"knock", "interaction"}:
             target = str(payload["target"])
             return {str(actor)} | {x.id for x in self.actors.values() if x.location == target}
+        if kind == "note_left":
+            return self._co_located(str(actor))
+        if kind == "note_read":
+            # 阅后即焚：content is private to the readers listed in the payload.
+            return {str(r) for r in payload.get("readers", ()) if r in self.actors}
         if kind in {"extra_arrived", "extra_removed"}:
             return self._co_located(str(actor))
         if actor is None: return set(self.actors)
@@ -1436,6 +1468,31 @@ class World:
 
     def _require_location(self, location: str) -> None:
         if location not in self.locations: raise ValueError(f"unknown location: {location}")
+
+    def _require_described(self, entity_id: str) -> None:
+        """Ruling 2026-09-22: an item appearing without a description is a
+        build error — fail loud instead of rendering an undescribed prop."""
+        if entity_id not in self.entity_descriptions:
+            raise ValueError(
+                f"item '{entity_id}' appeared without a description "
+                "(entity_descriptions); every appearing item must be described")
+
+    def _consume_notes(self, location_id: str, reader_ids: list[str],
+                       cause: int | None) -> None:
+        """阅后即焚 (ruling 2026-09-22): deliver each room note privately to
+        the given readers and remove it from the location. With no readers
+        the notes stay for the next enterer."""
+        location = self.locations[location_id]
+        readers = [r for r in reader_ids if r in self.actors
+                   and self.actors[r].location == location_id]
+        if not readers:
+            return
+        while location.notes:
+            note = location.notes.pop(0)
+            self._commit("note_read", note.get("author"),
+                         {"location": location_id, "author": note.get("author"),
+                          "text": note.get("text"), "readers": readers},
+                         cause)
 
     def _present_items(self, actor: ActorState) -> tuple[list[str], list[str]]:
         here = sorted(item for item, location in self.item_locations.items()

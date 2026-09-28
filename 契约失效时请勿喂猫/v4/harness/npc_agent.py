@@ -55,7 +55,7 @@ def public_mc_digest(world: Any, *, tail: int = 120) -> str:
         payload = dict(event.payload)
         if event.kind == "speech":
             text = str(payload.get("text", ""))[:80]
-            lines.append(f"[{event.time.strftime('%m-%d %H:%M')}] {event.actor} 说：{text}")
+            lines.append(f"[{event.time.strftime('%m-%d %H:%M')}] {event.actor}说：{text}")
         elif event.kind == "message_delivered":
             lines.append(f"[{event.time.strftime('%m-%d %H:%M')}] {event.actor} 发了消息给 {payload.get('target')}")
         elif event.kind in {"action_started", "action_completed", "action_abandoned"}:

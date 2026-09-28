@@ -179,6 +179,7 @@ class WorldTests(unittest.TestCase):
                          actors=[ActorState("a", "room")],
                          locations=[LocationState("room"), LocationState("vault", open=False)],
                          routes={("room", "vault"): 60},
+                         entity_descriptions={"report": "a report"},
                          document_defs={"report": {"title": "Report", "content": "x",
                                                     "reading_seconds": 5}})
         seed = make()
@@ -197,6 +198,7 @@ class WorldTests(unittest.TestCase):
 
     def test_scheduled_effect_moves_and_removes_items(self):
         w = self.world()
+        w.entity_descriptions["folder"] = "a folder"
         w.item_locations["folder"] = "room"
         w._schedule(w.now, "world_event", None,
                     {"event": "relocate",

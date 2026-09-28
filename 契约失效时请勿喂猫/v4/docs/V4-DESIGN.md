@@ -31,7 +31,7 @@ the narration. Local-model A/B arm must then pick a Chinese-capable base
 
 ## 1. Model strategy (A/B before switching)
 
-- Candidates: current gpt-5.6-luna (baseline) vs a volc/* flagship chat model
+- Candidates: current gpt-6-luna (baseline) vs a volc/* flagship chat model
   vs a ds/* flagship chat model vs a local abliterated roleplay model via
   ~/llama.cpp (models under ~/hf, `hf` tool for downloads). Exact ids to be
   confirmed from the omniroute provider at run time.

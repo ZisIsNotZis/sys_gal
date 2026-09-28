@@ -1067,7 +1067,7 @@ class AsyncEngine:
                 if event.actor and event.actor in self.world.actors:
                     self._wake_nearby_npcs(
                         event.actor,
-                        f"{event.actor} 说：{str(event.payload.get('text', ''))[:40]}")
+                        f"{event.actor}说：{str(event.payload.get('text', ''))[:40]}")
             elif event.kind in {"message_sent", "message_delivered"}:
                 npc = str(event.payload.get("target", ""))
                 if self._role(npc) == "npc":
