@@ -214,13 +214,20 @@ def build_extra_system_prompt(fragment: str, knowledge_notes: str, location: str
         "\"arguments\":{\"text\":\"你说的话\"}}")
 
 
+def _extra_speech_audience(event: Any) -> Iterable[str]:
+    """Use committed delivery authority; synthetic legacy fixtures use heard."""
+    visible = getattr(event, "visible_to", None)
+    if visible is not None:
+        return visible
+    return (getattr(event, "payload", {}) or {}).get("heard") or ()
+
+
 def extra_heard_speech_since(events: Sequence[Any], *, listener: str, start: int) -> bool:
-    """Whether a new external speech event was actually audible to listener."""
+    """Whether a new external speech event was actually delivered to listener."""
     for event in events[start:]:
-        payload = getattr(event, "payload", {}) or {}
         if (getattr(event, "kind", None) == "speech"
                 and getattr(event, "actor", None) != listener
-                and listener in (payload.get("heard") or ())):
+                and listener in _extra_speech_audience(event)):
             return True
     return False
 
@@ -231,9 +238,8 @@ def extra_scene_transcript(events: Sequence[Any], *, listener: str, start: int =
                            total_chars: int = 1200) -> list[str]:
     """Return only bounded speech the extra actually heard in this scene.
 
-    `heard` is the kernel's commit-time audience record. Missing audience
-    data is not guessed from current co-location, which could expose a past
-    whisper or speech heard before the extra arrived.
+    Event.visible_to is the delivery authority; synthetic legacy fixtures
+    use heard. Never infer a past listener from current co-location.
     """
     lines: list[str] = []
     speech_texts: list[str] = []
@@ -242,7 +248,7 @@ def extra_scene_transcript(events: Sequence[Any], *, listener: str, start: int =
         payload = getattr(event, "payload", {}) or {}
         if (kind != "speech"
                 or (listener != getattr(event, "actor", None)
-                    and listener not in (payload.get("heard") or ()))):
+                    and listener not in _extra_speech_audience(event))):
             continue
         text = str(payload.get("text", "")).strip()
         if not text:

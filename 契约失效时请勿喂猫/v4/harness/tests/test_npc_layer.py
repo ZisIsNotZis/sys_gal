@@ -370,6 +370,16 @@ class ExtraContextTests(unittest.TestCase):
         self.assertIn("班长（对你说）", joined)
         self.assertNotIn("这句耳语路人听不见", joined)
 
+    def test_extra_briefing_never_overrides_private_delivery_with_heard_claim(self):
+        from types import SimpleNamespace
+        from harness.npc_agent import extra_scene_transcript, extra_heard_speech_since
+        event = SimpleNamespace(kind="speech", actor="陈默", time=START,
+                                payload={"text": "闭门私语", "heard": ["路人甲"],
+                                         "to": ["路人甲"], "volume": "whisper"},
+                                visible_to=frozenset({"陈默"}))
+        self.assertFalse(extra_heard_speech_since([event], listener="路人甲", start=0))
+        self.assertEqual(extra_scene_transcript([event], listener="路人甲"), [])
+
     def test_empty_external_wake_has_no_phantom_question_or_changed_static_prefix(self):
         prompt = build_extra_system_prompt("值班同学", "知道公告流程", "教学楼")
         self.assertEqual(prompt, build_extra_system_prompt(

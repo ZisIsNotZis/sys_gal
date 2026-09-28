@@ -724,15 +724,11 @@ class World:
         if intention.kind == "speak":
             speech_payload = {"text": intention.args["text"],
                               "volume": intention.args.get("volume", "normal")}
-            # docs §3：heard = 提交时刻在场的全部他人（normal）；whisper 仅
-            # 记 to 指定者。客观事实，进事件日志供 heard-by 模板渲染。
-            here = [other.id for other in self.actors.values()
-                    if other.id != a.id and other.location == a.location]
-            if intention.args.get("volume") == "whisper":
-                speech_payload["heard"] = [t for t in (intention.args.get("to") or [])
-                                            if t in here]
-            else:
-                speech_payload["heard"] = here
+            # The public heard list must match authoritative delivery, including
+            # closed-location barriers. Never let a briefing infer hearing from
+            # co-location when the event is private to its speaker.
+            audience = self._hearing_actors(a.id, intention.args)
+            speech_payload["heard"] = sorted(audience - {a.id})
             # 点名对象无论音量都记录（可见性不变：normal 仍全地点可闻）；
             # 唤醒与起哄逻辑需要知道话是对谁说的。
             if intention.args.get("to"):

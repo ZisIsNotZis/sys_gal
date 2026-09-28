@@ -304,6 +304,14 @@ class WorldTests(unittest.TestCase):
         w = self.world(); w.locations["room"] = LocationState("room", False)
         w.submit(Intention("a", "speak", {"text": "inside", "volume": "whisper", "to": ["b"]}, w.version))
         self.assertEqual(w.event_log[1].visible_to, frozenset({"a"}))
+        self.assertEqual(w.event_log[1].payload["heard"], [])
+        # Even normal speech cannot claim listeners behind the closed barrier.
+        w.advance()
+        w.submit(Intention("a", "speak", {"text": "inside again", "volume": "normal",
+                                         "to": ["b"]}, w.version))
+        speech = next(e for e in reversed(w.event_log) if e.kind == "speech")
+        self.assertEqual(speech.visible_to, frozenset({"a"}))
+        self.assertEqual(speech.payload["heard"], [])
 
     def test_invalid_ledger_query_does_not_consume_quota(self):
         w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),

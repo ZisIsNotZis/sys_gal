@@ -1360,9 +1360,9 @@ class AsyncEngine:
                 del self._pending_spawns[cause]   # interrupted utterance
         for event in new_events:
             if event.kind == "speech" and event.actor:
-                heard = set(event.payload.get("heard") or ())
+                delivered = event.visible_to
                 for name, info in self._extras.items():
-                    if name != event.actor and name in heard:
+                    if name != event.actor and name in delivered:
                         info["last_active"] = self.world.now
                         info["pending_heard_speech"] = True
                         self._wake_events[name].set()
