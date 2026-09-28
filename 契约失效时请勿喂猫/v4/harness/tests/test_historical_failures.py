@@ -287,6 +287,48 @@ class HistoricalFailureGates(unittest.TestCase):
         self.assertEqual(len(seen), len(graph),
                          "route graph must be connected so characters can meet")
 
+    def test_memorial_notices_prompt_attendance_without_pretending_it_happened(self):
+        """3/22 director notices must not pre-play named actors' choices.
+
+        Scheduled targets are delivery scopes, not presence conditions. Keep
+        the beats as invitations/program notes and preserve the actual walk
+        from 中庭 to 河堤 instead of narrating that it already happened.
+        """
+        pack = load_story_pack()
+        by_event = {str(row["event"]): row for row in pack.manifest["scheduled"]
+                    if str(row.get("time", "")).startswith("2026-03-22")}
+        event_ids = ("memorial_morning", "old_neighbors_arrive",
+                     "whistle_recognition", "memorial_ceremony", "evening_walk")
+        self.assertTrue(all(event in by_event for event in event_ids))
+
+        obsolete_claims = {
+            "memorial_morning": ("拿着流程表逐项核对",
+                                 "把档案室里批过的展品一件件搬下来"),
+            "old_neighbors_arrive": ("站了很久，指着其中一张说",),
+            "whistle_recognition": ("下棋大爷认出了", "三花流浪猫叼来的"),
+            "memorial_ceremony": ("林瑶主持", "陈默念当年的撤离时间线"),
+            "evening_walk": ("林瑶和陈默沿着河堤慢慢走",),
+        }
+        for event, fragments in obsolete_claims.items():
+            for fragment in fragments:
+                with self.subTest(event=event, fragment=fragment):
+                    self.assertNotIn(fragment, by_event[event]["notice"])
+
+        ceremony = by_event["memorial_ceremony"]
+        self.assertEqual(ceremony["target"], ["林瑶", "陈默", "唐小岚"])
+        self.assertIn("待执行安排", ceremony["notice"])
+        self.assertIn("未在中庭时收到这条", ceremony["notice"])
+        self.assertIn("不代表你已到场", ceremony["notice"])
+
+        river_notice = by_event["evening_walk"]["notice"]
+        self.assertIn("中庭", river_notice)
+        self.assertIn("河堤", river_notice)
+        self.assertIn("实际会合", river_notice)
+        routes = {(row["from"], row["to"]): row["duration_seconds"]
+                  for row in pack.routes}
+        self.assertEqual(routes[("中庭", "河堤")], 900)
+        self.assertIn("约15分钟", river_notice)
+
     def test_text_without_target_is_helpful(self):
         """P7: a send_message missing its target (or using a wrong key like
         ``to``) must reject with a schema-derived reason that names the
