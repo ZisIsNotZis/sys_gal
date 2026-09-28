@@ -888,6 +888,20 @@ class AsyncEngine:
                                     f"action was due at {a.busy_until.isoformat()}; if resumed, "
                                     f"retry after that action completes with {preview}."))
                     break  # the run's endpoint cut this chain short
+                if (a.pending is None and a.busy_until and a.busy_until > world.now
+                        and pos + 1 < len(calls)):
+                    # A horizon-clipped action also blocks free memory tools:
+                    # the remaining chain has not reached its execution point.
+                    # Handle this before the next iteration's memory fast paths.
+                    for rest in calls[pos + 1:]:
+                        rest_name = str(rest.get("name", ""))
+                        rest_args = dict(rest.get("arguments") or {})
+                        preview = World._tool_call_json(rest_name, rest_args)
+                        active = str((a.current_action or {}).get("payload", {}).get("action", "action"))
+                        fail(rest, (f"not executed: current {active} completes at "
+                                    f"{a.busy_until.isoformat()}; retry after completion "
+                                    f"with {preview}."))
+                    break
             except ActionRejected as exc:
                 fail(call, self._action_rejection_text(actor_id, exc, name, args))
                 busy_until = exc.context.get("busy_until")

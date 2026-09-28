@@ -528,6 +528,29 @@ class BusyRecoveryTests(unittest.TestCase):
         self.assertIn("No interrupted action is pending", str(caught.exception))
         self.assertIn("continue_action", str(caught.exception))
 
+    def test_horizon_blocks_memory_tools_after_unfinished_move(self):
+        world = self._world()
+        engine = self._engine(world)
+        engine._inflight["b"] = START
+        engine._stop_horizon = START + timedelta(seconds=600)
+        calls = [
+            {"name": "move", "arguments": {"target": "far"}, "tool_call_id": "move-1"},
+            {"name": "recall", "arguments": {"keys": ["someone"]}, "tool_call_id": "recall-2"},
+            {"name": "update_memory", "arguments": {"rows": []}, "tool_call_id": "memory-3"},
+            {"name": "flashback", "arguments": {"entity": "someone"}, "tool_call_id": "flash-4"},
+        ]
+        engine._execute_chain("a", calls, {"time": START.isoformat(), "events": []},
+                              [], world.version)
+        results = engine.agents["a"].delivered
+        self.assertEqual([r["tool_call_id"] for r in results],
+                         ["move-1", "recall-2", "memory-3", "flash-4"])
+        self.assertTrue(results[0]["ok"])
+        for result, name in zip(results[1:], ("recall", "update_memory", "flashback")):
+            self.assertFalse(result["ok"])
+            self.assertIn("not executed", result["text"])
+            self.assertIn('"name": "' + name + '"', result["text"])
+        self.assertEqual(world.now, START + timedelta(seconds=60))
+
     def test_chain_failure_at_decision_horizon_is_per_call_and_does_not_ratchet(self):
         world = self._world()
         engine = self._engine(world)
