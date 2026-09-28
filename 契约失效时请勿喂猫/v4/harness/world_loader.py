@@ -220,6 +220,7 @@ def load_world_pack(root: str | Path) -> WorldPack:
               ("locations", "actors", "items", "documents", "routes", "barriers", "scheduled")}
     _validate(fields, manifest)
     _validate_descriptions(fields, descriptions)
+    _validate_actionable_refs(fields, descriptions)
     actor_ids = {str(row["id"]) for row in fields["actors"]}
     entity_ids = (actor_ids
                   | {str(row["id"]) for row in fields["locations"]}
@@ -677,6 +678,107 @@ def _validate_descriptions(fields: dict[str, tuple[dict[str, Any], ...]],
         missing = sorted(entity_ids - set(descriptions[category]))
         if missing:
             raise ValueError(f"{category} missing Markdown descriptions: {', '.join(missing)}")
+
+
+def _validate_actionable_refs(fields: dict[str, tuple[dict[str, Any], ...]],
+                              descriptions: dict[str, DescriptionCatalog]) -> None:
+    """Check explicitly authored action affordances against the real world.
+
+    This is deliberately metadata-driven rather than an NLP pass over every
+    noun in scene prose. A declared actionable reference must use a canonical
+    registry name and have the matching physical description, placement, route,
+    and tool path; aliases and generic concepts cannot stand in for props.
+    """
+    locations = {str(row["id"]): row for row in fields["locations"]}
+    items = {str(row["id"]): row for row in fields["items"]}
+    documents = {str(row["id"]): row for row in fields["documents"]}
+    routes = {(str(row["from"]), str(row["to"])) for row in fields["routes"]}
+    scheduled = sorted(fields["scheduled"],
+                       key=lambda row: datetime.fromisoformat(str(row["time"])))
+    entity_locations = {entity: str(row["location"])
+                        for entity, row in (items | documents).items()
+                        if row.get("location") is not None}
+    location_open = {name: bool(row.get("open", True)) for name, row in locations.items()}
+
+    def check_refs(refs: Any, *, source: str, origin: str | None,
+                   where: str) -> None:
+        if not isinstance(refs, list):
+            raise ValueError(f"{where} actionable_refs must be a list")
+        for ref in refs:
+            if not isinstance(ref, Mapping):
+                raise ValueError(f"{where} actionable_refs entries must be mappings")
+            action = str(ref.get("action", ""))
+            target = str(ref.get("target", ""))
+            if action not in {"read", "take", "move", "knock"} or not target:
+                raise ValueError(f"{where} has an invalid actionable reference: {dict(ref)!r}")
+            if target not in source:
+                raise ValueError(
+                    f"{where} actionable target {target!r} is not named in its authored text")
+            if action == "read" and target not in documents:
+                raise ValueError(f"{where} actionable read target {target!r} is not a registered document")
+            if action == "take" and target not in (items | documents):
+                raise ValueError(f"{where} actionable take target {target!r} is not a registered item or document")
+            if action in {"move", "knock"} and target not in locations:
+                raise ValueError(f"{where} actionable {action} target {target!r} is not a registered location")
+
+            if action in {"read", "take"}:
+                place = str(ref.get("at", ""))
+                if place not in locations:
+                    raise ValueError(f"{where} actionable {action} reference has an unresolved location {place!r}")
+                if entity_locations.get(target) != place:
+                    raise ValueError(
+                        f"{where} actionable {action} target {target!r} is not placed at {place!r}")
+            else:
+                source_place = str(ref.get("from", origin or ""))
+                if source_place not in locations:
+                    raise ValueError(f"{where} actionable {action} reference has an unresolved source {source_place!r}")
+                if action == "knock":
+                    if (source_place, target) not in routes:
+                        raise ValueError(f"{where} actionable knock target {target!r} has no route from {source_place!r}")
+                    if location_open[target]:
+                        raise ValueError(f"{where} actionable knock target {target!r} is not a closed location")
+                else:
+                    if not location_open[target]:
+                        raise ValueError(f"{where} actionable move target {target!r} is still closed")
+                    pending = [source_place]
+                    visited = set()
+                    while pending:
+                        current = pending.pop()
+                        if current == target:
+                            break
+                        if current in visited:
+                            continue
+                        visited.add(current)
+                        pending.extend(dst for src, dst in routes if src == current and dst not in visited)
+                    else:
+                        raise ValueError(f"{where} actionable move target {target!r} is unreachable from {source_place!r}")
+
+    # Descriptive scene affordances are checked against the initial state. Their
+    # source location is the default origin for local actions such as knock.
+    for row in fields["locations"]:
+        place = str(row["id"])
+        if "actionable_refs" in row:
+            text = descriptions["locations"].get(place, "")
+            check_refs(row["actionable_refs"], source=strip_refs(text),
+                       origin=place, where=f"location {place}")
+
+    # Scheduled scene/action claims are checked after that event's declared
+    # effects, matching what actors can perceive once its world message lands.
+    for row in scheduled:
+        for effect in row.get("effects", ()):
+            op, entity = str(effect.get("op", "")), str(effect.get("id", ""))
+            if op in {"add_item", "add_document", "move_item"}:
+                entity_locations[entity] = str(effect["location"])
+            elif op == "remove_item":
+                entity_locations.pop(entity, None)
+            elif op == "open_location":
+                location_open[entity] = True
+            elif op == "close_location":
+                location_open[entity] = False
+        if "actionable_refs" in row:
+            text = strip_refs(str(row.get("notice", "")))
+            check_refs(row["actionable_refs"], source=text, origin=None,
+                       where=f"scheduled {row.get('event')}")
 
 
 def world_primer(pack: WorldPack) -> str:

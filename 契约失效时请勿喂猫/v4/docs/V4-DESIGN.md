@@ -93,6 +93,21 @@ The configured `github_copilot/gpt-6-luna` LiteLLM route is Responses-only: nati
   message, email, one side of a phone call) stay private.
 - Privacy line: the fact that someone reads a document is visible; the
   document's content is not — unless they speak it aloud. Secrets can exist.
+- **Concrete actionable references**: when authored scene prose or a scheduled
+  notice explicitly offers a concrete action (read a paper, knock at a named
+  door/place, take an object, or move to a place), authors explicitly declare
+  its `actionable_refs` entry on that location/event. For example,
+  `{action: read, target: 审计通知, at: 学生会办公室}` binds a paper to a
+  document and its actual place; a location-level `knock` defaults its origin
+  to that location, while scheduled `knock`/`move` refs name `from`. Seed
+  loading checks the declared target against the exact canonical
+  item/document/location registry,
+  its description, placement/state, and the relevant tool path (including
+  routes and door closure for `knock`). `read` references must be real
+  documents at the named place; a `kind: generic` concept or alias cannot
+  substitute for one. This is an explicit authoring contract, not an NLP
+  parser: ordinary nouns and abstract references are not automatically props,
+  and there are no hidden opaque IDs or aliases that bypass the registry.
 - Volume: `whisper` (only the addressed party hears; tagged perceptually as
   suspicious — a stranger whispering at you reads as fishy unless you are
   close to them) and `normal` (whole location). No loud tier for now.

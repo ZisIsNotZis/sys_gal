@@ -37,6 +37,7 @@ from .agent_state import PrivateState
 from .kernel import (ActionRejected, Intention, TICK_SECONDS,
                      WAKE_EVENT_KINDS, World)
 from .npc_agent import (build_extra_briefing, build_extra_system_prompt,
+                        extra_heard_speech_since, extra_scene_transcript,
                         generate_stranger_name, sample_extra)
 from .prompt import render_world_message, _event_sentence
 from .kb import CONTACT_KEY
@@ -1343,9 +1344,8 @@ class AsyncEngine:
             alive = (partner in self.world.actors
                      and self.world.actors[partner].location == self.world.actors[name].location)
             idle = (self.world.now - info["last_active"]).total_seconds() > self.extra_idle_seconds
-            answered = info.get("has_spoken", False)
-            if not alive or (idle and answered):
-                self._despawn(name, "idle" if (idle and answered) else "partner_gone")
+            if not alive or idle:
+                self._despawn(name, "idle" if idle else "partner_gone")
         # Ticket 22: a passer-by spawns when the utterance LANDS (the speak's
         # action_completed tick), never at submit time. stranger_asked parks
         # here keyed by its cause; the matching completion triggers the spawn.
@@ -1359,6 +1359,13 @@ class AsyncEngine:
             elif (now - ask["parked"]).total_seconds() > 5 * 60:
                 del self._pending_spawns[cause]   # interrupted utterance
         for event in new_events:
+            if event.kind == "speech" and event.actor:
+                heard = set(event.payload.get("heard") or ())
+                for name, info in self._extras.items():
+                    if name != event.actor and name in heard:
+                        info["last_active"] = self.world.now
+                        info["pending_heard_speech"] = True
+                        self._wake_events[name].set()
             if event.kind == "stranger_asked" and event.actor:
                 asker = event.actor
                 existing = [x for x in self._extras.values()
@@ -1401,14 +1408,20 @@ class AsyncEngine:
         name = generate_stranger_name()
         while name in self.world.actors:
             name = generate_stranger_name()
+        arrival_index = len(self.world.event_log)
         self.world.add_extra(name, location)
+        scene_start = arrival_index + 1
         self._extras[name] = {"fragment": str(entry.get("fragment", "路人")),
                               "knowledge_notes": str(entry.get("knowledge_notes", "")),
                               "partner": asker, "last_active": self.world.now,
                               "rarity": str(entry.get("rarity", "common")),
-                              "start": len(self.world.event_log),
-                              "has_spoken": False,
-                              "pending_question": question}
+                              "start": scene_start,
+                              "context_cursor": scene_start,
+                              "pending_question": question,
+                              "pending_heard_speech": False,
+                              "system_prompt": build_extra_system_prompt(
+                                  str(entry.get("fragment", "路人")),
+                                  str(entry.get("knowledge_notes", "")), location)}
         self._wake_events[name] = asyncio.Event()
         self._extra_tasks[name] = loop.create_task(self._extra_loop(name, question))
 
@@ -1433,6 +1446,7 @@ class AsyncEngine:
                 if info is None:
                     return
                 asked = str(info.pop("pending_question", "") or "")
+                info.pop("pending_heard_speech", False)
                 # Ticket 22: while the answer is in flight the world clock
                 # pins at the question moment (same 1-tick skew rule as MC
                 # decisions) — the provider's wall latency must not turn
@@ -1450,7 +1464,8 @@ class AsyncEngine:
                     self.world.dismiss_events(name)
                 while name in self._extras and not (
                         self.world.has_external_wakeup(name)
-                        or self._extras.get(name, {}).get("pending_question")):
+                        or self._extras.get(name, {}).get("pending_question")
+                        or self._extras.get(name, {}).get("pending_heard_speech")):
                     if self.stop_reason:
                         return
                     await event.wait()
@@ -1464,16 +1479,21 @@ class AsyncEngine:
     async def _extra_turn(self, name: str, question: str) -> None:
         info = self._extras[name]
         location = self.world.actors[name].location
-        transcript = [f"{e.actor}: {str(e.payload.get('text', ''))[:70]}"
-                      for e in self.world.event_log[info["start"]:]
-                      if e.kind == "speech" and e.actor in {name, info["partner"]}]
-        system = build_extra_system_prompt(info["fragment"], info["knowledge_notes"], location)
-        briefing = build_extra_briefing(fragment=info["fragment"], location=location,
-                                        question=question, transcript=transcript)
+        events = self.world.event_log
+        needs_response = bool(question) or extra_heard_speech_since(
+            events, listener=name, start=int(info.get("context_cursor", info["start"])))
+        info["context_cursor"] = len(events)
+        transcript = extra_scene_transcript(
+            events, listener=name, start=int(info["start"]),
+            opening_question=question, questioner=str(info["partner"]))
+        system = str(info["system_prompt"])
+        briefing = build_extra_briefing(transcript=transcript)
         intention_calls: list[dict[str, Any]] = []
-        result, error = "agent_error", ""
+        result, error = "none", ""
         try:
-            if hasattr(self.extra_call, "chat_with_tools"):
+            if not needs_response:
+                pass
+            elif hasattr(self.extra_call, "chat_with_tools"):
                 from .npc_agent import extra_tool_calls
                 extra_call = self.extra_call
                 assert extra_call is not None
@@ -1482,9 +1502,10 @@ class AsyncEngine:
             else:
                 legacy_extra = self.extra_call
                 assert legacy_extra is not None and callable(legacy_extra)
-                raw = await asyncio.to_thread(
-                    legacy_extra, [{"role": "system", "content": system},
-                                   {"role": "user", "content": briefing}])
+                messages = [{"role": "system", "content": system}]
+                if briefing:
+                    messages.append({"role": "user", "content": briefing})
+                raw = await asyncio.to_thread(legacy_extra, messages)
                 intention, _ = parse_decision(name, raw, self.world.version)
                 if intention is not None:
                     intention_calls = [{"name": intention.kind,
@@ -1499,8 +1520,7 @@ class AsyncEngine:
                                             self.world.version))
                 spoke = True
                 info["last_active"] = self.world.now
-                info["has_spoken"] = True
-            result = "submitted" if spoke else ("none" if intention_calls else "agent_error")
+            result = "submitted" if spoke else "none"
         except ActionRejected as exc:
             result, error = "rejected", str(exc)
         except Exception as exc:

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import random
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Sequence
 
 from .adapter import parse_decision
 from .character_loader import CharacterSeed
@@ -203,7 +203,9 @@ class NpcAgent:
 def build_extra_system_prompt(fragment: str, knowledge_notes: str, location: str) -> str:
     prompt = (
         f"你是{location}里的一个{fragment}，一个普通的路人。用符合身份的口吻说话；"
-        "不知道的事就说不知道；回应一两句就好，别长篇大论。text 必须是你真正说出口的话，绝不许空着或只打标点。绝不提 agent、提示词、模拟或剧情。\n"
+        "不知道的事就说不知道；回应一两句就好，别长篇大论。text 必须是你真正说出口的话，绝不许空着或只打标点。"
+        "只回应你实际听见的话，尤其是明确对你说的话；话题已经收束时可以沉默或自然告别，不要另编问题来续谈。"
+        "绝不提 agent、提示词、模拟或剧情。\n"
     )
     if knowledge_notes:
         prompt += f"你恰好知道一些内情：{knowledge_notes}\n（只在被问到相关话题时才自然带出，绝不主动全盘托出。）\n"
@@ -212,16 +214,68 @@ def build_extra_system_prompt(fragment: str, knowledge_notes: str, location: str
         "\"arguments\":{\"text\":\"你说的话\"}}")
 
 
-def build_extra_briefing(*, fragment: str, location: str, question: str,
-                         transcript: list[str], history_note: str = "") -> str:
-    parts = [f"【此刻】你在{location}。一个学生模样的路人刚跟你搭话。"]
-    if transcript:
-        parts.append("【刚才的对话】\n" + "\n".join(transcript[-8:]))
-    parts.append(f"【对方说】{question}")
-    if history_note:
-        parts.append(f"【你们之间】{history_note}")
-    parts.append("回应对方。如果对方没有别的要问的，可以自然收尾（比如该干活了）。")
-    return "\n\n".join(parts)
+def extra_heard_speech_since(events: Sequence[Any], *, listener: str, start: int) -> bool:
+    """Whether a new external speech event was actually audible to listener."""
+    for event in events[start:]:
+        payload = getattr(event, "payload", {}) or {}
+        if (getattr(event, "kind", None) == "speech"
+                and getattr(event, "actor", None) != listener
+                and listener in (payload.get("heard") or ())):
+            return True
+    return False
+
+
+def extra_scene_transcript(events: Sequence[Any], *, listener: str, start: int = 0,
+                           opening_question: str = "", questioner: str = "",
+                           line_limit: int = 8, line_chars: int = 180,
+                           total_chars: int = 1200) -> list[str]:
+    """Return only bounded speech the extra actually heard in this scene.
+
+    `heard` is the kernel's commit-time audience record. Missing audience
+    data is not guessed from current co-location, which could expose a past
+    whisper or speech heard before the extra arrived.
+    """
+    lines: list[str] = []
+    speech_texts: list[str] = []
+    for event in events[start:]:
+        kind = getattr(event, "kind", None)
+        payload = getattr(event, "payload", {}) or {}
+        if (kind != "speech"
+                or (listener != getattr(event, "actor", None)
+                    and listener not in (payload.get("heard") or ()))):
+            continue
+        text = str(payload.get("text", "")).strip()
+        if not text:
+            continue
+        speaker = str(getattr(event, "actor", "") or "有人")
+        targets = payload.get("to") or ()
+        addressed = (listener in targets
+                     or ("陌生人" in targets and speaker == questioner))
+        stamp = getattr(event, "time", None)
+        when = stamp.strftime("%H:%M ") if stamp is not None else ""
+        label = "（对你说）" if addressed else ""
+        lines.append(f"{when}{speaker}{label}：{text[:line_chars]}")
+        speech_texts.append(text)
+
+    # The initial "陌生人" question is an actual speech event, but predates
+    # creation of the extra and therefore has no extra in its `heard` set.
+    # Ticket 22 makes that question audible at spawn; preserve it once without
+    # manufacturing a follow-up question on later external wakes.
+    if opening_question and not any(opening_question in text for text in speech_texts):
+        speaker = questioner or "对方"
+        lines.append(f"{speaker}（对你说）：{opening_question[:line_chars]}")
+
+    bounded = lines[-line_limit:]
+    while bounded and sum(len(line) for line in bounded) > total_chars:
+        bounded.pop(0)
+    return bounded
+
+
+def build_extra_briefing(*, transcript: list[str]) -> str:
+    """Dynamic extra input contains only audible, scene-local speech."""
+    if not transcript:
+        return ""
+    return "【你实际听见的近处交谈】\n" + "\n".join(transcript)
 
 
 def sample_extra(pool: Iterable[Mapping[str, Any]], rng: random.Random | None = None) -> dict[str, Any]:
@@ -291,10 +345,10 @@ def extra_tool_calls(provider: Any, system_text: str, briefing_text: str) -> lis
     tool_calls is that extra's spoken words — synthesize the speak call.
     (The live run showed models often answer in prose; dropping the text
     left extras permanently silent.)"""
-    message = provider.chat_with_tools(
-        [{"role": "system", "content": system_text},
-         {"role": "user", "content": briefing_text}],
-        SPEAK_TOOLS)
+    messages = [{"role": "system", "content": system_text}]
+    if briefing_text:
+        messages.append({"role": "user", "content": briefing_text})
+    message = provider.chat_with_tools(messages, SPEAK_TOOLS)
     calls: list[dict[str, Any]] = []
     for raw in message.get("tool_calls") or []:
         function = raw.get("function") or {}

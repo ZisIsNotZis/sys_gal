@@ -84,6 +84,69 @@ class WorldPackTests(unittest.TestCase):
         self.assertTrue(any("\u4e2d" in text or text for text in
                             [world.document_defs["2013年台风台账"]["content"]]))
 
+    def test_day_one_public_notices_are_placed_readable_and_removed(self):
+        pack = load_world_pack(ROOT / "world")
+        world = pack.build_world()
+        chen = world.actors["陈默"]
+        yao = world.actors["林瑶"]
+        chen.location = yao.location = "学生会办公室"
+        self.assertNotIn("学生会审计通知", world.item_locations)
+        self.assertFalse(any("学生会审计通知" in row["keys"]
+                             for rows in pack.kb.values() for row in rows))
+
+        ten = datetime.fromisoformat("2026-03-16T10:00:00+08:00")
+        world.advance(until=ten)
+        self.assertEqual(world.item_locations["学生会审计通知"], "学生会办公室")
+        self.assertIn("学生会审计通知", world.poll("陈默")["nearby_items"])
+        self.assertIn({"kind": "read", "item": "学生会审计通知"},
+                      world.affordances("陈默"))
+        world.submit(Intention("陈默", "read", {"item": "学生会审计通知"}, world.version))
+        completed = chen.busy_until
+        self.assertIsNotNone(completed)
+        events = world.advance(until=completed)
+        read_event = next(event for event in events if event.kind == "document_read")
+        self.assertIn("今日 16:00 前", read_event.payload["content"])
+        self.assertIn("陈默", read_event.visible_to)
+        self.assertNotIn("林瑶", read_event.visible_to)
+
+        fifteen = datetime.fromisoformat("2026-03-16T15:00:00+08:00")
+        sixteener = datetime.fromisoformat("2026-03-16T16:00:00+08:00")
+        world.advance(until=fifteen)
+        self.assertEqual(world.item_locations["台风纪念活动通知"], "学生会办公室")
+        self.assertEqual(world.item_locations["学生会审计通知"], "学生会办公室")
+        world.advance(until=sixteener)
+        self.assertNotIn("学生会审计通知", world.item_locations)
+        self.assertEqual(world.item_locations["审计催办单"], "学生会办公室")
+        available = {row["item"] for row in world.affordances("陈默")
+                     if row["kind"] == "read"}
+        self.assertNotIn("学生会审计通知", available)
+        self.assertIn("审计催办单", available)
+
+    def test_actionable_refs_reject_unregistered_names_and_alias_bypass(self):
+        from harness.world_loader import _validate_actionable_refs
+
+        pack = load_world_pack(ROOT / "world")
+        base_fields = {name: tuple(deepcopy(row) for row in getattr(pack, name))
+                       for name in ("locations", "actors", "items", "documents",
+                                    "routes", "barriers", "scheduled")}
+
+        def validate(ref, notice):
+            fields = dict(base_fields)
+            fields["scheduled"] = (*fields["scheduled"], {
+                "event": "contract_test", "time": "2026-03-17T00:00:00+08:00",
+                "notice": notice, "actionable_refs": [ref]})
+            _validate_actionable_refs(fields, pack.descriptions)
+
+        with self.assertRaisesRegex(ValueError, "not a registered location"):
+            validate({"action": "knock", "target": "未注册办公室", "from": "教学楼"},
+                     "可以敲未注册办公室的门。")
+        with self.assertRaisesRegex(ValueError, "not a registered document"):
+            validate({"action": "read", "target": "催办单", "at": "学生会办公室"},
+                     "公告栏上有催办单。")
+        with self.assertRaisesRegex(ValueError, "unresolved location"):
+            validate({"action": "read", "target": "台风纪念活动通知", "at": "不存在的地点"},
+                     "请读台风纪念活动通知。")
+
     def test_seeded_schedule_effects_produce_reachable_causal_exits(self):
         from datetime import datetime
         pack = load_world_pack(ROOT / "world")

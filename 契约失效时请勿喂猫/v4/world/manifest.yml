@@ -238,6 +238,8 @@ locations:
   rules:
   - 22:00 后锁楼
   - 公告栏张贴须经学生会盖章
+  actionable_refs:
+  - {action: knock, target: 辅导员办公室}
   extras:
   - fragment: 课间的同学
     rarity: common
@@ -251,6 +253,12 @@ locations:
     rarity: rare
     knowledge_notes: "[[辅导员]]的行程；正式授权与盖章该找谁"
     weight: 1
+- id: 辅导员办公室
+  x: 0
+  y: -15
+  sound_radius: 4
+  open: false
+  known_to: [陈默, 林瑶, 唐小岚, 宿管阿姨, 食堂大妈, 辅导员, 班长, 林瑶室友, 下棋大爷]
 - id: 夜市
   x: 36
   y: 24
@@ -329,7 +337,7 @@ actors:
   location: 食堂
   role: npc
 - id: 辅导员
-  location: 教学楼
+  location: 辅导员办公室
   role: npc
 - id: 班长
   location: 教学楼
@@ -378,6 +386,24 @@ documents:
   location: 学生会办公室
   reading_seconds: 70
   content: 一沓报销单据和一张汇总表：行项目齐全，但汇总表上有两个总额没有标注用途，旁边一处手写更正没有署名。可见的行项目对不上这两个总额，底层的报销凭证不在这包里。
+- id: 学生会审计通知
+  title: 学生会审计通知
+  location:
+  known_to: []
+  reading_seconds: 20
+  content: 学生会通知：审计包须于今日 16:00 前完成核对，并附书面说明。
+- id: 台风纪念活动通知
+  title: 台风纪念活动通知
+  location:
+  known_to: []
+  reading_seconds: 30
+  content: 下周日在中庭举行“3·16 台风纪念活动”，招募学生志愿者整理老照片和旧记录，报名找班长。
+- id: 审计催办单
+  title: 审计催办单
+  location:
+  known_to: []
+  reading_seconds: 20
+  content: 审计核对仍未完成，说明最迟明早交。
 - id: 校报草稿
   title: 校报草稿
   location: 半坡咖啡馆
@@ -420,6 +446,12 @@ routes:
 - from: 教学楼
   to: 男生宿舍
   duration_seconds: 600
+- from: 教学楼
+  to: 辅导员办公室
+  duration_seconds: 60
+- from: 辅导员办公室
+  to: 教学楼
+  duration_seconds: 60
 - from: 女生宿舍
   to: 教学楼
   duration_seconds: 600
@@ -611,7 +643,18 @@ scheduled:
   notice: 无障碍改造核查今天上午要交台账依据，2013 年那批[[旧记录]]也许用得上。
 - event: audit_notice
   time: '2026-03-16T10:00:00+08:00'
-  notice: "[[学生会]]公告栏贴出一张新通知：审计包须于今日 16:00 前完成核对，并附书面说明。"
+  notice: "[[学生会]]公告栏贴出《[[学生会审计通知]]》：审计包须于今日 16:00 前完成核对，并附书面说明。"
+  actionable_refs:
+  - {action: read, target: 学生会审计通知, at: 学生会办公室}
+  effects:
+  - {op: add_document, id: 学生会审计通知, location: 学生会办公室}
+- event: counselor_office_opens
+  time: '2026-03-16T10:30:00+08:00'
+  notice: "[[辅导员办公室]]的会开完了，门打开；现在可以从[[教学楼]]走廊进去。"
+  actionable_refs:
+  - {action: move, target: 辅导员办公室, from: 教学楼}
+  effects:
+  - {op: open_location, id: 辅导员办公室}
 - event: lunch_rush
   time: '2026-03-16T11:40:00+08:00'
   notice: 下课铃一响，[[食堂]]的队伍从窗口排到了门口。今天二楼有糖醋排骨，整个楼层都知道。
@@ -627,10 +670,19 @@ scheduled:
   notice: 无障碍路线方案缺一段原始依据：2013 年[[洪水路线]]的走向，纸上找不到现成结论，得找见过[[旧记录]]的人问。
 - event: typhoon_anniversary_notice
   time: '2026-03-16T15:00:00+08:00'
-  notice: 公告栏又多了一张通知：下周日在[[中庭]]举行'3·16 台风纪念活动'，招募学生志愿者整理[[老照片]]和[[旧记录]]，报名找[[班长]]。
+  notice: "公告栏又多了一张《[[台风纪念活动通知]]》：下周日在[[中庭]]举行'3·16 台风纪念活动'，招募学生志愿者整理[[老照片]]和[[旧记录]]，报名找[[班长]]。"
+  actionable_refs:
+  - {action: read, target: 台风纪念活动通知, at: 学生会办公室}
+  effects:
+  - {op: add_document, id: 台风纪念活动通知, location: 学生会办公室}
 - event: audit_deadline
   time: '2026-03-16T16:00:00+08:00'
-  notice: 16:00 到了。[[学生会办公室]]门缝下塞出一张[[催办单]]：审计核对仍未完成，说明最迟明早交。
+  notice: "16:00 到了。[[学生会办公室]]门缝下塞出一张《[[审计催办单]]》：审计核对仍未完成，说明最迟明早交。"
+  actionable_refs:
+  - {action: read, target: 审计催办单, at: 学生会办公室}
+  effects:
+  - {op: remove_item, id: 学生会审计通知}
+  - {op: add_document, id: 审计催办单, location: 学生会办公室}
 - event: dinner_rush
   time: '2026-03-16T17:30:00+08:00'
   notice: 晚饭点的[[食堂]]比中午松一些，一楼改卖面条，队伍短了一半。

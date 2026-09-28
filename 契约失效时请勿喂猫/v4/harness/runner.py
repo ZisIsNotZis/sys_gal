@@ -13,8 +13,8 @@ from .repetition import RepetitionMonitor
 from .system import Ledger
 from .adapter import parse_decision
 from .npc_agent import (build_extra_briefing, build_extra_system_prompt,
-                         generate_stranger_name, public_mc_digest,
-                         sample_extra, schedule_digest)
+                         extra_scene_transcript, generate_stranger_name,
+                         public_mc_digest, sample_extra, schedule_digest)
 from .trace import Trace
 
 AgentFn = Callable[[PrivateState, dict, list[dict]], Intention | tuple[Intention | None, dict[str, Any]] | None]
@@ -434,45 +434,56 @@ class Runner:
                 name = generate_stranger_name()
                 while name in self.world.actors:
                     name = generate_stranger_name()
+                arrival_index = len(self.world.event_log)
                 self.world.add_extra(name, location)
+                scene_start = arrival_index + 1
                 self._extras[name] = {"fragment": str(entry.get("fragment", "路人")),
                                       "knowledge_notes": str(entry.get("knowledge_notes", "")),
                                       "partner": asker, "last_active": self.world.now,
                                       "rarity": str(entry.get("rarity", "common")),
-                                      "start": len(self.world.event_log)}
+                                      "start": scene_start,
+                                      "system_prompt": build_extra_system_prompt(
+                                          str(entry.get("fragment", "路人")),
+                                          str(entry.get("knowledge_notes", "")), location)}
                 self._extra_turn(name, str(event.payload.get("question", "")))
             elif event.kind == "speech" and event.actor:
+                heard = set(event.payload.get("heard") or ())
                 for name, info in list(self._extras.items()):
-                    if (info["partner"] == event.actor
-                            and name in self.world.actors
-                            and self.world.actors[name].location == self.world.actors[event.actor].location):
+                    if (name != event.actor and name in heard
+                            and name in self.world.actors):
                         info["last_active"] = self.world.now
                         self._extra_turn(name, "")
 
     def _extra_turn(self, name: str, question: str) -> None:
         info = self._extras[name]
         location = self.world.actors[name].location
-        transcript = [f"{e.actor}: {str(e.payload.get('text', ''))[:70]}"
-                      for e in self.world.event_log[info["start"]:]
-                      if e.kind == "speech" and e.actor in {name, info["partner"]}]
-        system = build_extra_system_prompt(info["fragment"], info["knowledge_notes"], location)
-        briefing = build_extra_briefing(fragment=info["fragment"], location=location,
-                                        question=question, transcript=transcript)
-        intention, result, error = None, "agent_error", ""
+        transcript = extra_scene_transcript(
+            self.world.event_log, listener=name, start=int(info["start"]),
+            opening_question=question, questioner=str(info["partner"]))
+        system = str(info["system_prompt"])
+        briefing = build_extra_briefing(transcript=transcript)
+        intention, result, error = None, ("none" if not transcript else "agent_error"), ""
         try:
-            extra_call = self.extra_call
-            assert extra_call is not None
-            raw = extra_call([{"role": "system", "content": system},
-                              {"role": "user", "content": briefing}])
-            intention, _ = parse_decision(name, raw, self.world.version)
-            if intention is not None:
-                self.world.submit(intention)
-                result = "submitted"
-                info["last_active"] = self.world.now
-                # A stranger who walks away ends the conversation.
-                if intention.kind == "move":
-                    self.world.remove_extra(name)
-                    self._extras.pop(name, None)
+            if transcript:
+                extra_call = self.extra_call
+                assert extra_call is not None
+                messages = [{"role": "system", "content": system}]
+                if briefing:
+                    messages.append({"role": "user", "content": briefing})
+                raw = extra_call(messages)
+                if raw is None or (isinstance(raw, str) and not raw.strip()):
+                    result = "none"
+                    intention = None
+                else:
+                    intention, _ = parse_decision(name, raw, self.world.version)
+                if intention is not None:
+                    self.world.submit(intention)
+                    result = "submitted"
+                    info["last_active"] = self.world.now
+                    # A stranger who walks away ends the conversation.
+                    if intention.kind == "move":
+                        self.world.remove_extra(name)
+                        self._extras.pop(name, None)
         except ActionRejected as exc:
             result, error = "rejected", str(exc)
         except Exception as exc:  # a broken extra simply leaves

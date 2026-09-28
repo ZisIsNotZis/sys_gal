@@ -7,16 +7,20 @@
 
 from __future__ import annotations
 
+import asyncio
 import random
 import unittest
 from datetime import datetime
 
 from harness.adapter import parse_decision
 from harness.agent_state import PrivateState
-from harness.kernel import ActorState, LocationState, World
-from harness.npc_agent import (NpcAgent, build_npc_system_prompt,
-                               generate_stranger_name, public_mc_digest,
-                               sample_extra)
+from harness.engine import AsyncEngine
+from harness.kernel import ActorState, Intention, LocationState, World
+from harness.npc_agent import (NpcAgent, build_extra_briefing,
+                               build_extra_system_prompt, build_npc_system_prompt,
+                               extra_heard_speech_since, extra_scene_transcript,
+                               generate_stranger_name,
+                               public_mc_digest, sample_extra)
 from harness.runner import Runner
 from harness.trace import Trace
 
@@ -285,6 +289,155 @@ class ExtraLifecycleTests(unittest.TestCase):
         names = {generate_stranger_name(random.Random(i)) for i in range(50)}
         self.assertTrue(all(n and isinstance(n, str) for n in names))
         self.assertGreater(len(names), 5)
+
+
+class ExtraContextTests(unittest.TestCase):
+    def test_async_extra_wakes_for_any_audible_speaker_but_not_private_whisper(self):
+        class Provider:
+            def __init__(self):
+                self.calls = []
+
+            def chat_with_tools(self, messages, tools):
+                self.calls.append((messages, tools))
+                return {"content": "我看见了，通知就在门边。", "tool_calls": []}
+
+        world = _world()
+        world.actors["宿管阿姨"].location = "咖啡馆"
+        states = {actor: PrivateState(actor) for actor in world.actors}
+        provider = Provider()
+        trace = Trace("v4-test", "extra-context")
+        engine = AsyncEngine(world, {actor: _null for actor in world.actors},
+                             states, trace, extra_call=provider)
+        engine._scheduler_wake = asyncio.Event()
+        name = "路人甲"
+        arrival_index = len(world.event_log)
+        world.add_extra(name, "咖啡馆")
+        scene_start = arrival_index + 1
+        engine._extras[name] = {
+            "partner": "陈默", "fragment": "路过的学生", "knowledge_notes": "",
+            "start": scene_start, "context_cursor": scene_start,
+            "last_active": world.now,
+            "system_prompt": build_extra_system_prompt("路过的学生", "", "咖啡馆"),
+        }
+
+        asyncio.run(engine._extra_turn(name, ""))
+        self.assertEqual(provider.calls, [], "empty wake is silence, not an empty-question prompt")
+        self.assertEqual(trace.agent_turns[-1]["result"], "none")
+
+        world.submit(Intention("陈默", "speak", {
+            "text": "这件事我只告诉你。", "volume": "whisper", "to": ["宿管阿姨"]
+        }, world.version))
+        asyncio.run(engine._extra_turn(name, ""))
+        self.assertEqual(provider.calls, [])
+
+        world.submit(Intention("宿管阿姨", "speak", {
+            "text": "路人同学，你知道公告在哪吗？", "volume": "normal", "to": [name]
+        }, world.version))
+        asyncio.run(engine._extra_turn(name, ""))
+        self.assertEqual(len(provider.calls), 1)
+        user_tail = provider.calls[0][0][-1]["content"]
+        self.assertIn("宿管阿姨（对你说）", user_tail)
+        self.assertNotIn("这件事我只告诉你", user_tail)
+        self.assertEqual(provider.calls[0][0][0]["content"],
+                         engine._extras[name]["system_prompt"])
+
+    def test_extra_rebrief_uses_only_recent_speech_it_actually_heard(self):
+        from types import SimpleNamespace
+
+        def speech(actor, text, *, heard, to=(), volume="normal"):
+            return SimpleNamespace(
+                kind="speech", actor=actor, time=START,
+                payload={"text": text, "heard": list(heard), "to": list(to),
+                         "volume": volume})
+
+        events = [
+            speech("陈默", "你知道公告在哪里吗？", heard=["路人甲", "陈默"],
+                   to=["路人甲"]),
+            speech("林瑶", "我也在找那张通知。", heard=["路人甲", "陈默", "林瑶"],
+                   to=["陈默"]),
+            speech("陈默", "这句耳语路人听不见。", heard=["陈默"],
+                   to=["陈默"], volume="whisper"),
+            speech("班长", "有人刚问公告栏的通知。", heard=["路人甲", "班长"],
+                   to=["路人甲"]),
+        ]
+        transcript = extra_scene_transcript(events, listener="路人甲")
+        self.assertTrue(extra_heard_speech_since(events, listener="路人甲", start=0))
+        self.assertFalse(extra_heard_speech_since(events, listener="路人甲", start=len(events)))
+        self.assertEqual(len(transcript), 3)
+        joined = "\\n".join(transcript)
+        self.assertIn("陈默（对你说）", joined)
+        self.assertIn("林瑶", joined)
+        self.assertIn("班长（对你说）", joined)
+        self.assertNotIn("这句耳语路人听不见", joined)
+
+    def test_empty_external_wake_has_no_phantom_question_or_changed_static_prefix(self):
+        prompt = build_extra_system_prompt("值班同学", "知道公告流程", "教学楼")
+        self.assertEqual(prompt, build_extra_system_prompt(
+            "值班同学", "知道公告流程", "教学楼"))
+        self.assertEqual(build_extra_briefing(transcript=[]), "")
+        self.assertNotIn("对方说", build_extra_briefing(transcript=[]))
+
+    def test_extra_tool_static_prefix_is_byte_stable_across_dynamic_tails(self):
+        from copy import deepcopy
+        from harness.action_schema import SPEAK_TOOLS
+        from harness.npc_agent import extra_tool_calls
+
+        class Capture:
+            def __init__(self):
+                self.calls = []
+
+            def chat_with_tools(self, messages, tools):
+                self.calls.append((deepcopy(messages), deepcopy(tools)))
+                return {"tool_calls": [{"function": {
+                    "name": "speak", "arguments": '{"text":"嗯。"}'}}]}
+
+        provider = Capture()
+        system = build_extra_system_prompt("值班同学", "知道公告流程", "教学楼")
+        extra_tool_calls(provider, system, build_extra_briefing(
+            transcript=["陈默（对你说）：公告栏在哪？"]))
+        extra_tool_calls(provider, system, build_extra_briefing(
+            transcript=["班长（对你说）：刚才有人问公告栏。", "路人甲：在门边。"]))
+        extra_tool_calls(provider, system, "")
+        self.assertEqual(provider.calls[0][0][0], provider.calls[1][0][0])
+        self.assertEqual(provider.calls[0][1], provider.calls[1][1])
+        self.assertEqual(provider.calls[0][1], SPEAK_TOOLS)
+        self.assertNotEqual(provider.calls[0][0][1], provider.calls[1][0][1])
+        self.assertEqual(provider.calls[2][0], [{"role": "system", "content": system}])
+
+    def test_extra_can_silently_close_a_conversation(self):
+        from harness.npc_agent import extra_tool_calls
+
+        class Silent:
+            def chat_with_tools(self, messages, tools):
+                return {"content": "", "tool_calls": []}
+
+        self.assertEqual(extra_tool_calls(
+            Silent(), build_extra_system_prompt("路过的学生", "", "咖啡馆"),
+            build_extra_briefing(transcript=["陈默：那先这样，我去忙了。"])), [])
+
+    def test_extra_scene_transcript_is_bounded_and_initial_question_is_real(self):
+        from types import SimpleNamespace
+        events = [SimpleNamespace(kind="speech", actor="陈默", time=START,
+                                  payload={"text": "你有空吗？", "heard": [], "to": ["陌生人"]})]
+        initial = extra_scene_transcript(
+            events, listener="路人甲", opening_question="你有空吗？", questioner="陈默")
+        self.assertEqual(initial, ["陈默（对你说）：你有空吗？"])
+        follow_up = [SimpleNamespace(kind="speech", actor="陈默", time=START,
+                                     payload={"text": "你刚才说的那件事呢？",
+                                              "heard": ["路人甲"],
+                                              "to": ["陌生人"]})]
+        followed = extra_scene_transcript(
+            follow_up, listener="路人甲", opening_question="你刚才说的那件事呢？",
+            questioner="陈默")
+        self.assertEqual(followed, ["07:00 陈默（对你说）：你刚才说的那件事呢？"])
+        many = [SimpleNamespace(kind="speech", actor="陈默", time=START,
+                                payload={"text": str(i) + " x" * 200,
+                                         "heard": ["路人甲"], "to": []})
+                for i in range(20)]
+        bounded = extra_scene_transcript(many, listener="路人甲")
+        self.assertLessEqual(len(bounded), 8)
+        self.assertLessEqual(sum(map(len, bounded)), 1200)
+        self.assertTrue(all(len(line) <= 200 for line in bounded))
 
 
 class ExtraPoolTests(unittest.TestCase):
