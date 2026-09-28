@@ -319,6 +319,8 @@ class HistoricalFailureGates(unittest.TestCase):
         self.assertIn("待执行安排", ceremony["notice"])
         self.assertIn("未在中庭时收到这条", ceremony["notice"])
         self.assertIn("不代表你已到场", ceremony["notice"])
+        self.assertIn("通知书原件", ceremony["notice"])
+        self.assertNotIn("代签通知书", ceremony["notice"])
 
         river_notice = by_event["evening_walk"]["notice"]
         self.assertIn("中庭", river_notice)

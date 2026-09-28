@@ -140,6 +140,7 @@ class ChatWithToolsTests(unittest.TestCase):
 
         def fake_urlopen(request, timeout=None):
             seen["body"] = json.loads(request.data.decode())
+            seen["url"] = request.full_url
             return _FakeResponse(_chat_response({
                 "content": "",
                 "tool_calls": [
@@ -152,9 +153,136 @@ class ChatWithToolsTests(unittest.TestCase):
         with mock.patch("harness.provider.urlopen", fake_urlopen):
             message = provider.chat_with_tools(
                 [{"role": "user", "content": "hi"}], TOOLS)
+        self.assertEqual(seen["url"], "http://gw/v1/chat/completions")
         self.assertEqual(seen["body"]["tool_choice"], "auto")
         self.assertEqual(seen["body"]["tools"], TOOLS)
         self.assertEqual(message["tool_calls"][0]["function"]["name"], "speak")
+
+    def test_gpt6_luna_responses_maps_history_tools_and_mixed_output(self):
+        from harness.provider import OpenAICompatible
+
+        provider = OpenAICompatible(base_url="http://gw/v1",
+                                    model="github_copilot/gpt-6-luna",
+                                    timeout=1, retries=0, max_concurrency=1)
+        seen = {}
+        response = {
+            "output": [
+                {"type": "message", "role": "assistant", "content": [
+                    {"type": "output_text", "text": "我先问问。"},
+                ]},
+                {"type": "function_call", "call_id": "response-call-2",
+                 "name": "wait", "arguments": '{"duration_seconds":60}'},
+            ]
+        }
+        history = [
+            {"role": "system", "content": "system"},
+            {"role": "user", "content": "hi"},
+            {"role": "assistant", "content": "刚才的话。", "tool_calls": [
+                {"id": "call-1", "type": "function",
+                 "function": {"name": "speak", "arguments": '{"text":"早"}'}},
+            ]},
+            {"role": "tool", "tool_call_id": "call-1", "content": "ok"},
+        ]
+
+        def fake_urlopen(request, timeout=None):
+            seen["url"] = request.full_url
+            seen["body"] = json.loads(request.data.decode())
+            return _FakeResponse(json.dumps(response).encode())
+
+        with mock.patch("harness.provider.urlopen", fake_urlopen):
+            message = provider.chat_with_tools(history, TOOLS)
+
+        body = seen["body"]
+        self.assertEqual(seen["url"], "http://gw/v1/responses")
+        self.assertEqual(body["tool_choice"], "auto")
+        self.assertNotIn("thinking", body)
+        self.assertNotIn("messages", body)
+        self.assertEqual(body["input"], [
+            {"role": "system", "content": "system"},
+            {"role": "user", "content": "hi"},
+            {"role": "assistant", "content": "刚才的话。"},
+            {"type": "function_call", "call_id": "call-1", "name": "speak",
+             "arguments": '{"text":"早"}'},
+            {"type": "function_call_output", "call_id": "call-1", "output": "ok"},
+        ])
+        self.assertEqual(body["tools"][0], {
+            "type": "function", "name": "update_memory",
+            "description": TOOLS[0]["function"]["description"],
+            "parameters": TOOLS[0]["function"]["parameters"],
+        })
+        self.assertEqual(message, {
+            "role": "assistant", "content": "我先问问。", "tool_calls": [
+                {"id": "response-call-2", "type": "function",
+                 "function": {"name": "wait", "arguments": '{"duration_seconds":60}'}},
+            ],
+        })
+
+    def test_gpt6_luna_responses_accepts_plain_text_only(self):
+        from harness.provider import OpenAICompatible
+
+        provider = OpenAICompatible(base_url="http://gw/v1",
+                                    model="github_copilot/gpt-6-luna",
+                                    timeout=1, retries=0, max_concurrency=1)
+        attempts = []
+
+        def fake_urlopen(request, timeout=None):
+            attempts.append(request.full_url)
+            return _FakeResponse(json.dumps({"output_text": "只是散文"}).encode())
+
+        with mock.patch("harness.provider.urlopen", fake_urlopen):
+            message = provider.chat_with_tools([{"role": "user", "content": "hi"}], TOOLS)
+        self.assertEqual(attempts, ["http://gw/v1/responses"])
+        self.assertEqual(message, {"role": "assistant", "content": "只是散文",
+                                   "tool_calls": []})
+
+    def test_gpt6_luna_responses_rejects_malformed_function_call_output(self):
+        from harness.provider import OpenAICompatible
+
+        provider = OpenAICompatible(base_url="http://gw/v1",
+                                    model="github_copilot/gpt-6-luna",
+                                    timeout=1, retries=0, max_concurrency=1)
+        malformed = {"output": [{"type": "function_call", "call_id": "missing-name",
+                                  "arguments": "{}"}]}
+        with mock.patch("harness.provider.urlopen",
+                        return_value=_FakeResponse(json.dumps(malformed).encode())) as opened:
+            with self.assertRaisesRegex(RuntimeError, "no textual output after 1 attempts"):
+                provider.chat_with_tools([{"role": "user", "content": "hi"}], TOOLS)
+        self.assertEqual(opened.call_count, 1)
+
+    def test_gpt6_luna_compaction_uses_responses_with_function_results(self):
+        from harness.provider import OpenAICompatible
+
+        with mock.patch.dict("os.environ", {"V3_PROVIDER_API": "chat"}):
+            provider = OpenAICompatible(base_url="http://gw/v1",
+                                        model="github_copilot/gpt-6-luna",
+                                        timeout=1, retries=0, max_concurrency=1)
+        seen = {}
+        history = [
+            {"role": "system", "content": "system"},
+            {"role": "assistant", "content": "", "tool_calls": [
+                {"id": "call-compact", "type": "function",
+                 "function": {"name": "read", "arguments": '{"item":"台账"}'}},
+            ]},
+            {"role": "tool", "tool_call_id": "call-compact", "content": "内容"},
+            {"role": "user", "content": "请总结"},
+        ]
+
+        def fake_urlopen(request, timeout=None):
+            seen["url"] = request.full_url
+            seen["body"] = json.loads(request.data.decode())
+            return _FakeResponse(json.dumps({"output_text": "摘要"}).encode())
+
+        with mock.patch("harness.provider.urlopen", fake_urlopen):
+            self.assertEqual(provider(history), "摘要")
+        self.assertEqual(seen["url"], "http://gw/v1/responses")
+        self.assertNotIn("thinking", seen["body"])
+        self.assertEqual(seen["body"]["input"][1], {
+            "type": "function_call", "call_id": "call-compact", "name": "read",
+            "arguments": '{"item":"台账"}',
+        })
+        self.assertEqual(seen["body"]["input"][2], {
+            "type": "function_call_output", "call_id": "call-compact", "output": "内容",
+        })
 
     def test_chat_with_tools_accepts_text_only_reply(self):
         # T1 文本即说话: a text-only reply is a valid decision (words are

@@ -68,6 +68,10 @@ the narration. Local-model A/B arm must then pick a Chinese-capable base
   The hardcoded thinking:none in provider config becomes per-arm adapter
   configuration (endpoint shape + thinking switch + reasoning policy).
 
+### GPT-6 Luna native tool transport
+
+The configured `github_copilot/gpt-6-luna` LiteLLM route is Responses-only: native tool turns and compaction summaries must POST to `/v1/responses`, never `/chat/completions`. The harness keeps its persisted chat-style session format; the provider boundary maps assistant `tool_calls` to Responses `function_call` items, matching role:`tool` entries to `function_call_output`, and nested Chat Completions tool declarations to flat Responses function definitions. Responses message text and function calls map back together so spoken text survives a tool call. Compaction uses the same conversion and omits the unsupported `thinking` field for this model. This model-specific transport does not change the legacy Chat Completions path used by other configured models.
+
 ## 2. Immersive harness（已被 V4-AGENT-INTERFACE.md 取代的残留已清除）
 
 本节原为沉浸式 harness 的早期草案（第二人称 GM 叙事、JSON-in-content 协议、

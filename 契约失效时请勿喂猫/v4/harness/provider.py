@@ -26,6 +26,119 @@ def _thinking_param(model: str) -> Any:
     return "none"
 
 
+def _chat_messages_to_responses_input(messages: list[dict]) -> list[dict]:
+    """Translate V4Session's persisted chat-style history to Responses items."""
+    converted: list[dict] = []
+    for message in messages:
+        if not isinstance(message, dict):
+            raise ValueError("provider conversation messages must be objects")
+        role = message.get("role")
+        content = message.get("content", "")
+        if role == "tool":
+            call_id = message.get("tool_call_id")
+            if not isinstance(call_id, str) or not call_id:
+                raise ValueError("tool history message is missing tool_call_id")
+            converted.append({"type": "function_call_output", "call_id": call_id,
+                              "output": "" if content is None else str(content)})
+            continue
+        if role not in {"system", "developer", "user", "assistant"}:
+            raise ValueError(f"unsupported Responses history role: {role!r}")
+        if role == "assistant" and "tool_calls" in message:
+            calls = message["tool_calls"]
+            if not isinstance(calls, list):
+                raise ValueError("assistant tool_calls history must be a list")
+            if content not in (None, ""):
+                if not isinstance(content, str):
+                    raise ValueError("assistant history content must be text")
+                converted.append({"role": "assistant", "content": content})
+            for call in calls:
+                function = call.get("function") if isinstance(call, dict) else None
+                call_id = call.get("id") if isinstance(call, dict) else None
+                name = function.get("name") if isinstance(function, dict) else None
+                arguments = function.get("arguments") if isinstance(function, dict) else None
+                if not isinstance(call_id, str) or not call_id:
+                    raise ValueError("assistant tool call is missing id")
+                if not isinstance(name, str) or not name:
+                    raise ValueError("assistant tool call is missing function name")
+                if isinstance(arguments, dict):
+                    arguments = json.dumps(arguments, ensure_ascii=False)
+                if not isinstance(arguments, str):
+                    raise ValueError("assistant tool call is missing function arguments")
+                converted.append({"type": "function_call", "call_id": call_id,
+                                  "name": name, "arguments": arguments})
+            continue
+        if content is None:
+            content = ""
+        if not isinstance(content, str):
+            raise ValueError(f"{role} history content must be text")
+        converted.append({"role": role, "content": content})
+    return converted
+
+
+def _chat_tools_to_responses_tools(tools: list[dict]) -> list[dict]:
+    """Flatten Chat Completions function declarations for the Responses API."""
+    converted = []
+    for tool in tools:
+        function = tool.get("function") if isinstance(tool, dict) else None
+        if not isinstance(function, dict):
+            raise ValueError("chat tool definition is missing function")
+        name = function.get("name")
+        if not isinstance(name, str) or not name:
+            raise ValueError("chat tool definition is missing function name")
+        response_tool = {"type": "function", "name": name}
+        for key in ("description", "parameters", "strict"):
+            if key in function:
+                response_tool[key] = function[key]
+        converted.append(response_tool)
+    return converted
+
+
+def _extract_responses_tool_message(result: dict) -> dict | None:
+    """Normalize Responses message/function_call output to V4Session's shape."""
+    output = result.get("output")
+    text = ""
+    calls = []
+    if isinstance(output, list):
+        for item in output:
+            if not isinstance(item, dict):
+                continue
+            if item.get("type") == "message":
+                if item.get("role", "assistant") != "assistant":
+                    return None
+                content = item.get("content", [])
+                if not isinstance(content, list):
+                    return None
+                for part in content:
+                    if not isinstance(part, dict):
+                        continue
+                    if part.get("type") == "output_text":
+                        part_text = part.get("text")
+                        if not isinstance(part_text, str):
+                            return None
+                        text += part_text
+            elif item.get("type") == "function_call":
+                call_id = item.get("call_id")
+                name = item.get("name")
+                arguments = item.get("arguments")
+                if not isinstance(call_id, str) or not call_id:
+                    return None
+                if not isinstance(name, str) or not name:
+                    return None
+                if isinstance(arguments, dict):
+                    arguments = json.dumps(arguments, ensure_ascii=False)
+                if not isinstance(arguments, str):
+                    return None
+                calls.append({"id": call_id, "type": "function",
+                              "function": {"name": name, "arguments": arguments}})
+    elif output is not None:
+        return None
+    if not text and isinstance(result.get("output_text"), str):
+        text = result["output_text"]
+    if not text.strip() and not calls:
+        return None
+    return {"role": "assistant", "content": text, "tool_calls": calls}
+
+
 class OpenAICompatible:
     def __init__(self, *, base_url: str | None = None, model: str | None = None,
                  api_key: str | None = None, timeout: int = 12,
@@ -38,6 +151,9 @@ class OpenAICompatible:
                  sleep=time.sleep) -> None:
         self.base_url = (base_url or os.environ.get("OPENAI_BASE_URL", "http://localhost:20128/v1")).rstrip("/")
         self.model = model or os.environ.get("OPENAI_MODEL", "")
+        # This gateway model is Responses-only even when the general provider
+        # setting selects the legacy chat-completions protocol.
+        self.responses_only = self.model == "github_copilot/gpt-6-luna"
         # responses（默认）| chat：本地 llama-server 走 chat completions。
         self.api_style = os.environ.get("V3_PROVIDER_API", "responses")
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
@@ -72,33 +188,33 @@ class OpenAICompatible:
         # JSON response mode: natural language is a deliberate escape hatch
         # for intentions requiring world interpretation.
         # Session-local names are useful to the harness but are not accepted
-        # by the compatible Responses endpoint.
-        # The Responses input accepts only assistant/system/developer/user
-        # roles (ticket 23): a role:tool entry — e.g. the compaction call
-        # summarizing a history that contains tool results — must be
-        # flattened to a user message or the endpoint rejects the whole
-        # request, and since compaction re-triggers every turn the actor
-        # would stay dead for the rest of the run.
-        api_messages = []
-        for message in messages:
-            role = message.get("role")
-            content = message.get("content", "")
-            if role == "tool":
-                api_messages.append({"role": "user",
-                                     "content": f"[工具结果] {content}"})
-            else:
-                api_messages.append({"role": role, "content": content})
-        # Two API shapes (V4-DESIGN §1 reasoning matrix): the Responses API
-        # for OpenAI-style channels, Chat Completions for local
-        # llama-server (its /v1/responses parser is picky about bare
-        # role/content items — chat is its battle-tested path).
-        if self.api_style == "chat":
-            body = {"model": self.model, "messages": api_messages}
-            url_path = "/chat/completions"
-        else:
-            body = {"model": self.model, "input": api_messages,
-                    "thinking": _thinking_param(self.model)}
+        # by compatible Responses endpoints. GPT-6 Luna keeps native function
+        # call/result pairs during compaction; legacy channels retain the
+        # historical flattening behavior below.
+        if self.responses_only:
+            body = {"model": self.model,
+                    "input": _chat_messages_to_responses_input(messages)}
             url_path = "/responses"
+        else:
+            api_messages = []
+            for message in messages:
+                role = message.get("role")
+                content = message.get("content", "")
+                if role == "tool":
+                    api_messages.append({"role": "user",
+                                         "content": f"[工具结果] {content}"})
+                else:
+                    api_messages.append({"role": role, "content": content})
+            # Responses for configured OpenAI-style channels; Chat Completions
+            # for local llama-server (its /v1/responses parser is picky about
+            # bare role/content items — chat is its battle-tested path).
+            if self.api_style == "chat":
+                body = {"model": self.model, "messages": api_messages}
+                url_path = "/chat/completions"
+            else:
+                body = {"model": self.model, "input": api_messages,
+                        "thinking": _thinking_param(self.model)}
+                url_path = "/responses"
         request_data = json.dumps(body, ensure_ascii=False).encode()
         if len(request_data) > self.max_request_bytes:
             error = ValueError(
@@ -223,11 +339,17 @@ class OpenAICompatible:
         return content
 
     def chat_with_tools(self, messages: list[dict], tools: list[dict]) -> dict:
-        """One chat-completions call with native function tools; returns the
-        raw assistant message (``tool_calls`` entries carry
-        {id, function: {name, arguments-as-JSON-string}}). A reply with no
-        tool_calls is a valid decision (no world action); only unusable
-        response shapes retry."""
+        """Call native tools and return the chat-style message consumed by V4Session.
+
+        GPT-6 Luna uses Responses items at the wire boundary; all other models
+        keep the legacy Chat Completions request and response path."""
+        if self.responses_only:
+            body = {"model": self.model,
+                    "input": _chat_messages_to_responses_input(messages),
+                    "tools": _chat_tools_to_responses_tools(tools),
+                    "tool_choice": "auto"}
+            return self._run_request(json.dumps(body, ensure_ascii=False).encode(),
+                                     "/responses", _extract_responses_tool_message)
         body = {"model": self.model, "messages": messages,
                 "tools": tools, "tool_choice": "auto"}
         return self._run_request(json.dumps(body, ensure_ascii=False).encode(),
@@ -253,7 +375,7 @@ class OpenAICompatible:
         return message
 
     def _extract_text(self, result: dict) -> str | None:
-        if self.api_style == "chat":
+        if self.api_style == "chat" and not self.responses_only:
             try:
                 content = result["choices"][0]["message"]["content"]
             except (KeyError, IndexError, TypeError):
