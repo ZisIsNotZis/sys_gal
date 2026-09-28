@@ -114,17 +114,17 @@ _TOOL_DESCRIPTIONS: dict[str, str] = {
     "flashback":
         "手动闪回：关于某个地点/物品/人物/事件，把你知道的和亲历过的都翻出来——先是你自己记的事"
         "（前史、旧账、心结），再是这段日子里的经历。名字可用别名（如\"老街坊\"）。想不起某段往事时用",
-    "wait": "唯一的时间流逝工具；时长向上取整到 tick 倍数；等待期间事件照常投递。想干等或边等边想时用",
+    "wait": "唯一的时间流逝工具；时长向上取整到 tick 倍数；等待期间事件照常投递。只在没有正在执行的动作、也没有待处理打断时调用。普通动作会自动完成，不要在忙时再提交 wait；被打断的动作才用 continue_action/abandon_action。想干等或边等边想时用",
     "speak": "对指定的人开口：to=在场的谁（可多个；也可以是 [\"陌生人\"] 向身边的路人搭话）。"
              "有什么话一次性说完——一个 speak 调用说完完整的话，不要一句一句地连发多个 speak。"
 
              "volume=normal 大家都听得见（to 记录话是对谁说的）；volume=whisper 仅 to 名单听得见。"
              "普通的全场发言不用工具——直接回复文字即可。"
-             "话说出口需要 1 分钟；对方听到并回应最快也要再过 1 分钟。默认 wait_response=true："
-             "说完你会自动原地等回应（最多约 2 分钟，有人回应会立刻叫醒你）；"
+             "话会在 1 分钟（一个 tick）内说完；等待回复是说完后的另一段等待，不会继续显示为说话。"
+             "默认 wait_response=true：说完你会自动原地等回应（最多约 2 分钟，有人回应会立刻叫醒你）；"
              "说完就走就 wait_response=false",
     "text": "发手机短信：target=收件人，无视距离，1 tick 后送达；正文只有收件人看得到。"
-             "默认 wait_response=true：发出后自动原地等回应（约 2 分钟，对方回复会立刻叫醒你）——"
+             "默认 wait_response=true：短信送达后自动原地等回应（约 2 分钟，对方回复会立刻叫醒你）——"
              "对方看到、想到、再回，最快也要两三分钟；发完就走用 wait_response=false",
     "move": "只用于地图中的大地点（世界消息 @地点、你知道的 location 行）：target=地点全名。"
             "不要用来靠近柜子、桌子、服务台、房间角落或物品——同一地点内无需 move，直接 read/take/knock/leave_note",
@@ -136,8 +136,8 @@ _TOOL_DESCRIPTIONS: dict[str, str] = {
                   "想再留一条就再次调用 leave_note；递到手上用 give",
     "read": "读一份手边的内容型物品；正文和已有批注只在 tool 结果里给你自己看。他人只看见你在读",
     "knock": "敲一个关闭地点的门，探里面有没有人",
-    "continue_action": "无损继续被打断的动作（被打断的回合必须先选这个或 abandon）",
-    "abandon_action": "放弃被打断的动作（作废；被打断的回合必须先选这个或 continue）",
+    "continue_action": "无损继续一个明确显示为被打断且待处理的动作（arguments={}）。普通动作会自动完成；忙碌不是打断，不要用 continue_action，也不要忙时调用 wait。",
+    "abandon_action": "放弃一个明确显示为被打断且待处理的动作（arguments={}）；普通动作会自动完成，忙碌不是打断。",
     "trash": "销毁一件自己身上或当前地点的物品（杂物），不可逆",
 }
 
@@ -198,4 +198,18 @@ def validate_action_args(kind: str, args: Mapping[str, Any]) -> str | None:
         text = _describe(error, validator.schema, args)
         if text not in problems:
             problems.append(text)
-    return f"{kind}: {'; '.join(problems)}. Your args were: {json.dumps(dict(args), ensure_ascii=False)}."
+    detail = f"{kind}: {'; '.join(problems)}. Your args were: {json.dumps(dict(args), ensure_ascii=False)}."
+    required = list(validator.schema.get("required", ()))
+    missing = [key for key in required if key not in args]
+    unexpected = [key for key in args if key not in validator.schema.get("properties", {})]
+    if len(missing) == 1 and len(unexpected) == 1:
+        # A common signature drift is a correct entity under the wrong field
+        # (e.g. read(document=...) instead of read(item=...)). Preserve the
+        # supplied entity in a concrete legal call rather than only naming the
+        # schema key that should have been used.
+        corrected = {key: value for key, value in args.items()
+                     if key in validator.schema.get("properties", {})}
+        corrected[missing[0]] = args[unexpected[0]]
+        detail += " Suggested call: " + json.dumps(
+            {"name": kind, "arguments": corrected}, ensure_ascii=False) + "."
+    return detail

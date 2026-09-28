@@ -39,6 +39,8 @@ class ActionSchemaTests(unittest.TestCase):
         reason = validate_action_args("read", {"document": "ledger"}) or ""
         self.assertIn("unexpected argument 'document'", reason)
         self.assertIn("item", reason)
+        self.assertIn('"name": "read"', reason)
+        self.assertIn('"item": "ledger"', reason)
 
     def test_missing_required_is_described(self):
         self.assertIn("'text'", validate_action_args("leave_note", {}) or "")

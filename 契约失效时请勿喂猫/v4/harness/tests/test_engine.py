@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 
 from harness.agent_state import PrivateState
 from harness.engine import AsyncEngine
-from harness.kernel import TICK_SECONDS, ActorState, Intention, LocationState, World
+from harness.kernel import ActionRejected, TICK_SECONDS, ActorState, Intention, LocationState, World
 from harness.trace import Trace
 
 START = datetime.fromisoformat("2026-01-01T00:00:00+00:00")
@@ -456,3 +456,175 @@ class RenderSemanticsTests(unittest.TestCase):
                                      "nearby_actors": [], "inventory": []},
                                     affordances, observer="c")
         self.assertNotIn("自言自语", text)
+
+
+class BusyRecoveryTests(unittest.TestCase):
+    """Issue 29: busy, interrupted, and decision-horizon states stay distinct."""
+
+    def _world(self):
+        return World(start=START,
+                     actors=[ActorState("a", "room"), ActorState("b", "room")],
+                     locations=[LocationState("room"), LocationState("far")],
+                     routes={("room", "far"): 120})
+
+    def _engine(self, world):
+        agents = {actor: FakeV4Agent([]) for actor in world.actors}
+        states = {actor: PrivateState(actor) for actor in world.actors}
+        engine = AsyncEngine(world, agents, states,
+                             Trace("v4-test", "busy-recovery"))
+        engine._scheduler_wake = threading.Event()
+        engine._stop_horizon = None
+        return engine
+
+    def test_force_turn_does_not_wake_an_ordinary_busy_actor(self):
+        world = self._world()
+        world.submit(Intention("a", "move", {"target": "far"}, world.version))
+        engine = self._engine(world)
+        world.poll("b")  # Consume the visible departure; only a's forced turn remains.
+        engine._force_turn.add("a")
+
+        self.assertFalse(engine._ready_now("a"))
+        self.assertEqual(world.affordances("a"), [])
+        self.assertFalse(engine._has_pending_turns())
+        from harness.prompt import render_world_message
+        busy_view = render_world_message(world.poll("a"), world.affordances("a"), observer="a")
+        self.assertIn("正在前往far", busy_view)
+        self.assertIn("0:02", busy_view)
+        self.assertNotIn("正在等回应", busy_view)
+
+        with self.assertRaises(ActionRejected) as caught:
+            world.submit(Intention("a", "wait", {"duration_seconds": 60}, world.version))
+        message = str(caught.exception)
+        self.assertIn("move", message)
+        self.assertIn("00:02", message)
+        self.assertIn("continue_action", message)
+        self.assertIn('"name": "wait"', message)
+
+    def test_interruption_is_not_ordinary_busy_and_has_only_recovery_actions(self):
+        world = self._world()
+        world.submit(Intention("a", "move", {"target": "far"}, world.version))
+        world.submit(Intention("b", "speak",
+                               {"text": "等一下", "volume": "normal", "to": ["a"]},
+                               world.version, interrupt=("a",)))
+        engine = self._engine(world)
+
+        self.assertIsNotNone(world.actors["a"].pending)
+        self.assertTrue(engine._ready_now("a"))
+        self.assertEqual(world.affordances("a"), [
+            {"kind": "continue_action"}, {"kind": "abandon_action"}])
+        perception = world.poll("a")
+        from harness.prompt import render_world_message
+        rendered = render_world_message(perception, world.affordances("a"), observer="a")
+        self.assertIn("打断", rendered)
+        self.assertIn("continue_action", rendered)
+        self.assertNotIn("正在忙", rendered)
+
+        world.submit(Intention("a", "continue_action", {}, world.version))
+        self.assertIsNone(world.actors["a"].pending)
+        world.advance(until=START + timedelta(seconds=60))
+
+        with self.assertRaises(ActionRejected) as caught:
+            world.submit(Intention("b", "continue_action", {}, world.version))
+        self.assertIn("No interrupted action is pending", str(caught.exception))
+        self.assertIn("continue_action", str(caught.exception))
+
+    def test_chain_failure_at_decision_horizon_is_per_call_and_does_not_ratchet(self):
+        world = self._world()
+        engine = self._engine(world)
+        # Another actor is still deciding from t=0, so its horizon is t+1 tick.
+        engine._inflight["b"] = START
+        engine._stop_horizon = START + timedelta(seconds=600)
+        calls = [
+            {"name": "move", "arguments": {"target": "far"}, "tool_call_id": "move-1"},
+            {"name": "speak", "arguments": {
+                "text": "等我到了再说", "volume": "normal", "to": ["b"],
+                "wait_response": False}, "tool_call_id": "speak-2"},
+        ]
+
+        engine._execute_chain("a", calls, {"time": START.isoformat(), "events": []},
+                              [], world.version)
+
+        results = engine.agents["a"].delivered
+        self.assertEqual([result["tool_call_id"] for result in results], ["move-1", "speak-2"])
+        self.assertTrue(results[0]["ok"])
+        self.assertFalse(results[1]["ok"])
+        self.assertIn("move", results[1]["text"])
+        self.assertIn("00:02", results[1]["text"])
+        self.assertIn("not executed", results[1]["text"])
+        self.assertIn('"name": "speak"', results[1]["text"])
+        self.assertEqual(world.now, START + timedelta(seconds=60))
+        self.assertEqual(world.actors["a"].busy_until, START + timedelta(seconds=120))
+        self.assertFalse(any(event.kind == "speech" and event.actor == "a"
+                             for event in world.event_log))
+
+    def test_speech_finishes_before_separate_response_wait(self):
+        world = self._world()
+        engine = self._engine(world)
+        calls = [{"name": "speak", "arguments": {
+            "text": "你今天还好吗？", "volume": "normal", "to": ["b"]},
+            "tool_call_id": "speak-1"}]
+        engine._execute_chain("a", calls, {"time": START.isoformat(), "events": []},
+                              world.affordances("a"), world.version)
+
+        completed = [event for event in world.event_log
+                     if event.kind == "action_completed" and event.actor == "a"]
+        self.assertEqual(len(completed), 1)
+        self.assertEqual(completed[0].time, START + timedelta(seconds=60))
+        self.assertEqual(completed[0].payload["action"], "speak")
+        self.assertEqual(world.now, START + timedelta(seconds=60))
+        self.assertEqual(world.actors["a"].busy_until,
+                         START + timedelta(seconds=180))
+        perception = world.poll("a")
+        from harness.prompt import render_world_message
+        rendered = render_world_message(perception, world.affordances("a"), observer="a")
+        self.assertIn("话已说完", rendered)
+        self.assertIn("回应", rendered)
+        self.assertIn("0:03", rendered)
+        self.assertNotIn("正在说话", rendered)
+        self.assertTrue(engine.agents["a"].delivered[0]["ok"])
+        self.assertIn("等b回话", engine.agents["a"].delivered[0]["text"])
+        restored = World.from_checkpoint(world, world.checkpoint_state())
+        restored_view = render_world_message(restored.poll("a"),
+                                             restored.affordances("a"), observer="a")
+        self.assertIn("这句话已说完", restored_view)
+        self.assertIn("正在等b回应", restored_view)
+
+    def test_entity_mismatch_error_suggests_an_available_document_call(self):
+        world = World(start=START,
+                      actors=[ActorState("a", "room"), ActorState("b", "room")],
+                      locations=[LocationState("room")],
+                      document_defs={"ledger": {"title": "值班登记簿", "content": "内容"}},
+                      item_locations={"ledger": "room"})
+        engine = self._engine(world)
+        engine._execute_chain("a", [{"name": "read", "arguments": {"item": "wrong"},
+                                     "tool_call_id": "read-1"}],
+                              {"time": START.isoformat(), "events": []},
+                              world.affordances("a"), world.version)
+        result = engine.agents["a"].delivered[0]
+        self.assertFalse(result["ok"])
+        self.assertIn("wrong", result["text"])
+        self.assertIn("ledger", result["text"])
+        self.assertIn('"name": "read"', result["text"])
+        self.assertIn('"item": "ledger"', result["text"])
+
+    def test_bad_speech_argument_gets_a_legal_current_target_example(self):
+        world = self._world()
+        engine = self._engine(world)
+        engine._execute_chain("a", [{"name": "speak", "arguments": {
+            "text": "你好", "volume": {"wrong": "type"}, "to": ["missing"]},
+            "tool_call_id": "speak-bad"}],
+                              {"time": START.isoformat(), "events": []},
+                              world.affordances("a"), world.version)
+        result = engine.agents["a"].delivered[0]
+        self.assertFalse(result["ok"])
+        self.assertIn('"name": "speak"', result["text"])
+        self.assertIn('"to": ["b"]', result["text"])
+        self.assertIn('"volume": "normal"', result["text"])
+
+    def test_busy_tool_descriptions_distinguish_wait_and_interruption(self):
+        from harness.action_schema import TOOLS
+        by_name = {tool["function"]["name"]: tool["function"]["description"]
+                   for tool in TOOLS}
+        self.assertIn("忙", by_name["wait"])
+        self.assertIn("被打断", by_name["continue_action"])
+        self.assertIn("普通动作", by_name["continue_action"])

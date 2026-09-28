@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 import heapq
 import itertools
 import copy
+import json
 from typing import Any, Iterable, Mapping
 
 from .action_schema import validate_action_args
@@ -580,7 +581,9 @@ class World:
             # remaining progress) or cancel (mark it failed/unfinished).
             return [{"kind": "continue_action"}, {"kind": "abandon_action"}]
         if a.busy_until and a.busy_until > self.now:
-            return [{"kind": "wait", "duration_seconds": 900}]
+            # Ordinary actions finish on their scheduled event. Offering wait
+            # here is contradictory: submit rejects every action while busy.
+            return []
         controllable = self.locations[a.location].controllable
         others_here = sorted(other.id for other in self.actors.values()
                              if other.id != a.id and other.location == a.location)
@@ -669,9 +672,18 @@ class World:
             # names. Ambiguity/no-hit is rejected with the candidates listed.
             intention = self._canonicalize_persons(a, intention)
         if a.pending is not None and intention.kind not in {"continue_action", "abandon_action"}:
-            raise ActionRejected("你有一个被打断的动作待处理：请先选择 continue_action 或 abandon_action。")
+            action = str(a.pending.get("payload", {}).get("action", "action"))
+            interrupted_by = str(a.pending.get("interrupted_by", "unknown"))
+            remaining = int(a.pending.get("remaining_seconds", 0))
+            raise ActionRejected(
+                f"not executed: '{action}' was interrupted by '{interrupted_by}' with "
+                f"{remaining} seconds remaining. Resume with "
+                '{"name": "continue_action", "arguments": {}} or cancel with '
+                '{"name": "abandon_action", "arguments": {}}.',
+                context={"interrupted_action": action, "interrupted_by": interrupted_by,
+                         "remaining_seconds": remaining})
         if a.busy_until and a.busy_until > self.now:
-            raise ActionRejected("你正在忙于当前动作，无法开始新动作。")
+            raise self._busy_rejection(a, intention)
         if intention.kind == "continue_action":
             return self._resume(a)
         if intention.kind == "abandon_action":
@@ -849,7 +861,10 @@ class World:
     def _resume(self, a: ActorState) -> tuple[Event, ...]:
         pending = a.pending
         if pending is None:
-            raise ActionRejected("你没有被打断的动作。")
+            raise ActionRejected(
+                "No interrupted action is pending; continue_action is only for an "
+                "action shown as interrupted. Ordinary actions complete automatically. "
+                'To wait while idle, use {"name": "wait", "arguments": {"duration_seconds": 60}}.')
         remaining = tick_ceil(pending["remaining_seconds"])
         payload = dict(pending["payload"])
         event = self._commit("action_resumed", a.id, {
@@ -872,7 +887,10 @@ class World:
     def _abandon(self, a: ActorState) -> tuple[Event, ...]:
         pending = a.pending
         if pending is None:
-            raise ActionRejected("你没有被打断的动作。")
+            raise ActionRejected(
+                "No interrupted action is pending; abandon_action is only for an "
+                "action shown as interrupted. Ordinary actions complete automatically. "
+                'To wait while idle, use {"name": "wait", "arguments": {"duration_seconds": 60}}.')
         payload = dict(pending["payload"])
         event = self._commit("action_abandoned", a.id, {
             "action": payload.get("action"), "failed": True,
@@ -972,6 +990,35 @@ class World:
             result["pending"] = {"action": a.pending["payload"].get("action"),
                                  "remaining_seconds": a.pending["remaining_seconds"],
                                  "interrupted_by": a.pending["interrupted_by"]}
+            pending_payload = a.pending["payload"]
+            result["action_state"] = {
+                "status": "interrupted",
+                "action": pending_payload.get("action"),
+                "remaining_seconds": a.pending["remaining_seconds"],
+                "interrupted_by": a.pending["interrupted_by"],
+                **{key: pending_payload[key] for key in ("target", "item")
+                   if isinstance(pending_payload.get(key), str)},
+            }
+        elif a.busy_until and a.busy_until > self.now:
+            current = a.current_action or {}
+            payload = current.get("payload", {})
+            state = {"status": "in_progress",
+                     "action": payload.get("action"),
+                     "until": a.busy_until.isoformat()}
+            for key in ("target", "item"):
+                value = payload.get(key)
+                if isinstance(value, str):
+                    state[key] = value
+            if payload.get("action") in {"speak", "text"}:
+                addressed = (bool(payload.get("to")) if payload.get("action") == "speak"
+                             else bool(payload.get("target")))
+                state["will_wait_for_response"] = bool(
+                    addressed and payload.get("wait_response", True))
+            if current.get("waiting_for_response"):
+                state["status"] = "waiting_for_response"
+                state["response_to"] = list(current.get("response_to", ()))
+                state["response_action"] = current.get("response_action", "speak")
+            result["action_state"] = state
         return result
 
     def notify_compaction(self, actor_id: str) -> None:
@@ -999,6 +1046,31 @@ class World:
             self._actor(actor)
         return self._commit(kind, actor, payload, cause)
 
+    @staticmethod
+    def _tool_call_json(kind: str, args: Mapping[str, Any]) -> str:
+        return json.dumps({"name": kind, "arguments": dict(args)}, ensure_ascii=False)
+
+    def _busy_rejection(self, actor: ActorState, intention: Intention) -> ActionRejected:
+        current = actor.current_action or {}
+        payload = current.get("payload", {})
+        action = str(payload.get("action", "action"))
+        if current.get("waiting_for_response"):
+            recipients = ", ".join(str(x) for x in current.get("response_to", ())) or "the addressee"
+            activity = f"waiting for a response from {recipients}"
+        else:
+            detail = payload.get("target", payload.get("item"))
+            activity = f"'{action}'" + (f" for '{detail}'" if detail else "")
+        until = actor.busy_until.isoformat() if actor.busy_until else "an unknown time"
+        message = (
+            f"not executed: {self._tool_call_json(intention.kind, intention.args)} cannot start "
+            f"while {activity} is in progress until {until}. The current action will finish "
+            "automatically; do not use wait while busy, and only use continue_action/"
+            "abandon_action for a true interruption. Retry the "
+            f"same call after completion: {self._tool_call_json(intention.kind, intention.args)}.")
+        return ActionRejected(message, context={
+            "busy_until": until, "current_action": action,
+            "attempted_action": intention.kind})
+
     def _duration(self, a: ActorState, i: Intention) -> timedelta:
         # V4-ENGINE §2.1: every world action rounds up to whole ticks with a
         # one-tick floor; a zero-length action costs exactly one tick.
@@ -1009,10 +1081,13 @@ class World:
         if i.kind in {"wait", "sleep"}:
             seconds = x.get("duration_seconds")
             if not isinstance(seconds, int) or isinstance(seconds, bool) or seconds <= 0:
-                raise ActionRejected("等待时长必须是正整数秒（duration_seconds）。")
+                raise ActionRejected(
+                    'wait needs a positive integer duration_seconds; for one minute use '
+                    '{"name": "wait", "arguments": {"duration_seconds": 60}}.')
             if seconds > self.longest_wait_seconds:
                 raise ActionRejected(
-                    f"单次等待不能超过 {self.longest_wait_seconds} 秒；如需更久，请分几次等待。",
+                    f"单次等待不能超过 {self.longest_wait_seconds} 秒；如需更久，请分几次等待。"
+                    f"例如：{self._tool_call_json('wait', {'duration_seconds': self.longest_wait_seconds})}。",
                     context={"limit": self.longest_wait_seconds})
             return timedelta(seconds=seconds)
         if i.kind == "speak":
@@ -1047,8 +1122,8 @@ class World:
             if not isinstance(target_id, str) or not target_id:
                 reachable = self._message_targets(a)
                 raise ActionRejected(
-                    "发消息需要用 target 指定收信人。",
-                    alternatives=[f"send_message to {other}" for other in reachable],
+                    "发短信需要用 target 指定收信人。",
+                    alternatives=[f"text {other}" for other in reachable],
                     context={"missing": "target"})
             target = self._actor(target_id)
             if target.id != a.id and target.id not in a.known_contacts and target.location != a.location:
@@ -1084,15 +1159,22 @@ class World:
                                      context={"missing": "target"})
             target = self._actor(target_id)
             if target.id == a.id or target.location != a.location:
-                alternatives = [f"send_message to {target.id}"] if target.id in a.known_contacts else []
+                alternatives = [f"text {target.id}"] if target.id in a.known_contacts else []
                 raise ActionRejected(
                     f"{target.id}不在这里，你没法把东西递给对方。",
                     alternatives=alternatives,
                     context={"target": target.id, "co_located": False})
             item = str(x.get("item"))
             if item not in a.inventory:
+                held = sorted(a.inventory)
+                alternatives = [f"give {name} to {target.id}" for name in held]
+                valid = "; ".join(self._tool_call_json(
+                    "give", {"target": target.id, "item": name}) for name in held)
+                suffix = f" 可行调用：{valid}。" if valid else "先拿起当前地点的一件物品，再递给在场的人。"
                 raise ActionRejected(
-                    f"你没有拿着「{item}」。你拿着：{', '.join(sorted(a.inventory)) or '没有'}。")
+                    f"你没有拿着「{item}」。你拿着：{', '.join(held) or '没有'}。{suffix}",
+                    alternatives=alternatives,
+                    context={"item": item, "available_items": held})
             return timedelta(seconds=2)
         if i.kind == "move":
             target = str(x.get("target"))
@@ -1134,8 +1216,24 @@ class World:
         if i.kind == "place":
             item = str(x.get("item"))
             if item not in a.inventory:
+                held = sorted(a.inventory)
+                present = sorted(name for name, place in self.item_locations.items()
+                                 if place == a.location)
+                alternatives = [f"place {name}" for name in held]
+                if item in present:
+                    alternatives.insert(0, f"take {item}")
+                valid = "; ".join(self._tool_call_json("place", {"item": name})
+                                  for name in held)
+                take_hint = (f" First take it with {self._tool_call_json('take', {'item': item})}."
+                             if item in present else "")
+                suffix = f" Valid calls: {valid}.{take_hint}" if valid else \
+                    (f" Take an item here first: {', '.join(present)}."
+                     if present else "There is no item here to take before placing.")
                 raise ActionRejected(
-                    f"You are not holding '{item}'. You hold: {', '.join(sorted(a.inventory)) or 'nothing'}.")
+                    f"You are not holding '{item}'. You hold: {', '.join(held) or 'nothing'}.{suffix}",
+                    alternatives=alternatives,
+                    context={"item": item, "available_items": held,
+                             "items_here": present})
             return timedelta(0)
         raise ActionRejected("该动作没有时长规则。")
 
@@ -1169,9 +1267,16 @@ class World:
         if kind == "trash":
             item = str(intention.args.get("item"))
             if item not in actor.inventory and self.item_locations.get(item) != actor.location:
+                present, held = self._present_items(actor)
+                candidates = sorted(set(present) | set(held))
+                valid = "; ".join(self._tool_call_json("trash", {"item": name})
+                                  for name in candidates)
+                suffix = f" Available items and valid calls: {valid}." if valid else \
+                    "There is no item here or in your inventory to trash."
                 raise ActionRejected(
-                    f"You cannot trash '{item}': not held and not here.",
-                    context={"item": item})
+                    f"Cannot trash '{item}': it is neither held nor at this location.{suffix}",
+                    alternatives=[f"trash {name}" for name in candidates],
+                    context={"item": item, "available_items": candidates})
             return timedelta(seconds=3)
         return timedelta(seconds=3)
 
@@ -1425,7 +1530,22 @@ class World:
                 continue
             resolved, note = self._resolve_person(actor, query)
             if resolved is None:
-                raise ActionRejected(str(note), context={key: query})
+                if intention.kind == "text":
+                    alternatives = [f"text {person}" for person in self._message_targets(actor)]
+                elif intention.kind == "give":
+                    here = sorted(other.id for other in self.actors.values()
+                                  if other.id != actor.id and other.location == actor.location)
+                    item = args.get("item")
+                    if item in actor.inventory:
+                        alternatives = [f"give {item} to {person}" for person in here]
+                    else:
+                        alternatives = []
+                else:
+                    here = sorted(other.id for other in self.actors.values()
+                                  if other.id != actor.id and other.location == actor.location)
+                    alternatives = [f"speak to {person}" for person in here]
+                raise ActionRejected(str(note), alternatives=alternatives,
+                                     context={key: query})
             if resolved != query:
                 args[key] = resolved
                 changed = True

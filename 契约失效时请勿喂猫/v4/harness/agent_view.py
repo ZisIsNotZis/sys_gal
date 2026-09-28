@@ -30,7 +30,8 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
-from .prompt import _affordance_sentence, _clean_description, _event_sentence
+from .prompt import (_action_state_sentence, _affordance_sentence,
+                     _clean_description, _event_sentence)
 
 
 def _history_perception(perception: Mapping[str, Any], affordances: list[Mapping[str, Any]],
@@ -44,13 +45,16 @@ def _history_perception(perception: Mapping[str, Any], affordances: list[Mapping
     """
     observer = str(perception.get("observer", ""))
     lines = [f"现在是{str(perception.get('time', ''))[5:16].replace('T', '日 ')}，你在{perception.get('location')}。"]
-    if perception.get("busy_until"):
+    action_state = _action_state_sentence(perception.get("action_state"))
+    if action_state:
+        lines.append(action_state)
+    elif perception.get("busy_until"):
         lines.append(f"你手上的事还没完，要忙到{str(perception['busy_until'])[11:16]}。")
     for message in perception.get("inbox", []):
         lines.append(f"你收到一条来自{message.get('from')}的消息：{message.get('text')}")
     for fact in perception.get("operational_facts", []):
         action = fact.get("action", {})
-        line = ("你刚才想做的「{action.get('kind')}」没有成功，什么也没改变。"
+        line = (f"你刚才想做的「{action.get('kind')}」没有成功，什么也没改变。"
                 f"原因：{fact.get('reason')}。")
         alternatives = fact.get("alternatives")
         if alternatives:

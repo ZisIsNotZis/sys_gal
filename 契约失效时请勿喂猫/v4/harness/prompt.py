@@ -60,6 +60,9 @@ def render_world_message(perception: Mapping[str, Any], affordances: Sequence[Ma
     nearby = sorted(str(x) for x in perception.get("nearby_items", []))
     if nearby:
         lines.append("附近：" + "、".join(nearby))
+    action_state = _action_state_sentence(perception.get("action_state"))
+    if action_state:
+        lines.append(action_state)
     notice = perception.get("situational_notice")
     if notice:
         lines.append(str(notice))
@@ -81,6 +84,50 @@ def render_world_message(perception: Mapping[str, Any], affordances: Sequence[Ma
         lines.extend(knowledge)
 
     return "\n".join(lines)
+
+
+def _action_state_sentence(state: Any) -> str | None:
+    """Render the actor's own action lifecycle without exposing its payload.
+
+    In particular, a response wait is a separate state after speech has
+    completed; it must never read as the actor continuing to speak.
+    """
+    if not isinstance(state, Mapping):
+        return None
+    status = str(state.get("status", ""))
+    action = str(state.get("action", "action"))
+    if status == "interrupted":
+        remaining = int(state.get("remaining_seconds", 0) or 0)
+        minutes = max(1, (remaining + 59) // 60)
+        interrupted_by = str(state.get("interrupted_by", "someone"))
+        detail = state.get("target", state.get("item"))
+        action_name = f"{action} {detail}" if detail else action
+        return (f"行动状态：{action_name} 被 {interrupted_by} 打断，还剩约 {minutes} 分钟；"
+                '先调用 {"name": "continue_action", "arguments": {}} 无损继续，或 '
+                '{"name": "abandon_action", "arguments": {}} 放弃。')
+    until = _clock(str(state.get("until", "")))
+    if status == "waiting_for_response":
+        recipients = "、".join(str(x) for x in state.get("response_to", []) or []) or "对方"
+        response_action = str(state.get("response_action", action))
+        completed = "这句话已说完" if response_action == "speak" else "短信已送达"
+        return (f"行动状态：{completed}；正在等{recipients}回应，最迟到 {until}，"
+                "有人回应会提前叫醒。")
+    target = state.get("target")
+    item = state.get("item")
+    if action == "speak":
+        after = ("之后另行等待回应" if state.get("will_wait_for_response")
+                 else "之后不自动等待回应")
+        return f"行动状态：这句话的说话动作将在 {until} 完成（一个 tick）；{after}。"
+    if action == "text":
+        after = ("之后另行等待回应" if state.get("will_wait_for_response")
+                 else "之后不自动等待回应")
+        return f"行动状态：给{target or '收件人'}的短信将在 {until} 送达；{after}。"
+    if action == "move":
+        return f"行动状态：正在前往{target or '目的地'}，预计 {until} 到达。"
+    if action in {"wait", "sleep"}:
+        return f"行动状态：正在等待至 {until}。"
+    subject = f" {item}" if item else (f" {target}" if target else "")
+    return f"行动状态：正在完成 {action}{subject}，预计 {until} 完成。"
 
 
 def _action_args(option: Mapping[str, Any]) -> str:

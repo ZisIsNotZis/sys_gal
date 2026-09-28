@@ -329,7 +329,7 @@ class AsyncEngine:
         with an answer in flight still owns an event (ticket 22) — the clock
         must not jump to stop_at over its head."""
         return (not self._inflight and not self._extra_inflight
-                and not self._force_turn and not self._any_ready())
+                and not self._has_pending_turns() and not self._any_ready())
 
     def _has_pending_turns(self) -> bool:
         """True when some actor owes a turn at the current moment (woken or
@@ -337,8 +337,6 @@ class AsyncEngine:
         such an actor — its perception belongs to now. Deliberating actors
         are excluded: their moment is governed by the decision horizon
         (V4-ENGINE §2.3), not by readiness."""
-        if self._force_turn:
-            return True
         return any(self._ready_now(actor) and actor not in self._inflight
                    for actor in self._persistent_actors())
 
@@ -413,17 +411,15 @@ class AsyncEngine:
         self._scheduler_wake.set()
 
     def _ready_now(self, actor_id: str) -> bool:
-        if actor_id in self._force_turn:
-            return True
         a = self.world.actors.get(actor_id)
         if a is None:
             return False
-        if actor_id in self._npc_pending:
-            return True
         if a.pending is not None:
             return True
         if a.busy_until and a.busy_until > self.world.now:
             return False
+        if actor_id in self._force_turn or actor_id in self._npc_pending:
+            return True
         if a.role == "npc":
             # NPCs wake only via CAST §2 triggers (named/beat/ripple/cold),
             # never on ambient public events — that is what keeps them
@@ -650,10 +646,89 @@ class AsyncEngine:
                 ordered.append(line)
         return ordered[:8]
 
+    def _action_rejection_text(self, actor_id: str, exc: ActionRejected, name: str,
+                               args: Mapping[str, Any]) -> str:
+        """Keep kernel suggestions and legal current entities in tool results."""
+        import json
+        calls: list[dict[str, Any]] = []
+        for alternative in exc.alternatives:
+            text = str(alternative).strip()
+            if text.startswith("move to "):
+                target = text[len("move to "):].removesuffix(" (open)")
+                calls.append({"name": "move", "arguments": {"target": target}})
+            elif text.startswith("take "):
+                calls.append({"name": "take", "arguments": {"item": text[len("take "):]}})
+            elif text.startswith("read "):
+                calls.append({"name": "read", "arguments": {"item": text[len("read "):]}})
+            elif text.startswith("place "):
+                calls.append({"name": "place", "arguments": {"item": text[len("place "):]}})
+            elif text.startswith("trash "):
+                calls.append({"name": "trash", "arguments": {"item": text[len("trash "):]}})
+            elif text.startswith("give ") and " to " in text:
+                item, target = text[len("give "):].split(" to ", 1)
+                calls.append({"name": "give", "arguments": {
+                    "target": target, "item": item}})
+            elif text.startswith("speak to "):
+                calls.append({"name": "speak", "arguments": {
+                    "text": str(args.get("text") or "<your words>"),
+                    "volume": "normal", "to": [text[len("speak to "):]]}})
+            elif text.startswith(("text ", "send_message to ")):
+                target = text[len("send_message to "):] if text.startswith("send_message to ") \
+                    else text[len("text "):]
+                calls.append({"name": "text", "arguments": {
+                    "target": target, "text": str(args.get("text") or "<your message>")}})
+        if not calls and exc.context.get("busy_until") is None and name == "wait":
+            calls.append({"name": "wait", "arguments": {
+                "duration_seconds": TICK_SECONDS}})
+        if not calls and exc.context.get("busy_until") is None:
+            for option in self.world.affordances(actor_id):
+                if str(option.get("kind")) != name:
+                    continue
+                if name == "speak":
+                    targets = [str(x) for x in option.get("to", ()) if x]
+                    if targets:
+                        volume = args.get("volume")
+                        if not isinstance(volume, str) or volume not in {"normal", "whisper"}:
+                            volume = "normal"
+                        calls.append({"name": name, "arguments": {
+                            "text": str(args.get("text") or "<your words>"),
+                            "volume": volume,
+                            "to": [targets[0]]}})
+                elif name == "text":
+                    target = str(option.get("target", ""))
+                    if target:
+                        calls.append({"name": name, "arguments": {
+                            "target": target,
+                            "text": str(args.get("text") or "<your message>")}})
+                elif name == "leave_note":
+                    calls.append({"name": name, "arguments": {
+                        "text": str(args.get("text") or "<note text>")}})
+                elif name == "wait":
+                    calls.append({"name": name, "arguments": {
+                        "duration_seconds": TICK_SECONDS}})
+                else:
+                    values = {key: option[key] for key in ("target", "item")
+                              if key in option}
+                    if values:
+                        calls.append({"name": name, "arguments": values})
+                if calls:
+                    break
+        message = str(exc)
+        if calls:
+            suggestions = "; ".join(json.dumps(call, ensure_ascii=False) for call in calls)
+            message = f"{message} Valid call: {suggestions}."
+        elif exc.alternatives:
+            message = f"{message} Possible next steps: {'; '.join(exc.alternatives)}."
+        return message
+
     def _tool_yield(self, name: str, args: Mapping[str, Any], world: World) -> str:
         """The caller-facing yield of a world action (V4-AGENT-INTERFACE §3):
         most actions yield nothing beyond the world's reaction; read and
         compare carry their content/verdict in the tool result."""
+        if name == "speak":
+            return "话已说出；说话动作在一个 tick 内完成。"
+        if name == "text":
+            return "短信已发出；一个 tick 后送达。"
         if name == "read":
             document = world.document_defs.get(str(args.get("item")), {})
             content = str(document.get("content", ""))
@@ -806,27 +881,56 @@ class AsyncEngine:
                     # Per-call results with real ids — a tool message without
                     # call_id/name is rejected by strict gateways.
                     for rest in remaining:
-                        results.append({"tool_call_id": rest.get("tool_call_id"),
-                                        "ok": False,
-                                        "text": "endpoint reached; not executed"})
+                        rest_name = str(rest.get("name", ""))
+                        rest_args = dict(rest.get("arguments") or {})
+                        preview = World._tool_call_json(rest_name, rest_args)
+                        fail(rest, (f"not executed: the run endpoint was reached while the prior "
+                                    f"action was due at {a.busy_until.isoformat()}; if resumed, "
+                                    f"retry after that action completes with {preview}."))
                     break  # the run's endpoint cut this chain short
             except ActionRejected as exc:
-                fail(call, str(exc))
+                fail(call, self._action_rejection_text(actor_id, exc, name, args))
+                busy_until = exc.context.get("busy_until")
+                if busy_until is not None:
+                    # Later calls in a chain whose actor is still busy were
+                    # not attempted. Return a distinct result for every call id
+                    # with a concrete retry shape and the same real deadline.
+                    for rest in calls[pos + 1:]:
+                        rest_name = str(rest.get("name", ""))
+                        rest_args = dict(rest.get("arguments") or {})
+                        preview = World._tool_call_json(rest_name, rest_args)
+                        fail(rest, (f"not executed: the current action completes at {busy_until}; "
+                                    f"retry after completion with {preview}."))
+                    break
             except Exception as exc:
                 fail(call, f"{type(exc).__name__}: {exc}")
             if a.pending is not None:
                 # A reminder (or another force interrupt) suspended the chain:
                 # the actor must answer continue-or-cancel before anything else.
+                pending = a.pending or {}
+                pending_payload = pending.get("payload", {})
+                interrupted_action = str(pending_payload.get("action", "action"))
+                interrupted_by = str(pending.get("interrupted_by", "someone"))
+                remaining_seconds = int(pending.get("remaining_seconds", 0) or 0)
                 for rest in calls[pos + 1:]:
-                    results.append({"tool_call_id": rest.get("tool_call_id"), "ok": False,
-                                    "text": "interrupted; not executed"})
+                    rest_name = str(rest.get("name", ""))
+                    rest_args = dict(rest.get("arguments") or {})
+                    preview = World._tool_call_json(rest_name, rest_args)
+                    fail(rest, (f"not executed: '{interrupted_action}' was interrupted by "
+                                f"'{interrupted_by}' with {remaining_seconds} seconds remaining. "
+                                'First resolve it with {"name": "continue_action", "arguments": {}} '
+                                'or {"name": "abandon_action", "arguments": {}}; then retry '
+                                f"with {preview}."))
                 break
         if truncated:
             # Per-call results with each dropped call's real id (strict
             # gateways reject tool messages without call_id).
             for rest in full_calls[8:]:
-                results.append({"tool_call_id": rest.get("tool_call_id"), "ok": False,
-                                "text": "not executed: over the 8-calls-per-turn limit"})
+                rest_name = str(rest.get("name", ""))
+                rest_args = dict(rest.get("arguments") or {})
+                preview = World._tool_call_json(rest_name, rest_args)
+                fail(rest, ("not executed: over the 8-calls-per-turn limit; "
+                            f"retry next turn with {preview}."))
             failures.append(f"truncated: {truncated} calls dropped")
         # Auto-wait (ticket 22, default on): after speaking to someone you
         # stay put for ~2 ticks; a reply wakes you early (V4-ENGINE §3), so
@@ -835,8 +939,10 @@ class AsyncEngine:
         a_after = world.actors[actor_id]
         idle_now = a_after.busy_until is None or a_after.busy_until <= world.now
         if world_actions and idle_now:
+            successful_ids = {str(r.get("tool_call_id")) for r in results if r.get("ok")}
             spoke_to = [c for c in calls
-                        if str(c.get("name")) in {"speak", "text"}
+                        if str(c.get("tool_call_id")) in successful_ids
+                        and str(c.get("name")) in {"speak", "text"}
                         and (str(c.get("name")) != "speak"
                              or isinstance((c.get("arguments") or {}).get("to"), list))
                         and (c.get("arguments") or {}).get("wait_response", True)]
@@ -845,15 +951,33 @@ class AsyncEngine:
                     world.submit(Intention(actor_id, "wait",
                                            {"duration_seconds": 2 * TICK_SECONDS},
                                            world.version))
-                    # Fold the teaching note into the speak call's own tool
-                    # result — a synthetic result without call_id makes strict
-                    # gateways (github copilot) reject the whole request.
+                    # Speech/text has completed before this separate wait
+                    # begins. Keep its purpose in current_action, including
+                    # checkpoints, so it is never described as continued speech.
+                    response_to: list[str] = []
+                    for call in spoke_to:
+                        call_args = call.get("arguments") or {}
+                        recipients = (call_args.get("to", [])
+                                      if call.get("name") == "speak"
+                                      else [call_args.get("target")])
+                        response_to.extend(str(x) for x in recipients if x)
+                    response_to = list(dict.fromkeys(response_to))
+                    current = a_after.current_action
+                    if current is not None:
+                        current["waiting_for_response"] = True
+                        current["response_to"] = response_to
+                        current["response_action"] = str(spoke_to[-1].get("name"))
+                    until = (a_after.busy_until.strftime("%H:%M")
+                             if a_after.busy_until else "the end of the wait")
+                    note = (f"话已说完；你原地等{'、'.join(response_to) or '回应'}回话，"
+                            f"最迟到 {until}，有人回应会提前叫醒你。"
+                            "说完就走请用 wait_response=false。")
+                    # Fold the state into a real tool result; synthetic results
+                    # without call_id are rejected by strict gateways.
                     last_id = spoke_to[-1].get("tool_call_id")
-                    note = ("（你留在原地等回应，最多约 2 分钟；"
-                            "有人回应你会立刻听到。说完就走请用 wait_response=false）")
                     for entry in reversed(results):
                         if entry.get("tool_call_id") == last_id and entry.get("ok"):
-                            entry["text"] = f"{entry['text']}{note}"
+                            entry["text"] = f"{entry['text']} {note}"
                             break
                 except ActionRejected:
                     pass
