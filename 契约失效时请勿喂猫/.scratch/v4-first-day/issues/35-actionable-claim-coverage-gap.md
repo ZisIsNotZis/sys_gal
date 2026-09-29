@@ -47,3 +47,5 @@ Need-test-cases: yes
   台账差异锚点 FAIL 由 issue 36 的路线网检查器解决（亲读互证/当面传达+承认
   待核，防上帝视角；见 36 与 `harness/tests/test_milestones.py`）。属同一
   `fix/v4-world-contracts` 分支，世界完备性门与棋盘修复（上节）不受影响。
+
+- 2026-09-29, pi：契约与种子落地（57a47b5..1e8e053 + 流程单补丁）。`concrete_presence_claims` 支持"提示词在前"形态（压着/摊着等，裸"在"不参与 cue-first 以免"记下了存根"误报）；每条客观通知/场景描述必须带 actionable_refs、object_presence 或 completeness 声明，遗漏即 seed lint 红。种子补齐：签到本入架并与借阅登记本明确分工（后者 location:null、第 4 天 ledger_found 找回）；场地申请表 08:20 贴出可读可取、可用纸笔同场、12:30 application_rejected 明确制度性拒收；值班簿、移交存根、纪念活动流程单注册。审阅员 P2（流程单）已修。v3 218 / v4 377 / lint / dry_run 绿；functional spot-check 流程单 08:05 可读。

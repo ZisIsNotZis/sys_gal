@@ -432,6 +432,12 @@ documents:
   known_to: [陈默, 林瑶]
   reading_seconds: 25
   content: 当年档案交接时留存的移交存根：列明接收的册目与页数，备注栏写着“2013 年 3 月那页接收时已有缺角”。
+- id: 纪念活动流程单
+  title: 3·16 台风纪念活动流程单
+  location:
+  known_to: []
+  reading_seconds: 20
+  content: 纪念活动的当日流程单：已批准展品的核对、搬运分工，以及各环节的时间顺序。一切以这张单子为准。
 - id: 校报草稿
   title: 校报草稿
   location: 半坡咖啡馆
@@ -882,7 +888,11 @@ scheduled:
 - event: memorial_morning
   time: '2026-03-22T08:00:00+08:00'
   target: [林瑶, 陈默, 唐小岚]
-  notice: "台风纪念日的布置安排在[[中庭]]：桌椅、照片绳、旧报纸、白菊花和流程表将放在现场。流程表列出已批准展品的核对、搬运；这些工作须由到场志愿者亲自完成。"
+  notice: "台风纪念日的布置安排在[[中庭]]：桌椅、照片绳、旧报纸、白菊花，[[纪念活动流程单]]将放在现场。流程单列出已批准展品的核对、搬运；这些工作须由到场志愿者亲自完成。"
+  actionable_refs:
+  - {action: read, target: 纪念活动流程单, at: 中庭}
+  effects:
+  - {op: add_document, id: 纪念活动流程单, location: 中庭}
 - event: old_neighbors_arrive
   time: '2026-03-22T09:30:00+08:00'
   target: [陈默, 林瑶]
