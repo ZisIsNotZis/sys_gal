@@ -28,3 +28,10 @@ v4 `runs/real-20260928T205206+0800-1345945-532332572.json` + 同名前缀 `.chec
   `fix/v4-world-contracts`；issue 36（差异锚点路线网检查器）与
   V4-STORY-MILESTONES 属 AREA C，不在本次改动。全量 v3/v4 预门、seed lint、
   dry_run 均绿。
+
+- 2026-09-29, /worker（AREA C）：issue 36 的差异锚点路线网检查器已实现并提交
+  在同一 `fix/v4-world-contracts` 分支（AREA A+B 之后）。`_d1_discrepancy_recorded`
+  改为“亲读互证 或 当面传达并被承认待核”，差异值必须由已读者说出、另一主角
+  须实际听到；`harness/tests/test_milestones.py` 13 项 failing-first 回归（旧
+  检查器 5 红）。问题工件 `real-20260928T205206…json` 的 `--half d1-am` 三项
+  全绿。V4-STORY-MILESTONES §2.1/第 1 天已同步。

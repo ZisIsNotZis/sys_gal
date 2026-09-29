@@ -42,3 +42,8 @@ Need-test-cases: yes
    `场地申请表`（`actionable_refs` read/take）并加入 `可用纸笔` item；
    12:30 增加广播 `application_rejected`——本周不受理场地申请、无收件渠道
    （有界机构性拒收，明确措辞），使“找不到委员会”是设计内失败而非世界缺建模。
+
+- 2026-09-29, /worker（AREA C）：本单提到的 `check_milestones.py --half d1-am`
+  台账差异锚点 FAIL 由 issue 36 的路线网检查器解决（亲读互证/当面传达+承认
+  待核，防上帝视角；见 36 与 `harness/tests/test_milestones.py`）。属同一
+  `fix/v4-world-contracts` 分支，世界完备性门与棋盘修复（上节）不受影响。
