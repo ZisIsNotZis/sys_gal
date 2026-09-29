@@ -63,6 +63,8 @@ locations:
     rarity: rare
     knowledge_notes: 见过[[林瑶]]最近常往[[校史档案室]]跑；听她提过一句'旧邻居'，没细说
     weight: 1
+  object_presence:
+  - {name: 晚归登记本, place: 女生宿舍, state: present}
 - id: 校史档案室
   x: 14
   y: 0
@@ -106,6 +108,8 @@ locations:
     rarity: rare
     knowledge_notes: 审计包两个总额的校内公开背景：经费来源与用途的争议
     weight: 1
+  object_presence:
+  - {name: 学生会审计包, place: 学生会办公室, state: present}
 - id: 半坡咖啡馆
   x: 14
   y: 12
@@ -365,6 +369,19 @@ items:
 - id: 蓝色兔子贴纸
   location:
   known_to: [林瑶]
+# 档案室两本册子分工（issue 35）：签到本记录到岗，真实放在档案室；
+# 借阅登记本记录借还，是登记本缺失案里的那本——开局不在原位。
+- id: 签到本
+  location: 校史档案室
+  known_to: [陈默, 林瑶]
+- id: 借阅登记本
+  location:
+  known_to: [陈默, 林瑶]
+- id: 晚归登记本
+  location: 女生宿舍
+  known_to: [宿管阿姨, 林瑶室友]
+- id: 可用纸笔
+  location: 学生会办公室
 documents:
 - id: 2013年邻里撤离通知书
   title: 2013年邻里撤离通知书
@@ -409,6 +426,12 @@ documents:
   location: 半坡咖啡馆
   reading_seconds: 50
   content: 一份校报的打印草稿，讲一件涉及报销争议的旧闻：引用了不愿具名的信源，多处句子下画着"待核实"的铅笔线，页眉写着编辑的催稿批注。
+- id: 场地申请表
+  title: 场地申请表
+  location:
+  known_to: [林瑶]
+  reading_seconds: 25
+  content: 一份空白的场地申请表格，一格一格等着填。谁要用场地，自己取一张、填好、交到值班干事手上登记。
 routes:
 - from: 男生宿舍
   to: 女生宿舍
@@ -626,7 +649,10 @@ scheduled:
 - event: shift_reminder
   time: '2026-03-16T07:30:00+08:00'
   target: 陈默
-  notice: 别忘了今天上午的[[校史档案室]]班——8:10 到岗，签到本在门口桌上。管理员交代过：先登记、后翻阅。
+  notice: 别忘了今天上午的[[校史档案室]]班——8:10 到岗，门口的[[签到本]]就在桌上，先签上名字和时间。要查借阅记录，那本[[借阅登记本]]今天不在原位——别把签到本当成它。
+  object_presence:
+  - {name: 签到本, place: 校史档案室, state: present}
+  - {name: 借阅登记本, place: 校史档案室, state: missing}
 - event: morning_class_bell
   time: '2026-03-16T08:00:00+08:00'
   notice: "[[教学楼]]那边上课铃响了，[[中庭]]和[[河堤]]一下子空了下来。"
@@ -636,7 +662,20 @@ scheduled:
 - event: 校史档案室_shift
   time: '2026-03-16T08:10:00+08:00'
   target: 陈默
-  notice: 你在档案室的上午班开始了。签到本在门口桌上，管理员今天不在，值班的学生只有你。
+  notice: 你在档案室的上午班开始了。门口的[[签到本]]就在桌上，先签上名字和时间；管理员今天不在，值班的学生只有你。[[借阅登记本]]今天不在抽屉里——要找它，得先查移交。
+  object_presence:
+  - {name: 签到本, place: 校史档案室, state: present}
+  - {name: 借阅登记本, place: 校史档案室, state: missing}
+- event: application_form_posted
+  time: '2026-03-16T08:20:00+08:00'
+  notice: "[[学生会办公室]]的公告栏上，一张《[[场地申请表]]》就贴在那里；旁边长桌的抽屉里有[[可用纸笔]]，填表可以取用。"
+  actionable_refs:
+  - {action: read, target: 场地申请表, at: 学生会办公室}
+  - {action: take, target: 场地申请表, at: 学生会办公室}
+  object_presence:
+  - {name: 可用纸笔, place: 学生会办公室, state: present}
+  effects:
+  - {op: add_document, id: 场地申请表, location: 学生会办公室}
 - event: accessibility_check
   time: '2026-03-16T09:30:00+08:00'
   target: 林瑶
@@ -661,6 +700,9 @@ scheduled:
 - event: rain_start
   time: '2026-03-16T12:00:00+08:00'
   notice: 下雨了。不大，但足够让[[中庭]]的人跑进屋檐下，咖啡馆里慢慢坐满了躲雨的人。
+- event: application_rejected
+  time: '2026-03-16T12:30:00+08:00'
+  notice: "[[学生会办公室]]值班干事把话说明白了：本周的场地申请一律不受理——受理窗口过了，负责审批的委员会本周不开会；今天递来的材料当场退回，下周例会之前没有收件渠道。"
 - event: afternoon_class
   time: '2026-03-16T14:00:00+08:00'
   notice: 下午课的铃声把[[教学楼]]填满，走廊里都是赶去占座的人。
@@ -749,7 +791,11 @@ scheduled:
 - event: ledger_found
   time: '2026-03-19T08:20:00+08:00'
   target: [陈默, 林瑶]
-  notice: 管理员 W 返岗前整理旧档案柜，借阅登记本在底层柜缝里被找到了——但 2013 年 3 月那一页有搴角，缺了小半页。陈默和[[林瑶]]对视了一眼：又少了一页。
+  notice: 管理员 W 返岗前整理旧档案柜，[[借阅登记本]]在底层柜缝里被找到了——但 2013 年 3 月那一页有搴角，缺了小半页。陈默和[[林瑶]]对视了一眼：又少了一页。
+  object_presence:
+  - {name: 借阅登记本, place: 校史档案室, state: present}
+  effects:
+  - {op: add_item, id: 借阅登记本, location: 校史档案室}
 - event: photocopy_pressure
   time: '2026-03-19T10:30:00+08:00'
   target: 林瑶
@@ -947,7 +993,7 @@ kb:
   - keys: ["!always", 借出记录]
     desc: 查清[[2013年台风台账]]的借出记录为什么被改动。
   - keys: [校史档案室]
-    desc: 上午班一般只有我一个人，登记本压在进门左手的抽屉里。
+    desc: 上午班一般只有我一个人。门口桌上的[[签到本]]是我到岗先签的；压在进门左手抽屉里的[[借阅登记本]]这阵子不在原位，谁借走过要另查。
   - keys: ["!at=3/16(周一) 08:30", 上午班]
     desc: 档案室上午班，别迟到。
   林瑶:
@@ -958,9 +1004,9 @@ kb:
   - keys: ["!always", 值班表]
     desc: 搞清楚档案室值班表这周为什么换了人。
   - keys: [校史档案室]
-    desc: 档案室角落的桌位光线最好，下午人少。
+    desc: 档案室角落的桌位光线最好，下午人少；门口桌上那本[[签到本]]是值班签到的，[[借阅登记本]]才是记借还的。
   - keys: ["!at=3/16(周一) 12:30", 场地申请表]
-    desc: 中午去[[学生会]]交无障碍改造的场地申请表。
+    desc: 中午去[[学生会]]，取一张[[场地申请表]]填好，交值班干事登记。
   唐小岚:
   - keys: [唐小岚]
     desc: 我，[[唐小岚]]，二十三岁，[[半坡咖啡馆]]的咖啡师，干了四个月，还在试用期。常客的口味、座位、上一位同桌是谁我都记得；吧台是全校消息最灵的位置。
