@@ -111,19 +111,65 @@ def _d1_register_missing_known(ev, turns, sess):
     return ok, f"{len(actors)} 个角色提及：{ev_lines}"
 
 
+# 台账差异锚点（issue 36）：锚点是“两名主角都获得具体差异信息并如实记为
+# 待核”，不是“两人都亲读原件”——后者会把遵守登记/授权、宁可暂缓翻阅的
+# 合法路线误判成失败。两条有效路线：
+#   A 亲读互证——陈默与林瑶各自亲读台账与导出件；
+#   B 当面传达——读过两份原件的一方当面对另一方说出具体差异值，另一方在
+#     自己的发言里承认差异、明确记为待核。
+# 差异具体值必须由已读者说出，只说“对不上”不算；全局通知或未被另一主角
+# 听到的发言都不能充当证据（防上帝视角泄漏）。
+D1_DISCREPANCY_VALUES = ("22:05", "23:30")
+D1_DISCREPANCY_SUBJECT = ("差异", "对不上", "不一致")
+D1_DISCREPANCY_PENDING = ("待核", "未核", "待确认", "未确认", "没确认",
+                          "不知道", "无法确认", "没法确认", "不猜", "不能替")
+
+
+def _d1_read_originals(reads, actor):
+    docs = {doc for _, who, doc in reads if who == actor}
+    return any("台账" in d for d in docs) and any("导出件" in d for d in docs)
+
+
+def _d1_pending_ack(text):
+    return (any(s in text for s in D1_DISCREPANCY_SUBJECT)
+            and any(w in text for w in D1_DISCREPANCY_PENDING))
+
+
 def _d1_discrepancy_recorded(ev, turns, sess):
     reads = _reads(ev, 1)
-    chen = [r for r in reads if r[1] == "陈默" and "台账" in r[2]]
-    chen2 = [r for r in reads if r[1] == "陈默" and "导出件" in r[2]]
-    lin = [r for r in reads if r[1] == "林瑶" and "台账" in r[2]]
-    ok_reads = chen and chen2 and lin
-    lines = _day_texts(ev, 1)
-    n, hits = _mentioning(lines, "22:05")
-    n2, _ = _mentioning(lines, "23:30")
-    both = min(n, n2) >= 1
-    ok = bool(ok_reads) and both
-    evd = f"陈默读档 {chen[0][0] if chen else '-'}；林瑶读档 {lin[0][0] if lin else '-'}；22:05/23:30 提及 {n}/{n2} 次"
-    return ok, evd
+    mcs = ("陈默", "林瑶")
+    paired = {a: _d1_read_originals(reads, a) for a in mcs}
+    speeches = [(e["time"][11:16], str(e.get("actor")), e.get("payload") or {})
+                for e in _day_events(ev, 1) if e.get("kind") == "speech"]
+
+    tell = None
+    for i, (t, actor, pay) in enumerate(speeches):
+        if not paired.get(actor):
+            continue
+        text = str(pay.get("text", ""))
+        if not all(v in text for v in D1_DISCREPANCY_VALUES):
+            continue
+        other = "林瑶" if actor == "陈默" else "陈默"
+        if other not in (pay.get("heard") or []):
+            continue
+        ack = next(((t2, a2) for t2, a2, p2 in speeches[i + 1:]
+                    if a2 == other and _d1_pending_ack(str(p2.get("text", "")))),
+                   None)
+        if ack:
+            tell = (t, actor, ack)
+            break
+
+    ok_reads = all(paired.values())
+    route = ("无" if not (ok_reads or tell) else
+             "亲读互证" if ok_reads else "当面传达")
+    if tell:
+        other = "林瑶" if tell[1] == "陈默" else "陈默"
+        route_note = f"；{tell[1]} {tell[0]} 说差异→{other} {tell[2][0]} 记待核"
+    else:
+        route_note = ""
+    evd = (f"亲读两份原件 陈默={'✓' if paired['陈默'] else '✗'}"
+           f" 林瑶={'✓' if paired['林瑶'] else '✗'}；路线={route}{route_note}")
+    return (ok_reads or tell is not None), evd
 
 
 def _d1_counselor_intervention(ev, turns, sess):
@@ -792,7 +838,7 @@ def _d7_romance_date(ev, turns, sess):
 MILESTONES = {
     1: [
         _mk_check("d1-登记缺失知晓", "登记本/值班表缺失被 ≥3 角色知晓", _d1_register_missing_known, half="am"),
-        _mk_check("d1-台账差异记录", "陈默与林瑶都读台账+导出件，22:05/23:30 差异被发言记录", _d1_discrepancy_recorded, half="am"),
+        _mk_check("d1-台账差异记录", "两名主角各获台账差异（亲读互证 或 当面传达并被承认待核），22:05/23:30 由已读者说出", _d1_discrepancy_recorded, half="am"),
         _mk_check("d1-辅导员介入", "辅导员 ≥5 条发言并出现程序纪律语句", _d1_counselor_intervention, half="pm"),
         _mk_check("d1-三份个人说明", "≥3 角色提交个人情况说明", _d1_three_statements, half="pm"),
         _mk_check("d1-字条留痕程序", "临时字条被读取且编号被提及", _d1_note_procedure, half="pm"),
