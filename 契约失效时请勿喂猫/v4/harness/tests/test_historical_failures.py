@@ -35,6 +35,8 @@ P6  reading a file not at your location ....................... test_kernel (rej
 P7  send_message with a missing/wrong target key (new probe) ... test_send_message_without_target_is_helpful
 P8  document action with wrong key (2-day run, 97 rejections) . test_document_action_with_wrong_key_is_helpful
 P9  flashback returned nothing for seeded backstory ............ test_flashback_recalls_seeded_history_and_resolves_aliases
+P10 uncovered concrete-presence claim in objective prose ....... test_uncovered_concrete_prop_claim_blocks_the_seed,
+                                                               test_world_pack SceneObjectContractTests
 T1a world clock races during a slow deliberation (7:35->7:40) ... test_deliberation_pins_the_world_clock
 T1b no auto-wait after text (reply arrives to a departed actor) . test_text_auto_wait_and_npc_reply_followup
 T1c NPC memory-only turn parks with the reply uncomposed ........ test_text_auto_wait_and_npc_reply_followup
@@ -265,6 +267,32 @@ class HistoricalFailureGates(unittest.TestCase):
                   for effect in row.get("effects", []) if effect.get("op") == "open_location"}
         self.assertEqual(opened, set(closed),
                          "every closed location must have a scheduled opening effect")
+
+    def test_uncovered_concrete_prop_claim_blocks_the_seed(self):
+        """Issue 35 / P10: an objective "X 在 Y" claim whose prop is not a
+        placed entity is a pre-run block, not a runtime surprise. The regression
+        deletes the 签到本 placement while keeping the shift notice that asserts
+        it; seed lint must go red with the prop named."""
+        import importlib.util
+        import shutil
+        spec = importlib.util.spec_from_file_location(
+            "seed_lint_gate", Path(__file__).parents[2] / "scripts" / "seed_lint.py")
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        source = Path(__file__).parents[2] / "world"
+        self.assertEqual(module.lint(source), [], "the shipped seed must be covered")
+        with TemporaryDirectory() as directory:
+            root = Path(directory) / "world"
+            shutil.copytree(source, root)
+            manifest = root / "manifest.yml"
+            broken = manifest.read_text(encoding="utf-8").replace(
+                "- id: 签到本\n  location: 校史档案室\n",
+                "- id: 签到本\n  location:\n", 1)
+            manifest.write_text(broken, encoding="utf-8")
+            findings = module.lint(root)
+            self.assertTrue(findings, "an unplaced 签到本 must fail the seed gate")
+            self.assertIn("签到本", findings[0])
 
     def test_seed_route_graph_is_connected(self):
         """P5: any two characters can reach a common place; co-location is feasible."""

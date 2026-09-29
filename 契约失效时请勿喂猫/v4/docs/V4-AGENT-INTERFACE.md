@@ -217,6 +217,10 @@ concepts:
   ① 每个 `[[x]]` 必须在**收到该文本的每个角色**的 KB key 中可解析（角色自己的人设→本人；
   地点/物品描述→所有持有该自动行的角色；concept→known_to ∪ memory；排程 notice→target）；
   ② 未加标记的「名字样」token 也是错误（"忘了加标记？"）。二者互补，缺一不可。
+  ③ 客观通知与地点场景文本里每个“X 在 Y”式具体物件断言，必须由
+  `actionable_refs`、行级 `object_presence` 或行级 `completeness`
+  （ `expectation|belief|missing`）承载（issue 35，见 V4-DESIGN §3）；未覆盖的
+  具体在场断言在加载时即报错，lint 输出确切修复文本。
   这样「陈默家.md 写了 妈妈、而陈默的记事本里没有 妈妈 这行」会在加载时直接报错，
   而不是让角色在运行时撞上 `unknown actor: 妈妈`。
 - **contacts: 初始联系人（T3）**：manifest 的 `contacts:` 段声明每人开局的联系人，

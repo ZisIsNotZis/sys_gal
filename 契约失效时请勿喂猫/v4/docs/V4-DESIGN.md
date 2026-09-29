@@ -108,6 +108,19 @@ The configured `github_copilot/gpt-6-luna` LiteLLM route is Responses-only: nati
   substitute for one. This is an explicit authoring contract, not an NLP
   parser: ordinary nouns and abstract references are not automatically props,
   and there are no hidden opaque IDs or aliases that bypass the registry.
+- **Concrete presence coverage**（issue 35）: 客观通知与地点场景文本里每一句
+  “X 在 Y / 可从 Y 取、读、交”式的具体物件断言，必须由三种声明之一承载，
+  否则 seed lint（`scripts/seed_lint.py`）报错并给出修复文本：
+  ① `actionable_refs`——声明可执行动作（已有机制）；② `object_presence`——
+  行级物件在场声明，`[{name, place, state}]`，`state` = `present|expected|
+  missing`（`present` 必须与真实 placement 一致，否则加载即报错）；
+  ③ `completeness`——行级完整性声明，值 `expectation|belief|missing`，用于
+  “按惯例本该在、今天未见到”一类预期/信念/失踪叙述，放行该行所有具体物件断言。
+  检测用受控词表（高风险物件词 + 本局已注册 item/document id）加
+  “物件词 + 放置/取得线索”的就近匹配，不做逐名词 NLP；普通名词不会被自动
+  当作 prop。未注册的具体物件（如曾经的“签到本”）必须注册为真实 item/
+  document 并放置，或显式声明为预期/信念/失踪；作者不得靠客观通知断言不存在
+  的当前物件。
 - Volume: `whisper` (only the addressed party hears; tagged perceptually as
   suspicious — a stranger whispering at you reads as fishy unless you are
   close to them) and `normal` (whole location). No loud tier for now.

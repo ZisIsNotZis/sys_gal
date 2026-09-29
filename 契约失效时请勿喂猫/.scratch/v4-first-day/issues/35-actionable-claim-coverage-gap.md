@@ -17,3 +17,28 @@ Need-test-cases: yes
 3. 回归：删掉注册/placement 但保留客观“签到本在门口”时 lint 红；保留“按惯例本该在，今日未找到”时合法且角色不可读取；申请表/纸笔/提交路径若剧情要求应有可验的取得或失败事件；检查器不把读档文本或到达时间等同申请提交。
 
 - 2026-09-28, pi：本段 `check_milestones.py --half d1-am` 的台账差异锚点 FAIL（林瑶没读两份材料），另两项 PASS；这不证明她没学到差异，也不能降低世界一致性门。人手逐人审阅正在完成，不续下午。
+
+## 裁决与实现（2026-09-29，AREA A+B）
+
+系统性覆盖门已落地，不再逐样例补 `actionable_refs`：
+1. **世界加载契约（`harness/world_loader.py`）**：新增行级 `object_presence`
+   （`[{name, place, state}]`，`state = present|expected|missing`；`present` 必须与
+   真实 placement 一致，否则加载即报错）与行级 `completeness`
+   （`expectation|belief|missing`）。`_validate_scene_objects` 扫描每个排程
+   notice 与地点场景文本，用“受控高风险物件词 ∪ 已注册 item/document id”+
+   “物件词紧邻放置/取得线索”的就近匹配（不做逐名词 NLP）找出具体在场断言；
+   断言必须由 `actionable_refs`／`object_presence`／`completeness` 之一承载，
+   否则加载失败，`scripts/seed_lint.py` 输出确切修复文本。
+2. **回归**：删掉 `签到本` 注册/placement 而保留客观“签到本在门口”→ lint 红；
+   “按惯例本该在、今天未找到”+ `completeness: expectation` → lint 绿且角色
+   不可读取（未放置）；具体物件断言不覆盖 → 红。测试：
+   `test_world_pack.SceneObjectContractTests`（9 项，含上面三条与申请表/纸笔/
+   拒收路径）、`HistoricalFailureGates.test_uncovered_concrete_prop_claim_blocks_the_seed`
+   （台账 P10）。
+3. **种子修复**：`签到本` 注册为 `校史档案室` 的真实 item，值班通知与档案室 KB
+   行改写以区分它和缺失案里的 `借阅登记本`（后者也注册为真实 item，开局
+   `location: null`，由 day-4 `ledger_found` 的 `add_item` 还原，附
+   `object_presence: present`）；08:20 排程在 `学生会办公室` 张贴注册文档
+   `场地申请表`（`actionable_refs` read/take）并加入 `可用纸笔` item；
+   12:30 增加广播 `application_rejected`——本周不受理场地申请、无收件渠道
+   （有界机构性拒收，明确措辞），使“找不到委员会”是设计内失败而非世界缺建模。

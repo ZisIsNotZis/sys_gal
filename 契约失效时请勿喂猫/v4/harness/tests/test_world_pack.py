@@ -835,3 +835,145 @@ class ConceptRegistryTests(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         self.assertEqual(module.lint(ROOT / "world"), [])
+
+
+class SceneObjectContractTests(unittest.TestCase):
+    """Issue 35: concrete-presence coverage for objective notices and prose.
+
+    A scheduled notice or location description that asserts a concrete prop is
+    at a place ("X 在 Y" / "可从 Y 取、读、交") must carry an actionable_refs
+    entry, object_presence metadata, or a completeness declaration, or seed
+    lint fails with remediation text. The regression: deleting the registration
+    of 签到本 while keeping the notice must turn the seed red.
+    """
+
+    def _write_world(self, directory, *, notice=None, location_prose="一间屋子。",
+                     item=None, item_location=None, scheduled_row=None):
+        import yaml
+        root = Path(directory)
+        for category in ("locations", "items", "documents"):
+            (root / category).mkdir()
+        (root / "locations" / "room.md").write_text(
+            f"# room\n\n{location_prose}\n", encoding="utf-8")
+        items = []
+        if item:
+            (root / "items" / f"{item}.md").write_text(
+                f"# {item}\n\n一件东西。\n", encoding="utf-8")
+            items.append({"id": item, "location": item_location})
+        row = {"event": "contract_test", "time": "2026-03-16T07:10:00+08:00"}
+        if notice is not None:
+            row["notice"] = notice
+        if scheduled_row:
+            row.update(scheduled_row)
+        manifest = {
+            "schema_version": 1,
+            "clock": {"start": "2026-03-16T07:00:00+08:00",
+                      "stop": "2026-03-16T08:00:00+08:00"},
+            "locations": [{"id": "room"}],
+            "actors": [{"id": "aa", "location": "room"}],
+            "items": items, "documents": [], "routes": [], "barriers": [],
+            "scheduled": [row],
+            "kb": {"aa": [{"keys": ["aa"], "desc": "我，aa。"}]},
+        }
+        (root / "manifest.yml").write_text(
+            yaml.safe_dump(manifest, allow_unicode=True), encoding="utf-8")
+        return root
+
+    def _lint(self, world_root):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "seed_lint_contract", ROOT / "scripts" / "seed_lint.py")
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.lint(world_root)
+
+    def test_uncovered_presence_claim_fails_seed_lint_with_remediation(self):
+        with TemporaryDirectory() as directory:
+            root = self._write_world(
+                directory, item="登记本", item_location=None,
+                notice="门边的值班桌上，登记本就在那里。")
+            findings = self._lint(root)
+            self.assertTrue(findings, "an uncovered presence claim must fail")
+            self.assertIn("登记本", findings[0])
+            self.assertIn("completeness", findings[0])
+
+    def test_expectation_narration_is_legal_and_object_stays_unreadable(self):
+        with TemporaryDirectory() as directory:
+            root = self._write_world(
+                directory, item="登记本", item_location=None,
+                notice="按惯例登记本本该在门口，今天没有找到。",
+                scheduled_row={"completeness": "expectation"})
+            self.assertEqual(self._lint(root), [])
+            world = load_world_pack(root).build_world()
+            with self.assertRaises(ActionRejected):
+                world.submit(Intention("aa", "read", {"item": "登记本"},
+                                       world.version))
+
+    def test_object_presence_present_must_match_a_real_placement(self):
+        with TemporaryDirectory() as directory:
+            root = self._write_world(
+                directory, item="登记本", item_location=None,
+                notice="登记本就在桌上。",
+                scheduled_row={"object_presence": [
+                    {"name": "登记本", "place": "room", "state": "present"}]})
+            with self.assertRaisesRegex(ValueError, "actually placed at None"):
+                load_world_pack(root)
+
+    def test_declared_object_presence_covers_a_placed_prop(self):
+        with TemporaryDirectory() as directory:
+            root = self._write_world(
+                directory, item="登记本", item_location="room",
+                notice="登记本就在桌上。",
+                scheduled_row={"object_presence": [
+                    {"name": "登记本", "place": "room", "state": "present"}]})
+            self.assertEqual(self._lint(root), [])
+
+    def test_unknown_completeness_state_is_rejected(self):
+        with TemporaryDirectory() as directory:
+            root = self._write_world(
+                directory, item="登记本", item_location=None,
+                notice="登记本就在桌上。",
+                scheduled_row={"completeness": "perhaps"})
+            with self.assertRaisesRegex(ValueError, "completeness"):
+                load_world_pack(root)
+
+    def test_unregistered_concrete_prop_claim_fails(self):
+        with TemporaryDirectory() as directory:
+            root = self._write_world(
+                directory, notice="门边的值班桌上，登记本就在那里。")
+            findings = self._lint(root)
+            self.assertTrue(findings)
+            self.assertIn("register", findings[0])
+
+    def test_location_scene_prose_presence_claim_needs_coverage(self):
+        with TemporaryDirectory() as directory:
+            root = self._write_world(
+                directory, item="登记本", item_location=None,
+                location_prose="门边桌上，登记本就在那里。")
+            findings = self._lint(root)
+            self.assertTrue(findings)
+            self.assertIn("location room", findings[0])
+
+    def test_signin_and_borrow_registers_are_distinct_placed_entities(self):
+        from datetime import datetime
+        world = load_world_pack(ROOT / "world").build_world()
+        self.assertEqual(world.item_locations.get("签到本"), "校史档案室")
+        self.assertNotIn("借阅登记本", world.item_locations)
+        world.advance(until=datetime.fromisoformat("2026-03-19T08:25:00+08:00"))
+        self.assertEqual(world.item_locations.get("借阅登记本"), "校史档案室")
+
+    def test_application_form_is_posted_with_supplies_and_rejected(self):
+        from datetime import datetime
+        world = load_world_pack(ROOT / "world").build_world()
+        world.actors["林瑶"].location = "学生会办公室"
+        world.advance(until=datetime.fromisoformat("2026-03-16T08:25:00+08:00"))
+        self.assertEqual(world.item_locations.get("场地申请表"), "学生会办公室")
+        self.assertEqual(world.item_locations.get("可用纸笔"), "学生会办公室")
+        readable = {row["item"] for row in world.affordances("林瑶")
+                    if row["kind"] == "read"}
+        self.assertIn("场地申请表", readable)
+        events = world.advance(until=datetime.fromisoformat("2026-03-16T12:31:00+08:00"))
+        rejected = [e for e in events
+                    if e.payload.get("event") == "application_rejected"]
+        self.assertTrue(rejected, "the office must reject applications at 12:30")

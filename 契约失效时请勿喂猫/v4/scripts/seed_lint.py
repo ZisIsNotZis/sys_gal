@@ -151,7 +151,13 @@ def lint(world_root: str | Path) -> list[str]:
     ③ no dead registry entries.
     """
     root = Path(world_root)
-    pack = load_world_pack(root)
+    try:
+        pack = load_world_pack(root)
+    except ValueError as exc:
+        # The world-completeness contract (issue 35) is enforced at load time:
+        # an uncovered concrete-presence claim, a bad object_presence entry, or
+        # an unknown completeness state surfaces here with the remediation text.
+        return [f"world pack violates the seed contract: {exc}"]
     declared = _declared(pack)
     kb_keys, universal = _kb_keys(pack)
     universal |= universal_from_titles(sources_md(root))

@@ -221,6 +221,7 @@ def load_world_pack(root: str | Path) -> WorldPack:
     _validate(fields, manifest)
     _validate_descriptions(fields, descriptions)
     _validate_actionable_refs(fields, descriptions)
+    _validate_scene_objects(fields, descriptions)
     actor_ids = {str(row["id"]) for row in fields["actors"]}
     entity_ids = (actor_ids
                   | {str(row["id"]) for row in fields["locations"]}
@@ -256,6 +257,45 @@ def strip_refs(text: Any) -> str:
 def ref_names(text: Any) -> list[str]:
     """The [[name]] markers in a piece of authored prose, in order."""
     return _REF_RE.findall(str(text))
+
+
+# --- issue 35: concrete-presence coverage in objective prose ----------------
+# Objective scheduled notices and location scene prose may assert that a
+# concrete prop is at a place ("X 在 Y" / "可从 Y 取、读、交 X"). Such a claim
+# must map to a real placed entity, or be declared on the row with
+# object_presence (state present/expected/missing) or completeness
+# (expectation/belief/missing). The words below are the controlled list of
+# high-risk object words; registered item/document ids are added at run time.
+# This is deliberately not an NLP pass over every noun: only a prop token
+# directly followed by a placement/availability cue counts.
+_CONCRETE_PROP_WORDS: tuple[str, ...] = (
+    "签到本", "借阅登记本", "晚归登记本", "登记本", "场地申请表", "申请表",
+    "空白纸", "纸笔", "值班簿", "值班表", "清单", "存根", "一览表",
+    "凭证", "单据", "哨套", "红色哨子", "雨伞", "贴纸", "马克杯",
+    "抽水泵", "保温杯", "糖罐子", "木盒", "老照片", "旧记录", "审计包",
+)
+_PLACEMENT_CUES: tuple[str, ...] = (
+    "放在", "摆在", "摊在", "压在", "贴在", "落在", "留在", "码在", "放到",
+    "挂到", "塞进", "找到", "取出", "交给", "递给", "拿来", "在",
+)
+_PRESENCE_GAP = 5
+_COMPLETENESS_STATES = frozenset({"expectation", "belief", "missing"})
+_PRESENCE_STATES = frozenset({"present", "expected", "missing"})
+
+
+def concrete_presence_claims(text: Any, registered: Any = ()) -> list[str]:
+    """Concrete props asserted present/available in a piece of objective prose.
+
+    ``registered`` adds the run's item/document ids to the controlled
+    vocabulary. Markers are stripped first so ``X`` and ``[[X]]`` scan alike.
+    """
+    words = sorted(set(_CONCRETE_PROP_WORDS) | {str(name) for name in registered},
+                   key=lambda word: (-len(word), word))
+    pattern = re.compile(
+        r"(?P<prop>" + "|".join(re.escape(word) for word in words)
+        + r")[^，。！？；、\n]{0,%d}(?:%s)" % (
+            _PRESENCE_GAP, "|".join(re.escape(cue) for cue in _PLACEMENT_CUES)))
+    return [match.group("prop") for match in pattern.finditer(strip_refs(text))]
 
 
 def _plain_description(markdown: str) -> str:
@@ -779,6 +819,105 @@ def _validate_actionable_refs(fields: dict[str, tuple[dict[str, Any], ...]],
             text = strip_refs(str(row.get("notice", "")))
             check_refs(row["actionable_refs"], source=text, origin=None,
                        where=f"scheduled {row.get('event')}")
+
+
+def _validate_scene_objects(fields: dict[str, tuple[dict[str, Any], ...]],
+                            descriptions: dict[str, DescriptionCatalog]) -> None:
+    """Coverage gate for objective prose (issue 35).
+
+    Validates the row-level declarations (``object_presence``,
+    ``completeness``) and requires every concrete-presence claim in a
+    location description or scheduled notice to be covered by a declared
+    actionable reference, an object-presence entry, or a completeness
+    declaration. A claim naming an entity that is not even registered fails
+    here with the remediation text seed_lint surfaces.
+    """
+    items = {str(row["id"]): row for row in fields["items"]}
+    documents = {str(row["id"]): row for row in fields["documents"]}
+    registered = set(items) | set(documents)
+    locations = {str(row["id"]) for row in fields["locations"]}
+    placements = {entity: str(row["location"])
+                  for entity, row in (items | documents).items()
+                  if row.get("location") is not None}
+    findings: list[str] = []
+
+    def declarations(row: dict[str, Any], where: str) -> tuple[Any, tuple[dict[str, Any], ...]]:
+        completeness = row.get("completeness")
+        if completeness is not None and str(completeness) not in _COMPLETENESS_STATES:
+            raise ValueError(
+                f"{where} completeness must be one of "
+                f"{'/'.join(sorted(_COMPLETENESS_STATES))}: {completeness!r}")
+        presence = row.get("object_presence")
+        if presence is None:
+            return completeness, ()
+        if not isinstance(presence, list):
+            raise ValueError(f"{where} object_presence must be a list")
+        normalized = []
+        for entry in presence:
+            if not isinstance(entry, Mapping):
+                raise ValueError(f"{where} object_presence entries must be mappings")
+            name = str(entry.get("name", ""))
+            if name not in registered:
+                raise ValueError(
+                    f"{where} object_presence {name!r} is not a registered item or document")
+            state = str(entry.get("state", ""))
+            if state not in _PRESENCE_STATES:
+                raise ValueError(
+                    f"{where} object_presence state must be one of "
+                    f"{'/'.join(sorted(_PRESENCE_STATES))}: {state!r}")
+            place = entry.get("place")
+            normalized.append({"name": name,
+                               "place": None if place is None else str(place),
+                               "state": state})
+        return completeness, tuple(normalized)
+
+    def check_row(row: dict[str, Any], where: str, text: str,
+                  current: dict[str, str]) -> None:
+        completeness, presence = declarations(row, where)
+        for entry in presence:
+            if entry["state"] == "present":
+                if entry["place"] not in locations:
+                    raise ValueError(
+                        f"{where} object_presence {entry['name']!r} has an unknown "
+                        f"place {entry['place']!r}")
+                if current.get(entry["name"]) != entry["place"]:
+                    raise ValueError(
+                        f"{where} object_presence says {entry['name']!r} is present at "
+                        f"{entry['place']!r}, but it is actually placed at "
+                        f"{current.get(entry['name'])!r}")
+            elif entry["place"] is not None and entry["place"] not in locations:
+                raise ValueError(
+                    f"{where} object_presence {entry['name']!r} has an unknown "
+                    f"place {entry['place']!r}")
+        targets = {str(ref.get("target", "")) for ref in (row.get("actionable_refs") or ())
+                   if isinstance(ref, Mapping)}
+        declared = targets | {entry["name"] for entry in presence}
+        for claim in concrete_presence_claims(text, registered):
+            if completeness is not None or claim in declared:
+                continue
+            findings.append(
+                f"{where}: concrete presence claim {claim!r} is not covered — register it "
+                f"in items:/documents:, place it, and add an actionable_refs or "
+                f"object_presence entry naming {claim!r}; or mark this row "
+                f"completeness: expectation/belief/missing")
+
+    for row in fields["locations"]:
+        place = str(row["id"])
+        check_row(row, f"location {place}",
+                  descriptions["locations"].get(place, ""), dict(placements))
+    for row in sorted(fields["scheduled"],
+                      key=lambda r: datetime.fromisoformat(str(r["time"]))):
+        for effect in row.get("effects", ()):
+            op = str(effect.get("op", ""))
+            entity = str(effect.get("id", ""))
+            if op in {"add_item", "add_document", "move_item"}:
+                placements[entity] = str(effect["location"])
+            elif op == "remove_item":
+                placements.pop(entity, None)
+        check_row(row, f"scheduled {row.get('event')}",
+                  str(row.get("notice", "")), dict(placements))
+    if findings:
+        raise ValueError("; ".join(findings))
 
 
 def world_primer(pack: WorldPack) -> str:
