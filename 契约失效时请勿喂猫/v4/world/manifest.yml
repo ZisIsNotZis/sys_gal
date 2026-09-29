@@ -110,6 +110,7 @@ locations:
     weight: 1
   object_presence:
   - {name: 学生会审计包, place: 学生会办公室, state: present}
+  - {name: 值班簿, place: 学生会办公室, state: present}
 - id: 半坡咖啡馆
   x: 14
   y: 12
@@ -382,6 +383,10 @@ items:
   known_to: [宿管阿姨, 林瑶室友]
 - id: 可用纸笔
   location: 学生会办公室
+  known_to: [唐小岚, 班长]
+- id: 值班簿
+  location: 学生会办公室
+  known_to: [唐小岚, 班长, 辅导员]
 documents:
 - id: 2013年邻里撤离通知书
   title: 2013年邻里撤离通知书
@@ -421,6 +426,12 @@ documents:
   known_to: []
   reading_seconds: 20
   content: 审计核对仍未完成，说明最迟明早交。
+- id: 移交存根
+  title: 2013 年档案移交存根
+  location: 校史档案室
+  known_to: [陈默, 林瑶]
+  reading_seconds: 25
+  content: 当年档案交接时留存的移交存根：列明接收的册目与页数，备注栏写着“2013 年 3 月那页接收时已有缺角”。
 - id: 校报草稿
   title: 校报草稿
   location: 半坡咖啡馆
@@ -896,6 +907,8 @@ scheduled:
   time: '2026-03-23T08:30:00+08:00'
   target: [陈默, 林瑶]
   notice: 管理员 W 和[[陈默]]逐项核对移交清单，2013 年 3 月那页的缺角对照当年的移交存根——"接收时就缺，不是我弄丢的。"[[林瑶]]在旁边记下了存根编号。
+  actionable_refs:
+  - {action: read, target: 移交存根, at: 校史档案室}
 - event: coop_thread
   time: '2026-03-23T11:00:00+08:00'
   target: [陈默, 唐小岚]

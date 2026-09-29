@@ -938,6 +938,15 @@ class SceneObjectContractTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "completeness"):
                 load_world_pack(root)
 
+    def test_cue_before_prop_claim_is_also_covered(self):
+        # "压着一本没人翻的值班簿" asserts presence as strongly as prop-then-cue.
+        with TemporaryDirectory() as directory:
+            root = self._write_world(
+                directory, notice="桌上压着一本没人翻的值班簿。")
+            findings = self._lint(root)
+            self.assertTrue(findings, "cue-before-prop claims must not slip through")
+            self.assertIn("值班簿", findings[0])
+
     def test_unregistered_concrete_prop_claim_fails(self):
         with TemporaryDirectory() as directory:
             root = self._write_world(

@@ -277,8 +277,13 @@ _CONCRETE_PROP_WORDS: tuple[str, ...] = (
 _PLACEMENT_CUES: tuple[str, ...] = (
     "放在", "摆在", "摊在", "压在", "贴在", "落在", "留在", "码在", "放到",
     "挂到", "塞进", "找到", "取出", "交给", "递给", "拿来", "在",
+    "放在着", "摆在着", "摊着", "压着", "贴着", "放着", "摆着", "落到",
 )
+# Bare "在" is too loose to lead a cue-first match ("在旁边记下了存根" would
+# otherwise falsely claim 存根): cue-first uses only unambiguous cues.
+_CUE_FIRST_CUES: tuple[str, ...] = tuple(c for c in _PLACEMENT_CUES if c != "在")
 _PRESENCE_GAP = 5
+_CUE_FIRST_GAP = 8
 _COMPLETENESS_STATES = frozenset({"expectation", "belief", "missing"})
 _PRESENCE_STATES = frozenset({"present", "expected", "missing"})
 
@@ -295,7 +300,15 @@ def concrete_presence_claims(text: Any, registered: Any = ()) -> list[str]:
         r"(?P<prop>" + "|".join(re.escape(word) for word in words)
         + r")[^，。！？；、\n]{0,%d}(?:%s)" % (
             _PRESENCE_GAP, "|".join(re.escape(cue) for cue in _PLACEMENT_CUES)))
-    return [match.group("prop") for match in pattern.finditer(strip_refs(text))]
+    # A placement cue may also PRECEDE the prop within the same clause:
+    # "压着一本没人翻的值班簿" asserts presence as strongly as "值班簿放在桌上".
+    pattern_cue_first = re.compile(
+        r"(?:%s)[^，。！？；、\n]{0,%d}(?P<prop>" % (
+            "|".join(re.escape(cue) for cue in _CUE_FIRST_CUES), _CUE_FIRST_GAP)
+        + "|".join(re.escape(word) for word in words) + r")")
+    claims = [match.group("prop") for match in pattern.finditer(strip_refs(text))]
+    claims.extend(match.group("prop") for match in pattern_cue_first.finditer(strip_refs(text)))
+    return claims
 
 
 def _plain_description(markdown: str) -> str:
