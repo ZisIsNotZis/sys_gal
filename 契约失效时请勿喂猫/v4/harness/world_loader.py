@@ -129,6 +129,18 @@ class WorldPack:
             "reading_seconds": _as_int(row.get("reading_seconds", 30), "reading_seconds"),
             **({"labels": list(row["labels"])} if "labels" in row else {}),
         } for row in self.documents}
+        # issue 39: an `items:` row that carries `content` is read exactly like
+        # a document, so `read` and the affordance list share one registry.
+        # Items declared `readable: false` never enter here.
+        for row in self.items:
+            if row.get("readable") is False or not str(row.get("content", "")).strip():
+                continue
+            document_defs[_as_str(row.get("id"), "item id")] = {
+                "title": _as_str(row.get("title", row.get("id")), "item title"),
+                "content": strip_refs(_as_str(row.get("content"), "item content")),
+                "reading_seconds": _as_int(row.get("reading_seconds", 30), "reading_seconds"),
+                **({"labels": list(row["labels"])} if "labels" in row else {}),
+            }
         for row in self.documents:
             if row.get("location") is not None and str(row["id"]) not in inventory_items:
                 item_locations[_as_str(row.get("id"), "document id")] = _as_str(
@@ -731,6 +743,29 @@ def _validate_descriptions(fields: dict[str, tuple[dict[str, Any], ...]],
         missing = sorted(entity_ids - set(descriptions[category]))
         if missing:
             raise ValueError(f"{category} missing Markdown descriptions: {', '.join(missing)}")
+    # issue 39: a prose body must correspond to readable content or an explicit
+    # "not readable" declaration — an authored register can no longer sit in
+    # the seed as a silently unreadable prop.
+    for row in fields["items"]:
+        entity = str(row["id"])
+        readable = row.get("readable")
+        if readable is not None and not isinstance(readable, bool):
+            raise ValueError(f"item {entity} readable must be true or false: {readable!r}")
+        if readable is False:
+            if "content" in row:
+                raise ValueError(
+                    f"item {entity} declares readable: false but also carries "
+                    f"content; drop one of them")
+            if not str(row.get("readable_reason", "")).strip():
+                raise ValueError(
+                    f"item {entity} declares readable: false without a "
+                    f"readable_reason; say why its body is not readable")
+            continue
+        if not str(row.get("content", "")).strip():
+            raise ValueError(
+                f"item {entity} has a prose body in world/items/{entity}.md but no "
+                f"readable content — add `content:` (with `reading_seconds:`) or declare "
+                f"`readable: false` with a `readable_reason:`")
 
 
 def _validate_actionable_refs(fields: dict[str, tuple[dict[str, Any], ...]],
@@ -745,6 +780,10 @@ def _validate_actionable_refs(fields: dict[str, tuple[dict[str, Any], ...]],
     locations = {str(row["id"]): row for row in fields["locations"]}
     items = {str(row["id"]): row for row in fields["items"]}
     documents = {str(row["id"]): row for row in fields["documents"]}
+    # issue 39: a readable entity is a document or an item with content.
+    readable = set(documents) | {entity for entity, row in items.items()
+                                 if str(row.get("content", "")).strip()
+                                 and row.get("readable") is not False}
     routes = {(str(row["from"]), str(row["to"])) for row in fields["routes"]}
     scheduled = sorted(fields["scheduled"],
                        key=lambda row: datetime.fromisoformat(str(row["time"])))
@@ -767,8 +806,8 @@ def _validate_actionable_refs(fields: dict[str, tuple[dict[str, Any], ...]],
             if target not in source:
                 raise ValueError(
                     f"{where} actionable target {target!r} is not named in its authored text")
-            if action == "read" and target not in documents:
-                raise ValueError(f"{where} actionable read target {target!r} is not a registered document")
+            if action == "read" and target not in readable:
+                raise ValueError(f"{where} actionable read target {target!r} is not a readable document or item")
             if action == "take" and target not in (items | documents):
                 raise ValueError(f"{where} actionable take target {target!r} is not a registered item or document")
             if action in {"move", "knock"} and target not in locations:

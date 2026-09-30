@@ -140,7 +140,7 @@ class WorldPackTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not a registered location"):
             validate({"action": "knock", "target": "未注册办公室", "from": "教学楼"},
                      "可以敲未注册办公室的门。")
-        with self.assertRaisesRegex(ValueError, "not a registered document"):
+        with self.assertRaisesRegex(ValueError, "not a readable document or item"):
             validate({"action": "read", "target": "催办单", "at": "学生会办公室"},
                      "公告栏上有催办单。")
         with self.assertRaisesRegex(ValueError, "unresolved location"):
@@ -555,12 +555,26 @@ class DocumentInteractionTests(unittest.TestCase):
             apply_world_effects(world, {"effects": [
                 {"op": "add_item", "id": "mystery", "location": "room"}]})
 
-    def test_hidden_description_is_not_resolvable_until_actor_can_physically_access_entity(self):
+    def test_known_to_alone_does_not_expose_a_description(self):
+        """issue 40: entity_access (known_to) is awareness, not availability.
+
+        Knowing a thing exists lets an actor name or recall it, but it no
+        longer injects the entity's objective description."""
         world = self.world()
         world.entity_descriptions["secret"] = "a hidden description"
         world.entity_access["secret"] = {"b"}
         self.assertIsNone(world.resolve_entity("a", "secret"))
+        self.assertIsNone(world.resolve_entity("b", "secret"))
+
+    def test_description_resolves_only_where_the_entity_really_is(self):
+        world = self.world()
+        world.entity_descriptions["secret"] = "a hidden description"
+        world.item_locations["secret"] = "room"
+        self.assertEqual(world.resolve_entity("a", "secret"), "a hidden description")
+        del world.item_locations["secret"]
+        world.actors["b"].inventory.add("secret")
         self.assertEqual(world.resolve_entity("b", "secret"), "a hidden description")
+        self.assertIsNone(world.resolve_entity("a", "secret"))
 
     def test_poll_injects_only_actor_visible_descriptions(self):
         world = self.world()
@@ -848,7 +862,8 @@ class SceneObjectContractTests(unittest.TestCase):
     """
 
     def _write_world(self, directory, *, notice=None, location_prose="一间屋子。",
-                     item=None, item_location=None, scheduled_row=None):
+                     item=None, item_location=None, scheduled_row=None,
+                     item_content=None):
         import yaml
         root = Path(directory)
         for category in ("locations", "items", "documents"):
@@ -859,7 +874,16 @@ class SceneObjectContractTests(unittest.TestCase):
         if item:
             (root / "items" / f"{item}.md").write_text(
                 f"# {item}\n\n一件东西。\n", encoding="utf-8")
-            items.append({"id": item, "location": item_location})
+            # Issue 39: a prose body must be readable or explicitly declared
+            # unreadable; these fixtures are pure props.
+            row = {"id": item, "location": item_location}
+            if item_content is not None:
+                row["content"] = item_content
+                row["reading_seconds"] = 5
+            else:
+                row["readable"] = False
+                row["readable_reason"] = "只是一件实物，没有可读的正文。"
+            items.append(row)
         row = {"event": "contract_test", "time": "2026-03-16T07:10:00+08:00"}
         if notice is not None:
             row["notice"] = notice
@@ -986,3 +1010,175 @@ class SceneObjectContractTests(unittest.TestCase):
         rejected = [e for e in events
                     if e.payload.get("event") == "application_rejected"]
         self.assertTrue(rejected, "the office must reject applications at 12:30")
+
+
+def _seed_lint_findings(world_root):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "seed_lint_item_body", ROOT / "scripts" / "seed_lint.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.lint(world_root)
+
+
+class Issue39ReadableItemTests(unittest.TestCase):
+    """Issue 39/40: an `items:` row that carries `content:` is read exactly
+    like a document; a read rejection states the real situation and only ever
+    offers reads that will succeed."""
+
+    def _pack(self, directory, *, item_declaration="readable",
+              item_location="room"):
+        import yaml
+        root = Path(directory)
+        for category in ("locations", "items", "documents"):
+            (root / category).mkdir(parents=True)
+        (root / "locations" / "room.md").write_text("# room\n\n一间屋子。\n",
+                                                    encoding="utf-8")
+        (root / "locations" / "vault.md").write_text("# vault\n\n一间库房。\n",
+                                                     encoding="utf-8")
+        (root / "items" / "签到本.md").write_text("# 签到本\n\n一本签到簿。\n",
+                                                  encoding="utf-8")
+        (root / "documents" / "移交存根.md").write_text(
+            "# 移交存根\n\n一份存根。\n", encoding="utf-8")
+        item = {"id": "签到本", "location": item_location}
+        if item_declaration == "readable":
+            item["content"] = "到岗签到记录。"
+            item["reading_seconds"] = 5
+        elif item_declaration == "unreadable_declared":
+            item["readable"] = False
+            item["readable_reason"] = "只是一件实物，没有可读的正文。"
+        manifest = {
+            "schema_version": 1,
+            "clock": {"start": "2026-03-16T07:00:00+08:00",
+                      "stop": "2026-03-16T08:00:00+08:00"},
+            "locations": [{"id": "room"}, {"id": "vault"}],
+            "actors": [{"id": "aa", "location": "room"},
+                       {"id": "bb", "location": "room"}],
+            "items": [item],
+            "documents": [{"id": "移交存根", "title": "移交存根",
+                           "content": "存根正文。", "reading_seconds": 5,
+                           "location": "vault", "known_to": ["aa"]}],
+            "routes": [{"from": "room", "to": "vault", "duration_seconds": 60},
+                       {"from": "vault", "to": "room", "duration_seconds": 60}],
+            "barriers": [], "scheduled": [],
+            "kb": {"aa": [{"keys": ["aa"], "desc": "我，aa。"}],
+                   "bb": [{"keys": ["bb"], "desc": "我，bb。"}]},
+        }
+        (root / "manifest.yml").write_text(
+            yaml.safe_dump(manifest, allow_unicode=True), encoding="utf-8")
+        return root
+
+    def test_item_with_content_reads_once_like_a_document(self):
+        with TemporaryDirectory() as directory:
+            root = self._pack(directory)
+            world = load_world_pack(root).build_world()
+            self.assertIn("签到本", world.document_defs)
+            self.assertIn({"kind": "read", "item": "签到本"},
+                          world.affordances("aa"))
+            world.submit(Intention("aa", "read", {"item": "签到本"}, world.version))
+            world.advance()
+            reads = [e for e in world.event_log if e.kind == "document_read"]
+            self.assertEqual(len(reads), 1)
+            self.assertEqual(reads[0].payload["document"], "签到本")
+            self.assertEqual(reads[0].payload["content"], "到岗签到记录。")
+
+    def test_inventory_item_reads_and_every_offered_read_succeeds(self):
+        """Turn 305: 签到本 sat in 陈默's inventory yet read said 'not in your
+        hand'. A held readable item must read; and every read the world
+        offers must actually succeed."""
+        with TemporaryDirectory() as directory:
+            root = self._pack(directory)
+            world = load_world_pack(root).build_world()
+            world.actors["aa"].inventory.add("签到本")
+            del world.item_locations["签到本"]
+            world.submit(Intention("aa", "read", {"item": "签到本"}, world.version))
+            world.advance()
+            self.assertEqual([e.payload["document"] for e in world.event_log
+                              if e.kind == "document_read"], ["签到本"])
+            offered = [row["item"] for row in world.affordances("aa")
+                       if row["kind"] == "read"]
+            self.assertIn("签到本", offered)
+            for name in offered:
+                probe = load_world_pack(root).build_world()
+                probe.actors["aa"].inventory.add("签到本")
+                del probe.item_locations["签到本"]
+                probe.submit(Intention("aa", "read", {"item": name}, probe.version))
+
+    def test_held_item_without_a_body_says_so_and_offers_real_actions(self):
+        with TemporaryDirectory() as directory:
+            root = self._pack(directory, item_declaration="unreadable_declared")
+            world = load_world_pack(root).build_world()
+            world.actors["aa"].inventory.add("签到本")
+            del world.item_locations["签到本"]
+            with self.assertRaises(ActionRejected) as caught:
+                world.submit(Intention("aa", "read", {"item": "签到本"},
+                                       world.version))
+            message = str(caught.exception)
+            self.assertIn("没有可读", message)
+            self.assertNotIn("不在你手边", message)
+            self.assertTrue(caught.exception.alternatives)
+            for alternative in caught.exception.alternatives:
+                kind, _, rest = alternative.partition(" ")
+                if kind == "give":
+                    item, _, target = rest.partition(" to ")
+                    args = {"item": item, "target": target}
+                else:
+                    args = {"item": rest}
+                probe = load_world_pack(root).build_world()
+                probe.actors["aa"].inventory.add("签到本")
+                del probe.item_locations["签到本"]
+                probe.submit(Intention("aa", kind, args, probe.version))
+
+    def test_known_to_does_not_grant_remote_read_or_description(self):
+        with TemporaryDirectory() as directory:
+            root = self._pack(directory)
+            world = load_world_pack(root).build_world()
+            # aa is aware of 移交存根 (known_to) but it sits in the vault.
+            self.assertIn("aa", world.entity_access.get("移交存根", set()))
+            self.assertNotIn({"kind": "read", "item": "移交存根"},
+                             world.affordances("aa"))
+            packet = world.poll("aa")
+            self.assertIn("签到本", packet["descriptions"])
+            self.assertNotIn("移交存根", packet["descriptions"])
+            with self.assertRaises(ActionRejected) as caught:
+                world.submit(Intention("aa", "read", {"item": "移交存根"},
+                                       world.version))
+            self.assertNotIn("移交存根",
+                             caught.exception.context.get("readable_now", []))
+
+    def test_undeclared_item_body_fails_seed_lint_and_declaring_it_turns_green(self):
+        with TemporaryDirectory() as directory:
+            root = self._pack(Path(directory) / "bad",
+                              item_declaration="undeclared")
+            findings = _seed_lint_findings(root)
+            self.assertTrue(findings, "an undeclared prose body must fail the lint")
+            self.assertIn("签到本", findings[0])
+            fixed = self._pack(Path(directory) / "fixed",
+                               item_declaration="unreadable_declared")
+            self.assertEqual(_seed_lint_findings(fixed), [])
+
+
+class SeedRegisterContentTests(unittest.TestCase):
+    """Issue 39: the four seeded registers carry objective, runtime-readable
+    content and leak no answer (no tear/steal conclusions)."""
+
+    REGISTERS = ("签到本", "晚归登记本", "值班簿", "借阅登记本")
+    # Objective register text must not assert how the record was lost.
+    BANNED = ("撕", "偷", "窃", "内鬼", "真凶")
+
+    def test_register_items_carry_runtime_readable_content(self):
+        world = load_world_pack(ROOT / "world").build_world()
+        for name in self.REGISTERS:
+            self.assertIn(name, world.document_defs, f"{name} must be readable")
+            content = world.document_defs[name]["content"]
+            self.assertTrue(content.strip(), f"{name} needs non-empty content")
+            self.assertGreaterEqual(world.document_defs[name]["reading_seconds"], 1)
+
+    def test_register_content_states_no_plot_answer(self):
+        world = load_world_pack(ROOT / "world").build_world()
+        for name in self.REGISTERS:
+            content = world.document_defs[name]["content"]
+            for banned in self.BANNED:
+                self.assertNotIn(banned, content,
+                                 f"{name} content must not assert how it was lost")

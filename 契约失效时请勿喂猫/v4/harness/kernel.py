@@ -225,6 +225,9 @@ class World:
         self.document_defs = {str(k): dict(v) for k, v in (document_defs or {}).items()}
         self.copy_material_items = set(copy_material_items or ())
         self.entity_descriptions = dict(entity_descriptions or {})
+        # `entity_access` is the manifest `known_to` map: awareness only. It
+        # drives name/recall resolution (``aware_of``) and never grants
+        # readability or visibility (issues 39/40).
         self.entity_access = {str(k): set(v) for k, v in (entity_access or {}).items()}
         self.public_knowledge = dict(public_knowledge or {})
         self.private_knowledge = {str(k): dict(v) for k, v in (private_knowledge or {}).items()}
@@ -637,9 +640,8 @@ class World:
         options += [{"kind": "leave_note", "text": "",
                      "hint": "字条是房间留言：在场的人只知道有人留条；作者返场不算读者，第一位非作者进入者私下读到全文并阅后即焚"},
                     *({"kind": "trash", "item": item} for item in sorted(a.inventory))]
-        available_documents = [document for document in self.document_defs
-                               if self._entity_available(a.id, document)]
-        options += [{"kind": "read", "item": document} for document in sorted(available_documents)]
+        options += [{"kind": "read", "item": document}
+                    for document in self._available_readables(a)]
         return options
 
     def submit(self, intention: Intention) -> tuple[Event, ...]:
@@ -1025,10 +1027,11 @@ class World:
         self._actor(actor_id).force_observation = True
 
     def _visible_descriptions(self, actor: ActorState) -> set[str]:
+        """Descriptions injected by arrival/presence (issue 40): what is here
+        or held. `known_to` (awareness) no longer injects a description."""
         visible = {actor.location}
         visible.update(item for item, location in self.item_locations.items() if location == actor.location)
         visible.update(item for item in actor.inventory)
-        visible.update(entity for entity, allowed in self.entity_access.items() if actor.id in allowed)
         return visible
 
     def replayable_log(self) -> tuple[dict[str, Any], ...]:
@@ -1245,25 +1248,30 @@ class World:
 
     def resolve_entity(self, actor_id: str, entity_id: str) -> str | None:
         self._actor(actor_id)
-        if not self._entity_available(actor_id, entity_id):
+        if not self.available_now(actor_id, entity_id):
             return None
         return self.entity_descriptions.get(entity_id)
 
-    def _entity_available(self, actor_id: str, entity_id: str) -> bool:
+    def available_now(self, actor_id: str, entity_id: str) -> bool:
+        """Physical reach today: the entity is held or at the actor's
+        location. This — not `known_to` — is what `read` and the read
+        suggestions treat as available (issues 39/40)."""
         actor = self._actor(actor_id)
-        return (entity_id in actor.inventory or self.item_locations.get(entity_id) == actor.location
-                or actor_id in self.entity_access.get(entity_id, set()))
+        return (entity_id in actor.inventory
+                or self.item_locations.get(entity_id) == actor.location)
+
+    def aware_of(self, actor_id: str, entity_id: str) -> bool:
+        """Awareness only (manifest `known_to`): the actor knows the thing
+        exists. Useful for naming and recall; it grants no physical access and
+        never makes an entity readable or visible."""
+        return actor_id in self.entity_access.get(entity_id, set())
 
     def _item_duration(self, actor: ActorState, intention: Intention) -> timedelta:
         kind = intention.kind
         item = str(intention.args.get("item"))
         if kind == "read":
-            if item not in self.document_defs or not self._entity_available(actor.id, item):
-                available = self._available_documents(actor)
-                raise ActionRejected(
-                    f"「{item}」现在不在你手边。你能读的：{', '.join(available) or '无'}。",
-                    alternatives=[f"read {present}" for present in available],
-                    context={"item": item})
+            if item not in self.document_defs or not self.available_now(actor.id, item):
+                raise self._read_rejection(actor, item)
             return timedelta(seconds=_as_int(self.document_defs[item].get("reading_seconds", 30), "reading_seconds"))
         if kind == "leave_note":
             text = intention.args.get("text")
@@ -1285,6 +1293,51 @@ class World:
                     context={"item": item, "available_items": candidates})
             return timedelta(seconds=3)
         return timedelta(seconds=3)
+
+    def _read_rejection(self, actor: ActorState, item: str) -> ActionRejected:
+        """Issue 39/40: a rejected `read` states the real situation — nothing
+        here by that name, a prop with no readable body, or a readable thing
+        that is simply not here — and offers only calls that will succeed."""
+        readable_now = self._available_readables(actor)
+        here, held = self._present_items(actor)
+        here_line = f"你现在在{actor.location}，手里有：{', '.join(held) or '空'}。"
+        if item in self.document_defs:
+            # (c) readable, but neither held nor at this location.
+            message = (f"「{item}」现在不在你这里：它不在你手上，也不在{actor.location}。"
+                       f"这是件能读的东西——先弄清它现在在谁那里，或到它可能在的地方去。"
+                       f"{here_line}")
+            alternatives: list[str] = []
+            reason = "readable_not_here"
+        elif item in here or item in held:
+            # (b) physically here, but it carries no readable text.
+            message = (f"「{item}」没有可读的正文：它是一件实物，不是写着字的文书，读不出内容。"
+                       f"{here_line}你可以先把它拿上，或带在身上去问知道的人。")
+            alternatives = []
+            if item in here:
+                alternatives.append(f"take {item}")
+            if item in held:
+                alternatives.append(f"place {item}")
+                others = [other.id for other in self.actors.values()
+                          if other.id != actor.id and other.location == actor.location]
+                if others:
+                    alternatives.append(f"give {item} to {others[0]}")
+            reason = "present_without_body"
+        elif self.aware_of(actor.id, item):
+            # (a) a thing the actor knows of, but not readable and not here.
+            message = (f"「{item}」不是能读的文书，现在也不在{actor.location}，不在你手上。"
+                       f"{here_line}")
+            alternatives = []
+            reason = "known_not_readable_not_here"
+        else:
+            # (a) nothing here by that name.
+            message = (f"这里没有「{item}」这样一件能读的东西。{here_line}"
+                       f"你现在能读的：{', '.join(readable_now) or '无'}。")
+            alternatives = [f"read {name}" for name in readable_now]
+            reason = "absent"
+        return ActionRejected(message, alternatives=alternatives,
+                              context={"item": item, "reason": reason,
+                                       "readable_now": readable_now,
+                                       "held": held, "items_here": here})
 
     def _complete(self, actor_id: str, payload: Mapping[str, Any]) -> None:
         if actor_id not in self.actors:
@@ -1642,9 +1695,11 @@ class World:
         return sorted(target for (source, target) in self.routes
                       if source == actor.location and self.locations[target].open)
 
-    def _available_documents(self, actor: ActorState) -> list[str]:
-        return sorted(document for document in self.document_defs
-                      if self._entity_available(actor.id, document))
+    def _available_readables(self, actor: ActorState) -> list[str]:
+        """Readable entities (documents or items with content) that are
+        currently held or here — the only reads a suggestion may offer."""
+        return sorted(entity for entity in self.document_defs
+                      if self.available_now(actor.id, entity))
 
     def _hearing_actors(self, actor_id: str, payload: Mapping[str, Any]) -> set[str]:
         """V4-DESIGN §3 volumes: normal reaches the whole location; whisper

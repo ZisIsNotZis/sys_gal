@@ -51,6 +51,15 @@ I38 private inner channel unreachable — 0/1356 turns (3 runs) ... test_inner_c
                                                                test_missing_inner_native_call_is_rejected_with_a_self_correcting_example,
                                                                test_reasoning_content_fills_a_missing_inner,
                                                                test_engine_records_turn_inner_and_a_failed_call_is_not_a_dead_turn
+I39 item prose bodies unreadable; read rejections lied ......... test_turn_305_held_register_reads_and_remote_document_is_not_offered
+    turn 305 (12:44, 陈默 in 食堂): inventory held 签到本, yet `read 签到本`
+    was rejected "不在你手边" and the suggestion list offered 移交存根
+    (archive, unheld). 24/72 error turns were this class in the d1-am run.
+    test_world_pack: test_item_with_content_reads_once_like_a_document,
+                     test_inventory_item_reads_and_every_offered_read_succeeds,
+                     test_held_item_without_a_body_says_so_and_offers_real_actions,
+                     test_known_to_does_not_grant_remote_read_or_description,
+                     test_undeclared_item_body_fails_seed_lint_and_declaring_it_turns_green
 H1/H4 empty checkpoint written at launch ...................... test_launch_checkpoint_is_a_valid_loadable_trace
 H2  duplicate run artifacts ................................... test_runner (unique run ids)
 H3  failed/truncated artifact mislabeled as clean .............. test_trace_completion_gate_rejects_truncated_run (runner)
@@ -406,6 +415,31 @@ class HistoricalFailureGates(unittest.TestCase):
             self.assertIn("'doc'", str(ctx.exception), kind)
             if kind == "read":
                 self.assertIn("'item'", str(ctx.exception), kind)
+
+    def test_turn_305_held_register_reads_and_remote_document_is_not_offered(self):
+        """I39/I40: at turn 305 陈默 held 签到本 in 食堂, yet `read 签到本`
+        was rejected "不在你手边" while the suggestion list offered 移交存根
+        (archive, not held). A held readable item must read; a readable
+        document the actor is not holding must never be suggested."""
+        from harness.kernel import ActionRejected
+        world = load_story_pack().build_world()
+        chen = world.actors["陈默"]
+        chen.location = "食堂"
+        world.item_locations.pop("签到本", None)
+        chen.inventory.add("签到本")
+        world.submit(Intention("陈默", "read", {"item": "签到本"}, world.version))
+        world.advance()
+        self.assertEqual([e.payload["document"] for e in world.event_log
+                          if e.kind == "document_read"], ["签到本"])
+        offered = {row["item"] for row in world.affordances("陈默")
+                   if row["kind"] == "read"}
+        self.assertNotIn("移交存根", offered)
+        with self.assertRaises(ActionRejected) as caught:
+            world.submit(Intention("陈默", "read", {"item": "移交存根"},
+                                   world.version))
+        self.assertNotIn("不在你手边", str(caught.exception))
+        self.assertNotIn("移交存根",
+                         caught.exception.context.get("readable_now", []))
 
     def test_launch_checkpoint_is_a_valid_loadable_trace(self):
         """H1/H4: a checkpoint written at launch is structurally valid and round-trips."""
