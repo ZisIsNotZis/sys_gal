@@ -46,6 +46,17 @@ from .repetition import RepetitionMonitor
 
 AgentFn = Callable[[PrivateState, dict, list[dict]], Any]
 
+# Ticket 46: why a named addressee could not receive the words, in world
+# language. They come from the kernel's per-addressee plan (`undelivered` on
+# the committed action) — never from a second guess at the recipient set.
+_UNDELIVERED_REASONS = {
+    "left": "已经离开了你说话的地方",
+    "absent": "现在不在你身边",
+    "unknown": "这个世界里没有这个名字：你认识的人里没有，眼前也没有",
+    "whisper": "耳语不会传给尚未出现的路人",
+    "closed": "当前地点封闭，路人听不到这里的话",
+}
+
 
 class ExtraCall(Protocol):
     """The v4 extras provider shape: an object exposing chat_with_tools
@@ -740,8 +751,13 @@ class AsyncEngine:
         return ordered[:8]
 
     def _action_rejection_text(self, actor_id: str, exc: ActionRejected, name: str,
-                               args: Mapping[str, Any]) -> str:
-        """Keep kernel suggestions actionable without changing a recipient."""
+                               args: Mapping[str, Any],
+                               seen_here: Iterable[str] | None = None) -> str:
+        """Keep kernel suggestions actionable without changing a recipient.
+
+        Ticket 46: any recipient list this adds comes from the same judgement
+        (this turn's perception snapshot included) and only names people the
+        call can actually reach."""
         context = exc.context
         if name in {"text", "speak", "give"} and (
                 context.get("name_resolution") or context.get("recipient_unavailable")
@@ -759,8 +775,13 @@ class AsyncEngine:
             return message
         if name in {"text", "speak"}:
             # Shape failures can precede name resolution. A candidate list is
-            # still useful, but no executable call may carry the supplied body.
-            candidates = self.world._person_candidates(self.world.actors[actor_id])
+            # still useful, but no executable call may carry the supplied body
+            # and every name is one the action can actually reach (ticket 46:
+            # a `text` needs a contact or someone here; a `speak` accepts a
+            # name this turn's perception saw too).
+            actor = self.world.actors[actor_id]
+            candidates = (self.world._message_targets(actor) if name == "text"
+                          else self.world._present_others(actor))
             message = str(exc)
             if candidates:
                 message += f" Names in your personal knowledge or here: {', '.join(candidates)}."
@@ -838,12 +859,13 @@ class AsyncEngine:
         return message
 
     def _tool_yield(self, name: str, args: Mapping[str, Any], world: World,
-                    actor_id: str) -> str:
+                    actor_id: str, *,
+                    events: Iterable[Any] = ()) -> str:
         """The caller-facing yield of a world action (V4-AGENT-INTERFACE §3):
         most actions yield nothing beyond the world's reaction; read and
         compare carry their content/verdict in the tool result."""
         if name == "speak":
-            return "话已说出；说话动作在一个 tick 内完成。"
+            return "话已说出；说话动作在一个 tick 内完成。" + self._undelivered_note(events)
         if name == "text":
             return "短信已发出；一个 tick 后送达。"
         if name == "read":
@@ -861,6 +883,27 @@ class AsyncEngine:
         if name == "place":
             return "已放在这里，他人可见可拿。"
         return "ok"
+
+    def _undelivered_note(self, events: Iterable[Any]) -> str:
+        """Ticket 46: state which addressees the kernel could not deliver to.
+
+        The kernel resolves and plans per addressee against the turn's
+        perception snapshot, records the ones it cannot reach on the committed
+        action, and this note hands that back to the speaker — the words went
+        out to everyone else, so this is a recoverable report rather than a
+        failed call."""
+        unsent: list[str] = []
+        for event in events:
+            for entry in event.payload.get("undelivered", ()) or ():
+                target = str(entry.get("name", ""))
+                if not target:
+                    continue
+                why = _UNDELIVERED_REASONS.get(str(entry.get("reason", "")), "")
+                unsent.append(f"{target}（{why}）" if why else target)
+        if not unsent:
+            return ""
+        return (" 没送到：" + "、".join(unsent)
+                + "。同句其他收件人的话已照常送到。")
 
     def _leave_note_yield(self, world: World, actor_id: str) -> str:
         """Ticket 44: the receipt must state the note's real audience.
@@ -920,6 +963,13 @@ class AsyncEngine:
         results: list[dict[str, Any]] = []
         failures: list[str] = []
         world_actions = 0
+        # Ticket 46: the people this turn's perception saw here (the same
+        # snapshot its affordances came from). The kernel judges recipients
+        # against it, so a name the decision could see never comes back as
+        # unknown and someone who left in the meantime is a delivery note
+        # instead of a rejection that voids the whole sentence.
+        seen_here = (perception.get("nearby_actors")
+                     if isinstance(perception, Mapping) else None)
         full_calls = list(calls or [])
         # Every tool result must be attributable (strict gateways reject
         # tool messages without call_id): synthesize ids for calls that
@@ -999,10 +1049,12 @@ class AsyncEngine:
                 if not isinstance(args.get("volume"), str):
                     args.setdefault("volume", "normal")
             try:
-                world.submit(Intention(actor_id, name, args, world.version))
+                submitted = world.submit(Intention(actor_id, name, args, world.version),
+                                         seen_here=seen_here)
                 world_actions += 1
                 results.append({"tool_call_id": call.get("tool_call_id"), "ok": True,
-                                "text": self._tool_yield(name, args, world, actor_id)})
+                                "text": self._tool_yield(name, args, world, actor_id,
+                                                         events=submitted)})
                 if a.busy_until and a.busy_until > world.now:
                     # The chain's own committed time: advance to the action's
                     # completion so the next call starts after it — clamped to
@@ -1044,12 +1096,16 @@ class AsyncEngine:
                         rest_args = dict(rest.get("arguments") or {})
                         preview = World._tool_call_json(rest_name, rest_args)
                         active = str((a.current_action or {}).get("payload", {}).get("action", "action"))
+                        # Ticket 46: name the rule and the real retry moment so a
+                        # second costly action in one turn self-corrects instead
+                        # of repeating (d1-am: 4-6 such turns per actor).
                         fail(rest, (f"not executed: current {active} completes at "
-                                    f"{a.busy_until.isoformat()}; retry after completion "
-                                    f"with {preview}."))
+                                    f"{a.busy_until.isoformat()}; 一个回合只应有一个耗时动作，"
+                                    "把它留到下一回合，等它完成后再用 "
+                                    f"{preview}。"))
                     break
             except ActionRejected as exc:
-                fail(call, self._action_rejection_text(actor_id, exc, name, args))
+                fail(call, self._action_rejection_text(actor_id, exc, name, args, seen_here))
                 busy_until = exc.context.get("busy_until")
                 if busy_until is not None:
                     # Later calls in a chain whose actor is still busy were
@@ -1060,7 +1116,8 @@ class AsyncEngine:
                         rest_args = dict(rest.get("arguments") or {})
                         preview = World._tool_call_json(rest_name, rest_args)
                         fail(rest, (f"not executed: the current action completes at {busy_until}; "
-                                    f"retry after completion with {preview}."))
+                                    "一个回合只应有一个耗时动作，等它完成后在下一回合再用 "
+                                    f"{preview}。"))
                     break
             except Exception as exc:
                 fail(call, f"{type(exc).__name__}: {exc}")
@@ -1223,7 +1280,7 @@ class AsyncEngine:
                                       interrupt=intention.interrupt,
                                       uninterruptable=intention.uninterruptable)
                 before = len(world.event_log)
-                world.submit(intention)
+                world.submit(intention, seen_here=perception.get("nearby_actors"))
                 event_ids.extend(e.id for e in world.event_log[before:])
                 result = "submitted"
             except ActionRejected as exc:

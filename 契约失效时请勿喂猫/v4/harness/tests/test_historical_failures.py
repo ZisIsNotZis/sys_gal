@@ -142,6 +142,34 @@ I49 objective description was a one-shot snapshot ................ test_objectiv
     records the objective text once, per entity, on first sight (emitting a
     private `observed` event); a `read` of a seen thing returns that text;
     and staying in view for `reading_seconds` auto-produces a `document_read`.
+I46 recipient checks judged the live world, not the decision snapshot . test_one_bad_recipient_does_not_void_the_rest_of_the_batch,
+                                                               test_a_name_seen_in_the_perception_is_always_resolvable,
+                                                               test_every_recipient_offered_in_a_rejection_can_be_reached,
+                                                               test_a_departed_addressee_is_undelivered_never_heard,
+                                                               test_whisper_to_a_departed_addressee_reaches_nobody,
+                                                               test_one_costly_action_per_turn_is_protocol_text,
+                                                               test_a_busy_chain_result_names_the_rule_and_the_retry_turn
+    d1-am artifact (real-20260930T160727): 班长 turn 212 (11:09) was
+    rejected `speak recipient must be here; absent: 陈默` although the SAME
+    turn's affordances listed `{"kind":"speak","to":["下棋大爷","陈默","陌生人"]}`;
+    turn 215 (11:14) was rejected `unknown name '下棋大爷'` although that
+    turn's perception said `nearby_actors=['下棋大爷']`; 辅导员 turn 233
+    (11:30) lost a whole line addressed to 班长+下棋大爷+陈默 because 下棋大爷
+    had walked off mid-deliberation, and the name list the rejection printed
+    offered 唐小岚/宿管阿姨, who were not in the room at all. 陈默/辅导员 also
+    burned 4-6 turns on `not executed: current … completes at …`.
+    Root cause: affordances/perception are the DECISION-time snapshot while
+    submit re-resolved names and co-presence against the already-advanced
+    world, all-or-nothing for the whole recipient list. Fix: `World.submit`
+    takes the turn's perception snapshot (`seen_here`), a multi-addressee
+    `speak` is planned per target (reachable ones keep the words, a departed
+    or unresolvable one is recorded as `undelivered` on the committed action
+    and reported in the tool result), a rejection's candidate list is
+    per-action and executable (contacts+here for `text`, here for `give`),
+    and the protocol text states one costly action per turn with the busy
+    tool result naming the retry turn. A rejection's candidate list is
+    per-action and executable: people who are here for `speak`/`give`,
+    contacts plus people here for `text`.
 H1/H4 empty checkpoint written at launch ...................... test_launch_checkpoint_is_a_valid_loadable_trace
 H2  duplicate run artifacts ................................... test_runner (unique run ids)
 H3  failed/truncated artifact mislabeled as clean .............. test_trace_completion_gate_rejects_truncated_run (runner)
@@ -157,7 +185,7 @@ from tempfile import TemporaryDirectory
 
 from harness.agent_state import PrivateState
 from harness.engine import TICK_SECONDS, AsyncEngine
-from harness.kernel import Intention, World
+from harness.kernel import ActionRejected, ActorState, Intention, LocationState, World
 from harness.runner import AgentFn, Runner
 from harness.seed import load_story_pack
 from harness.system import Ledger
@@ -1831,6 +1859,236 @@ class NoteDeliveryGates(unittest.TestCase):
         world.advance()
         trace.finish(reason="stop_at_reached", world=world)
         self.assertEqual(trace.outcome["unread_notes"], [])
+
+
+class _ChainAgent:
+    """Minimal v4 agent stub: it collects the chain's tool results."""
+
+    session_obj = object()
+
+    def __init__(self):
+        self.delivered: list[dict] = []
+
+    def deliver_tool_results(self, results):
+        self.delivered.extend(results)
+
+    def consume_compaction(self):
+        return False
+
+    def session_snapshot(self):
+        return None
+
+
+def _chain_engine(world):
+    """An engine bound to one stub agent per actor, ready for
+    `_execute_chain` — the same seam the ticket-44 gates use."""
+    agents = {actor_id: _ChainAgent() for actor_id in world.actors}
+    engine = AsyncEngine(world, agents,
+                         {actor_id: PrivateState(actor_id) for actor_id in world.actors},
+                         Trace("v4-test", "ticket46-chain"), None,
+                         decision_timeout=10, max_wall_seconds=30)
+    engine._scheduler_wake = threading.Event()
+    engine._stop_horizon = None
+    return engine, agents
+
+
+class RecipientSnapshotGates(unittest.TestCase):
+    """I46 (ticket 46, d1-am artifact real-20260930T160727).
+
+    班长's 11:09 line to 陈默 was rejected `absent: 陈默` in the same turn whose
+    affordances offered 陈默; its 11:14 line was rejected `unknown name
+    '下棋大爷'` while that turn's perception listed 下棋大爷; 辅导员's 11:30 line
+    to three people was dropped whole when one of them had walked off. The
+    judgement must be the one the decision saw, and one bad addressee must
+    never void the rest of the sentence."""
+
+    START = datetime.fromisoformat("2026-09-30T11:09:00+08:00")
+
+    def _scene(self, **places):
+        """The d1-am scene: a 教学楼 corridor and 辅导员办公室 next door.
+        Defaults put 班长/陈默/下棋大爷 in the corridor and 辅导员 in the
+        office; keyword overrides restage them."""
+        home = {"班长": "教学楼", "陈默": "教学楼", "下棋大爷": "教学楼",
+                "辅导员": "辅导员办公室"}
+        home.update(places)
+        return World(start=self.START,
+                     actors=[ActorState(name, place) for name, place in home.items()],
+                     locations=[LocationState("教学楼"), LocationState("辅导员办公室")],
+                     routes={("教学楼", "辅导员办公室"): 60,
+                             ("辅导员办公室", "教学楼"): 60})
+
+    def _walk_away(self, world, who, to="辅导员办公室"):
+        """`who` leaves during the deliberation (the artifact's 11:09->11:17
+        drift): the next turn's perception is already stale."""
+        world.submit(Intention(who, "move", {"target": to}, world.version))
+        world.advance()
+
+    def test_one_bad_recipient_does_not_void_the_rest_of_the_batch(self):
+        """(a)+(d) turn 233 (11:30): one line, three addressees, one of them
+        gone — the words must reach whoever is still here and only the
+        departed addressee may be reported as unreachable."""
+        world = self._scene(辅导员="教学楼")
+        self._walk_away(world, "陈默")
+        engine, agents = _chain_engine(world)
+        text = "纪风，表拿来我看看。老先生慢走。陈默，两点到四点。"
+        engine._execute_chain("辅导员", [{
+            "name": "speak",
+            "arguments": {"text": text, "volume": "normal",
+                          "to": ["班长", "下棋大爷", "陈默"],
+                          "wait_response": False},
+            "tool_call_id": "speak-1"}],
+            {"time": world.now.isoformat(),
+             "nearby_actors": ["班长", "下棋大爷", "陈默"], "events": []},
+            world.affordances("辅导员"), world.version)
+
+        result = agents["辅导员"].delivered[0]
+        self.assertTrue(result["ok"], "一个离开的收件人不得作废整句话")
+        self.assertIn("陈默", result["text"])
+        self.assertIn("没送到", result["text"])
+        speech = next(event for event in world.event_log if event.kind == "speech")
+        self.assertEqual(speech.payload["text"], text, "整句话不得消失")
+        self.assertEqual(speech.payload["to"], ["班长", "下棋大爷"])
+        self.assertEqual(speech.payload["heard"], sorted(["班长", "下棋大爷"]))
+        self.assertNotIn("陈默", speech.visible_to,
+                         "离开的人不得因快照而被投递，也不得听见")
+
+    def test_a_name_seen_in_the_perception_is_always_resolvable(self):
+        """(b) turn 215 (11:14): `nearby_actors=['下棋大爷']` yet the submit
+        answered `unknown name '下棋大爷'`. A name the decision saw must
+        resolve; if that person has meanwhile left, the result says so."""
+        world = self._scene()
+        self._walk_away(world, "下棋大爷")
+        engine, agents = _chain_engine(world)
+        engine._execute_chain("班长", [{
+            "name": "speak",
+            "arguments": {"text": "大爷，您慢走。", "volume": "normal",
+                          "to": ["下棋大爷"], "wait_response": False},
+            "tool_call_id": "speak-1"}],
+            {"time": world.now.isoformat(), "nearby_actors": ["下棋大爷"],
+             "events": []}, world.affordances("班长"), world.version)
+
+        result = agents["班长"].delivered[0]
+        self.assertTrue(result["ok"])
+        self.assertNotIn("unknown name", result["text"])
+        self.assertIn("下棋大爷", result["text"])
+        self.assertIn("没送到", result["text"])
+        self.assertIn("离开", result["text"],
+                      "名字解析成功但人已不在：结果是‘已离开’而不是‘不认识’")
+
+    def test_every_recipient_offered_in_a_rejection_can_be_reached(self):
+        """(c) the ticket-39 contract for recipients: the names a rejection
+        prints come from the same judgement and each one succeeds on retry
+        (the 11:30 rejection offered 唐小岚/宿管阿姨, who were not there)."""
+        world = self._scene()
+        world.actors["班长"].known_contacts = {"辅导员"}
+
+        # give hands an object over: only people actually here are offered.
+        with self.assertRaises(ActionRejected) as caught:
+            world.submit(Intention("班长", "give",
+                                   {"target": "辅导员", "item": "班里的表"},
+                                   world.version))
+        candidates = list(caught.exception.context["recipient_candidates"])
+        self.assertEqual(candidates, ["下棋大爷", "陈默"])
+        for name in candidates:
+            world.actors["班长"].inventory.add("班里的表")
+            world.submit(Intention("班长", "give",
+                                   {"target": name, "item": "班里的表"},
+                                   world.version))
+            world.advance()
+
+        # text reaches a contact wherever they are, and anyone here.
+        with self.assertRaises(ActionRejected) as caught:
+            world.submit(Intention("班长", "text",
+                                   {"target": "杜撰的人", "text": "喂"},
+                                   world.version))
+        text_candidates = list(caught.exception.context["recipient_candidates"])
+        self.assertIn("辅导员", text_candidates)
+        self.assertIn("陈默", text_candidates)
+        for name in text_candidates:
+            world.submit(Intention("班长", "text", {"target": name, "text": "喂"},
+                                   world.version))
+            world.advance()
+
+        # speak: whoever the judgement can address — anyone listed can be
+        # submitted without a rejection (a departed one is a delivery note).
+        engine, agents = _chain_engine(world)
+        engine._execute_chain("班长", [{
+            "name": "speak",
+            "arguments": {"text": "喂", "volume": {"wrong": "type"},
+                          "to": ["陈默"]},
+            "tool_call_id": "speak-bad"}],
+            {"time": world.now.isoformat(), "nearby_actors": ["陈默", "下棋大爷"],
+             "events": []}, world.affordances("班长"), world.version)
+        bad = agents["班长"].delivered[0]
+        self.assertFalse(bad["ok"])
+        listed = str(bad["text"]).split("Names in your personal knowledge or here: ")[1]
+        names = [entry.strip() for entry in listed.split(".")[0].split(",") if entry.strip()]
+        self.assertTrue(names)
+        world.advance()   # the chain's no-world-action turn idles one tick
+        for name in names:
+            world.submit(Intention("班长", "speak",
+                                   {"text": "喂", "volume": "normal",
+                                    "to": [name], "wait_response": False},
+                                   world.version))
+            world.advance()
+
+        # text: a shape failure offers contacts and people here — a name the
+        # snapshot merely saw is not textable, so it is not offered.
+        engine._execute_chain("班长", [{
+            "name": "text",
+            "arguments": {"text": "喂", "to": "辅导员"},
+            "tool_call_id": "text-bad"}],
+            {"time": world.now.isoformat(), "nearby_actors": ["陈默", "下棋大爷"],
+             "events": []}, world.affordances("班长"), world.version)
+        bad = agents["班长"].delivered[-1]
+        self.assertFalse(bad["ok"])
+        listed = str(bad["text"]).split("Names in your personal knowledge or here: ")[1]
+        text_names = [entry.strip() for entry in listed.split(".")[0].split(",") if entry.strip()]
+        self.assertEqual(text_names, sorted(["辅导员", "下棋大爷", "陈默"]))
+        world.advance()
+        for name in text_names:
+            world.submit(Intention("班长", "text", {"target": name, "text": "喂"},
+                                   world.version))
+            world.advance()
+
+    def test_one_costly_action_per_turn_is_protocol_text(self):
+        """(4) the repeated `not executed: current … completes at …` (陈默
+        145/147, 辅导员 T8/T9/T14/T16) came from a second costly action in one
+        turn. The protocol text must state the rule, and the runtime copy must
+        stay byte-identical to the documented §1 block."""
+        from harness.natural_agent import SYSTEM_PROMPT_V4
+
+        doc = (Path(__file__).parents[2] / "docs" / "V4-AGENT-INTERFACE.md").read_text(
+            encoding="utf-8")
+        self.assertIn(SYSTEM_PROMPT_V4, doc,
+                      "§1 的 system prompt 必须与运行时逐字一致")
+        self.assertIn("一个回合只应有一个耗时动作", SYSTEM_PROMPT_V4)
+
+    def test_a_busy_chain_result_names_the_rule_and_the_retry_turn(self):
+        """(4) the busy tool result must be self-correcting: it states the
+        one-costly-action rule, the real completion time and the exact call
+        to resubmit — without relaxing the busy gate or any duration."""
+        world = self._scene()
+        engine, agents = _chain_engine(world)
+        # 辅导员 is still deciding, so this turn's world may only reach one
+        # tick ahead (the freeze rule): the second costly action cannot start.
+        engine._inflight["辅导员"] = world.now
+        calls = [{"name": "wait", "arguments": {"duration_seconds": 180},
+                  "tool_call_id": "wait-1"},
+                 {"name": "speak", "arguments": {
+                     "text": "我到了。", "volume": "normal", "to": ["辅导员"],
+                     "wait_response": False}, "tool_call_id": "speak-2"}]
+        engine._execute_chain("班长", calls,
+                              {"time": world.now.isoformat(), "events": []},
+                              world.affordances("班长"), world.version)
+
+        results = agents["班长"].delivered
+        self.assertTrue(results[0]["ok"])
+        self.assertFalse(results[1]["ok"])
+        self.assertIn("一个回合只应有一个耗时动作", results[1]["text"])
+        self.assertIn("not executed", results[1]["text"])
+        self.assertIn('"name": "speak"', results[1]["text"])
+        self.assertIn(world.actors["班长"].busy_until.isoformat(), results[1]["text"])
 
 
 if __name__ == "__main__":

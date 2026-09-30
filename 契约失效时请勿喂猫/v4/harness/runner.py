@@ -270,7 +270,11 @@ class Runner:
                             self.trace.record_system(dict(intention.args), {"event_id": event.id, "kind": event.kind})
                         else:
                             before = len(self.world.event_log)
-                            self.world.submit(intention)
+                            # Ticket 46: recipients are judged against the
+                            # decision's own perception snapshot, exactly as
+                            # on the async engine path.
+                            self.world.submit(intention,
+                                              seen_here=perception.get("nearby_actors"))
                             event_ids.extend(e.id for e in self.world.event_log[before:])
                         result = "submitted"
                     except ActionRejected as exc:

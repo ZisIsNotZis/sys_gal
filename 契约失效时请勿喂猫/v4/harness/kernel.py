@@ -680,7 +680,22 @@ class World:
                     for document in self._available_readables(a)]
         return options
 
-    def submit(self, intention: Intention) -> tuple[Event, ...]:
+    def submit(self, intention: Intention, *,
+               seen_here: Iterable[str] | None = None) -> tuple[Event, ...]:
+        """Submit one intention to the world (V4-ENGINE §2.4).
+
+        ``seen_here`` is the list of other actors the submitting actor
+        perceived at its location **when it decided** — the same perception
+        snapshot its affordances came from (`nearby_actors`). Recipient
+        resolution and co-presence are judged against that snapshot instead of
+        against the world some deliberation later (ticket 46: the d1-am run
+        rejected 班长's 11:09 line to 陈默 as `absent: 陈默` and 辅导员's 11:30
+        line to three people because one of them had walked off meanwhile).
+        Someone who left after the snapshot is not a rejection: the words are
+        committed for the addressees still here and the departed one is
+        reported as undelivered. ``None`` (bare kernel, no turn context) keeps
+        the live world as the only source.
+        """
         a = self._actor(intention.actor)
         if intention.expected_version is not None and intention.expected_version != self.version:
             raise ActionRejected("世界已发生变化，请重新观察后再行动（stale world version）")
@@ -704,12 +719,16 @@ class World:
             shape_error = validate_action_args(intention.kind, intention.args)
             if shape_error is not None:
                 raise ActionRejected(shape_error)
-        if intention.kind in {"speak", "text", "give"}:
+        if intention.kind in {"text", "give"}:
             # Person-name resolution (V4-AGENT-INTERFACE T4): a nickname that
             # uniquely matches one candidate is canonicalized here, before any
             # validation, so both the gate and the committed event see formal
-            # names. Ambiguity/no-hit is rejected with the candidates listed.
-            intention = self._canonicalize_persons(a, intention)
+            # names. Ambiguity/no-hit is rejected with the candidates that
+            # would actually succeed for this action.
+            intention = self._canonicalize_persons(a, intention, seen_here)
+        elif intention.kind == "speak":
+            # Addressed speech is planned per addressee (ticket 46).
+            intention = self._canonicalize_speech(a, intention, seen_here)
         if a.pending is not None and intention.kind not in {"continue_action", "abandon_action"}:
             action = str(a.pending.get("payload", {}).get("action", "action"))
             interrupted_by = str(a.pending.get("interrupted_by", "unknown"))
@@ -1177,8 +1196,9 @@ class World:
             f"not executed: {self._tool_call_json(intention.kind, intention.args)} cannot start "
             f"while {activity} is in progress until {until}. The current action will finish "
             "automatically; do not use wait while busy, and only use continue_action/"
-            "abandon_action for a true interruption. Retry the "
-            f"same call after completion: {self._tool_call_json(intention.kind, intention.args)}.")
+            "abandon_action for a true interruption. 一个回合只应有一个耗时动作，把它留到下一回合："
+            "等当前动作完成后再提交 "
+            f"{self._tool_call_json(intention.kind, intention.args)}。")
         return ActionRejected(message, context={
             "busy_until": until, "current_action": action,
             "attempted_action": intention.kind})
@@ -1208,26 +1228,18 @@ class World:
             volume = x.get("volume", "normal")
             if volume not in {"whisper", "normal"}:
                 raise ActionRejected("volume 只能是 whisper（低声，仅指定对象听见）或 normal（全地点）。")
-            here = {other.id for other in self.actors.values() if other.location == a.location}
             targets = x.get("to")
             if targets is not None:
-                if not isinstance(targets, list) or not targets or not all(isinstance(t, str) for t in targets):
+                # The addressee list has already been through
+                # _canonicalize_speech, which keeps only reachable people and
+                # records the rest as `undelivered`; an empty list is a real
+                # outcome (everyone named had left), not a shape error.
+                if (not isinstance(targets, list)
+                        or not all(isinstance(t, str) for t in targets)
+                        or (not targets and not x.get("undelivered"))):
                     raise ActionRejected(
                         "to 必须是名字列表（在场的人，或 [\"陌生人\"] 向路人搭话）。",
                         context={"missing": "to"})
-                if "陌生人" in targets and (volume == "whisper" or not self.locations[a.location].open):
-                    reason = ("耳语不会传给尚未出现的路人" if volume == "whisper" else
-                              "当前地点封闭，路人听不到这里的话")
-                    raise ActionRejected(
-                        f"{reason}；未发起搭话。请在开放地点用 "
-                        f"{self._tool_call_json('speak', {'to': ['陌生人'], 'text': x['text'], 'volume': 'normal'})}。")
-                named = [t for t in targets if t != "陌生人"]
-                unknown = [t for t in named if t not in here]
-                if unknown:
-                    raise ActionRejected(
-                        f"speak recipient must be here; absent: {', '.join(unknown)}.",
-                        context={"absent": unknown, "recipient_unavailable": True,
-                                 "recipient_candidates": self._person_candidates(a)})
             elif volume == "whisper":
                 raise ActionRejected(
                     "低声说话必须用 to 指定你说过给谁听（同处一地的人）。",
@@ -1275,16 +1287,13 @@ class World:
                 raise ActionRejected(
                     "give needs an intended recipient in 'target'.",
                     context={"missing": "target",
-                             "recipient_candidates": self._person_candidates(a)})
+                             "recipient_candidates": self._present_others(a)})
             target = self._actor(target_id)
             if target.id == a.id or target.location != a.location:
                 raise ActionRejected(
-                    f"{target.id}不在这里，你没法把东西递给对方。",
+                    f"{target.id}不在这里，你没法把东西递给对方；东西还在你手里。",
                     context={"target": target.id, "recipient_unavailable": True,
-                             "recipient_candidates": sorted(
-                                 {other.id for other in self.actors.values()
-                                  if other.id != a.id and (other.location == a.location
-                                     or other.id in a.known_contacts)})})
+                             "recipient_candidates": self._present_others(a)})
             item = str(x.get("item"))
             if item not in a.inventory:
                 held = sorted(a.inventory)
@@ -1703,17 +1712,23 @@ class World:
         if actor_id not in self.actors: raise ActionRejected(f"unknown actor: {actor_id}")
         return self.actors[actor_id]
 
-    def _resolve_person(self, actor: ActorState, query: Any) -> tuple[str | None, str | None]:
+    def _resolve_person(self, actor: ActorState, query: Any,
+                        seen_here: Iterable[str] | None = None
+                        ) -> tuple[str | None, str | None]:
         """Name resolution for person arguments (V4-AGENT-INTERFACE T4).
 
         Candidates are the actor's own world: contact formal names, their
-        private aliases, and whoever is physically present. Exact match wins
-        silently; a fuzzy hit is used with a teaching note; ambiguity or
+        private aliases, whoever is physically present, and — ticket 46 —
+        whoever this turn's perception snapshot saw here, so a name the
+        decision could see never comes back as `unknown name`. Exact match
+        wins silently; a fuzzy hit is used with a teaching note; ambiguity or
         nothing is a rejection."""
         from .kb import resolve_name
         formal_names = set(actor.known_contacts)
         formal_names.update(other.id for other in self.actors.values()
                             if other.id != actor.id and other.location == actor.location)
+        if seen_here:
+            formal_names.update(str(name) for name in seen_here if name != actor.id)
         formal, formal_note = resolve_name(query, formal_names)
         if formal is not None and formal_note is None:
             return formal, None
@@ -1731,51 +1746,37 @@ class World:
                     "a registered personal nickname")
         return None, note
 
-    def _canonicalize_persons(self, actor: ActorState, intention: Intention) -> Intention:
-        """Rewrite person-name arguments to formal ids (T4/T3 裁决).
+    def _canonicalize_persons(self, actor: ActorState, intention: Intention,
+                              seen_here: Iterable[str] | None = None) -> Intention:
+        """Rewrite a single-target person name to its formal id (T4/T3 裁决).
 
-        ``text`` needs a contact row to go through; ``speak``/``give`` are
-        co-presence actions, so present actors are always candidates. Returns
-        the intention unchanged when nothing needs resolving."""
+        ``text`` needs a contact row to go through; ``give`` is a co-presence
+        action, so only someone physically here can be offered. A name that
+        resolves to nobody is still a rejection — the actor learns it
+        mis-named someone — and the candidate list it carries is the set that
+        would actually succeed for this action (ticket 46: a distant contact
+        must not be offered as a `give` target). Returns the intention
+        unchanged when nothing needs resolving."""
         args = dict(intention.args)
         changed = False
         for key in ("target",):
             query = args.get(key)
             if not isinstance(query, str) or not query.strip():
                 continue
-            resolved, note = self._resolve_person(actor, query)
+            resolved, note = self._resolve_person(actor, query, seen_here)
             if resolved is None:
+                # Ticket 46 / issue 39: the list must come from this judgement
+                # and every entry must succeed if it is resubmitted — a contact
+                # is always textable, but a hand-over needs someone here.
+                candidates = (self._message_targets(actor) if intention.kind == "text"
+                              else self._present_others(actor))
                 raise ActionRejected(
                     str(note),
                     context={key: query, "name_resolution": True,
-                             "recipient_candidates": self._person_candidates(actor)})
+                             "recipient_candidates": candidates})
             if resolved != query:
                 args[key] = resolved
                 changed = True
-        if intention.kind == "speak":
-            to = args.get("to")
-            if isinstance(to, list):
-                resolved_to, notes = [], []
-                for entry in to:
-                    if entry == "陌生人":
-                        # Ask-the-room token (ticket 22): routed to the extras
-                        # machinery, never name-resolved.
-                        resolved_to.append(entry)
-                        continue
-                    resolved, note = self._resolve_person(actor, entry)
-                    if resolved is None:
-                        notes.append(note or str(entry))
-                    else:
-                        resolved_to.append(resolved)
-                        if resolved != entry:
-                            changed = True
-                if notes:
-                    raise ActionRejected(
-                        f"unknown or ambiguous speak recipient: {'; '.join(notes)}",
-                        context={"unknown": notes, "name_resolution": True,
-                                 "recipient_candidates": self._person_candidates(actor)})
-                if resolved_to != to:
-                    args["to"] = resolved_to
         if not changed:
             return intention
         return Intention(intention.actor, intention.kind, args,
@@ -1783,15 +1784,118 @@ class World:
                          interrupt=intention.interrupt,
                          uninterruptable=intention.uninterruptable)
 
-    def _person_candidates(self, actor: ActorState) -> list[str]:
-        """Names this actor can personally address, never the global roster."""
+    def _stranger_token_blocked(self, actor: ActorState, volume: str) -> str | None:
+        """Why `陌生人` cannot be called on right now, or None when it can
+        (V4-AGENT-INTERFACE §2: an open place, normal volume)."""
+        if volume == "whisper":
+            return "whisper"
+        if not self.locations[actor.location].open:
+            return "closed"
+        return None
+
+    def _canonicalize_speech(self, actor: ActorState, intention: Intention,
+                             seen_here: Iterable[str] | None = None) -> Intention:
+        """Per-addressee delivery plan for one utterance (ticket 46).
+
+        Every addressee is resolved against the actor's own world **plus this
+        turn's perception snapshot** (so a name the decision saw always
+        resolves), then kept only if the world can still reach them. An
+        addressee who has left meanwhile, or a name that resolves to nobody,
+        is recorded on the committed action as ``undelivered`` with its reason
+        and reported back in the tool result; the other addressees keep the
+        words. One bad recipient never voids the sentence (d1-am turn 233:
+        辅导员's line to 班长, 下棋大爷 and 陈默 was dropped whole because
+        下棋大爷 had walked off).
+
+        `visible_to` stays authoritative: the effective `to` is what the
+        kernel commits and :meth:`_hearing_actors` still derives the audience
+        from live locations, so nobody is ever delivered to out of a
+        snapshot."""
+        args = dict(intention.args)
+        volume = str(args.get("volume", "normal"))
+        here = {other.id for other in self.actors.values()
+                if other.id != actor.id and other.location == actor.location}
+        requested = [str(entry) for entry in args.get("to") or ()]
+        delivered: list[str] = []
+        undelivered: list[dict[str, str]] = []
+        unresolved: list[str] = []
+        known: list[str] = []
+        strangers = False
+        stranger_reason: str | None = None
+        for name in requested:
+            if name == "陌生人":
+                # Ask-the-room token (ticket 22): routed to the extras
+                # machinery, never name-resolved.
+                reason = self._stranger_token_blocked(actor, volume)
+                if reason is None:
+                    strangers = True
+                else:
+                    stranger_reason = reason
+                    undelivered.append({"name": name, "reason": reason})
+                continue
+            resolved, note = self._resolve_person(actor, name, seen_here)
+            if resolved is None:
+                unresolved.append(note or f"unknown name '{name}'")
+                undelivered.append({"name": name, "reason": "unknown"})
+                continue
+            known.append(resolved)
+            if resolved in here:
+                if resolved not in delivered:
+                    delivered.append(resolved)
+            else:
+                undelivered.append({
+                    "name": resolved,
+                    "reason": "left" if seen_here and resolved in seen_here else "absent"})
+        if requested and not delivered and not strangers and not known:
+            # Nothing in the list exists: no addressee survived resolution, so
+            # there is no partial delivery to make. Keep the rejection (an
+            # unknown name is never silently rewritten, and the words are not
+            # spoken to the room instead) — the actor learns who it can name.
+            if requested == ["陌生人"]:
+                # The room token alone keeps its world rule: a passer-by cannot
+                # be called behind a closed door or by a whisper.
+                why = ("耳语不会传给尚未出现的路人" if stranger_reason == "whisper"
+                       else "当前地点封闭，路人听不到这里的话")
+                raise ActionRejected(
+                    f"{why}；未发起搭话。请在开放地点用 "
+                    f"{self._tool_call_json('speak', {'to': ['陌生人'], 'text': args.get('text', ''), 'volume': 'normal'})}。")
+            unknown = [f"unknown name '{name}'" for name in requested if name != "陌生人"]
+            notes = unresolved or unknown
+            if stranger_reason is not None:
+                notes = notes + ["耳语不会传给尚未出现的路人" if stranger_reason == "whisper"
+                                 else "当前地点封闭，路人听不到这里的话"]
+            raise ActionRejected(
+                f"unknown or ambiguous speak recipient: {'; '.join(notes)}",
+                context={"unknown": notes, "name_resolution": True,
+                         "recipient_candidates": self._present_others(actor)})
+        if requested or "to" in args:
+            args["to"] = delivered + (["陌生人"] if strangers else [])
+        if undelivered:
+            args["undelivered"] = undelivered
+        return Intention(intention.actor, intention.kind, args,
+                         intention.expected_version, inner=intention.inner,
+                         interrupt=intention.interrupt,
+                         uninterruptable=intention.uninterruptable)
+
+    def _present_others(self, actor: ActorState) -> list[str]:
+        """People physically here with the actor, never the global roster.
+
+        The candidate list for a presence-dependent action (`speak` sentence
+        delivery, `give` hand-over) uses exactly this set: a distant contact
+        could be named, but the words would not land and the object could not
+        be handed over, so offering one would be a suggestion that cannot
+        succeed (ticket 46: the d1-am 11:30 speak rejection offered 唐小岚 and
+        宿管阿姨, who were not in the room)."""
+        return sorted(other.id for other in self.actors.values()
+                      if other.id != actor.id and other.location == actor.location)
+
+    def _message_targets(self, actor: ActorState) -> list[str]:
+        """Expose only addressable people for `text`: a known contact or
+        someone here — every one of them can be messaged now, wherever they
+        stand. The world does not reveal its roster."""
         return sorted({other.id for other in self.actors.values()
                        if other.id != actor.id and (
                            other.id in actor.known_contacts or other.location == actor.location)})
-
-    def _message_targets(self, actor: ActorState) -> list[str]:
-        """Expose only addressable people; the world does not reveal its roster."""
-        return self._person_candidates(actor)
 
     def _require_location(self, location: str) -> None:
         if location not in self.locations: raise ValueError(f"unknown location: {location}")

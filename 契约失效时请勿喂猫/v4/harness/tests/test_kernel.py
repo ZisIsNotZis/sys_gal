@@ -753,5 +753,71 @@ class V4PhysicsTests(unittest.TestCase):
         self.assertNotIn("action_completed", b_seen)
 
 
+class RecipientSnapshotTests(unittest.TestCase):
+    """Ticket 46 at the kernel boundary: the turn's perception snapshot is the
+    judgement basis, delivery stays per addressee, and `visible_to` still says
+    who actually heard what."""
+
+    def _hall(self):
+        return World(start=datetime.fromisoformat("2026-03-16T11:09:00+08:00"),
+                     actors=[ActorState("班长", "教学楼"), ActorState("陈默", "教学楼"),
+                             ActorState("下棋大爷", "教学楼"),
+                             ActorState("辅导员", "辅导员办公室")],
+                     locations=[LocationState("教学楼"), LocationState("辅导员办公室")],
+                     routes={("教学楼", "辅导员办公室"): 60,
+                             ("辅导员办公室", "教学楼"): 60})
+
+    def test_a_departed_addressee_is_undelivered_never_heard(self):
+        """陈默 was here when 班长 decided and left before the chain ran: the
+        sentence is committed for the rest, 陈默 is recorded as `undelivered`,
+        and the snapshot never delivers the words to him."""
+        w = self._hall()
+        w.submit(Intention("陈默", "move", {"target": "辅导员办公室"}, w.version))
+        w.advance()
+        events = w.submit(Intention("班长", "speak", {
+            "text": "陈默，你先去敲门。", "volume": "normal",
+            "to": ["陈默", "下棋大爷"], "wait_response": False}, w.version),
+            seen_here=["陈默", "下棋大爷"])
+
+        started = next(e for e in events if e.kind == "action_started")
+        self.assertEqual(started.payload["undelivered"],
+                         [{"name": "陈默", "reason": "left"}])
+        speech = next(e for e in w.event_log if e.kind == "speech")
+        self.assertEqual(speech.payload["text"], "陈默，你先去敲门。")
+        self.assertEqual(speech.payload["to"], ["下棋大爷"])
+        self.assertEqual(speech.payload["heard"], ["下棋大爷"])
+        self.assertEqual(speech.visible_to, frozenset({"班长", "下棋大爷"}))
+
+    def test_whisper_to_a_departed_addressee_reaches_nobody(self):
+        """A whisper has no room audience: with its only addressee gone the
+        words stay with the speaker — the snapshot must not fake a listener
+        into `visible_to`."""
+        w = self._hall()
+        w.submit(Intention("陈默", "move", {"target": "辅导员办公室"}, w.version))
+        w.advance()
+        w.submit(Intention("班长", "speak", {
+            "text": "只跟你说。", "volume": "whisper", "to": ["陈默"],
+            "wait_response": False}, w.version), seen_here=["陈默"])
+
+        speech = next(e for e in w.event_log if e.kind == "speech")
+        self.assertEqual(speech.visible_to, frozenset({"班长"}))
+        self.assertEqual(speech.payload["heard"], [])
+        self.assertNotIn("to", speech.payload)
+
+    def test_a_remote_contact_is_reported_as_absent_not_unknown(self):
+        """The reason distinguishes a decision-snapshot departure (`left`)
+        from a known person who was never in this scene (`absent`) — neither
+        is a name-resolution failure."""
+        w = self._hall()
+        w.actors["班长"].known_contacts = {"辅导员"}
+        events = w.submit(Intention("班长", "speak", {
+            "text": "老师，我在楼下。", "volume": "normal", "to": ["辅导员"],
+            "wait_response": False}, w.version))
+
+        started = next(e for e in events if e.kind == "action_started")
+        self.assertEqual(started.payload["undelivered"],
+                         [{"name": "辅导员", "reason": "absent"}])
+
+
 if __name__ == "__main__": unittest.main()
 
