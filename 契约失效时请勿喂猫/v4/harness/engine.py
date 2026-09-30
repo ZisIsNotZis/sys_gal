@@ -123,6 +123,11 @@ class AsyncEngine:
         # Ticket 45: an NPC that was directly addressed and has not answered
         # yet keeps a debt row {actor: {at, from, nudged}} so a bounded-delay
         # nudge can grant a second decision chance (see _npc_debt_check).
+        # RULING (user, 2026-09-30): the debt is settled by a SPOKEN turn
+        # (speech/message_sent), NOT by any turn. 宿管阿姨 took read turns at
+        # 08:32/08:37 yet still slept 3h12m with the question unanswered; a
+        # "cleared by any turn" rule would leave this whole failure class
+        # unfixed. Do not relax this to "any turn clears".
         self._npc_owed: dict[str, dict[str, Any]] = {}
         self._wake_times: list[datetime] = []
         self._last_speech: dict[str, datetime] = {}
@@ -1345,9 +1350,11 @@ class AsyncEngine:
         new_events = self.world.event_log[self._npc_scan:]
         self._npc_scan = len(self.world.event_log)
         for event in new_events:
-            # Ticket 45: an NPC that opens its mouth (speech or a sent
-            # message) has answered whatever was addressed to it — the
-            # "owed response" debt is settled by a speaking turn.
+            # Ticket 45 RULING (user, 2026-09-30): the "owed response" debt is
+            # settled only by an NPC's SPOKEN turn — its speech / message_sent
+            # event. A read/wait turn does NOT settle it: 宿管阿姨 read at
+            # 08:32/08:37 and still slept 3h12m with the named question in her
+            # perception. Do not change this to "any turn clears".
             if (event.kind in {"speech", "message_sent"} and event.actor
                     and self._role(event.actor) == "npc"):
                 self._npc_owed.pop(event.actor, None)
@@ -1416,16 +1423,16 @@ class AsyncEngine:
 
     def _npc_debt_check(self) -> None:
         """Ticket 45: one bounded-delay nudge for an NPC that was directly
-        addressed and has not answered.
+        addressed and has not spoken back.
 
         The existing named-speech trigger wakes the NPC once, but if that
         turn reads/waits instead of replying, the question can sit unperceived
-        for hours (宿管阿姨, 3h12m). A debt is created when the NPC is named
-        (or messaged) and is settled by a speaking turn; here it grants a
-        second decision chance `owed_response_delay` sim-seconds later. It
-        only fires for an otherwise-idle, unqueued NPC and nudges once per
-        debt, so it never becomes a per-turn wake and consumes no cold-scene
-        wake budget."""
+        for hours (宿管阿姨, 3h12m). Per the user ruling a debt is opened when
+        the NPC is named (or messaged) and is settled ONLY by a spoken turn
+        (see _npc_triggers / _npc_owed); here it grants a second decision
+        chance `owed_response_delay` sim-seconds later. It only fires for an
+        otherwise-idle, unqueued NPC and nudges once per debt, so it never
+        becomes a per-turn wake and consumes no cold-scene wake budget."""
         now = self.world.now
         for npc, debt in list(self._npc_owed.items()):
             if npc not in self.world.actors or self._role(npc) != "npc":

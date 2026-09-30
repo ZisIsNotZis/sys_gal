@@ -264,5 +264,56 @@ class InnerHealthMetricTests(unittest.TestCase):
         self.assertEqual(report["疑似心声混进speech"], 2)
 
 
+class NpcSleepHealthMetricTests(unittest.TestCase):
+    """Ticket 45: the system-health block must surface a whole-day NPC sleep
+    (zero turns), not only the gap between turns — the gap metric alone made
+    the very failure class it was built for invisible."""
+
+    def _health(self, data):
+        return _load_module().health_report(data, 1)
+
+    def test_zero_turn_and_single_turn_npcs_are_named(self):
+        def npc_turn(actor, hour, minute):
+            return {"actor": actor, "role": "npc",
+                    "perception": {"time": _dt(hour, minute)}}
+
+        data = {
+            "agent_turns": [
+                {"actor": "陈默", "role": "mc", "perception": {"time": _dt(7, 0)}},
+                npc_turn("宿管阿姨", 7, 5),
+                npc_turn("宿管阿姨", 9, 30),        # 2h25m gap
+                npc_turn("陈默妈", 8, 0),            # only one turn today
+                # 食堂大妈: role is known from another day, zero turns today.
+                {"actor": "食堂大妈", "role": "npc",
+                 "perception": {"time": "2026-03-17T08:00:00+08:00"}},
+            ],
+            # 陈默爸 has a session but never turned in the whole artifact.
+            "sessions": {"陈默": {}, "宿管阿姨": {}, "陈默妈": {},
+                         "食堂大妈": {}, "陈默爸": {}},
+            "world_events": [],
+        }
+        report = self._health(data)
+        self.assertEqual(report["NPC最长沉寂（相邻回合间隔）"], "2h25m（宿管阿姨）")
+        zero = report["零回合NPC"]
+        self.assertIn("食堂大妈", zero)
+        self.assertIn("陈默爸", zero)
+        self.assertNotIn("宿管阿姨", zero)
+        self.assertEqual(zero.split("（")[0], "2")
+        self.assertEqual(report["回合最少NPC"], "1（陈默妈）")
+
+    def test_no_npc_turns_is_reported_as_zero_gap_with_the_roster(self):
+        data = {
+            "agent_turns": [
+                {"actor": "陈默", "role": "mc", "perception": {"time": _dt(7, 0)}},
+            ],
+            "sessions": {"陈默": {}, "宿管阿姨": {}},
+            "world_events": [],
+        }
+        report = self._health(data)
+        self.assertEqual(report["NPC最长沉寂（相邻回合间隔）"], "0")
+        self.assertEqual(report["零回合NPC"], "1（宿管阿姨）")
+        self.assertEqual(report["回合最少NPC"], "0")
+
+
 if __name__ == "__main__":
     unittest.main()

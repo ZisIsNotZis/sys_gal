@@ -1080,18 +1080,37 @@ def health_report(data, day: int):
         else:
             running[actor] = 0
     worst = max(sorted(longest_wait.items()), key=lambda item: item[1], default=("", 0))
-    # Ticket 45: longest NPC silence — the dorm-mother sleeps (3h12m / 2h13m in
-    # the d1 a.m. artifact) were invisible in the totals. Max gap between an
-    # NPC's consecutive turns that day, named so a single human read catches
-    # it. Printed for review, never a gate.
-    npc_turn_times: dict[str, list[str]] = {}
+    # Ticket 45: NPC-sleep observability. The d1 a.m. artifact hid two
+    # "nobody woke me" failures (宿管阿姨 3h12m / 陈默妈 2h13m) in the totals.
+    # Report three review-only readings: the longest gap between an NPC's
+    # consecutive turns (named), the NPC roster whose day has ZERO turns
+    # (named — a whole-day sleep is the real failure class), and the NPC with
+    # the FEWEST turns (catches a single-turn day). Printed for review, never
+    # a gate.
+    all_turns = data.get("agent_turns", [])
+    roles: dict[str, str] = {}
+    for turn in all_turns:
+        actor, role = str(turn.get("actor") or ""), str(turn.get("role") or "")
+        if actor and role:
+            roles.setdefault(actor, role)
+    mc_names = {a for a, r in roles.items() if r == "mc"}
+    extra_names = {a for a, r in roles.items() if r == "extra"}
+    # A persistent actor with a session and no MC/extra turn anywhere is an
+    # NPC, even if it never got a turn in the whole artifact.
+    npc_names = {a for a, r in roles.items() if r == "npc"}
+    npc_names |= {str(a) for a in (data.get("sessions") or {})} - mc_names - extra_names
+    counts: dict[str, int] = {}
+    npc_stamps: dict[str, list[str]] = {}
     for turn in turns:
-        if turn.get("role") == "npc":
-            stamp = str(turn.get("perception", {}).get("time", ""))
-            if stamp:
-                npc_turn_times.setdefault(str(turn.get("actor")), []).append(stamp)
+        if turn.get("role") != "npc":
+            continue
+        actor = str(turn.get("actor"))
+        counts[actor] = counts.get(actor, 0) + 1
+        stamp = str(turn.get("perception", {}).get("time", ""))
+        if stamp:
+            npc_stamps.setdefault(actor, []).append(stamp)
     silence_gap, silence_actor = 0, ""
-    for actor, stamps in npc_turn_times.items():
+    for actor, stamps in npc_stamps.items():
         ordered = sorted(stamps)
         for before, after in zip(ordered, ordered[1:]):
             gap = int((datetime.fromisoformat(after)
@@ -1100,6 +1119,12 @@ def health_report(data, day: int):
                 silence_gap, silence_actor = gap, actor
     silence = (f"{silence_gap // 3600}h{silence_gap % 3600 // 60:02d}m（{silence_actor}）"
                if silence_actor else "0")
+    quiet = sorted(npc_names - set(counts))
+    zero_turn = f"{len(quiet)}（{', '.join(quiet)}）" if quiet else "0"
+    fewest = "0"
+    if counts:
+        fewest_actor, fewest_count = min(sorted(counts.items()), key=lambda item: item[1])
+        fewest = f"{fewest_count}（{fewest_actor}）"
     return {"当日在册轮次": len(turns), "错误轮次": len(errs),
             "提供商HTTP错误": len(http), "标记泄漏条数": leak,
             "inner填充率": inner_rate,
@@ -1108,7 +1133,9 @@ def health_report(data, day: int):
             "首次看见登记": len(observed_events),
             "停滞提示次数": len(stagnation_turns),
             "最长连续wait": f"{worst[1]}（{worst[0]}）" if worst[0] else "0",
-            "NPC最长沉寂": silence}
+            "NPC最长沉寂（相邻回合间隔）": silence,
+            "零回合NPC": zero_turn,
+            "回合最少NPC": fewest}
 
 
 # ---------------------------------------------------------------- main
