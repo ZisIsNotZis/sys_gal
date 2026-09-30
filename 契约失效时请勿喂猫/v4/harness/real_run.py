@@ -200,6 +200,12 @@ def main() -> None:
         raise
     trace.finish(reason=reason, world=world)
     trace.save(world, output)
+    unread = trace.outcome.get("unread_notes") or []
+    if unread:
+        # Ticket 44: an undelivered note is a silent failure unless the run
+        # report says so. Name who left it and where it is still waiting.
+        print(f"note: {len(unread)} unread note(s) still pending at run end: "
+              + ", ".join(f"{note['author']}@{note['location']}" for note in unread))
     print(f"{output} reason={reason} events={len(world.event_log)} turns={len(trace.agent_turns)} time={world.now.isoformat()}")
 
 

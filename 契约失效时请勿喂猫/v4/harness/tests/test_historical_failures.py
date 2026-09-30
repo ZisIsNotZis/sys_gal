@@ -97,6 +97,23 @@ I43 chain path fed the repetition monitor None (ticket 43) ... test_chain_path_f
     consecutive waits as stagnation (its own threshold/stride, reset by a
     non-wait action or a location change), and list the character's real
     remaining actions. `sleep`/`text` stay exempt.
+I44 note left while the recipient is present goes nowhere .... test_leave_note_receipt_names_the_audience_and_offers_give,
+                                                               test_run_end_reports_undelivered_notes
+    d1-am artifact, turn 163 (09:51, 校史档案室, nearby_actors=['陈默']):
+    林瑶 left 陈默 a 借条; note_left #645 was the run's only note event —
+    陈默 left at 10:41 and no non-author ever entered the archive again, so
+    the note stayed pending forever. The note_read mechanism already existed
+    (kernel._consume_notes burns it for the next non-author entrant); the
+    defect was feedback and observability — the receipt did not name the
+    room of listeners or offer `give`, and an undelivered note left no trace
+    at run end. Fix: the receipt states the audience, names present people
+    and offers `give`; the run outcome (以及 real_run 打印) carries
+    `unread_notes`. Semantics unchanged (pinned before and after the fix by
+    test_world_pack: test_leave_note_waits_for_next_entry_and_hides_text_from_room,
+    test_note_is_delivered_privately_to_only_the_next_enterer,
+    test_note_author_reentry_preserves_own_note_for_a_later_reader):
+    read-once-and-burn, the author never consumes their own, co-located people
+    never get the content, the first non-author entrant gets the full text.
 I49 objective description was a one-shot snapshot ................ test_objective_observation (observed record/event,
     checkpoint round-trip, read fallback, stay-read, auto_read opt-out),
     test_historical_failures test_objective_description_survives_compaction
@@ -113,6 +130,7 @@ H3  failed/truncated artifact mislabeled as clean .............. test_trace_comp
 """
 
 import json
+import threading
 import time
 import unittest
 from datetime import datetime, timedelta
@@ -1690,6 +1708,111 @@ class ExtraCheckpointGates(unittest.TestCase):
         lines = [str(e.payload.get("text", "")) for e in world2.event_log
                  if e.kind == "speech" and e.actor == "韩大叔"]
         self.assertIn(self.ANSWER, lines)
+
+
+class NoteDeliveryGates(unittest.TestCase):
+    """I44 (ticket 44, user ruling 2026-09-30): a note is delivered only to
+    the next non-author entrant, and the author's receipt must say so.
+
+    In the d1-am artifact 林瑶 left 陈默 a 借条 while he stood in the same room
+    (turn 163, 09:51, nearby_actors=['陈默']); note_left #645 was the run's only
+    note event — 陈默 left at 10:41 and no non-author ever entered the archive
+    again, so the note stayed pending forever while the author got no signal.
+    The mechanism (kernel._consume_notes -> note_read) already existed; the
+    defect was the receipt and the invisibility of an undelivered note. The
+    delivery/privacy/author-reentry semantics are pinned by test_world_pack:
+    test_leave_note_waits_for_next_entry_and_hides_text_from_room,
+    test_note_is_delivered_privately_to_only_the_next_enterer,
+    test_note_author_reentry_preserves_own_note_for_a_later_reader."""
+
+    START = datetime.fromisoformat("2026-03-16T09:51:00+08:00")
+    NOTE = "借条：借出台风台账一份、移交存根一件，经手人：陈默（值班）。"
+
+    def _room(self):
+        from harness.kernel import ActorState, LocationState, World
+        return World(start=self.START,
+                     actors=[ActorState("林瑶", "校史档案室"),
+                             ActorState("陈默", "校史档案室"),
+                             ActorState("外人", "中庭")],
+                     locations=[LocationState("校史档案室"), LocationState("中庭")],
+                     routes={("校史档案室", "中庭"): 60,
+                             ("中庭", "校史档案室"): 60})
+
+    def test_leave_note_receipt_names_the_audience_and_offers_give(self):
+        """(a) With 陈默 present, the receipt states the audience, names the
+        people in the room, and offers the `give` path — without leaking the
+        note body to the author or to the co-located actor."""
+        from harness.engine import AsyncEngine
+
+        class _Agent:
+            session_obj = object()
+
+            def __init__(self):
+                self.delivered = []
+
+            def deliver_tool_results(self, results):
+                self.delivered.extend(results)
+
+            def consume_compaction(self):
+                return False
+
+            def session_snapshot(self):
+                return None
+
+        world = self._room()
+        agent = _Agent()
+        engine = AsyncEngine(world, {a: agent for a in world.actors},
+                             {a: PrivateState(a) for a in world.actors},
+                             Trace("v4-test", "ticket44-receipt"), None,
+                             decision_timeout=10, max_wall_seconds=30)
+        engine._scheduler_wake = threading.Event()
+        engine._stop_horizon = None
+        engine._execute_chain("林瑶", [{"name": "leave_note",
+                                        "arguments": {"text": self.NOTE},
+                                        "tool_call_id": "note-1"}],
+                              {"time": world.now.isoformat(), "events": []},
+                              world.affordances("林瑶"), world.version)
+
+        result = agent.delivered[0]
+        self.assertTrue(result["ok"])
+        receipt = str(result["text"])
+        # (1) Audience: people present do not see the content; the first later
+        #     non-author entrant reads the full text privately and burns it;
+        #     the author's own return does not consume it.
+        self.assertIn("在场", receipt)
+        self.assertIn("非作者", receipt)
+        self.assertIn("焚", receipt)
+        self.assertIn("返场", receipt)
+        # (2) The present person is named and `give` is offered as the path.
+        self.assertIn("陈默", receipt)
+        self.assertIn("give", receipt)
+        # The receipt never carries the note body.
+        self.assertNotIn(self.NOTE, receipt)
+        # The co-located actor perceives only that a note was left.
+        packet = world.poll("陈默")
+        self.assertNotIn(self.NOTE, str(packet["events"]))
+        self.assertFalse(any(e["kind"] == "note_read" for e in packet["events"]))
+
+    def test_run_end_reports_undelivered_notes(self):
+        """(d) A note still pending at the run endpoint is observable: the
+        outcome carries the unread notes; once a non-author enters and burns
+        it, the next run-end report is empty."""
+        world = self._room()
+        world.submit(Intention("林瑶", "leave_note", {"text": self.NOTE},
+                               world.version))
+        world.advance()
+        trace = Trace("v4-test", "ticket44-unread")
+        trace.finish(reason="stop_at_reached", world=world)
+        pending = trace.outcome["unread_notes"]
+        self.assertEqual([(n["author"], n["location"], n["text"]) for n in pending],
+                         [("林瑶", "校史档案室", self.NOTE)])
+        self.assertEqual(pending[0]["left_at"], world.now.isoformat())
+
+        world.submit(Intention("外人", "move", {"target": "校史档案室"},
+                               world.version))
+        world.advance()
+        trace.finish(reason="stop_at_reached", world=world)
+        self.assertEqual(trace.outcome["unread_notes"], [])
 
 
 if __name__ == "__main__":

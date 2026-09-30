@@ -87,7 +87,13 @@ class Trace:
         self.gm_turns.append(deepcopy(record))
 
     def finish(self, *, reason: str, world: World) -> None:
-        self.outcome = {"reason": reason, "time": world.now.isoformat(), "world_version": world.version}
+        # Ticket 44: surface every still-pending room note in the outcome so an
+        # undelivered note (left to someone who was already in the room, or to
+        # someone who never came back) is observable after the run instead of
+        # only by reading the trajectory by hand.
+        self.outcome = {"reason": reason, "time": world.now.isoformat(),
+                        "world_version": world.version,
+                        "unread_notes": world.pending_notes()}
 
     def fail(self, *, reason: str, world: World, error: BaseException) -> None:
         """Record an aborted run without fabricating a world action."""

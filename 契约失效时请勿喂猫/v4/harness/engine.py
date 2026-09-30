@@ -826,7 +826,8 @@ class AsyncEngine:
             message = f"{message} Possible next steps: {'; '.join(exc.alternatives)}."
         return message
 
-    def _tool_yield(self, name: str, args: Mapping[str, Any], world: World) -> str:
+    def _tool_yield(self, name: str, args: Mapping[str, Any], world: World,
+                    actor_id: str) -> str:
         """The caller-facing yield of a world action (V4-AGENT-INTERFACE §3):
         most actions yield nothing beyond the world's reaction; read and
         compare carry their content/verdict in the tool result."""
@@ -843,12 +844,40 @@ class AsyncEngine:
                 content = f"{content}\n（记录上还有：{notes}）" if content else notes
             return content or "（这份记录没有可读的正文。）"
         if name == "leave_note":
-            return "字条已留下；作者再次进入不会读到自己的字条，之后第一位非作者进入者会私下读到全文。"
+            return self._leave_note_yield(world, actor_id)
         if name == "trash":
             return "已销毁。"
         if name == "place":
             return "已放在这里，他人可见可拿。"
         return "ok"
+
+    def _leave_note_yield(self, world: World, actor_id: str) -> str:
+        """Ticket 44: the receipt must state the note's real audience.
+
+        A note's semantics (user ruling 2026-09-22) are: the first non-author
+        who later enters reads the full text privately and the note burns;
+        people already in the room never see the content, and the author's own
+        return does not consume the note. The old receipt stated the delivery
+        rule but nothing about the room, so an author who meant to hand a paper
+        to the person standing next to them got a silent, undeliverable note
+        (d1-am: 林瑶 left 陈默 a 借条 at 09:51 while he was present, and no
+        non-author ever entered the archive again). The receipt therefore also
+        names whoever is here and offers the reachable path — `give` — instead
+        of letting a note stand in for a face-to-face handover."""
+        actor = world.actors[actor_id]
+        present = sorted(other.id for other in world.actors.values()
+                         if other.id != actor_id and other.location == actor.location)
+        receipt = ("字条已留下。它只对未来的进入者生效：此刻在场的任何人都看不到你写的内容；"
+                   "只有你之后第一位进入这里的非作者会私下读到全文，读完即焚。"
+                   "你自己返场不算读者——不会读到它，也不会烧掉它。")
+        if present:
+            give_hint = "；".join(
+                World._tool_call_json("give", {"item": "<你手里的东西>", "target": name})
+                for name in present)
+            receipt += (f" 现在和你同在{actor.location}的还有：{'、'.join(present)}——"
+                        "按上面的规则，他们都不会读到你留的这张条；"
+                        f"若你要把东西当面交给在场的人，改用 give 当面交付：{give_hint}。")
+        return receipt
 
     def _remember_lines(self, actor_id: str, perception: dict) -> None:
         """Feed the actor's flashback pool with its delivered public lines."""
@@ -962,7 +991,7 @@ class AsyncEngine:
                 world.submit(Intention(actor_id, name, args, world.version))
                 world_actions += 1
                 results.append({"tool_call_id": call.get("tool_call_id"), "ok": True,
-                                "text": self._tool_yield(name, args, world)})
+                                "text": self._tool_yield(name, args, world, actor_id)})
                 if a.busy_until and a.busy_until > world.now:
                     # The chain's own committed time: advance to the action's
                     # completion so the next call starts after it — clamped to

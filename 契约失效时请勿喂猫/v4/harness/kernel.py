@@ -1829,6 +1829,24 @@ class World:
                           "readers": [reader_id]},
                          cause)
 
+    def pending_notes(self) -> list[dict[str, Any]]:
+        """Still-unread room notes, for the run-end report (ticket 44).
+
+        A note is pending while it sits in a location's notes list; it leaves
+        that list (and this report) only when a non-author entrant consumes it.
+        Mechanism choice: the smallest observable signal for an undelivered
+        note is to record it in the run outcome at the endpoint — no new event
+        (note_read already exists), no clock-side reminder. A future run that
+        leaves a note standing shows ``outcome["unread_notes"]``; the d1-am
+        artifact's 林瑶→陈默 借条 (note_left #645, never read) is exactly the
+        case this makes visible."""
+        return [{"location": location_id,
+                 "author": note.get("author"),
+                 "left_at": note.get("left_at"),
+                 "text": note.get("text")}
+                for location_id, location in sorted(self.locations.items())
+                for note in location.notes]
+
     def _present_items(self, actor: ActorState) -> tuple[list[str], list[str]]:
         here = sorted(item for item, location in self.item_locations.items()
                       if location == actor.location)
