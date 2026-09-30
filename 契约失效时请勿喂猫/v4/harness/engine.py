@@ -47,6 +47,13 @@ from .repetition import RepetitionMonitor
 
 AgentFn = Callable[[PrivateState, dict, list[dict]], Any]
 
+# Ticket 53: the absolute cap on how long the scheduler may leave a horizon
+# frozen waiting for the slowest thinker. The freeze rule (V4-ENGINE §2.3)
+# still waits for a decision that is in flight, but never indefinitely: past
+# this bound the world (owed a progress step) moves on and the late decision
+# is committed at the current clock (never backdated).
+DEFAULT_FREEZE_TOLERANCE_SECONDS = 120.0
+
 # Ticket 46: why a named addressee could not receive the words, in world
 # language. They come from the kernel's per-addressee plan (`undelivered` on
 # the committed action) — never from a second guess at the recipient set.
@@ -149,6 +156,14 @@ def _as_float(value: Any, what: str = "value") -> float:
         raise ValueError(f"invalid {what}: {value!r}") from exc
 
 
+def _discard_task_exception(task: asyncio.Future) -> None:
+    """Retrieve an abandoned task's outcome so asyncio never warns about an
+    unretrieved exception from a hung decision we stopped waiting on."""
+    if task.cancelled():
+        return
+    task.exception()
+
+
 def _knowledge_line_description(line: str) -> str | None:
     """The description half of a rendered knowledge line `[label]: desc`.
 
@@ -172,7 +187,9 @@ class AsyncEngine:
                  extra_idle_seconds: int = 600,
                  cold_ticks: int = 6, npc_wake_budget: int = 12,
                  owed_response_delay: int = 600,
-                 stall_budget_ratio: float = 0.25,
+                 stall_threshold_seconds: float = 300.0,
+                 freeze_tolerance_seconds: float | None = None,
+                 hung_tolerance_seconds: float | None = None,
                  max_transient_failures: int = 3,
                  kb_seeds: Mapping[str, list[dict]] | None = None,
                  director_brief: Callable[[str], str | None] | None = None,
@@ -196,7 +213,29 @@ class AsyncEngine:
         self.cold_ticks = _as_int(cold_ticks, 'cold_ticks')
         self.npc_wake_budget = _as_int(npc_wake_budget, 'npc_wake_budget')
         self.owed_response_delay = _as_int(owed_response_delay, 'owed_response_delay')
-        self.stall_budget_ratio = _as_float(stall_budget_ratio, 'stall_budget_ratio')
+        # Ticket 53: the stall gate is CONSECUTIVE NO-PROGRESS wall time, not
+        # accumulated freeze time, so a healthy slow run never trips it. It is
+        # a backstop behind the bounded decision/horizon timeouts below.
+        self.stall_threshold_seconds = _as_float(stall_threshold_seconds, 'stall_threshold_seconds')
+        if self.stall_threshold_seconds <= 0:
+            raise ValueError('stall_threshold_seconds must be positive')
+        # Ticket 53: how long the scheduler tolerates one horizon staying
+        # frozen before it releases it (V4-ENGINE §2.3/§6). Bounded by the
+        # decision budget and by a small absolute cap, so one decision can
+        # never pin the world clock indefinitely.
+        self.freeze_tolerance = (
+            min(self.decision_timeout, DEFAULT_FREEZE_TOLERANCE_SECONDS)
+            if freeze_tolerance_seconds is None
+            else _as_float(freeze_tolerance_seconds, 'freeze_tolerance_seconds'))
+        if self.freeze_tolerance <= 0:
+            raise ValueError('freeze_tolerance_seconds must be positive')
+        # Ticket 53: how long the actor loop waits for a decision whose own
+        # deadline already passed before detaching it and acting again.
+        self.hung_tolerance = (
+            self.decision_timeout if hung_tolerance_seconds is None
+            else _as_float(hung_tolerance_seconds, 'hung_tolerance_seconds'))
+        if self.hung_tolerance <= 0:
+            raise ValueError('hung_tolerance_seconds must be positive')
         self.max_transient_failures = _as_int(max_transient_failures, 'max_transient_failures')
         self.stop_reason: str | None = None
         # CAST state (V4-CAST): NPC wake reasons, extras, cold-scene bookkeeping.
@@ -235,6 +274,19 @@ class AsyncEngine:
         self._repetition = RepetitionMonitor()
         # Live-loop state (rebuilt in run()).
         self._inflight: dict[str, datetime] = {}
+        # Ticket 53: wall-clock start of each in-flight decision (the release
+        # rule measures the freeze in wall seconds) and the pre-decision
+        # session snapshot used to isolate an abandoned hung call (its thread
+        # keeps mutating the old session object; the actor resumes on a copy).
+        self._inflight_wall: dict[str, float] = {}
+        # Ticket 53: decisions whose horizon bound has been released — they no
+        # longer hold the clock (so the world may advance to a stop_at over
+        # them) but are still deciding, so they cannot be counted as owing a
+        # fresh turn either.
+        self._released_inflight: set[str] = set()
+        self._hung_snapshot: dict[str, Any] = {}
+        self._last_progress_wall = time.monotonic()
+        self._last_progress_world: datetime = world.now
         self._hung: dict[str, asyncio.Task] = {}
         self._heartbeat_jobs: dict[str, int] = {}
         self._force_turn: set[str] = set()
@@ -266,7 +318,11 @@ class AsyncEngine:
         self._wake_events = {actor: asyncio.Event() for actor in self.world.actors}
         self._scheduler_wake = asyncio.Event()
         self._wall_started = time.monotonic()
-        self._stall_seconds = 0.0
+        self._last_progress_wall = time.monotonic()
+        self._last_progress_world = self.world.now
+        self._inflight_wall.clear()
+        self._released_inflight.clear()
+        self._hung_snapshot.clear()
         self._world_stops_seen = False
         # world_stops 闩锁地板（issue 26）：检查点日志里已消费的历史标记
         # （时刻 <= 本轮起点）不再触发停机；只有未来的日界标记才置闩。
@@ -368,7 +424,47 @@ class AsyncEngine:
     def _finish(self, reason: str) -> None:
         if self.stop_reason is None:
             self.stop_reason = reason
-            print(f"[engine] stop: {reason}", flush=True)
+            # Ticket 53: a stop must be diagnosable without reconstructing
+            # the scene from the checkpoint — who was in flight, since when,
+            # how long they had waited, when the world last progressed, and
+            # which stall definition/threshold fired.
+            diagnostic = self._stop_diagnostic(reason)
+            print(f"[engine] stop: {reason} "
+                  f"{json.dumps(diagnostic, ensure_ascii=False)}", flush=True)
+            try:
+                self.trace.record_system({"kind": "engine_stop_diagnostic"}, diagnostic)
+            except Exception as exc:  # a diagnostic must never mask the stop
+                print(f"[engine] stop diagnostic record failed: {exc}", flush=True)
+
+    def _stop_diagnostic(self, reason: str) -> dict[str, Any]:
+        wall_now = time.monotonic()
+        inflight: list[dict[str, Any]] = []
+        for actor, wake in self._inflight.items():
+            started = self._inflight_wall.get(actor)
+            inflight.append({
+                "actor": actor,
+                "started_world": wake.isoformat(),
+                "waited_seconds": (round(wall_now - started, 1)
+                                   if started is not None else None),
+                "horizon_released": actor in self._released_inflight,
+            })
+        inflight.sort(key=lambda row: row["actor"])
+        return {
+            "reason": reason,
+            "world_now": self.world.now.isoformat(),
+            "wall_elapsed_seconds": round(wall_now - self._wall_started, 1),
+            "seconds_since_progress": round(wall_now - self._last_progress_wall, 1),
+            "last_progress_world": self._last_progress_world.isoformat(),
+            "inflight": inflight,
+            "extra_inflight": sorted(self._extra_inflight),
+            "stall_definition": ("wall seconds since the last world advance or "
+                                 "completed turn (consecutive no-progress)"),
+            "stall_threshold_seconds": self.stall_threshold_seconds,
+            "freeze_tolerance_seconds": self.freeze_tolerance,
+            "decision_timeout_seconds": self.decision_timeout,
+            "hung_tolerance_seconds": self.hung_tolerance,
+            "turns": self._turns,
+        }
 
     # ------------------------------------------------------------ scheduler
 
@@ -378,9 +474,11 @@ class AsyncEngine:
                     time.monotonic() - self._wall_started > self.max_wall_seconds:
                 self._finish("wall_clock_deadline_reached")
                 break
-            if self.max_wall_seconds is not None and \
-                    self._stall_seconds > self.stall_budget_ratio * self.max_wall_seconds:
-                self._finish("stall_budget_exceeded")
+            if self._stall_exceeded():
+                # Ticket 53: consecutive no-progress wall time, not the sum of
+                # every freeze. A healthy but slow run keeps stepping and
+                # never reaches this backstop.
+                self._finish("stall_no_progress")
                 break
             if self._turns >= self.max_turns:
                 self._finish("max_turns_reached")
@@ -423,19 +521,26 @@ class AsyncEngine:
             if bound is not None and next_event > bound:
                 # Freeze point (V4-ENGINE §2.3): world progress is owed but a
                 # decision is in flight. Wait until the oldest in-flight wake
-                # resolves (its submission pops it from _inflight); account
-                # the stall in wall seconds (§6). The 2 s poll bounds any
-                # lost-signal race.
-                started = time.monotonic()
-                target = min(self._inflight.values())
-                while self.stop_reason is None and self._inflight and \
-                        min(self._inflight.values()) == target:
+                # resolves (its submission pops it from _inflight); the
+                # release rule (ticket 53) stops one hung decision from
+                # pinning the clock forever. The poll bounds any lost-signal
+                # race and keeps the stall backstop timely.
+                target = min(self._active_inflight().values())
+                while self.stop_reason is None:
+                    if self._stall_exceeded():
+                        self._finish("stall_no_progress")
+                        break
+                    if self._release_stale_inflight():
+                        break
+                    active = self._active_inflight()
+                    if not active or min(active.values()) != target:
+                        break
                     self._scheduler_wake.clear()
                     try:
-                        await asyncio.wait_for(self._scheduler_wake.wait(), timeout=2.0)
+                        await asyncio.wait_for(self._scheduler_wake.wait(),
+                                               timeout=self._freeze_poll())
                     except asyncio.TimeoutError:
                         pass
-                self._stall_seconds += time.monotonic() - started
                 continue
             if self._has_pending_turns():
                 # Ready actors must act at the current moment; never advance
@@ -447,13 +552,23 @@ class AsyncEngine:
             await asyncio.sleep(0)
 
     def _any_ready(self) -> bool:
-        return any(self._ready_now(actor) for actor in self._persistent_actors())
+        # A decision whose horizon was released (ticket 53) no longer counts
+        # as owing a turn: its loop is still blocked on the hung call, so it
+        # cannot act at the current moment and must not gate quiescence.
+        return any(self._ready_now(actor) and actor not in self._released_inflight
+                   for actor in self._persistent_actors())
+
+    def _active_inflight(self) -> dict[str, datetime]:
+        """In-flight decisions that still bound the world clock (a released
+        decision no longer does)."""
+        return {actor: wake for actor, wake in self._inflight.items()
+                if actor not in self._released_inflight}
 
     def _quiescent(self) -> bool:
         """True when no actor can still create an event on its own. An extra
         with an answer in flight still owns an event (ticket 22) — the clock
         must not jump to stop_at over its head."""
-        return (not self._inflight and not self._extra_inflight
+        return (not self._active_inflight() and not self._extra_inflight
                 and not self._has_pending_turns() and not self._any_ready())
 
     def _has_pending_turns(self) -> bool:
@@ -477,9 +592,124 @@ class AsyncEngine:
     def _horizon_bound(self) -> datetime | None:
         """Process events only up to the oldest in-flight wake + 1 tick
         (V4-ENGINE §2.3)."""
-        if not self._inflight:
+        active = self._active_inflight()
+        if not active:
             return None
-        return min(self._inflight.values()) + timedelta(seconds=TICK_SECONDS)
+        return min(active.values()) + timedelta(seconds=TICK_SECONDS)
+
+    # ------------------------------------------------- ticket 53 accounting
+
+    def _note_progress(self) -> None:
+        """Ticket 53: stall = wall time since the last world progress.
+
+        Progress is any clock advance or any completed turn — not accumulated
+        freeze time. A run that keeps stepping (even slowly) refreshes this
+        every turn and never trips the stall backstop."""
+        self._last_progress_wall = time.monotonic()
+        self._last_progress_world = self.world.now
+
+    def _stall_exceeded(self) -> bool:
+        return time.monotonic() - self._last_progress_wall > self.stall_threshold_seconds
+
+    def _freeze_poll(self) -> float:
+        """Bound the freeze-wait poll so the release rule and the stall
+        backstop stay timely even when their bounds are short (tests) instead
+        of the 2 s default."""
+        remaining = self.stall_threshold_seconds - (time.monotonic() - self._last_progress_wall)
+        return max(0.05, min(2.0, remaining, self.freeze_tolerance))
+
+    def _clear_inflight(self, actor_id: str) -> None:
+        self._inflight.pop(actor_id, None)
+        self._inflight_wall.pop(actor_id, None)
+        self._released_inflight.discard(actor_id)
+
+    def _release_stale_inflight(self) -> bool:
+        """Ticket 53: one in-flight decision must not pin the world clock.
+
+        Once an in-flight decision has waited past ``freeze_tolerance`` wall
+        seconds, stop bounding the horizon by it: the world (owed a progress
+        step) moves on, and the actor's own ``decision_timeout`` still governs
+        its turn (its late intention commits at the current world time, never
+        backdated — V4-ENGINE §2.3)."""
+        wall_now = time.monotonic()
+        stale = [actor for actor, started in self._inflight_wall.items()
+                 if actor in self._inflight
+                 and actor not in self._released_inflight
+                 and wall_now - started >= self.freeze_tolerance]
+        for actor in stale:
+            started = self._inflight_wall.get(actor, wall_now)
+            wake = self._inflight.get(actor)
+            self._released_inflight.add(actor)
+            diagnostic = {
+                "actor": actor,
+                "started_world": wake.isoformat() if wake is not None else None,
+                "waited_seconds": round(wall_now - started, 1),
+                "freeze_tolerance_seconds": self.freeze_tolerance,
+            }
+            print(f"[engine] in-flight decision released after "
+                  f"{diagnostic['waited_seconds']:.0f}s: {actor}", flush=True)
+            try:
+                self.trace.record_system({"kind": "inflight_released"}, diagnostic)
+            except Exception:
+                pass
+        if stale:
+            self._scheduler_wake.set()
+        return bool(stale)
+
+    def _pre_decide_snapshot(self, actor_id: str, v4: bool) -> None:
+        """Ticket 53: copy the v4 session before its decision so a hung call
+        abandoned after the residual wait is isolated — its thread keeps
+        mutating the old session object while the actor resumes on a clean
+        copy (never two live writers on one transcript)."""
+        self._hung_snapshot.pop(actor_id, None)
+        if not v4:
+            return
+        snapshot_fn = getattr(self.agents[actor_id], "session_snapshot", None)
+        if snapshot_fn is not None:
+            self._hung_snapshot[actor_id] = snapshot_fn()
+
+    def _record_decision_abandoned(self, actor_id: str, result: str,
+                                   error: str | None, waited: float) -> None:
+        diagnostic = {
+            "actor": actor_id,
+            "result": result,
+            "error": error,
+            "waited_seconds": round(waited, 1),
+            "decision_timeout_seconds": self.decision_timeout,
+            "inflight": sorted(self._inflight),
+        }
+        print(f"[engine] decision {result} for {actor_id} after "
+              f"{diagnostic['waited_seconds']:.0f}s", flush=True)
+        try:
+            self.trace.record_system({"kind": "decision_abandoned"}, diagnostic)
+        except Exception:
+            pass
+
+    def _abandon_hung(self, actor_id: str, task: "asyncio.Task") -> None:
+        """Ticket 53: the residual call outlived its grace. Detach it, restore
+        the pre-decision session so two writers never share one transcript,
+        and let the actor take its next turn."""
+        snapshot = self._hung_snapshot.pop(actor_id, None)
+        restored = False
+        if snapshot is not None:
+            restore = getattr(self.agents.get(actor_id), "restore_session", None)
+            if restore is not None:
+                try:
+                    restore(snapshot)
+                    restored = True
+                except Exception as exc:
+                    print(f"[engine] session restore after hung decision failed for "
+                          f"{actor_id}: {type(exc).__name__}: {exc}", flush=True)
+        task.add_done_callback(_discard_task_exception)
+        diagnostic = {"actor": actor_id,
+                      "hung_tolerance_seconds": self.hung_tolerance,
+                      "session_restored": restored}
+        print(f"[engine] hung decision abandoned for {actor_id} "
+              f"(waited > {self.hung_tolerance:.0f}s)", flush=True)
+        try:
+            self.trace.record_system({"kind": "hung_decision_abandoned"}, diagnostic)
+        except Exception:
+            pass
 
     def _reminder_scan(self) -> None:
         """Schedule open scheduled rows (`!at=` keys) as kernel queue jobs
@@ -500,6 +730,7 @@ class AsyncEngine:
                     actor_id, row.at, rid, row.desc, format_reminder_time(row.at))
 
     def _after_advance(self) -> None:
+        self._note_progress()
         for event in self.world.event_log[self._rep_scan:]:
             if event.kind == "message_delivered":
                 self._repetition.note_message_received(
@@ -574,8 +805,15 @@ class AsyncEngine:
             try:
                 hung = self._hung.pop(actor_id, None)
                 if hung is not None:
+                    # Ticket 53: a timed-out call may still be running. Wait a
+                    # bounded residual time for it to finish, then detach it
+                    # and let the actor act again — a dead thread must not
+                    # retire the character for good.
                     try:
-                        await hung  # a timed-out call must finish before the next turn
+                        await asyncio.wait_for(asyncio.shield(hung),
+                                               timeout=self.hung_tolerance)
+                    except asyncio.TimeoutError:
+                        self._abandon_hung(actor_id, hung)
                     except Exception:
                         pass
                 while not self._ready_now(actor_id):
@@ -598,7 +836,7 @@ class AsyncEngine:
                                          {"actor": actor_id,
                                           "error": f"{type(exc).__name__}: {exc}"})
                 self._force_turn.discard(actor_id)
-                self._inflight.pop(actor_id, None)
+                self._clear_inflight(actor_id)
                 self._scheduler_wake.set()
                 await asyncio.sleep(0.1)
 
@@ -626,8 +864,10 @@ class AsyncEngine:
         npc_reason = self._npc_pending.pop(actor_id, None)
         version_before = world.version
         self._inflight[actor_id] = world.now
+        self._inflight_wall[actor_id] = time.monotonic()
         loop = asyncio.get_running_loop()
         v4 = hasattr(self.agents[actor_id], "session_obj")
+        self._pre_decide_snapshot(actor_id, v4)
         if v4:
             knowledge_lines = self._knowledge_lines(actor_id, perception, affordances)
             self._sync_contacts(actor_id)
@@ -670,15 +910,17 @@ class AsyncEngine:
             # Silent abandonment (V4-ENGINE §3): 发呆, pending auto-continues,
             # timer re-arms, failure +1. The world never waits for a dead call.
             self._hung[actor_id] = decide_task
-            self._inflight.pop(actor_id, None)
+            waited = time.monotonic() - self._inflight_wall.get(actor_id, time.monotonic())
+            self._clear_inflight(actor_id)
             self._scheduler_wake.set()
             self._failures[actor_id] = self._failures.get(actor_id, 0) + 1
+            self._record_decision_abandoned(actor_id, result, error, waited)
             self._recovery(actor_id, perception, affordances, intention, result, error,
                            version_before, npc_reason)
             if self._all_failed():
                 self._finish("all_agents_failed")
             return
-        self._inflight.pop(actor_id, None)
+        self._clear_inflight(actor_id)
         self._failures[actor_id] = 0
         self._scheduler_wake.set()
         if v4:
@@ -698,6 +940,7 @@ class AsyncEngine:
                                 spoken_text=spoken_text, turn_inner=turn_inner)
         else:
             self._submit(actor_id, perception, affordances, intention, version_before)
+        self._note_progress()
         self._rearm_heartbeat(actor_id)
 
     def _decide_v4(self, actor_id: str, world_message_text: str):

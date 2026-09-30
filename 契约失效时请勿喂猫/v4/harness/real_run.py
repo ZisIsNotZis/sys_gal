@@ -36,8 +36,12 @@ def main() -> None:
     # (V4-AGENT-INTERFACE §0) and no persona primer (KB rows carry identity).
     provider = provider_from_env(
         max_concurrency=min(len(world.actors), env_int("V3_PROVIDER_CONCURRENCY", 8)))
-    decision_timeout = provider.worst_case_seconds() * 8 + 5.0
-    if decision_timeout <= provider.worst_case_seconds() * 8:
+    # Ticket 53: one decision may not wait longer than the provider's own
+    # worst case plus a small margin — NOT a multiple of it (the old ×8 made
+    # the deadline ~72 min and put it above the stall budget it was meant to
+    # precede).
+    decision_timeout = provider.worst_case_seconds() + env_float("V4_DECISION_MARGIN_SECONDS", 60.0)
+    if decision_timeout <= provider.worst_case_seconds():
         raise RuntimeError("provider decision budget is not bounded")
     # V4-CAST §1/§3: MCs get full persistent sessions; NPCs get event-driven
     # director-briefed agents (world knowledge + public MC digest per wake).
@@ -101,7 +105,13 @@ def main() -> None:
                          max_transient_failures=env_int("V3_MAX_TRANSIENT_FAILURES", 3),
                          max_wall_seconds=max_wall,
                          mc_idle_heartbeat=env_int("V4_MC_IDLE_HEARTBEAT", 1800),
-                         stall_budget_ratio=env_float("V4_STALL_BUDGET_RATIO", 0.25),
+                         # Ticket 53: stall = consecutive no-progress wall time;
+                         # the horizon release and the residual hung-call wait
+                         # are separately bounded so one hung decision can
+                         # neither pin the clock nor retire the character.
+                         stall_threshold_seconds=env_float("V4_STALL_SECONDS", 300.0),
+                         freeze_tolerance_seconds=env_float("V4_FREEZE_TOLERANCE_SECONDS", 120.0),
+                         hung_tolerance_seconds=env_float("V4_HUNG_TIMEOUT_SECONDS", 60.0),
                          checkpoint=checkpoint, extra_call=provider,
                          kb_seeds=pack.kb, director_brief=director_brief)
     holder["runner"] = runner

@@ -297,8 +297,10 @@ contacts:
 | `idle_slice_seconds` | 60（1 tick） | 无世界动作回合的发呆时长 |
 | `tick` | 60 秒（config） | 时间最小粒度：最短动作时长、投递延迟、决策视界、常识预算单位 |
 | `batch_persistent_failure` | 3 连败（每角色） | 僵局闸门：该角色弃权发呆，世界不停（V4-ENGINE §6） |
-| `decision_timeout` | 60 秒 | 单次意图等待上限，超时 = 静默弃权（V4-ENGINE §3） |
-| `stall_budget_ratio` | 0.25 | 冻结占墙钟预算超此比例 → 诚实终止（V4-ENGINE §6） |
+| `decision_timeout` | provider 最坏情况 + 60s | 单次意图等待上限，超时 = 静默弃权（V4-ENGINE §3/§6） |
+| `stall_threshold_seconds` | 300 秒 | 连续无进展的墙钟上限（`V4_STALL_SECONDS`）→ `stall_no_progress`（V4-ENGINE §6） |
+| `freeze_tolerance` | min(`decision_timeout`, 120 秒) | 冻结点等待一个在飞决定的上限（`V4_FREEZE_TOLERANCE_SECONDS`）：超界释放视界，世界继续（V4-ENGINE §2.3/§6） |
+| `hung_tolerance` | 60 秒 | `await hung` 残留等待上限（`V4_HUNG_TIMEOUT_SECONDS`）：超界放弃该调用并恢复会话，角色继续行动（V4-ENGINE §6） |
 | `mc_idle_heartbeat` | 30 分钟 | MC 无事件时的空闲唤醒间隔（NPC/extra 无） |
 | `extra_idle_timeout` | 10 分钟 | extra 沉默销毁阈值 |
 | `realtime_ratio` | 0 | r 旋钮：思考延迟×r 计入模拟时间；r>0 失去种子确定性（V4-ENGINE §5） |

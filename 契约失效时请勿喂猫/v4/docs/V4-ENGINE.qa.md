@@ -3,7 +3,7 @@
 验证方式：fresh-context reviewer（无泄漏、仅凭 V4-ENGINE.md 单文）作答，作者核对一致；发现项已回修源文档。维护规则：改 V4-ENGINE.md 时同步核对下列问答仍成立。
 
 **Q1：一个角色正在思考（意图在途），另一条已提交的移动链要在 12 分钟后完成。引擎此刻会做什么？如果那个角色的意图一直不来呢？**
-A：超出 `oldest_pending_deadline + 1 tick` 的事件是冻结点，全钟暂停直到意图落地或静默弃权（§2.3）；冻结按 wall+sim 入 trace，受 `stall_budget_ratio` 约束（§6）。意图一直不来：`decision_timeout` 后静默弃权——发呆、挂起动作自动 continue、计时器重挂、失败计数 +1，世界继续（§3、§6）。
+A：超出 `oldest_pending_deadline + 1 tick` 的事件是冻结点，全钟暂停直到意图落地或静默弃权（§2.3）；等待最慢的思考者是有界的：在飞决定等过 `freeze_tolerance` 后该视界被释放（记 `inflight_released`），世界继续。意图一直不来：`decision_timeout`（= provider 最坏情况 + 小额余量）后静默弃权——发呆、挂起动作自动 continue、计时器重挂、失败计数 +1，世界继续（§3、§6）；`await hung` 的残留等待由 `hung_tolerance` 封顶，超界即放弃并恢复会话，该角色仍能参加后续回合。停顿以"连续无进展"墙钟计（`stall_threshold_seconds`，默认 300s）而非累积冻结。
 
 **Q2：A 在时刻 T 说了一句公开的话，同地点的 B 何时能回应？B 的回应最早带什么时间戳？A 何时看到 B 的回应？**
 A：光锥：T 提交 → B 最早 T+1 tick 感知（§2.2）；B 的 speak 恰 1 tick，回应最早时间戳 T+1（§4）；A 最早 T+2 看到（§2.2）。同 tick 多人各提交一句不受光锥限制（§4）。

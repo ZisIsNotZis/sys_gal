@@ -134,13 +134,20 @@ def resume(checkpoint_path: Path, *, out: Path | None = None,
 
     # 5) Runner restored from the checkpoint and continued to the endpoint.
     ledger = Ledger(pack.system.get("facts", {}), pack.system)
-    decision_timeout = (provider.worst_case_seconds() * 8 + 5.0
+    # Ticket 53: bound a decision by the provider's own worst case plus a
+    # small margin (not a multiple of it); the resume path shares real_run's
+    # stall/horizon/hung bounds so a resumed segment cannot pin the clock.
+    decision_timeout = (provider.worst_case_seconds()
+                        + env_float("V4_DECISION_MARGIN_SECONDS", 60.0)
                         if hasattr(provider, "worst_case_seconds") else 60.0)
     runner = AsyncEngine(world, agents, states, trace, ledger,
                          decision_timeout=decision_timeout,
                          max_transient_failures=env_int("V3_MAX_TRANSIENT_FAILURES", 3),
                          max_wall_seconds=env_float("V3_MAX_WALL_SECONDS", 7200.0),
                          mc_idle_heartbeat=env_int("V4_MC_IDLE_HEARTBEAT", 1800),
+                         stall_threshold_seconds=env_float("V4_STALL_SECONDS", 300.0),
+                         freeze_tolerance_seconds=env_float("V4_FREEZE_TOLERANCE_SECONDS", 120.0),
+                         hung_tolerance_seconds=env_float("V4_HUNG_TIMEOUT_SECONDS", 60.0),
                          checkpoint=checkpoint,
                          extra_call=provider,
                          kb_seeds=pack.kb, director_brief=director_brief)

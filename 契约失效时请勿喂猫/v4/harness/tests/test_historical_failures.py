@@ -239,6 +239,33 @@ K47e homonym collision is warned, not blocked (ticket 47) ....... test_name_coll
     12:42 and the 大爷 had to disambiguate at 12:51 (world #1273/#1277/#1320).
     Fix: registered names that nest or share a surname form emit an advisory
     (non-blocking) collision line for human judgement.
+I53 stall gate measured cumulative freeze; one hung decision pinned the clock
+                                                             test_hung_decision_is_released_and_the_run_reaches_the_endpoint,
+                                                             test_stall_never_trips_on_a_slow_but_progressing_run,
+                                                             test_true_stall_is_reported_with_the_inflight_actor_and_duration,
+                                                             test_residual_hung_wait_is_bounded_and_the_actor_acts_again,
+                                                             test_abandoned_hung_call_is_isolated_from_the_live_session
+    real-20261001T015004 froze on the sim clock at 11:32 (turn 248, then no
+    turn for 15 wall minutes) with `stall_budget_exceeded` and no
+    `decision_timeout` in the turns: 辅导员's live session ends on a 11:32
+    `user` world message with no assistant reply (the call simply never
+    returned; the same actor had already exhausted the provider retry budget
+    at 11:13 and 11:16). Mechanism: `_scheduler_loop` froze on
+    `min(_inflight.values())` with no bound — a single decision that never
+    returns and holds the oldest wake keeps `min()` constant, so the clock
+    never moves; meanwhile `_stall_seconds` was CUMULATIVE freeze wall time
+    (`+=`, never reset) and `decision_timeout = worst_case_seconds()*8+5`
+    (~4325s/72min) sat ABOVE the stall budget it was supposed to precede, so
+    the run died before any timeout could fire. Fix: stall = consecutive wall
+    time since the last world advance or completed turn (default 300s,
+    `V4_STALL_SECONDS`), so a healthy slow run never trips; the freeze branch
+    releases a horizon whose oldest decision exceeded `freeze_tolerance`
+    (default min(decision_timeout, 120s), `V4_FREEZE_TOLERANCE_SECONDS`);
+    `decision_timeout` is bounded to provider worst case + small margin; the
+    `await hung` residual wait is bounded (`V4_HUNG_TIMEOUT_SECONDS`) and
+    detaches the actor's session so the character acts again; and every stop
+    writes "who was in flight, since when, waited how long, last-progress
+    moment, stall definition, threshold hit" to the trace + flushed log.
 """
 
 import json
@@ -2483,6 +2510,255 @@ class Ticket48NarratedFactGates(unittest.TestCase):
         self.assertEqual(
             module.unregistered_object_claims(registered, 1, registry=registry), [],
             "注册过的具名物件（晚归登记本）不得误报")
+
+
+_STALL_START = datetime.fromisoformat("2026-01-01T00:00:00+00:00")
+
+
+def _stall_world():
+    return World(start=_STALL_START,
+                 actors=[ActorState("a", "room"), ActorState("b", "room")],
+                 locations=[LocationState("room"), LocationState("far")],
+                 routes={("room", "far"): 120})
+
+
+class _BlockingAgent:
+    """A decision that never returns until the test releases its gate; the
+    first call blocks forever, later calls resolve (ticket 53)."""
+
+    def __init__(self, gate):
+        self.gate = gate
+        self.calls = 0
+
+    def __call__(self, state, perception, affordances):
+        self.calls += 1
+        if self.calls == 1:
+            self.gate.wait(timeout=1)
+        return Intention(state.actor_id, "wait",
+                         {"duration_seconds": 60}, perception["world_version"])
+
+
+class _LeisurelyAgent:
+    """Healthy but slow: every turn costs a little wall time and still makes
+    a real world step (ticket 53 — a slow thinker is not a stall). With
+    ``speak=True`` it keeps talking, which re-marks a co-located hung actor as
+    "ready" through ambient events (the quiescence trap the release rule must
+    not fall into)."""
+
+    def __init__(self, delay, speak=False):
+        self.delay = delay
+        self.speak = speak
+        self.calls = 0
+
+    def __call__(self, state, perception, affordances):
+        self.calls += 1
+        time.sleep(self.delay)
+        if self.speak:
+            return Intention(state.actor_id, "speak",
+                             {"text": "我还在，别急。"}, perception["world_version"])
+        return Intention(state.actor_id, "wait",
+                         {"duration_seconds": 60}, perception["world_version"])
+
+
+class _V4SessionStub:
+    """Minimal v4-session shape: `decide` appends the world message like
+    V4Session.decide does, so an abandoned hang leaves a dangling user turn."""
+
+    def __init__(self, messages=None):
+        self.messages = list(messages or [{"role": "system", "content": "s"}])
+
+    def snapshot(self):
+        return {"format": "v4-character-session-1", "actor": "a",
+                "messages": [dict(m) for m in self.messages],
+                "compacted_memories": []}
+
+
+class _V4HungAgent:
+    """v4-shaped agent whose first decision hangs after appending its user
+    turn; later decisions resolve (ticket 53 residual-wait isolation)."""
+
+    session_obj = True
+
+    def __init__(self, gate):
+        self.gate = gate
+        self.sess = _V4SessionStub()
+        self.calls = 0
+        self.first_message = ""
+
+    def __call__(self, world_message, state):
+        self.calls += 1
+        if self.calls == 1:
+            self.first_message = world_message
+            self.sess.messages.append({"role": "user", "content": world_message})
+            self.gate.wait(timeout=1)
+            return {"text": "", "calls": [], "inner": None}
+        return {"text": "", "calls": [{"name": "wait",
+                                        "arguments": {"duration_seconds": 60}}]}
+
+    def session_snapshot(self):
+        return self.sess.snapshot()
+
+    def restore_session(self, snapshot):
+        self.sess = _V4SessionStub(snapshot["messages"])
+
+    def deliver_tool_results(self, results):
+        pass
+
+    def consume_compaction(self):
+        return False
+
+
+def _stop_diagnostic(trace):
+    for turn in trace.system_turns:
+        if turn.get("request", {}).get("kind") == "engine_stop_diagnostic":
+            return turn["result"]
+    return None
+
+
+class StallAndHungDecisionGates(unittest.TestCase):
+    """Ticket 53 (real-20261001T015004, frozen at 11:32 on turn 248).
+
+    The `stall_budget_ratio` gate measured *cumulative* freeze wall time, so a
+    healthy-but-slow run drifting toward the budget eventually tripped it; and
+    the scheduler's freeze branch waited on `min(_inflight.values())` with no
+    bound, so one decision that never returned pinned the whole clock until a
+    72-minute `decision_timeout` (never reached) or the stall gate fired. The
+    four gates below pin the fixed semantics: consecutive no-progress, a
+    bounded horizon release, a bounded residual wait, and a diagnostic that
+    survives into the trace."""
+
+    def _engine(self, world, agents, **kw):
+        states = {actor: PrivateState(actor) for actor in world.actors}
+        trace = Trace("v4-test", "historical-gate-ticket-53")
+        engine = AsyncEngine(world, agents, states, trace, None, **kw)
+        return engine, trace
+
+    def test_hung_decision_is_released_and_the_run_reaches_the_endpoint(self):
+        """(a) One decision that never returns must not pin the clock: the
+        scheduler releases its horizon, the other actor keeps stepping, and
+        the run still reaches the requested endpoint."""
+        gate = threading.Event()
+        world = _stall_world()
+        agents = {"a": _BlockingAgent(gate), "b": _LeisurelyAgent(0.01, speak=True)}
+        engine, trace = self._engine(world, agents, decision_timeout=30.0,
+                                     freeze_tolerance_seconds=0.1,
+                                     stall_threshold_seconds=30.0,
+                                     max_wall_seconds=30.0)
+        try:
+            reason = engine.run(stop_at=_STALL_START + timedelta(seconds=600),
+                                max_turns=200)
+        finally:
+            gate.set()
+        self.assertEqual(reason, "stop_at_reached",
+                         "一个挂死的决策把整轮时钟钉死了")
+        self.assertGreaterEqual(agents["b"].calls, 5,
+                                "另一个角色没有继续推进")
+        self.assertTrue(any(e.kind == "speech" for e in world.event_log),
+                        "同场角色没有再开口（共处事件本会把挂死角色重新标成 ready）")
+        released = [t for t in trace.system_turns
+                    if t["request"].get("kind") == "inflight_released"]
+        self.assertTrue(released, "失联决策从未被放行")
+        self.assertEqual(released[0]["result"]["actor"], "a")
+
+    def test_stall_never_trips_on_a_slow_but_progressing_run(self):
+        """(b) A healthy run whose every turn waits a little (and keeps
+        stepping) must never trip the no-progress stall gate."""
+        world = _stall_world()
+        agents = {"a": _LeisurelyAgent(0.02), "b": _LeisurelyAgent(0.02)}
+        engine, trace = self._engine(world, agents, decision_timeout=30.0,
+                                     freeze_tolerance_seconds=1000.0,
+                                     stall_threshold_seconds=0.5,
+                                     max_wall_seconds=30.0)
+        reason = engine.run(stop_at=_STALL_START + timedelta(seconds=600),
+                            max_turns=200)
+        self.assertEqual(reason, "stop_at_reached")
+        self.assertTrue(all(t["result"]["reason"] != "stall_no_progress"
+                            for t in trace.system_turns
+                            if t["request"].get("kind") == "engine_stop_diagnostic"),
+                        "健康慢跑被误判为停摆")
+        self.assertGreaterEqual(agents["a"].calls, 5)
+
+    def test_true_stall_is_reported_with_the_inflight_actor_and_duration(self):
+        """(c) Genuine no-progress is still caught after the threshold, and
+        the end record names who was in flight and for how long."""
+        gate = threading.Event()
+        world = _stall_world()
+        agents = {"a": _BlockingAgent(gate), "b": _LeisurelyAgent(0.0)}
+        engine, trace = self._engine(world, agents, decision_timeout=30.0,
+                                     freeze_tolerance_seconds=1000.0,
+                                     stall_threshold_seconds=0.2,
+                                     max_wall_seconds=30.0)
+        try:
+            reason = engine.run(stop_at=_STALL_START + timedelta(seconds=600),
+                                max_turns=200)
+        finally:
+            gate.set()
+        self.assertEqual(reason, "stall_no_progress")
+        diagnostic = _stop_diagnostic(trace)
+        self.assertIsNotNone(diagnostic, "结束诊断没有写进 trace")
+        self.assertIn("a", [row["actor"] for row in diagnostic["inflight"]],
+                      "诊断没有写明在飞的决策")
+        row = next(r for r in diagnostic["inflight"] if r["actor"] == "a")
+        self.assertGreaterEqual(row["waited_seconds"], 0.2)
+        self.assertEqual(diagnostic["stall_threshold_seconds"], 0.2)
+        self.assertIn("progress", diagnostic["stall_definition"])
+        self.assertGreaterEqual(diagnostic["seconds_since_progress"], 0.2)
+
+    def test_residual_hung_wait_is_bounded_and_the_actor_acts_again(self):
+        """(d) After a decision times out, the residual wait for the still-
+        running call is bounded; once it is exceeded the actor is detached and
+        takes its next turn instead of retiring for good."""
+        gate = threading.Event()
+        world = _stall_world()
+        blocked = _BlockingAgent(gate)
+        agents = {"a": blocked, "b": _LeisurelyAgent(0.01)}
+        engine, trace = self._engine(world, agents, decision_timeout=0.05,
+                                     hung_tolerance_seconds=0.05,
+                                     freeze_tolerance_seconds=1000.0,
+                                     stall_threshold_seconds=10.0,
+                                     max_wall_seconds=30.0)
+        try:
+            reason = engine.run(stop_at=_STALL_START + timedelta(seconds=300),
+                                max_turns=200)
+        finally:
+            gate.set()
+        self.assertEqual(reason, "stop_at_reached")
+        self.assertGreaterEqual(blocked.calls, 2,
+                                "残留等待超界后该角色再没行动过")
+        abandoned = [t for t in trace.system_turns
+                     if t["request"].get("kind") == "hung_decision_abandoned"]
+        self.assertTrue(abandoned, "残留等待没有上限，从未放弃")
+        self.assertEqual(abandoned[0]["result"]["actor"], "a")
+
+    def test_abandoned_hung_call_is_isolated_from_the_live_session(self):
+        """(d) The abandoned call keeps writing to the session object it was
+        born with; the actor must resume on the pre-decision snapshot so two
+        writers never share one transcript."""
+        gate = threading.Event()
+        world = _stall_world()
+        hung = _V4HungAgent(gate)
+        agents = {"a": hung, "b": _LeisurelyAgent(0.01)}
+        engine, trace = self._engine(world, agents, decision_timeout=0.05,
+                                     hung_tolerance_seconds=0.05,
+                                     freeze_tolerance_seconds=1000.0,
+                                     stall_threshold_seconds=10.0,
+                                     max_wall_seconds=30.0)
+        try:
+            reason = engine.run(stop_at=_STALL_START + timedelta(seconds=300),
+                                max_turns=200)
+        finally:
+            gate.set()
+        self.assertEqual(reason, "stop_at_reached")
+        self.assertGreaterEqual(hung.calls, 2)
+        abandoned = [t for t in trace.system_turns
+                     if t["request"].get("kind") == "hung_decision_abandoned"]
+        self.assertTrue(abandoned)
+        self.assertTrue(abandoned[0]["result"]["session_restored"])
+        live = hung.session_snapshot()["messages"]
+        self.assertFalse(
+            any(m.get("role") == "user" and hung.first_message
+                and hung.first_message in str(m.get("content")) for m in live),
+            "被放弃的挂死调用污染了续用会话")
 
 
 if __name__ == "__main__":

@@ -26,7 +26,7 @@ SSOT：引擎时序语义、并发架构、冻结/唤醒/中断机制、失败�
 
 1. **连续时间戳**。引擎内部一律存真实时间点，绝不存 tick 序号。tick（默认 1 分钟，config）只是四种东西的单位：世界动作最短时长与取整格、send_message 投递延迟、决策视界单位、角色间常识预算单位。r>0 时时间戳离格（§5）——一切"≡0 mod tick"的代码假设都禁止。
 2. **全局光锥（最大信息流假设）**。事件在 T 提交 → 任何角色最早 T+1 tick 感知（随其下一条世界消息渲染）。依据：电话（1 tick 投递）+ 传言中转使逐对传播延迟不可计算——任何在场第三者都是潜在传话人，闲聊正是信息扩散泵；引擎取保守上界（人人 ≤1 tick）。错冻结的代价是短暂停顿，错光锥的代价是穿帮（impossible knowledge）。`known_contacts` 仅是动作层门控（能否对某人 send_message），在因果与物理层零角色。
-3. **全局决策视界（冻结规则）**。在途意图的 deadline 即其唤醒（或中断投递、超时到期）时刻。引擎只处理时间 ≤ `oldest_pending_deadline + 1 tick` 的事件（即：任一决策在途时，世界至多漂移 1 tick）（他人链条完成、投递、reminder、导演拍点都只是事件）；第一个超界事件是**冻结点**——全钟暂停，直到意图落地或静默弃权（§3）。时钟永不跳过未清的 pending deadline；**禁止回填**（backdating）：迟到意图按当前钟提交。对比旧串行 runner 零回归：只是限制了能提前流水线的工作量。force-turn/wake 不得覆盖普通 `busy_until`；被打断的 `pending` 动作例外，仍须立即给出 continue-or-abandon。若串行工具链的前一动作越过一 tick 地平线，后续调用逐项收到真实完成时刻和重试形状的 `not executed` 结果；链不再推动时钟，也不把普通 busy 误称为待恢复中断。
+3. **全局决策视界（冻结规则）**。在途意图的 deadline 即其唤醒（或中断投递、超时到期）时刻。引擎只处理时间 ≤ `oldest_pending_deadline + 1 tick` 的事件（即：任一决策在途时，世界至多漂移 1 tick）（他人链条完成、投递、reminder、导演拍点都只是事件）；第一个超界事件是**冻结点**——全钟暂停，直到意图落地或静默弃权（§3）。等待最慢的思考者是有界的，不是无限：最老的在飞决定等过 `freeze_tolerance`（§6）后该视界被释放，世界继续前进，迟到意图按当前钟提交。时钟永不跳过未清的 pending deadline；**禁止回填**（backdating）：迟到意图按当前钟提交。对比旧串行 runner 零回归：只是限制了能提前流水线的工作量。force-turn/wake 不得覆盖普通 `busy_until`；被打断的 `pending` 动作例外，仍须立即给出 continue-or-abandon。若串行工具链的前一动作越过一 tick 地平线，后续调用逐项收到真实完成时刻和重试形状的 `not executed` 结果；链不再推动时钟，也不把普通 busy 误称为待恢复中断。
 4. **同 tick 排序 = 意图到达序**。同 tick 多个意图按 wall 到达序执行，资源竞争按提交序串行判定（AGENT-INTERFACE m8）。含义：同 tick 竞争不可种子复现——种子调度不得制造其结果依赖的同 tick 竞争；journal 逐字记录实际发生序，回放不受影响（§7）。
 5. **中断绑定于执行位置**。意图链按计划提交、按事件**惰性执行**（busy_until/current_action 机制）。中断在执行位置生效：走 12 分钟第 3 分钟被敲门 → 挂起，剩 9 分钟，continue-or-cancel；中断到达时角色尚在思考（无已提交链）→ 等意图落地后在第一个可中断点生效。链"批量预执行"会静默杀死本条——评审重点盯。
 
@@ -60,8 +60,11 @@ SSOT：引擎时序语义、并发架构、冻结/唤醒/中断机制、失败�
 ## 6. 失败隔离
 
 - per-actor：连续 `batch_persistent_failure`（3）次失败 → 该角色弃权发呆，世界继续；**绝不冻结全钟等一个死 provider**。旧"世界停机"闸门语义废除。
-- 全局停机仅两途：全体角色连续失败 / `max_wall_seconds` 耗尽。
-- **冻结记账**：每次冻结按 wall+sim 时长与责任角色入 trace（模型 A/B 经济学：谁在拖累世界）；`stall_budget_ratio`（默认 0.25）——冻结累计占墙钟预算超比例 → 以诚实原因终止。
+- 全局停机仅两途：全体角色连续失败 / `max_wall_seconds` 耗尽（另有下面的连续无进展兜底）。
+- **停顿 = 连续无进展（ticket 53）**。`Engine._stall_exceeded()` 量的是**从最近一次世界前进到现在的墙钟秒数**——前进事件 = 任何一次时钟推进（`world.advance`）或任一角色回合作成（有决定/弃权/发呆）。它**不**累积每一次冻结（旧 `stall_budget_ratio` 是累积冻结占墙钟预算的比例，`+=` 从不重置：健康的慢跑会逐步触顶，且把"真挂死"与"总等待多"混成一个信号）。默认阈值 `stall_threshold_seconds = 300s`（`V4_STALL_SECONDS`），命中即以诚实原因 `stall_no_progress` 终止。
+- **调度器不被单个任务钉死（ticket 53）**。`_scheduler_loop` 的冻结点等待不再无条件盯住 `min(_inflight)`：只要最老的在飞决定已等过 `freeze_tolerance`（默认 `min(decision_timeout, 120s)`，`V4_FREEZE_TOLERANCE_SECONDS`；`DEFAULT_FREEZE_TOLERANCE_SECONDS=120`），就把它的 wake 从视界里释放（记 `inflight_released`）——世界只有欠着一段前进，延误的意图仍按当前钟提交（§2.3 禁止回填），**不是**取消"等最慢思考者"：容忍依旧存在、连续且有界。
+- **两处超时有界（ticket 53）**。`decision_timeout = provider.worst_case_seconds() + 小额余量`（real_run：`V4_DECISION_MARGIN_SECONDS`，默认 60s；旧写法 `×8+5` 曾得到 ~72 min，比它该先于的 stall 预算还长）；`_actor_loop` 的 `await hung`（等一个已超时调用收尾）由 `hung_tolerance`（`V4_HUNG_TIMEOUT_SECONDS`，real_run 默认 60s）封顶，超界即放弃：丢掉该调用、把 v4 会话恢复成决定前的快照（避免两个写者共用一条转录），该角色**仍能参加后续回合**，不永久退出。
+- **结束诊断（ticket 53）**。任何停机路径（`stall_no_progress` / `wall_clock_deadline_reached` / 超时 / 放弃 / 全体失败 …）在 `_finish` 里写一条 `engine_stop_diagnostic` 到 trace（并同步 `flush` 打日志），包含：在飞角色及其起始模拟时刻与已等墙钟秒、额外角色在飞、最近进展时刻与已停秒数、停顿定义字符串、命中的阈值、三处超时。单次超时/放弃也各写 `decision_abandoned` / `hung_decision_abandoned`。
 
 ## 7. 检查点、日志与确定性
 

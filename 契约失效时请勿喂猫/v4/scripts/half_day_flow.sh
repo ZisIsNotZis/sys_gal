@@ -14,9 +14,12 @@ export OPENAI_API_KEY="${LITELLM_API_KEY:?set LITELLM_API_KEY to the litellm mas
 export V3_PROVIDER_TIMEOUT=120 V3_PROVIDER_RETRIES=4
 export V3_PROVIDER_MAX_RETRIES=4 V3_PROVIDER_MAX_DURATION=420
 export V3_PROVIDER_CONCURRENCY=8
-# 地平线设计下，等待最慢的思考者是常态而非停摆：stall 预算放宽到 60%。
-# 真死锁由 provider 单调用上限 (V3_PROVIDER_MAX_DURATION) 与总墙钟兜底。
-export V4_STALL_BUDGET_RATIO=0.60
+# 地平线设计下，等待最慢的思考者是常态而非停摆（ticket 53）：stall 现在量的是
+# “连续无进展”的墙钟秒数，不再累积每一次冻结；等待容忍由 freeze/hung 两个有界上限管住。
+# 真卡死会在分钟内被判定并写进 trace（在飞角色/已等时长/最近进展/命中阈值）。
+export V4_STALL_SECONDS=300
+export V4_FREEZE_TOLERANCE_SECONDS=120
+export V4_HUNG_TIMEOUT_SECONDS=60
 mkdir -p checkpoints
 
 segment() {
