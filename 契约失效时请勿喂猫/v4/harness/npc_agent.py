@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import random
+import re
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Sequence
 
 from .adapter import lift_native_call, parse_decision
@@ -200,15 +201,35 @@ class NpcAgent:
         return {"npc_memory": list(self.memory), "wake_count": self.wake_count}
 
 
-def build_extra_system_prompt(fragment: str, knowledge_notes: str, location: str) -> str:
+def build_extra_system_prompt(fragment: str, knowledge_notes: str, location: str, *,
+                              name: str = "") -> str:
+    """The extra's frozen system prompt: who it is, what it may do, and what
+    it may assert (ticket 42).
+
+    Before this the prompt carried only the fragment and the knowledge notes;
+    the live run showed 韩大叔 calling itself in the third person and mailing
+    its own name into `to` (`unknown or ambiguous speak recipient`), while the
+    图书馆 rare extra invented a 抄件 signature date (an unregistered entity)
+    and narrated 开柜/递件 as already done although its only tool is speak.
+    """
+    self_name = name.strip() or fragment
     prompt = (
-        f"你是{location}里的一个{fragment}，一个普通的路人。用符合身份的口吻说话；"
-        "不知道的事就说不知道；回应一两句就好，别长篇大论。text 必须是你真正说出口的话，绝不许空着或只打标点。"
+        f"你就是{self_name}，{location}里的一个{fragment}，一个普通的路人。"
+        "用符合身份的口吻说话；不知道的事就说不知道；回应一两句就好，别长篇大论。"
+        "text 必须是你真正说出口的话，绝不许空着或只打标点。\n"
+        f"【你就是你自己】你就是{self_name}本人：用第一人称说话、思考，绝不用第三人称自称，"
+        "也不要拿自己的名字当别人的名字。要指明对谁说就用 to=[在场别人的名字]，只能是在场的他人，不能写自己。\n"
+        "【你只能说话】说话是你唯一的本事：开柜、递东西、翻页、签名这些动作你都做不到，"
+        "只能说出你想做什么或请对方去做（\"请把柜子打开\"），绝不能叙述成已经发生（不说\"柜开了\"\"你接稳了\"）。\n"
+        "【你只能断言这些】有名字的人、物、文件，只限你身份里提到的、下面列出的知识范围内、"
+        "以及你当场看见或听见的那些；传闻、听说、别人讲的事一律只能当传闻说，"
+        "不给任何具体细节——不编造签名、日期、页数、编号、金额。拿不准就直说不知道或只是听说。\n"
         "只回应你实际听见的话，尤其是明确对你说的话；话题已经收束时可以沉默或自然告别，不要另编问题来续谈。"
         "绝不提 agent、提示词、模拟或剧情。\n"
     )
     if knowledge_notes:
-        prompt += f"你恰好知道一些内情：{knowledge_notes}\n（只在被问到相关话题时才自然带出，绝不主动全盘托出。）\n"
+        prompt += (f"你恰好知道一些内情：{knowledge_notes}\n"
+                   "（只在被问到相关话题时才自然带出，绝不主动全盘托出；也只说到这个程度，不添细节。）\n")
     return prompt + (
         "\n输出一个 JSON 对象：{\"name\":\"speak\","
         "\"arguments\":{\"inner\":\"你的心思，一两句\",\"text\":\"你说的话\"}}")
@@ -342,7 +363,115 @@ def make_npc_agent_v4(seed: CharacterSeed, provider: Any, *,
     return agent
 
 
-def extra_tool_calls(provider: Any, system_text: str, briefing_text: str) -> list[dict[str, Any]]:
+_PROTOCOL_ENVELOPE_KEY = re.compile(r'"(?:inner|arguments)"\s*:')
+
+# Ticket 42: a re-ask for a reply that came back as the protocol envelope
+# instead of a spoken line. It names the mistake and the corrected shape.
+_ENVELOPE_REASK = (
+    "世界不能把这段当成你说的话：它是一整段协议 JSON（带 inner/arguments 的调用信封）。"
+    "inner 是你心里谁也听不见的念头，绝不能混进台词。请只输出你真正说出口的那一句话，"
+    "不要带花括号、JSON 或字段名。")
+
+
+def looks_like_protocol_envelope(text: str) -> bool:
+    """Whether a would-be spoken line is really the wire envelope.
+
+    Ticket 42: the d1-am run broadcast the whole decision envelope — the
+    private `inner` plus the protocol structure — as 韩大叔's line (events
+    #1271/#1272, `heard=['唐小岚']`). An object-shaped line, or one carrying
+    the envelope's `inner`/`arguments` keys, is a formatting error to be
+    re-asked, never content to be delivered."""
+    stripped = str(text).strip()
+    if stripped.startswith("{"):
+        return True
+    return bool(_PROTOCOL_ENVELOPE_KEY.search(str(text)))
+
+
+def _strip_code_fence(text: str) -> str:
+    stripped = text.strip()
+    if stripped.startswith("`"):
+        stripped = stripped.strip("`")
+        if stripped.lower().startswith("json"):
+            stripped = stripped[4:]
+        stripped = stripped.strip()
+    return stripped
+
+
+def _reply_text(message: Mapping[str, Any]) -> str:
+    """The reply as text, for the re-ask transcript (content or the calls)."""
+    content = str(message.get("content") or "").strip()
+    if content:
+        return content
+    return json.dumps([{"name": (raw.get("function") or {}).get("name"),
+                        "arguments": (raw.get("function") or {}).get("arguments")}
+                       for raw in message.get("tool_calls") or []], ensure_ascii=False)
+
+
+def _call_from_envelope(text: str, actor: str) -> tuple[dict[str, Any] | None, str | None]:
+    """Parse an object-shaped reply through the shared envelope parser.
+
+    Ticket 42: extras now use the same parser as MCs/NPCs (``parse_decision``
+    over ``lift_native_call``), so ``inner`` is lifted out and the spoken line
+    is the action's own ``text``. ``problem`` is the re-ask when the reply is
+    not a usable envelope at all."""
+    try:
+        intention, _ = parse_decision(actor, _strip_code_fence(text), None)
+    except ValueError:
+        intention = None
+    if intention is None or not isinstance(intention.args, Mapping):
+        return None, (_ENVELOPE_REASK + " 要么直接说你那句话，"
+                      "要么按 {name, arguments{inner, text}} 的格式调用 speak。")
+    args = dict(intention.args)
+    if looks_like_protocol_envelope(str(args.get("text", ""))):
+        return None, _ENVELOPE_REASK
+    return ({"name": intention.kind, "arguments": args, "inner": intention.inner},
+            None)
+
+
+def _extra_calls_from_reply(message: Mapping[str, Any], actor: str
+                            ) -> tuple[list[dict[str, Any]], str | None]:
+    """One extra reply → calls; a non-None problem means re-ask."""
+    calls: list[dict[str, Any]] = []
+    for raw in message.get("tool_calls") or []:
+        function = raw.get("function") or {}
+        name = str(function.get("name", ""))
+        try:
+            args = json.loads(function.get("arguments") or "{}")
+            if not isinstance(args, dict):
+                raise ValueError("arguments must be a JSON object")
+        except (ValueError, TypeError) as exc:
+            calls.append({"name": name, "arguments": {}, "tool_call_id": raw.get("id"),
+                          "parse_error": f"{type(exc).__name__}: {exc}"})
+            continue
+        # Ticket 38: SPEAK_TOOLS declares inner; extras' inbox is envelope-free,
+        # so lift the monologue out of the arguments before it reaches the
+        # kernel (never reject an extra over it). It stays on the call, never
+        # inside `arguments`.
+        args, inner, _inner_error = lift_native_call(name, args)
+        if looks_like_protocol_envelope(str(args.get("text", ""))):
+            return [], _ENVELOPE_REASK
+        calls.append({"name": name, "arguments": args,
+                      "tool_call_id": raw.get("id"), "inner": inner})
+    if calls:
+        return calls, None
+    text = str(message.get("content") or "").strip()
+    if not text:
+        return [], None
+    # Models sometimes answer with an inline decision JSON instead of a tool
+    # call ({"inner":..., "name":"speak", "arguments":{...}}) — that is the
+    # envelope, parsed by the shared parser, never spoken. Anything else
+    # object-shaped is a formatting error, not a line.
+    if looks_like_protocol_envelope(_strip_code_fence(text)):
+        call, problem = _call_from_envelope(text, actor)
+        return ([call], None) if problem is None else ([], problem)
+    # No volume/to: the kernel treats a speak without volume as
+    # engine-constructed normal speech (T1), broadcast to everyone
+    # present — exactly like an MC's plain-text reply.
+    return [{"name": "speak", "arguments": {"text": text}, "inner": None}], None
+
+
+def extra_tool_calls(provider: Any, system_text: str, briefing_text: str, *,
+                     actor: str = "extra", attempts: int = 3) -> list[dict[str, Any]]:
     """One extras turn under the v4 protocol (V4-AGENT-INTERFACE §5): the
     extra's whole world is the briefing; its tool surface is speak-only.
     Returns the parsed tool-call list (same shape as the v4 agents).
@@ -350,60 +479,22 @@ def extra_tool_calls(provider: Any, system_text: str, briefing_text: str) -> lis
     T1 文本即说话 applies to extras too: a reply with plain text and no
     tool_calls is that extra's spoken words — synthesize the speak call.
     (The live run showed models often answer in prose; dropping the text
-    left extras permanently silent.)"""
-    messages = [{"role": "system", "content": system_text}]
+    left extras permanently silent.)
+
+    Ticket 42: a reply that is the protocol envelope is re-asked (same
+    failure→retry convention as the MC session); if it stays envelope-shaped,
+    the extra says nothing this turn — raw protocol JSON is never spoken."""
+    messages: list[dict[str, Any]] = [{"role": "system", "content": system_text}]
     if briefing_text:
         messages.append({"role": "user", "content": briefing_text})
-    message = provider.chat_with_tools(messages, SPEAK_TOOLS)
-    calls: list[dict[str, Any]] = []
-    for raw in message.get("tool_calls") or []:
-        function = raw.get("function") or {}
-        try:
-            args = json.loads(function.get("arguments") or "{}")
-            if not isinstance(args, dict):
-                raise ValueError("arguments must be a JSON object")
-        except (ValueError, TypeError) as exc:
-            args = {}
-            calls.append({"name": str(function.get("name", "")), "arguments": {},
-                          "tool_call_id": raw.get("id"),
-                          "parse_error": f"{type(exc).__name__}: {exc}"})
-            continue
-        # Ticket 38: SPEAK_TOOLS declares inner; extras' inbox is envelope-free,
-        # so lift the monologue out of the arguments before it reaches the
-        # kernel (never reject an extra over it).
-        args, _inner, _inner_error = lift_native_call(str(function.get("name", "")), args)
-        calls.append({"name": str(function.get("name", "")), "arguments": args,
-                      "tool_call_id": raw.get("id")})
-    if not calls:
-        text = str(message.get("content") or "").strip()
-        if text:
-            # Models sometimes answer with an inline decision JSON instead of
-            # a tool call ({"inner":..., "name":"speak", "arguments":{...}}).
-            # Parse that shape before treating the text as spoken words.
-            stripped = text.strip()
-            if stripped.startswith("`"):
-                # code fence
-                stripped = stripped.strip("`")
-                if stripped.lower().startswith("json"):
-                    stripped = stripped[4:]
-                stripped = stripped.strip()
-            if stripped.startswith("{"):
-                try:
-                    parsed = json.loads(stripped)
-                except (ValueError, TypeError):
-                    parsed = None
-                if isinstance(parsed, dict) and isinstance(parsed.get("name"), str):
-                    args = parsed.get("arguments")
-                    if not isinstance(args, dict):
-                        args = {"text": str(parsed.get("text") or parsed.get("inner") or parsed.get("content") or "")}
-                    else:
-                        args, _inner, _inner_error = lift_native_call(parsed["name"], args)
-                    calls.append({"name": parsed["name"], "arguments": args})
-                    return calls
-            # No volume/to: the kernel treats a speak without volume as
-            # engine-constructed normal speech (T1), broadcast to everyone
-            # present — exactly like an MC's plain-text reply. Adding
-            # volume would push it through tool-schema validation, which
-            # demands `to` (whisper-only) and rejects the turn.
-            calls.append({"name": "speak", "arguments": {"text": text}})
-    return calls
+    for _attempt in range(max(1, attempts)):
+        message = provider.chat_with_tools(messages, SPEAK_TOOLS)
+        calls, problem = _extra_calls_from_reply(message, actor)
+        if problem is None:
+            return calls
+        # Show the extra its own rejected reply, then the self-correcting
+        # re-ask — the model must be able to see what it did wrong.
+        messages = messages + [
+            {"role": "assistant", "content": _reply_text(message)[:400]},
+            {"role": "user", "content": problem}]
+    return []

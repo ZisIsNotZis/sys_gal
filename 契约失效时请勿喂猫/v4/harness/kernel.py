@@ -1562,14 +1562,19 @@ class World:
         self._commit("extra_arrived", name, {"location": location}, None)
         return extra
 
-    def remove_extra(self, name: str) -> None:
+    def remove_extra(self, name: str, *, reason: str = "left") -> None:
         """Destroy an extra: it leaves the scene with zero memory.
 
         Any jobs it left in the clock queue (a message still in flight, a
         duration action still running) are cancelled with it — a despawned
-        stranger must not crash the clock when its turn comes (首验日 v2 事故)."""
+        stranger must not crash the clock when its turn comes (首验日 v2 事故).
+        ``reason`` rides on the visible ``extra_removed`` event (ticket 42):
+        co-located characters must be able to tell a mid-conversation
+        interruption (``idle``) from a natural departure."""
         if name in self.actors and self.actors[name].role == "extra":
-            self._commit("extra_removed", name, {"location": self.actors[name].location}, None)
+            self._commit("extra_removed", name,
+                         {"location": self.actors[name].location, "reason": str(reason)},
+                         None)
             del self.actors[name]
             self._cursor.pop(name, None)
             for job in self._queue:

@@ -38,7 +38,8 @@ from .kernel import (ActionRejected, Intention, TICK_SECONDS,
                      WAKE_EVENT_KINDS, World)
 from .npc_agent import (build_extra_briefing, build_extra_system_prompt,
                         extra_heard_speech_since, extra_scene_transcript,
-                        generate_stranger_name, sample_extra)
+                        generate_stranger_name, looks_like_protocol_envelope,
+                        sample_extra)
 from .prompt import render_world_message, _event_sentence, _clean_description
 from .kb import CONTACT_KEY
 from .repetition import RepetitionMonitor
@@ -1481,13 +1482,14 @@ class AsyncEngine:
                               "pending_heard_speech": False,
                               "system_prompt": build_extra_system_prompt(
                                   str(entry.get("fragment", "路人")),
-                                  str(entry.get("knowledge_notes", "")), location)}
+                                  str(entry.get("knowledge_notes", "")), location,
+                                  name=name)}
         self._wake_events[name] = asyncio.Event()
         self._extra_tasks[name] = loop.create_task(self._extra_loop(name, question))
 
     def _despawn(self, name: str, reason: str) -> None:
         if name in self.world.actors:
-            self.world.remove_extra(name)
+            self.world.remove_extra(name, reason=reason)
         self._extras.pop(name, None)
         task = self._extra_tasks.pop(name, None)
         if task is not None:
@@ -1558,7 +1560,7 @@ class AsyncEngine:
                 extra_call = self.extra_call
                 assert extra_call is not None
                 intention_calls = await asyncio.to_thread(
-                    extra_tool_calls, extra_call, system, briefing)
+                    extra_tool_calls, extra_call, system, briefing, actor=name)
             else:
                 legacy_extra = self.extra_call
                 assert legacy_extra is not None and callable(legacy_extra)
@@ -1571,26 +1573,43 @@ class AsyncEngine:
                     intention_calls = [{"name": intention.kind,
                                         "arguments": dict(intention.args)}]
             spoke = False
+            envelope_rejected = False
             for call in intention_calls:
                 call_name = str(call.get("name", ""))
                 if call_name != "speak":
                     continue  # extras' tool surface is speak-only (§5)
                 args = call.get("arguments") or {}
+                if looks_like_protocol_envelope(str(args.get("text", ""))):
+                    # Ticket 42 hard stop: whatever the provider path, the
+                    # protocol envelope (and its private inner) is never
+                    # broadcast as an extra's spoken line. The re-ask lives in
+                    # extra_tool_calls; this is the last boundary before the
+                    # world makes it audible.
+                    envelope_rejected = True
+                    continue
                 self.world.submit(Intention(name, "speak", dict(args),
                                             self.world.version))
                 spoke = True
                 info["last_active"] = self.world.now
-            result = "submitted" if spoke else "none"
+            if spoke:
+                result = "submitted"
+            elif envelope_rejected:
+                result = "rejected"
+                error = "speak text is the protocol envelope, not a line"
         except ActionRejected as exc:
             result, error = "rejected", str(exc)
         except Exception as exc:
             result, error = "agent_error", f"{type(exc).__name__}: {exc}"
         # Trace.record_agent requires a real Intention (it reads .actor/.kind/
         # .args); a bare dict made every extra turn die after submitting its
-        # speech, so no extra turn was ever recorded (ticket-21).
+        # speech, so no extra turn was ever recorded (ticket-21). The lifted
+        # inner rides on the private trace only (ticket 42: it must never
+        # enter a speech payload).
+        trace_inner = next((str(call.get("inner")) for call in intention_calls
+                            if str(call.get("inner") or "").strip()), None)
         trace_intention = Intention(name, "speak",
                                     {"calls": intention_calls},
-                                    self.world.version)
+                                    self.world.version, inner=trace_inner)
         self.trace.record_agent(state=PrivateState(name),
                                 perception={"observer": name, "time": self.world.now.isoformat(),
                                             "location": location, "events": [], "inbox": [],

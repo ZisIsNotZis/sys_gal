@@ -46,6 +46,20 @@ T4  authored pre-run history compiles + flashback replays it .... test_authored_
 E1  extra turns die silently at trace-record time ............. test_extra_turns_are_recorded_and_conversational
 E2  extra self-wake chatter loop (replies to own speech) ...... test_extra_turns_are_recorded_and_conversational
 E3  extras permanently silent: content-only replies dropped ... test_extra_turns_are_recorded_and_conversational
+E42 extra path leaks and fabricates (ticket 42, d1-am artifact) ... test_extra_envelope_is_never_broadcast_as_speech,
+                                                               test_extra_tool_calls_reask_the_protocol_envelope,
+                                                               test_extra_unparsable_envelope_is_silence_not_raw_json,
+                                                               test_extra_prompt_states_self_name_and_assertion_bounds,
+                                                               test_extra_idle_despawn_is_a_visible_interruption,
+                                                               test_legacy_extra_call_envelope_is_never_broadcast
+    events #1271/#1272 (12:42, 韩大叔=extra) broadcast the whole decision
+    envelope — private `inner` plus protocol structure — as 韩大叔's spoken
+    line (`heard=['唐小岚']`), because the extra path had its own ad-hoc
+    parse; the rare 图书馆 extra 陈大爷 asserted an unmodeled 抄件 with a
+    signature date and narrated 开柜/递件 as done (no open/give event in the
+    log, affordances `[]`); it never knew its own name (`to:["韩大叔"]` →
+    `unknown or ambiguous speak recipient`); and its 12:53 idle despawn left
+    唐小岚 only "他走了" for an errand she had just handed over.
 I38 private inner channel unreachable — 0/1356 turns (3 runs) ... test_inner_channel_is_reachable_on_the_wire_and_native_path,
                                                                test_legacy_envelope_inner_still_works,
                                                                test_missing_inner_native_call_is_rejected_with_a_self_correcting_example,
@@ -621,6 +635,276 @@ class HistoricalFailureGates(unittest.TestCase):
                    if r["request"].get("kind") == "actor_task_crash"]
         self.assertEqual(crashes, [])
 
+
+    def test_extra_envelope_is_never_broadcast_as_speech(self):
+        """E42 (ticket 42-1): an extra reply carrying the protocol envelope
+        must be re-asked, and the private `inner` must never reach a speech
+        payload.
+
+        The d1-am artifact broadcast `{"inner":"唐小岚把草稿的事交代给我了…",
+        "name":"speak","arguments":{"text":"好嘞…"}}` verbatim as 韩大叔's
+        line (events #1271/#1272, `heard=['唐小岚']`). The model had stuffed
+        the envelope into `arguments.text`; the extra path had no envelope
+        check, so the raw bytes went out as speech."""
+        envelope = ('{"inner":"唐小岚把草稿的事交代给我了，三点前守好吧台就行",'
+                    '"name":"speak","arguments":{"text":"好嘞，那份草稿我不收不动。"}}')
+
+        class EnvelopeThenSpeech:
+            def __init__(self):
+                self.calls = 0
+
+            def chat_with_tools(self, messages, tools):
+                self.calls += 1
+                if self.calls == 1:
+                    return {"role": "assistant", "content": "", "tool_calls": [
+                        {"id": "c1", "type": "function",
+                         "function": {"name": "speak", "arguments": json.dumps(
+                             {"inner": "先应下来", "text": envelope},
+                             ensure_ascii=False)}}]}
+                return {"role": "assistant", "content": "", "tool_calls": [
+                    {"id": "c2", "type": "function",
+                     "function": {"name": "speak", "arguments": json.dumps(
+                         {"inner": "先应下草稿的事",
+                          "text": "好嘞，那份草稿我不收不动，三点方老师来了我就请她到吧台这儿拿。"},
+                         ensure_ascii=False)}}]}
+
+        pack = load_story_pack()
+        world = pack.build_world()
+        trace = Trace("v4-test", "historical-gate-extra-envelope")
+        asked = False
+
+        def agent(state, perception, affordances):
+            nonlocal asked
+            if state.actor_id == "唐小岚" and not asked:
+                asked = True
+                return Intention("唐小岚", "speak",
+                                 {"text": "草稿先放你这儿，三点方老师来取。",
+                                  "volume": "normal", "to": ["陌生人"]},
+                                 perception["world_version"])
+            return Intention(state.actor_id, "wait", {"duration_seconds": 3600},
+                             perception["world_version"])
+
+        states = {a: PrivateState(a) for a in world.actors}
+        agents = {a: agent for a in world.actors if world.actors[a].role != "extra"}
+        stub = EnvelopeThenSpeech()
+        engine = AsyncEngine(world, agents, states, trace, None, extra_call=stub,
+                             decision_timeout=10, max_wall_seconds=60,
+                             extra_idle_seconds=60)
+        engine.run(stop_at=datetime.fromisoformat("2026-03-16T07:06:00+08:00"),
+                   max_turns=300)
+
+        extra_lines = [str(e.payload.get("text", "")) for e in world.event_log
+                       if e.kind == "speech" and e.actor not in {"唐小岚"}]
+        self.assertTrue(extra_lines, "路人仍然必须开口")
+        for line in extra_lines:
+            self.assertNotIn("inner", line)
+            self.assertNotIn('"arguments"', line)
+            self.assertFalse(line.strip().startswith("{"), line)
+        self.assertTrue(any("那份草稿我不收不动" in line for line in extra_lines))
+        # 心声是私有的：它不得出现在任何 speech payload 的正文里
+        self.assertFalse(any("三点前守好吧台" in text
+                             for text in [str(e.payload.get("text", ""))
+                                          for e in world.event_log
+                                          if e.kind == "speech"]))
+        self.assertFalse(any("先应下草稿的事" in text
+                             for text in [str(e.payload.get("text", ""))
+                                          for e in world.event_log
+                                          if e.kind == "speech"]))
+        # 但摘出的心声进入 trace（私有），供 inner 填充率统计
+        extra_turns = [t for t in trace.agent_turns if t.get("role") == "extra"]
+        self.assertEqual([t.get("inner") for t in extra_turns if str(t.get("inner") or "").strip()],
+                         ["先应下草稿的事"])
+
+    def test_legacy_extra_call_envelope_is_never_broadcast(self):
+        """E42 (ticket 42-1, legacy callable path): the engine's own submit
+        boundary refuses a protocol-shaped line even when the reply came from
+        an older callable extra provider."""
+        import asyncio
+
+        envelope = ('{"inner":"唐小岚把草稿的事交代给我了，三点前守好吧台就行",'
+                    '"name":"speak","arguments":{"text":"好嘞，那份草稿我不收不动。"}}')
+        raw = json.dumps({"inner": "先应下来", "name": "speak",
+                          "arguments": {"text": envelope}}, ensure_ascii=False)
+
+        pack = load_story_pack()
+        world = pack.build_world()
+        trace = Trace("v4-test", "historical-gate-extra-legacy-envelope")
+        states = {a: PrivateState(a) for a in world.actors}
+
+        def flat(state, perception, affordances):
+            return Intention(state.actor_id, "wait", {"duration_seconds": 3600},
+                             perception["world_version"])
+
+        engine = AsyncEngine(world, {a: flat for a in states}, states, trace, None,
+                             extra_call=lambda messages: raw, decision_timeout=5,
+                             max_wall_seconds=30)
+        engine._scheduler_wake = asyncio.Event()
+        partner = "唐小岚"
+        location = world.actors[partner].location
+        world.add_extra("韩大叔", location)
+        engine._extras["韩大叔"] = {
+            "fragment": "兼职店员", "knowledge_notes": "", "partner": partner,
+            "start": len(world.event_log), "last_active": world.now,
+            "rarity": "common", "pending_question": "草稿先放你这儿。",
+            "context_cursor": len(world.event_log),
+            "system_prompt": "（测试用静态前缀）"}
+        asyncio.run(engine._extra_turn("韩大叔", "草稿先放你这儿。"))
+
+        speeches = [str(e.payload.get("text", "")) for e in world.event_log
+                    if e.kind == "speech"]
+        self.assertEqual(speeches, [],
+                         "原始信封绝不能作为台词进入世界事件")
+        extra_turns = [t for t in trace.agent_turns if t.get("role") == "extra"]
+        self.assertEqual([t["result"] for t in extra_turns], ["rejected"])
+
+    def test_extra_tool_calls_reask_the_protocol_envelope(self):
+        """E42 (ticket 42-1): the envelope is a formatting error with a
+        self-correcting re-ask, not content. A clean inline envelope is
+        parsed by the shared envelope parser (inner lifted out); a broken one
+        is silence rather than raw JSON spoken aloud."""
+        from harness.npc_agent import (build_extra_briefing,
+                                       build_extra_system_prompt, extra_tool_calls)
+
+        envelope = ('{"inner":"先把话应下来","name":"speak",'
+                    '"arguments":{"text":"好嘞，那份草稿我不收不动。"}}')
+        system = build_extra_system_prompt("兼职店员", "", "半坡咖啡馆")
+
+        class RetryThenClean:
+            def __init__(self):
+                self.calls = 0
+                self.messages: list[dict[str, Any]] = []
+
+            def chat_with_tools(self, messages, tools):
+                self.calls += 1
+                self.messages = list(messages)
+                if self.calls == 1:
+                    return {"role": "assistant", "content": "", "tool_calls": [
+                        {"id": "c1", "type": "function",
+                         "function": {"name": "speak", "arguments": json.dumps(
+                             {"inner": "先应下来", "text": envelope},
+                             ensure_ascii=False)}}]}
+                return {"role": "assistant", "content": "", "tool_calls": [
+                    {"id": "c2", "type": "function",
+                     "function": {"name": "speak", "arguments": json.dumps(
+                         {"inner": "换一句话", "text": "好嘞，草稿放这儿我守着。"},
+                         ensure_ascii=False)}}]}
+
+        provider = RetryThenClean()
+        calls = extra_tool_calls(provider, system,
+                                build_extra_briefing(transcript=["唐小岚（对你说）：草稿先放你这儿。"]))
+        self.assertEqual(provider.calls, 2, "协议信封必须触发重说")
+        # 重说带上模型自己那段被拒的输出与可自纠提示
+        self.assertIn("inner", provider.messages[-1]["content"])
+        self.assertIn("arguments", provider.messages[-2]["content"])
+        self.assertEqual([c["name"] for c in calls], ["speak"])
+        spoken = str(calls[0]["arguments"].get("text"))
+        self.assertEqual(spoken, "好嘞，草稿放这儿我守着。")
+        self.assertNotIn("inner", calls[0]["arguments"])
+        self.assertEqual(calls[0]["inner"], "换一句话")
+
+        class InlineEnvelope:
+            def chat_with_tools(self, messages, tools):
+                return {"role": "assistant", "content": envelope, "tool_calls": []}
+
+        calls = extra_tool_calls(InlineEnvelope(), system, "")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(str(calls[0]["arguments"]["text"]), "好嘞，那份草稿我不收不动。")
+        self.assertEqual(calls[0]["inner"], "先把话应下来")
+        self.assertNotIn("inner", calls[0]["arguments"])
+
+    def test_extra_unparsable_envelope_is_silence_not_raw_json(self):
+        """E42 (ticket 42-1): a reply that stays envelope-shaped through
+        every re-ask ends in silence — never in raw protocol JSON spoken
+        aloud."""
+        from harness.npc_agent import extra_tool_calls, build_extra_system_prompt
+
+        class GarbageEnvelope:
+            def __init__(self):
+                self.calls = 0
+
+            def chat_with_tools(self, messages, tools):
+                self.calls += 1
+                return {"role": "assistant",
+                        "content": '{"inner":"想事儿","arguments":{"text":',
+                        "tool_calls": []}
+
+        provider = GarbageEnvelope()
+        calls = extra_tool_calls(provider, build_extra_system_prompt("路人", "", "图书馆"),
+                                 "【你实际听见的近处交谈】\n唐小岚：你在吗？")
+        self.assertEqual(calls, [], "无法解析的信封只能沉默，绝不能当台词送出")
+        self.assertGreaterEqual(provider.calls, 2, "失败必须带可自纠提示重说")
+
+    def test_extra_prompt_states_self_name_and_assertion_bounds(self):
+        """E42 (tickets 42-2/3/4): the extra prompt never said who it was, so
+        韩大叔 called itself by third person and mailed its own name into
+        `to` (`unknown or ambiguous speak recipient`); with no capability or
+        assertion bounds it invented a 抄件 signature date (unregistered
+        entity) and narrated 开柜/递件 as done while its only tool is speak."""
+        from harness.npc_agent import build_extra_system_prompt
+
+        prompt = build_extra_system_prompt("兼职店员", "三点前守好吧台", "半坡咖啡馆",
+                                           name="韩大叔")
+        self.assertIn("韩大叔", prompt, "extra 提示词必须带上自己的名字")
+        self.assertIn("第三人称", prompt, "必须禁止第三人称自称")
+        self.assertIn("to", prompt)  # to 只能是在场他人
+        self.assertIn("在场", prompt)
+        self.assertIn("只能说话", prompt, "只能 speak 的角色不得叙述物理动作")
+        self.assertIn("已经发生", prompt)
+        self.assertIn("传闻", prompt)
+        self.assertIn("具体细节", prompt)
+        self.assertIn("签名", prompt)  # 反例清单：签名/日期这类细节
+        self.assertIn("知识", prompt)
+        self.assertIn("JSON", prompt)
+
+    def test_extra_idle_despawn_is_a_visible_interruption(self):
+        """E42 (ticket 42-5): 12:27 唐小岚 handed the stranger the errand
+        "三点方老师来取草稿"; 12:53 `extra_removed 韩大叔 reason=idle` left her
+        with only "他走了" — the commitment vanished with no perceptible
+        break, and nothing in the world may rewrite his words into assent."""
+        from harness.prompt import _event_sentence
+
+        class Quiet:
+            def chat_with_tools(self, messages, tools):
+                return {"role": "assistant",
+                        "content": "草稿放这儿吧，我看着。", "tool_calls": []}
+
+        pack = load_story_pack()
+        world = pack.build_world()
+        trace = Trace("v4-test", "historical-gate-extra-despawn")
+        asked = False
+
+        def agent(state, perception, affordances):
+            nonlocal asked
+            if state.actor_id == "唐小岚" and not asked:
+                asked = True
+                return Intention("唐小岚", "speak",
+                                 {"text": "三点方老师来取草稿，先放你这儿。",
+                                  "volume": "normal", "to": ["陌生人"]},
+                                 perception["world_version"])
+            return Intention(state.actor_id, "wait", {"duration_seconds": 3600},
+                             perception["world_version"])
+
+        states = {a: PrivateState(a) for a in world.actors}
+        agents = {a: agent for a in world.actors if world.actors[a].role != "extra"}
+        engine = AsyncEngine(world, agents, states, trace, None, extra_call=Quiet(),
+                             decision_timeout=10, max_wall_seconds=60,
+                             extra_idle_seconds=60)
+        engine.run(stop_at=datetime.fromisoformat("2026-03-16T07:12:00+08:00"),
+                   max_turns=300)
+
+        removed = [e for e in world.event_log if e.kind == "extra_removed"]
+        self.assertEqual(len(removed), 1, "路人应因静默被回收")
+        event = removed[0]
+        self.assertEqual(event.payload.get("reason"), "idle")
+        # 交付权：托付的发起者与路人同处一地，必须看见这次中断
+        self.assertIn("唐小岚", event.visible_to)
+        self.assertEqual(world.actors["唐小岚"].location, event.payload.get("location"))
+        line = _event_sentence({"kind": event.kind, "actor": event.actor,
+                                "payload": dict(event.payload)})
+        self.assertIn(event.actor, line)
+        self.assertIn("中断", line, "回收必须是可感知的中断，而不只是'走了'")
+        self.assertNotIn("答应", line)
+        self.assertNotIn("答应", json.dumps(dict(event.payload), ensure_ascii=False))
 
     def test_deliberation_pins_the_world_clock(self):
         """T1a (ticket 23): while an actor's decision is in flight, the world

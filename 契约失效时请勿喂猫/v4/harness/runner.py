@@ -418,10 +418,11 @@ class Runner:
                      and self.world.actors[partner].location == self.world.actors[name].location)
             idle = (self.world.now - info["last_active"]).total_seconds() > self.extra_idle_seconds
             if not alive or idle:
-                self.world.remove_extra(name)
+                reason = "idle" if idle else "partner_gone"
+                self.world.remove_extra(name, reason=reason)
                 self._extras.pop(name, None)
                 self.trace.record_system({"kind": "extra_removed"},
-                                         {"extra": name, "reason": "idle" if idle else "partner_gone"})
+                                         {"extra": name, "reason": reason})
         for event in new_events:
             if event.kind == "stranger_asked" and event.actor:
                 asker = event.actor

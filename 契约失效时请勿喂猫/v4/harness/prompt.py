@@ -246,6 +246,11 @@ def _event_sentence(event: Mapping[str, Any], location: str = "",
     if kind == "extra_arrived":
         return f"{who} 出现了"
     if kind == "extra_removed":
+        # Ticket 42: an idle despawn is an interruption, not a farewell — a
+        # character mid-conversation may not read "他走了" as "他答应了".
+        # The line only states the objective break; it never summarizes words.
+        if str(payload.get("reason") or "") == "idle":
+            return f"{who} 走开了，刚才的交谈就此中断"
         return f"{who} 走了"
     if kind and kind.startswith("system_"):
         return _system_sentence(kind, payload)
