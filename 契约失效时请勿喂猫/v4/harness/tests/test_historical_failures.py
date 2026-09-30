@@ -60,6 +60,16 @@ E42 extra path leaks and fabricates (ticket 42, d1-am artifact) ... test_extra_e
     log, affordances `[]`); it never knew its own name (`to:["韩大叔"]` →
     `unknown or ambiguous speak recipient`); and its 12:53 idle despawn left
     唐小岚 only "他走了" for an errand she had just handed over.
+E50 extra checkpoint state incomplete (ticket 50) .............. test_extra_checkpoint_roundtrip_keeps_state_and_produces_a_turn,
+                                                               test_old_format_extra_checkpoint_is_rebuilt_and_tolerated,
+                                                               test_runner_sync_path_carries_the_prompt_and_tolerates_a_legacy_row
+    checkpoint_state() persisted only fragment/knowledge_notes/partner/
+    last_active/rarity/start, dropping system_prompt/context_cursor/
+    pending_question/pending_heard_speech; _extra_turn then read
+    info["system_prompt"] OUTSIDE its try, so any resume with a live extra on
+    stage died with a KeyError and lost the pending question and replay
+    cursor. The archived d1-am artifact carries a live extra (韩大叔), so the
+    next half-day resume (d1-am -> d1-pm) would have hit it.
 I38 private inner channel unreachable — 0/1356 turns (3 runs) ... test_inner_channel_is_reachable_on_the_wire_and_native_path,
                                                                test_legacy_envelope_inner_still_works,
                                                                test_missing_inner_native_call_is_rejected_with_a_self_correcting_example,
@@ -1394,6 +1404,191 @@ class HistoricalFailureGates(unittest.TestCase):
                          {"agent_error", "decision_timeout", "engine_error"})
         self.assertIn("inner", turn["error"] or "")
         self.assertTrue(any("inner" in str(r.get("text")) for r in agent.delivered))
+
+
+class ExtraCheckpointGates(unittest.TestCase):
+    """E50 (ticket 50): a live extra's full mutable state must survive a
+    checkpoint round-trip. A half-day resume (d1-am -> d1-pm) starts a new
+    engine from a checkpoint that already has an extra on stage; if the
+    checkpoint dropped system_prompt the extra's loop died with a KeyError,
+    and dropping context_cursor/pending_question lost the reply window and
+    the unanswered question."""
+
+    QUESTION = "台账的事你听说了吗？"
+    ANSWER = "账簿的事我听人说过，三点前得交回去。"
+
+    def _extra_world(self):
+        from harness.kernel import ActorState, LocationState
+        return World(start=datetime.fromisoformat("2026-03-16T07:00:00+08:00"),
+                     actors=[ActorState("a", "room")],
+                     locations=[LocationState("room", extras=(
+                         {"fragment": "兼职店员", "rarity": "common",
+                          "knowledge_notes": "三点前要把账簿交回去"},))])
+
+    def _speaking_extra(self):
+        answer = self.ANSWER
+
+        class _SpokenExtra:
+            def __init__(self):
+                self.calls = 0
+
+            def chat_with_tools(self, messages, tools):
+                self.calls += 1
+                return {"role": "assistant", "content": "", "tool_calls": [
+                    {"id": f"c{self.calls}", "type": "function",
+                     "function": {"name": "speak", "arguments": json.dumps(
+                         {"inner": "这本账我确实听过一嘴", "text": answer},
+                         ensure_ascii=False)}}]}
+
+        return _SpokenExtra()
+
+    def _engine(self, world, extra_call):
+        import asyncio
+
+        def agent(state, perception, affordances):
+            return Intention("a", "wait", {"duration_seconds": 3600},
+                             perception["world_version"])
+
+        engine = AsyncEngine(world, {"a": agent}, {"a": PrivateState("a")},
+                             Trace("v4-test", "extra-checkpoint"), None,
+                             extra_call=extra_call, decision_timeout=5,
+                             max_wall_seconds=30)
+        # Spawn/answer seams read these; run() rebuilds them for a resumed run.
+        engine._scheduler_wake = asyncio.Event()
+        engine._wake_events = {}
+        return engine
+
+    def _spawn_and_snapshot(self, engine, question):
+        """Spawn the extra through the real generation seam, then snapshot its
+        state inside the loop so the task can never consume the question."""
+        import asyncio
+        captured: dict = {}
+
+        async def scenario():
+            engine._spawn_extra("a", question, asyncio.get_running_loop())
+            captured["name"] = next(iter(engine._extras))
+            captured["live"] = dict(engine._extras[captured["name"]])
+            captured["runner"] = engine.checkpoint_state()
+            captured["world"] = engine.world.checkpoint_state()
+            tasks = list(engine._extra_tasks.values())
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+        asyncio.run(scenario())
+        return captured
+
+    def test_extra_checkpoint_roundtrip_keeps_state_and_produces_a_turn(self):
+        """E50(a/b): spawn -> checkpoint -> restore into a new engine -> the
+        extra still answers (no KeyError), with its cursor and pending
+        question intact."""
+        base = self._extra_world()
+        world = self._extra_world()
+        engine = self._engine(world, self._speaking_extra())
+        captured = self._spawn_and_snapshot(engine, self.QUESTION)
+        name, live = captured["name"], captured["live"]
+
+        restored_world = World.from_checkpoint(base, captured["world"])
+        resumed = self._engine(restored_world, self._speaking_extra())
+        resumed.restore_checkpoint(captured["runner"])
+        restored = resumed._extras[name]
+
+        # (b) pending question + transcript cursor + fixed prefix survive.
+        self.assertEqual(restored["pending_question"], self.QUESTION)
+        self.assertEqual(restored["context_cursor"], live["context_cursor"])
+        self.assertEqual(restored["pending_heard_speech"], live["pending_heard_speech"])
+        self.assertEqual(restored["system_prompt"], live["system_prompt"])
+        self.assertEqual(restored["fragment"], live["fragment"])
+        self.assertEqual(restored["start"], live["start"])
+
+        # (a) the resumed run still produces the extra's turn (no KeyError).
+        resumed.run(stop_at=datetime.fromisoformat("2026-03-16T07:03:00+08:00"),
+                    max_turns=30)
+        lines = [str(e.payload.get("text", "")) for e in restored_world.event_log
+                 if e.kind == "speech" and e.actor == name]
+        self.assertIn(self.ANSWER, lines)
+        crashes = [r for r in resumed.trace.system_turns
+                   if r["request"].get("kind") == "actor_task_crash"]
+        self.assertEqual(crashes, [])
+
+    def test_old_format_extra_checkpoint_is_rebuilt_and_tolerated(self):
+        """E50(c): a pre-ticket-50 row (only the six legacy keys) must be
+        rebuilt with safe defaults, not raise, and its turn must still run."""
+        import asyncio
+        from harness.npc_agent import build_extra_system_prompt
+
+        world = self._extra_world()
+        world.add_extra("韩大叔", "room")
+        start = len(world.event_log)
+        engine = self._engine(world, self._speaking_extra())
+        legacy = {"transient_failures": {"a": 0},
+                  "extras": {"韩大叔": {
+                      "fragment": "兼职店员",
+                      "knowledge_notes": "三点前要把账簿交回去",
+                      "partner": "a", "last_active": world.now.isoformat(),
+                      "rarity": "common", "start": start}}}
+        engine.restore_checkpoint(legacy)   # 旧格式缺 system_prompt 等键
+
+        info = engine._extras["韩大叔"]
+        self.assertEqual(info["system_prompt"],
+                         build_extra_system_prompt("兼职店员", "三点前要把账簿交回去",
+                                                   "room", name="韩大叔"))
+        self.assertEqual(info["context_cursor"], start)
+        self.assertEqual(info["pending_question"], "")
+        self.assertFalse(info["pending_heard_speech"])
+
+        # The tolerance lives in _extra_turn too: a direct turn must not raise.
+        asyncio.run(engine._extra_turn("韩大叔", self.QUESTION))
+        lines = [str(e.payload.get("text", "")) for e in world.event_log
+                 if e.kind == "speech" and e.actor == "韩大叔"]
+        self.assertIn(self.ANSWER, lines)
+
+    def test_runner_sync_path_carries_the_prompt_and_tolerates_a_legacy_row(self):
+        """E50 (sync Runner): the legacy path had the same gap — its
+        checkpoint dropped system_prompt and its _extra_turn read the key
+        outside its try. Persist it, and rebuild on an old-format row."""
+        from harness.npc_agent import build_extra_system_prompt
+        from harness.runner import Runner
+
+        def wait_agent(state, perception, affordances):
+            return Intention(state.actor_id, "wait", {"duration_seconds": 3600},
+                             perception["world_version"])
+
+        def build():
+            world = self._extra_world()
+            world.add_extra("韩大叔", "room")
+            agents = {a: wait_agent for a in world.actors}
+            states = {a: PrivateState(a) for a in world.actors}
+            return world, agents, states
+
+        world, agents, states = build()
+        prompt = build_extra_system_prompt("兼职店员", "三点前要把账簿交回去", "room")
+        runner = Runner(world, agents, states, Trace("v4-test", "runner-extra-cp"), None)
+        runner._extras["韩大叔"] = {
+            "fragment": "兼职店员", "knowledge_notes": "三点前要把账簿交回去",
+            "partner": "a", "last_active": world.now, "rarity": "common",
+            "start": 0, "system_prompt": prompt}
+        self.assertEqual(runner.checkpoint_state()["extras"]["韩大叔"]["system_prompt"],
+                         prompt)
+
+        # Resume from a pre-ticket-50 Runner row (no system_prompt key).
+        world2, agents2, states2 = build()
+        answer = self.ANSWER
+        resumed = Runner(world2, agents2, states2, Trace("v4-test", "runner-extra-cp2"),
+                         None,
+                         extra_call=lambda messages: json.dumps(
+                             {"name": "speak", "arguments": {"text": answer}},
+                             ensure_ascii=False))
+        resumed.restore_checkpoint({
+            "transient_failures": {a: 0 for a in world2.actors},
+            "extras": {"韩大叔": {
+                "fragment": "兼职店员", "knowledge_notes": "三点前要把账簿交回去",
+                "partner": "a", "last_active": world2.now.isoformat(),
+                "rarity": "common", "start": 0}}})
+        resumed._extra_turn("韩大叔", self.QUESTION)   # must not raise
+        lines = [str(e.payload.get("text", "")) for e in world2.event_log
+                 if e.kind == "speech" and e.actor == "韩大叔"]
+        self.assertIn(self.ANSWER, lines)
 
 
 if __name__ == "__main__":

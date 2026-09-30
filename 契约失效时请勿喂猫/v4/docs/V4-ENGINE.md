@@ -66,6 +66,7 @@ SSOT：引擎时序语义、并发架构、冻结/唤醒/中断机制、失败�
 
 - **journal**（append-only：意图提交 + 事件，含时间戳与到达序）是事实流 SSOT；状态 = journal 折叠 + 快照。
 - 恢复 = 快照 + journal 尾部重放 + 重挂计时器。KB 与 last_shown 状态引擎侧保存；会话转录与 compaction 边界亦入检查点——恢复不得重放已计 last_shown 的行（防首跑洪泛）。
+- extra 的对话期可变状态随检查点往返：冻结的 system 前缀、场景游标 `context_cursor`、待答问题 `pending_question`、待听语音 `pending_heard_speech`、到场/活跃时刻。半天分段续跑（d1-am → d1-pm）恢复后，场上活着的 extra 必须接着答它未答的问题；旧格式行（缺这些键）按 `fragment`/`knowledge_notes`/地点/名字重建前缀并给安全缺省，绝不因缺键 KeyError（ticket 50）。
 - trace 改为：每角色时间线 + 全局 journal——比回合快照更强的 happens-before 分析材料。
 - 确定性种子与历史失败闸门（v3 pre-run gate 惯例）必须在新排序下全绿后才许大跑。
 

@@ -14,7 +14,8 @@ from .system import Ledger
 from .adapter import parse_decision
 from .npc_agent import (build_extra_briefing, build_extra_system_prompt,
                          extra_scene_transcript, generate_stranger_name,
-                         public_mc_digest, sample_extra, schedule_digest)
+                         public_mc_digest, restore_extra_prompt, sample_extra,
+                         schedule_digest)
 from .trace import Trace
 
 AgentFn = Callable[[PrivateState, dict, list[dict]], Intention | tuple[Intention | None, dict[str, Any]] | None]
@@ -90,7 +91,12 @@ class Runner:
                 "extras": {name: {"fragment": x["fragment"], "knowledge_notes": x["knowledge_notes"],
                                    "partner": x["partner"],
                                    "last_active": x["last_active"].isoformat(),
-                                   "rarity": x["rarity"], "start": x["start"]}
+                                   "rarity": x["rarity"], "start": x["start"],
+                                   # ticket 50: the prompt travels in the
+                                   # checkpoint; a legacy row without it is
+                                   # rebuilt the same way the spawn site did.
+                                   "system_prompt": restore_extra_prompt(
+                                       x, self.world.actors[name].location)}
                             for name, x in self._extras.items()},
                 "wake_times": [t.isoformat() for t in self._wake_times],
                 "last_speech": {k: t.isoformat() for k, t in self._last_speech.items()}}
@@ -461,7 +467,7 @@ class Runner:
         transcript = extra_scene_transcript(
             self.world.event_log, listener=name, start=int(info["start"]),
             opening_question=question, questioner=str(info["partner"]))
-        system = str(info["system_prompt"])
+        system = restore_extra_prompt(info, location)
         briefing = build_extra_briefing(transcript=transcript)
         intention, result, error = None, ("none" if not transcript else "agent_error"), ""
         try:

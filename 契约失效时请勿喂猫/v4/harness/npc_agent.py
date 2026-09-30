@@ -235,6 +235,25 @@ def build_extra_system_prompt(fragment: str, knowledge_notes: str, location: str
         "\"arguments\":{\"inner\":\"你的心思，一两句\",\"text\":\"你说的话\"}}")
 
 
+def restore_extra_prompt(info: Mapping[str, Any], location: str, *,
+                         name: str = "") -> str:
+    """The extra's system prompt for a turn, rebuilt only when absent.
+
+    ticket 50: the prompt is persisted verbatim in the checkpoint (the
+    checkpoint contract is "everything needed to reproduce"), so a resume
+    reproduces the exact prefix the live extra was running with. Old-format
+    rows written before ticket 50 lack the key; rebuild them from the same
+    inputs the spawn site used (fragment/knowledge_notes/location/name) so a
+    stale checkpoint still runs instead of dying in ``_extra_turn``.
+    """
+    prompt = info.get("system_prompt")
+    if prompt:
+        return str(prompt)
+    return build_extra_system_prompt(str(info.get("fragment", "路人")),
+                                     str(info.get("knowledge_notes", "")),
+                                     location, name=name)
+
+
 def _extra_speech_audience(event: Any) -> Iterable[str]:
     """Use committed delivery authority; synthetic legacy fixtures use heard."""
     visible = getattr(event, "visible_to", None)

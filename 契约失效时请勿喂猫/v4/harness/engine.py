@@ -39,7 +39,7 @@ from .kernel import (ActionRejected, Intention, TICK_SECONDS,
 from .npc_agent import (build_extra_briefing, build_extra_system_prompt,
                         extra_heard_speech_since, extra_scene_transcript,
                         generate_stranger_name, looks_like_protocol_envelope,
-                        sample_extra)
+                        restore_extra_prompt, sample_extra)
 from .prompt import render_world_message, _event_sentence, _clean_description
 from .kb import CONTACT_KEY
 from .repetition import RepetitionMonitor
@@ -1501,7 +1501,12 @@ class AsyncEngine:
         info = self._extras.get(name)
         if info is None:
             return
-        info["pending_question"] = question
+        # ticket 50: a resume restarts the loop with "" (run() rebuilds
+        # _wake_events/_extra_tasks for restored extras). Only overwrite an
+        # empty pending slot — a question restored from the checkpoint must
+        # not be clobbered before the loop answers it.
+        if question:
+            info["pending_question"] = question
         try:
             while name in self._extras and name in self.world.actors and not self.stop_reason:
                 info = self._extras.get(name)
@@ -1548,7 +1553,7 @@ class AsyncEngine:
         transcript = extra_scene_transcript(
             events, listener=name, start=int(info["start"]),
             opening_question=question, questioner=str(info["partner"]))
-        system = str(info["system_prompt"])
+        system = restore_extra_prompt(info, location, name=name)
         briefing = build_extra_briefing(transcript=transcript)
         intention_calls: list[dict[str, Any]] = []
         result, error = "none", ""
@@ -1634,7 +1639,11 @@ class AsyncEngine:
                 "extras": {name: {"fragment": x["fragment"], "knowledge_notes": x["knowledge_notes"],
                                    "partner": x["partner"],
                                    "last_active": x["last_active"].isoformat(),
-                                   "rarity": x["rarity"], "start": x["start"]}
+                                   "rarity": x["rarity"], "start": x["start"],
+                                   "context_cursor": x["context_cursor"],
+                                   "pending_question": x["pending_question"],
+                                   "pending_heard_speech": bool(x["pending_heard_speech"]),
+                                   "system_prompt": x["system_prompt"]}
                            for name, x in self._extras.items()},
                 "wake_times": [t.isoformat() for t in self._wake_times],
                 "last_speech": {k: t.isoformat() for k, t in self._last_speech.items()},
@@ -1679,7 +1688,7 @@ class AsyncEngine:
         self._wake_times = [_dt.fromisoformat(t) for t in state.get("wake_times", ())]
         self._last_speech = {k: _dt.fromisoformat(t) for k, t in state.get("last_speech", {}).items()}
         self._heartbeat_jobs = {k: _as_int(v, f"heartbeat[{k}]") for k, v in state.get("heartbeat_jobs", {}).items()}
-        self._extras = {name: {**x, "last_active": _dt.fromisoformat(x["last_active"])}
+        self._extras = {name: self._rehydrate_extra(name, x)
                         for name, x in state.get("extras", {}).items()}
         self._recall_lines = {k: list(v) for k, v in state.get("recall_lines", {}).items()}
         self._last_tool_text = {k: str(v) for k, v in state.get("last_tool_text", {}).items()}
@@ -1701,3 +1710,33 @@ class AsyncEngine:
             restore = getattr(agent, "restore_session", None)
             if restore is not None:
                 restore(snap)
+
+    def _rehydrate_extra(self, name: str, raw: Mapping[str, Any]) -> dict[str, Any]:
+        """Rebuild one extra's full mutable state from a checkpoint row.
+
+        ticket 50: checkpoint_state() now persists every runtime field, so a
+        round-trip is exact. Old-format rows (pre-ticket-50) carry only the
+        six legacy keys; default them deterministically instead of KeyError:
+        the replay cursor falls back to the scene start the turn already uses
+        as its default, the pending question to "" and heard-speech to False
+        (nothing was waiting), and system_prompt is rebuilt by
+        restore_extra_prompt from fragment/knowledge_notes/location/name.
+        """
+        start = _as_int(raw.get("start", 0), f"extras[{name}].start")
+        from datetime import datetime as _dt
+        actor = self.world.actors.get(name)
+        info = {
+            "fragment": str(raw.get("fragment", "路人")),
+            "knowledge_notes": str(raw.get("knowledge_notes", "")),
+            "partner": str(raw.get("partner", "")),
+            "last_active": _dt.fromisoformat(raw["last_active"]),
+            "rarity": str(raw.get("rarity", "common")),
+            "start": start,
+            "context_cursor": _as_int(raw.get("context_cursor", start),
+                                      f"extras[{name}].context_cursor"),
+            "pending_question": str(raw.get("pending_question", "")),
+            "pending_heard_speech": bool(raw.get("pending_heard_speech", False)),
+        }
+        info["system_prompt"] = restore_extra_prompt(
+            raw, actor.location if actor is not None else "", name=name)
+        return info
