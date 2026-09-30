@@ -28,7 +28,11 @@ Invariants implemented here (V4-ENGINE §2):
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
+import functools
 import json
+import queue
+import threading
 import time
 from datetime import datetime, timedelta
 from typing import Any, Callable, Iterable, Mapping, Protocol, Sequence
@@ -162,6 +166,77 @@ def _discard_task_exception(task: asyncio.Future) -> None:
     if task.cancelled():
         return
     task.exception()
+
+
+class _DaemonCallPool:
+    """Persistent daemon worker threads for blocking provider calls (ticket 55).
+
+    ``asyncio.to_thread`` parks the call in the loop's default
+    ``ThreadPoolExecutor``, whose workers are non-daemon. Both
+    ``asyncio.Runner.close`` (``shutdown_default_executor``) and the
+    interpreter exit join them, so a run whose engine task died stayed alive
+    as RUNNING for as long as a provider call sat parked — the 2026-10-01
+    zombie. Daemon workers are never joined. The threads are pre-warmed and
+    reused: spawning one per call measurably delayed a blocking reply and, on
+    this single-threaded deterministic scheduler, perturbed the wake ordering
+    enough to flip the E1/E2/E3 extra-conversation gate."""
+
+    def __init__(self, workers: int = 16) -> None:
+        self._queue: queue.SimpleQueue = queue.SimpleQueue()
+        self._workers = workers
+        self._started = 0
+        self._lock = threading.Lock()
+
+    def _start(self) -> None:
+        with self._lock:
+            if self._started:
+                return
+            for index in range(self._workers):
+                threading.Thread(target=self._worker, daemon=True,
+                                 name=f"v4-provider-{index}").start()
+            self._started = self._workers
+
+    def submit(self, fn: Callable[[], Any]) -> "concurrent.futures.Future":
+        self._start()
+        future: concurrent.futures.Future = concurrent.futures.Future()
+        self._queue.put((future, fn))
+        return future
+
+    def _worker(self) -> None:
+        while True:
+            item = self._queue.get()
+            if item is None:
+                return
+            future, fn = item
+            if not future.set_running_or_notify_cancel():
+                continue  # cancelled while queued
+            try:
+                future.set_result(fn())
+            except BaseException as exc:  # noqa: BLE001 — relayed to the caller
+                future.set_exception(exc)
+
+
+_provider_pool: _DaemonCallPool | None = None
+_provider_pool_lock = threading.Lock()
+
+
+def _call_pool() -> _DaemonCallPool:
+    global _provider_pool
+    with _provider_pool_lock:
+        if _provider_pool is None:
+            _provider_pool = _DaemonCallPool()
+        return _provider_pool
+
+
+async def _run_blocking(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+    """Await a blocking provider call on a daemon worker thread.
+
+    Unlike ``asyncio.to_thread`` these workers are never joined, so a run
+    whose engine task died ends with the non-zero status its uncaught
+    exception earned instead of lingering as RUNNING; the abandoned call is
+    bounded on the provider side (ticket 54)."""
+    call = functools.partial(fn, *args, **kwargs)
+    return await asyncio.get_running_loop().run_in_executor(_call_pool(), call)
 
 
 def _knowledge_line_description(line: str) -> str | None:
@@ -876,10 +951,10 @@ class AsyncEngine:
                         else None)
             text = render_world_message(perception, affordances, observer=actor_id,
                                         knowledge_lines=knowledge_lines, director=director)
-            decide_task = loop.create_task(asyncio.to_thread(
+            decide_task = loop.create_task(_run_blocking(
                 self._decide_v4, actor_id, text))
         else:
-            decide_task = loop.create_task(asyncio.to_thread(
+            decide_task = loop.create_task(_run_blocking(
                 self._decide, actor_id, perception, affordances))
         intention, result, error = None, "none", None
         chain_calls: list[dict[str, Any]] | None = None
@@ -2017,8 +2092,16 @@ class AsyncEngine:
                 info = self._extras.get(name)
                 if info is None:
                     return
-                asked = str(info.pop("pending_question", "") or "")
-                info.pop("pending_heard_speech", False)
+                # Ticket 55: consume by clearing, never deleting. The pop
+                # here used to make 'the extra is answering' a window in
+                # which pending_question/pending_heard_speech did not exist;
+                # a checkpoint landing in that window (real-20261001T055020,
+                # sim 09:14–09:19) then hit checkpoint_state's direct
+                # subscripts and killed the scheduler. Clearing keeps every
+                # runtime field present for the whole life of the extra.
+                asked = str(info.get("pending_question", "") or "")
+                info["pending_question"] = ""
+                info["pending_heard_speech"] = False
                 # Ticket 22: while the answer is in flight the world clock
                 # pins at the question moment (same 1-tick skew rule as MC
                 # decisions) — the provider's wall latency must not turn
@@ -2069,7 +2152,7 @@ class AsyncEngine:
                 from .npc_agent import extra_tool_calls
                 extra_call = self.extra_call
                 assert extra_call is not None
-                intention_calls = await asyncio.to_thread(
+                intention_calls = await _run_blocking(
                     extra_tool_calls, extra_call, system, briefing, actor=name)
             else:
                 legacy_extra = self.extra_call
@@ -2077,7 +2160,7 @@ class AsyncEngine:
                 messages = [{"role": "system", "content": system}]
                 if briefing:
                     messages.append({"role": "user", "content": briefing})
-                raw = await asyncio.to_thread(legacy_extra, messages)
+                raw = await _run_blocking(legacy_extra, messages)
                 intention, _ = parse_decision(name, raw, self.world.version)
                 if intention is not None:
                     intention_calls = [{"name": intention.kind,
@@ -2149,10 +2232,22 @@ class AsyncEngine:
                                    "partner": x["partner"],
                                    "last_active": x["last_active"].isoformat(),
                                    "rarity": x["rarity"], "start": x["start"],
-                                   "context_cursor": x["context_cursor"],
-                                   "pending_question": x["pending_question"],
-                                   "pending_heard_speech": bool(x["pending_heard_speech"]),
-                                   "system_prompt": x["system_prompt"]}
+                                   # Ticket 55: the four fields below used to
+                                   # be read with a direct subscript, so a
+                                   # checkpoint taken while the extra was
+                                   # answering (its pending question had been
+                                   # consumed by _extra_loop) raised KeyError
+                                   # and left the run stopped but "RUNNING".
+                                   # Default them exactly as _rehydrate_extra
+                                   # does so serialize/restore stays an
+                                   # identity even for a legacy or manually
+                                   # built in-memory row.
+                                   "context_cursor": x.get("context_cursor", x["start"]),
+                                   "pending_question": x.get("pending_question", ""),
+                                   "pending_heard_speech": bool(
+                                       x.get("pending_heard_speech", False)),
+                                   "system_prompt": restore_extra_prompt(
+                                       x, self._extra_location(name), name=name)}
                            for name, x in self._extras.items()},
                 "wake_times": [t.isoformat() for t in self._wake_times],
                 "last_speech": {k: t.isoformat() for k, t in self._last_speech.items()},
@@ -2230,6 +2325,15 @@ class AsyncEngine:
             restore = getattr(agent, "restore_session", None)
             if restore is not None:
                 restore(snap)
+
+    def _extra_location(self, name: str) -> str:
+        """The extra's current location, "" when it has left the world.
+
+        A row can still be serialized while the despawn is being applied, so
+        the location lookup must tolerate the actor being gone (ticket 55,
+        same guard as _rehydrate_extra)."""
+        actor = self.world.actors.get(name)
+        return actor.location if actor is not None else ""
 
     def _rehydrate_extra(self, name: str, raw: Mapping[str, Any]) -> dict[str, Any]:
         """Rebuild one extra's full mutable state from a checkpoint row.

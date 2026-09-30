@@ -291,6 +291,25 @@ I54 one provider request had no wall-clock bound (ticket 54) .... test_provider_
     elapsed budget so "upstream slow" is distinguishable from "upstream
     hung". `worst_case_seconds()` is unchanged in value (budget + one final
     socket timeout) and stays a true bound.
+E55 checkpoint KeyError while the extra answers (ticket 55) . test_checkpoint_during_extra_answer_does_not_raise_and_resumes,
+                                                               test_executing_engine_task_crash_ends_the_process_without_a_zombie
+    real-20261001T055020 died at sim 09:14–09:19: `runs/real-
+    20261001T055020….error.log` shows `checkpoint_state` line 2153 raising
+    `KeyError: 'pending_question'`, which killed the scheduler task and froze
+    the world (the extra was mid-answer at 09:14–09:19; the checkpoint
+    landed at 06:16 wall). `_extra_loop` consumed the pending
+    question with `pop` before its turn, so the answering window had no such
+    key by design, while `checkpoint_state` read the extra fields with direct
+    subscripts; E50's round-trip test checked in right after generation and
+    never entered that window (green test, red production). The process then
+    stayed RUNNING because the provider call sat in `asyncio.to_thread`'s
+    non-daemon worker thread, which `concurrent.futures` joins at interpreter
+    exit. Fix: serialize the four live fields with the same `.get(...)`
+    defaults `_rehydrate_extra` uses (round-trip identity), clear the pending
+    question instead of deleting it so "all runtime fields always exist" is
+    an invariant, and park provider calls on daemon threads (`_run_blocking`)
+    so a dead engine task ends the process with its non-zero status instead of
+    leaving a zombie.
 """
 
 import json
@@ -309,6 +328,9 @@ from harness.seed import load_story_pack
 from harness.system import Ledger
 from harness.trace import Trace, verify_event_log
 from harness.replay import replay_world
+
+# The v4 project root (harness/tests/ -> harness/ -> v4), for subprocess gates.
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class _FlashbackProbe:
@@ -1689,13 +1711,8 @@ class RepetitionMonitorGates(unittest.TestCase):
                         f"stagnation notice listed no executable action: {stagnation}")
 
 
-class ExtraCheckpointGates(unittest.TestCase):
-    """E50 (ticket 50): a live extra's full mutable state must survive a
-    checkpoint round-trip. A half-day resume (d1-am -> d1-pm) starts a new
-    engine from a checkpoint that already has an extra on stage; if the
-    checkpoint dropped system_prompt the extra's loop died with a KeyError,
-    and dropping context_cursor/pending_question lost the reply window and
-    the unanswered question."""
+class _ExtraCheckpointFixtures(unittest.TestCase):
+    """Shared fixtures for the extra checkpoint gates (E50/E55)."""
 
     QUESTION = "台账的事你听说了吗？"
     ANSWER = "账簿的事我听人说过，三点前得交回去。"
@@ -1740,6 +1757,15 @@ class ExtraCheckpointGates(unittest.TestCase):
         engine._scheduler_wake = asyncio.Event()
         engine._wake_events = {}
         return engine
+
+
+class ExtraCheckpointGates(_ExtraCheckpointFixtures):
+    """E50 (ticket 50): a live extra's full mutable state must survive a
+    checkpoint round-trip. A half-day resume (d1-am -> d1-pm) starts a new
+    engine from a checkpoint that already has an extra on stage; if the
+    checkpoint dropped system_prompt the extra's loop died with a KeyError,
+    and dropping context_cursor/pending_question lost the reply window and
+    the unanswered question."""
 
     def _spawn_and_snapshot(self, engine, question):
         """Spawn the extra through the real generation seam, then snapshot its
@@ -1872,6 +1898,150 @@ class ExtraCheckpointGates(unittest.TestCase):
         lines = [str(e.payload.get("text", "")) for e in world2.event_log
                  if e.kind == "speech" and e.actor == "韩大叔"]
         self.assertIn(self.ANSWER, lines)
+
+
+# Ticket 55: the process-under-test for E55(c). It reproduces the production
+# shape — a worker thread parked in a provider call while an engine task
+# raises — without a real provider. Run with the project root as cwd so
+# `harness` imports.
+_ENGINE_CRASH_CHILD = '''\
+import time
+from datetime import datetime, timedelta
+from harness.agent_state import PrivateState
+from harness.engine import AsyncEngine
+from harness.kernel import ActorState, Intention, LocationState, World
+from harness.trace import Trace
+
+START = datetime.fromisoformat("2026-03-16T07:00:00+08:00")
+
+
+def blocking_agent(state, perception, affordances):
+    time.sleep(3600)          # a provider call that never returns in-run
+    return Intention("a", "wait", {"duration_seconds": 60},
+                     perception["world_version"])
+
+
+def crashy_checkpoint():
+    raise RuntimeError("checkpoint boom (ticket-55 zombie regression)")
+
+
+world = World(start=START, actors=[ActorState("a", "room")],
+              locations=[LocationState("room")])
+engine = AsyncEngine(world, {"a": blocking_agent}, {"a": PrivateState("a")},
+                     Trace("v4-test", "zombie-child"), None,
+                     decision_timeout=60, max_wall_seconds=30,
+                     stall_threshold_seconds=1.0, freeze_tolerance_seconds=0.2,
+                     hung_tolerance_seconds=0.2, checkpoint=crashy_checkpoint)
+engine.run(stop_at=START + timedelta(minutes=1))
+'''
+
+
+class CheckpointDuringExtraAnswerGates(_ExtraCheckpointFixtures):
+    """E55 (ticket 55): a checkpoint that lands while the extra is answering
+    must still serialize, and a dying engine task must end the process.
+
+    real-20261001T055020 stopped at sim 09:14–09:19 when the scheduler task
+    raised ``KeyError: 'pending_question'`` in ``checkpoint_state``:
+    ``_extra_loop`` consumed the question with ``pop`` before the turn, so
+    "the extra is answering" was a window in which pending_question/
+    pending_heard_speech did not exist — while ``checkpoint_state`` read them
+    with direct subscripts. The scheduler died, the world froze, and the
+    process still showed RUNNING because a provider call parked in
+    ``asyncio.to_thread``'s non-daemon worker made the interpreter wait at
+    exit. E50's round-trip test checked in right after generation and so
+    never entered the answering window."""
+
+    def test_checkpoint_during_extra_answer_does_not_raise_and_resumes(self):
+        """E55(a): checkpoint inside the answering window (question already
+        consumed) must not raise, the consumed fields must serialize as their
+        restore defaults, and the restored extra must still answer."""
+        import asyncio
+        import threading
+
+        entered, release = threading.Event(), threading.Event()
+        answer = self.ANSWER
+
+        class _BlockingExtra:
+            def __init__(self):
+                self.calls = 0
+
+            def chat_with_tools(self, messages, tools):
+                self.calls += 1
+                entered.set()
+                assert release.wait(10), "test never released the extra"
+                return {"role": "assistant", "content": "", "tool_calls": [
+                    {"id": f"c{self.calls}", "type": "function",
+                     "function": {"name": "speak", "arguments": json.dumps(
+                         {"inner": "这本账我确实听过", "text": answer},
+                         ensure_ascii=False)}}]}
+
+        base = self._extra_world()
+        world = self._extra_world()
+        engine = self._engine(world, _BlockingExtra())
+        captured: dict = {}
+
+        async def scenario():
+            engine._spawn_extra("a", self.QUESTION, asyncio.get_running_loop())
+            name = next(iter(engine._extras))
+            task = engine._extra_tasks[name]
+            while not entered.is_set():          # the loop consumed the question
+                await asyncio.sleep(0.01)
+            # Ticket 55 transient: the answer is in flight.
+            captured["name"] = name
+            captured["runner"] = engine.checkpoint_state()
+            captured["world"] = engine.world.checkpoint_state()
+            release.set()
+            for _ in range(500):                 # let the turn land, then stop
+                if any(e.kind == "speech" and e.actor == name
+                       for e in world.event_log):
+                    break
+                await asyncio.sleep(0.01)
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+        asyncio.run(scenario())
+        name = captured["name"]
+
+        row = captured["runner"]["extras"][name]
+        self.assertEqual(row["pending_question"], "")
+        self.assertFalse(row["pending_heard_speech"])
+
+        restored_world = World.from_checkpoint(base, captured["world"])
+        resumed = self._engine(restored_world, self._speaking_extra())
+        resumed.restore_checkpoint(captured["runner"])
+        self.assertEqual(resumed._extras[name]["pending_question"], "")
+
+        # The restored extra still answers a fresh directed line (not wedged).
+        restored_world.submit(Intention("a", "speak",
+                                        {"text": "那本账簿你什么时候交回去？",
+                                         "to": [name]}, restored_world.version))
+        asyncio.run(resumed._extra_turn(name, ""))
+        lines = [str(e.payload.get("text", "")) for e in restored_world.event_log
+                 if e.kind == "speech" and e.actor == name]
+        self.assertIn(answer, lines)
+
+    def test_executing_engine_task_crash_ends_the_process_without_a_zombie(self):
+        """E55(c): a deliberately-raising engine task must end the process
+        with a non-zero status promptly, even with a provider call parked in
+        a worker thread. Pre-fix this hung until the test timeout and showed
+        RUNNING (non-daemon to_thread kept the interpreter alive)."""
+        import subprocess
+        import sys
+
+        started = time.monotonic()
+        try:
+            proc = subprocess.run([sys.executable, "-c", _ENGINE_CRASH_CHILD],
+                                  cwd=str(_PROJECT_ROOT), capture_output=True,
+                                  text=True, timeout=20)
+        except subprocess.TimeoutExpired:
+            self.fail("engine task crash left a zombie: the process never exited")
+        elapsed = time.monotonic() - started
+
+        self.assertNotEqual(proc.returncode, 0,
+                            f"crash exited cleanly:\n{proc.stderr[-2000:]}")
+        self.assertIn("checkpoint boom", proc.stderr)
+        self.assertLess(elapsed, 15,
+                        f"crash took {elapsed:.1f}s to end the process")
 
 
 class NoteDeliveryGates(unittest.TestCase):
