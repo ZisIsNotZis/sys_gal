@@ -1031,6 +1031,151 @@ REVIEWS = {
 
 
 # ---------------------------------------------------------------- health
+
+# Ticket 48 metric B: a conservative vocabulary of document/object-shaped
+# nouns. A speech token built from one of these is a "named object" claim;
+# the registry comparison below suppresses the ones the world registers.
+_OBJECT_MARKERS = (
+    "值周表", "考勤表", "值班表", "登记簿", "登记本", "借阅登记本", "晚归登记本",
+    "签到表", "签到本", "审批单", "流程单", "催办单", "审计包", "白条", "借条",
+    "字条", "收据", "凭证", "存根", "通知书", "台账", "抄件", "导出件",
+    "记录本", "记录簿", "花名册", "蓝皮夹", "黄标签", "专用柜", "保险柜", "文件柜",
+)
+
+# Ticket 48 metric A: a first-person claim to have read/checked something, a
+# perception form ("在我眼前"), or a negative verification ("没见着…名字").
+# Conservative by construction — it only fires on a claim naming a document
+# the speaker has no document_read for that day.
+_READ_CLAIM = re.compile(
+    r"(?:我|俺)[^。，；！？\n]{0,4}(?:读过|读了|读完了|读完|看完了|核对过|核过|"
+    r"比对过|对过|翻过|翻看了|查过|查看过)"
+    r"|(?:在我眼前|在我面前|在我手边)"
+    r"|(?:没见着|没见过|没看到|没看见)[^。，；！？\n]{0,8}(?:名字|签名|记录|登记|字)")
+
+_READ_OBJECT_MARKERS = (
+    "台账", "抄件", "登记本", "晚归登记本", "借阅登记本", "登记簿", "本子",
+    "记录本", "导出件", "存根", "通知书", "审计包", "签到本", "签到表",
+    "值班簿", "值班表", "审批单", "流程单", "催办单", "白条", "借条", "凭证", "名单",
+)
+
+_REGISTRY_CACHE: set[str] | None = None
+
+
+def scene_registry(manifest_dir: Path | None = None) -> set[str]:
+    """The seed's registered entity/concept names, for ticket-48 metric B.
+
+    Reads ``world/manifest.yml`` (the same registry seed_lint checks); a
+    missing file yields the empty set so an artifact-only run still works."""
+    global _REGISTRY_CACHE
+    if _REGISTRY_CACHE is not None and manifest_dir is None:
+        return set(_REGISTRY_CACHE)
+    root = Path(manifest_dir) if manifest_dir else (Path(__file__).resolve().parents[1] / "world")
+    names: set[str] = set()
+    path = root / "manifest.yml"
+    if path.exists():
+        import yaml
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        for section in ("actors", "items", "documents", "locations", "concepts"):
+            for row in data.get(section) or ():
+                if not isinstance(row, dict):
+                    continue
+                for key in ("id", "name"):
+                    value = row.get(key)
+                    if value:
+                        names.add(str(value))
+                for alias in row.get("aliases") or ():
+                    names.add(str(alias))
+    if manifest_dir is None:
+        _REGISTRY_CACHE = names
+    return names
+
+
+def _artifact_names(data) -> set[str]:
+    """Entity names an artifact itself reveals (documents read, items moved,
+    actors/places seen) — lets metric B work without the live manifest."""
+    names: set[str] = set()
+    for event in data.get("world_events", []) or ():
+        payload = event.get("payload") or {}
+        for key in ("document", "title", "item", "entity", "location"):
+            value = payload.get(key)
+            if isinstance(value, str) and value:
+                names.add(value)
+        if event.get("actor"):
+            names.add(str(event["actor"]))
+    for actor in (data.get("replay") or {}).get("active_actors", ()):
+        names.add(str(actor))
+    return names
+
+
+def read_claims_without_a_read(world_events, day: int):
+    """Ticket 48 metric A (review only): a same-day ``speak`` claims to have
+    read/checked a document for which the speaker has no ``document_read``.
+
+    Returns one dict per claim: {time, actor, object, text}."""
+    reads: dict[str, set[str]] = {}
+    for event in _day_events(world_events, day):
+        if event.get("kind") != "document_read":
+            continue
+        actor = str(event.get("actor") or "")
+        payload = event.get("payload") or {}
+        for key in ("document", "title"):
+            value = payload.get(key)
+            if isinstance(value, str) and value:
+                reads.setdefault(actor, set()).add(value)
+    hits = []
+    for event in _day_events(world_events, day):
+        if event.get("kind") != "speech":
+            continue
+        actor = str(event.get("actor") or "")
+        text = " ".join(_texts(event))
+        for sentence in re.split(r"[。；！？\n]", text):
+            if not _READ_CLAIM.search(sentence):
+                continue
+            for marker in _READ_OBJECT_MARKERS:
+                if marker not in sentence:
+                    continue
+                if any(marker in doc or doc in marker for doc in reads.get(actor, ())):
+                    continue
+                hits.append({"time": str(event.get("time") or ""),
+                             "actor": actor, "object": marker,
+                             "text": sentence.strip()})
+                break
+    return hits
+
+
+def unregistered_object_claims(world_events, day: int, *, registry=None):
+    """Ticket 48 metric B (review only): a same-day ``speak`` asserts a
+    named-object-shaped token the registry does not contain.
+
+    Returns one dict per (event, object): {time, actor, object, text}."""
+    names = set(registry) if registry is not None else scene_registry()
+    hits = []
+    for event in _day_events(world_events, day):
+        if event.get("kind") != "speech":
+            continue
+        actor = str(event.get("actor") or "")
+        text = "\n".join(_texts(event))
+        for marker in _OBJECT_MARKERS:
+            if marker not in text:
+                continue
+            if any(marker in name or name in marker for name in names if name):
+                continue
+            sentence = next((part.strip() for part in re.split(r"[。；！？\n]", text)
+                             if marker in part), marker)
+            hits.append({"time": str(event.get("time") or ""),
+                         "actor": actor, "object": marker, "text": sentence})
+    return hits
+
+
+def _reading(hits, fmt) -> str:
+    """Render a review-only reading as a count plus up to three samples."""
+    if not hits:
+        return "0"
+    samples = "；".join(fmt(hit) for hit in hits[:3])
+    more = f"；…另 {len(hits) - 3} 条" if len(hits) > 3 else ""
+    return f"{len(hits)}（{samples}{more}）"
+
+
 def health_report(data, day: int):
     date = DAY_DATES[day]
     turns = [t for t in data.get("agent_turns", [])
@@ -1063,6 +1208,14 @@ def health_report(data, day: int):
     auto_reads = [e for e in day_reads if (e.get("payload") or {}).get("auto") is True]
     observed_events = [e for e in _day_events(data.get("world_events", []), day)
                        if e.get("kind") == "observed"]
+    # Ticket 48: narrated unperformed acts. Two conservative, review-only
+    # readings (never a gate): a same-day speak claiming to have read/checked
+    # a document with no document_read for it, and a named object asserted
+    # that the registry does not contain.
+    registry = scene_registry() | _artifact_names(data)
+    unread_claims = read_claims_without_a_read(data.get("world_events", []), day)
+    unregistered_objects = unregistered_object_claims(
+        data.get("world_events", []), day, registry=registry)
     # Ticket 43: repetition/stagnation observability. A stagnation notice is
     # the frontier line naming the wait length and the actions still available;
     # the longest consecutive wait shows the shape of a stalled stretch.
@@ -1131,6 +1284,12 @@ def health_report(data, day: int):
             "疑似心声混进speech": inner_in_speech,
             "亲读（AUTO/主动）": f"{len(auto_reads)}/{len(day_reads) - len(auto_reads)}",
             "首次看见登记": len(observed_events),
+            "断言读过但无document_read": _reading(
+                unread_claims,
+                lambda h: f"{h['time'][11:16]} {h['actor']}「{h['object']}」"),
+            "未注册具名物件断言": _reading(
+                unregistered_objects,
+                lambda h: f"{h['time'][11:16]} {h['actor']}「{h['object']}」"),
             "停滞提示次数": len(stagnation_turns),
             "最长连续wait": f"{worst[1]}（{worst[0]}）" if worst[0] else "0",
             "NPC最长沉寂（相邻回合间隔）": silence,

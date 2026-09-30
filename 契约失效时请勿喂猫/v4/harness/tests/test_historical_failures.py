@@ -170,6 +170,33 @@ I46 recipient checks judged the live world, not the decision snapshot . test_one
     tool result naming the retry turn. A rejection's candidate list is
     per-action and executable: people who are here for `speak`/`give`,
     contacts plus people here for `text`.
+I48 unperformed actions narrated as verified fact (ticket 48) .. test_alias_group_keeps_one_intended_recipient,
+                                                               test_unknown_recipient_answer_preserves_the_intent,
+                                                               test_verb_gap_teaching_names_the_real_action,
+                                                               test_protocol_forbids_narrating_unperformed_actions,
+                                                               test_verb_gap_block_matches_the_doc_verbatim,
+                                                               test_checker_flags_a_read_claim_without_a_read,
+                                                               test_checker_flags_unregistered_named_objects
+    d1-am artifact (real-20260930T160727), four independent reviewers:
+    a tool call that never succeeded is narrated as a completed, verified
+    fact. 宿管阿姨 (i=254/263) said "没见着‘林瑶’俩字" yet all five `read
+    晚归登记本` calls were rejected (0 document_read all run); 林瑶 (i=217->229)
+    said "柜开了，抄件在我眼前：三通、23:30、目击那行在" while `read/take
+    蓝皮夹抄件` were both rejected (the details came from extra 陈大爷's
+    mouth); 陈默妈 (i=188/193) said "妈这边拨那号码也不通，空号音" though the
+    world has no dial action and she never called, and 陈默 recorded "我和妈
+    都拨过"; 辅导员/班长 promised to "在值班簿上补签字", an action the world
+    does not model. The world had no "you did not do this" constraint. Fix
+    (this lane deliberately adds no NLP gate): (1) the verb gaps are stated
+    explicitly — a verb the world lacks maps onto the real action (`text`
+    for a distant person, `update_memory` for one's own promise) or an
+    explicit unavailable-feedback line names how to be effective; (2) a
+    recipient addressed by the actor's own KB nickname/number that does not
+    match literally resolves to the one person it denotes, or the rejection
+    preserves the recipient intent (never redirects the private body, never
+    silently renames); (3) the protocol text says only acts recorded by tool
+    calls count; (4) the checker gains two review-only readings (read claimed
+    with no document_read; unregistered named object asserted).
 H1/H4 empty checkpoint written at launch ...................... test_launch_checkpoint_is_a_valid_loadable_trace
 H2  duplicate run artifacts ................................... test_runner (unique run ids)
 H3  failed/truncated artifact mislabeled as clean .............. test_trace_completion_gate_rejects_truncated_run (runner)
@@ -2262,6 +2289,200 @@ class SeedKnowledgeContractGates(unittest.TestCase):
         self.assertIn("陈默", joined)
         self.assertEqual(module.lint(self._source()), [],
                          "a homonym warning must not gate the seed")
+
+
+def _checker_module():
+    """Load scripts/check_milestones.py as a module for the ticket-48
+    scene-health metrics (same importlib pattern the seed-lint gates use)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "check_milestones_ticket48",
+        Path(__file__).parents[2] / "scripts" / "check_milestones.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _speech_artifact(speech, reads=()):
+    """A minimal day-1 artifact: (h, m, actor, text) speech events plus
+    (h, m, actor, document) document_read events, enough for the two metrics."""
+    events = []
+    for index, (hour, minute, actor, text) in enumerate(speech, start=1):
+        events.append({
+            "id": index,
+            "time": f"2026-03-16T{hour:02d}:{minute:02d}:00+08:00",
+            "kind": "speech", "actor": actor,
+            "payload": {"text": text, "heard": []}, "visible_to": [actor],
+            "world_version": index})
+    for offset, (hour, minute, actor, document) in enumerate(reads, start=len(events) + 1):
+        events.append({
+            "id": offset,
+            "time": f"2026-03-16T{hour:02d}:{minute:02d}:00+08:00",
+            "kind": "document_read", "actor": actor,
+            "payload": {"document": document, "title": document},
+            "visible_to": [actor], "world_version": offset})
+    return {"world_events": events}
+
+
+class Ticket48NarratedFactGates(unittest.TestCase):
+    """Ticket 48 (d1-am artifact real-20260930T160727).
+
+    Four independent reviewers each reported the same shape: a tool call
+    that never succeeded is narrated as a completed, verified fact. These
+    gates pin the three fixes: verb-gap teaching, identity-preserving
+    recipient resolution, and the protocol sentence that only tool-called
+    acts are real. The lane adds no NLP gate."""
+
+    START = datetime.fromisoformat("2026-03-16T09:00:00+08:00")
+
+    def _phone_scene(self):
+        """陈默 at 教学楼, his mother remote — the scene whose d1-am 11:51
+        text used an invented name/number (1395731xxxx（张建国儿子）)."""
+        world = World(start=self.START,
+                      actors=[ActorState("陈默", "教学楼"),
+                              ActorState("陈默妈", "老家县城")],
+                      locations=[LocationState("教学楼"), LocationState("老家县城")],
+                      routes={("教学楼", "老家县城"): 600,
+                              ("老家县城", "教学楼"): 600})
+        world.actors["陈默"].known_contacts = {"陈默妈"}
+        return world
+
+    def test_alias_group_keeps_one_intended_recipient(self):
+        """(2) A contact addressed by two of the actor's own KB nicknames for
+        the SAME person (a number plus a description) is one intended
+        recipient, not an ambiguity that voids the message. The private body
+        must reach that person unchanged."""
+        world = self._phone_scene()
+        # what engine._sync_contacts mirrors from the actor's !contact row
+        world.actors["陈默"].contact_aliases = {
+            "1395731xxxx": "陈默妈", "张建国儿子": "陈默妈"}
+        spoken = "妈，那个号再核一下。"
+        world.submit(Intention("陈默", "text",
+                               {"target": "1395731xxxx（张建国儿子）", "text": spoken},
+                               world.version))
+        world.advance()
+        sent = [e for e in world.event_log if e.kind == "message_sent"]
+        self.assertEqual([e.payload["target"] for e in sent], ["陈默妈"],
+                         "两个都指向同一个人的称呼不是歧义")
+        delivered = [e for e in world.event_log if e.kind == "message_delivered"]
+        self.assertTrue(delivered)
+        self.assertEqual(delivered[0].payload["text"], spoken,
+                         "私密正文必须原样送达真正的收件人")
+
+    def test_unknown_recipient_answer_preserves_the_intent(self):
+        """(2) A number/description that denotes nobody the actor can reach
+        must not silently rewrite the recipient, must not re-send the private
+        body elsewhere, and must offer an executable, intent-preserving path
+        (record the lead, find out who it is) instead of only 'unknown'."""
+        world = self._phone_scene()
+        engine, agents = _chain_engine(world)
+        body = "妈，您再帮我看一眼那号码。"
+        engine._execute_chain("陈默", [{
+            "name": "text",
+            "arguments": {"target": "1395731xxxx（张建国儿子）",
+                          "text": body, "wait_response": False},
+            "tool_call_id": "text-1"}],
+            {"time": world.now.isoformat(), "nearby_actors": [], "events": []},
+            world.affordances("陈默"), world.version)
+        result = agents["陈默"].delivered[0]
+        self.assertFalse(result["ok"])
+        text = str(result["text"])
+        self.assertIn("1395731xxxx", text, "必须点名你真正写下的称呼/号码")
+        self.assertIn("update_memory", text, "要给出可执行的记线索路径")
+        self.assertIn("不会", text, "必须说明原话不会被改发")
+        self.assertNotIn(body, text, "私密正文不得被复用成发给别人的调用")
+        self.assertNotIn('"name": "text"', text,
+                         "不得生成携带原正文的改发调用")
+
+    def test_verb_gap_teaching_names_the_real_action(self):
+        """(1) A verb the world does not model gets explicit unavailable
+        feedback that names the real action: 打电话 -> text; 签字/批注 ->
+        update_memory; 开柜/取件 -> take."""
+        world = self._phone_scene()
+        engine, agents = _chain_engine(world)
+        cases = [("call", {"target": "陈默妈", "text": "喂"}, '"name": "text"'),
+                 ("phone", {"number": "1395731xxxx"}, '"name": "text"'),
+                 ("sign", {"item": "移交存根"}, "update_memory"),
+                 ("annotate", {"item": "2013年台风台账"}, "update_memory"),
+                 ("verify", {"item": "移交存根"}, "read"),
+                 ("open", {"item": "晚归登记本"}, "take")]
+        for verb, args, needle in cases:
+            engine._execute_chain("陈默", [{
+                "name": verb, "arguments": dict(args),
+                "tool_call_id": f"{verb}-1"}],
+                {"time": world.now.isoformat(), "nearby_actors": [], "events": []},
+                world.affordances("陈默"), world.version)
+            world.advance()
+            result = agents["陈默"].delivered[-1]
+            self.assertFalse(result["ok"], verb)
+            self.assertIn(needle, str(result["text"]),
+                          f"{verb} 的反馈要指向真正做得到的动作")
+            self.assertIn("没有", str(result["text"]), verb)
+
+    def test_protocol_forbids_narrating_unperformed_actions(self):
+        """(3) The §1 protocol sentence: only tool-called acts count; do not
+        assert an unperformed act as done or an unread document as verified.
+        The runtime prompt and the doc block stay byte-identical."""
+        from harness.natural_agent import SYSTEM_PROMPT_V4
+        doc = (Path(__file__).parents[2] / "docs" / "V4-AGENT-INTERFACE.md").read_text(
+            encoding="utf-8")
+        self.assertIn("只有你真的做过的事才能说成做过", SYSTEM_PROMPT_V4)
+        self.assertIn("没读过的内容", SYSTEM_PROMPT_V4)
+        self.assertIn(SYSTEM_PROMPT_V4, doc,
+                      "§1 的 system prompt 必须与运行时逐字一致")
+
+    def test_verb_gap_block_matches_the_doc_verbatim(self):
+        """(1)(5) The verb-gap inventory documented in the interface spec
+        must be rendered from the runtime constant, so docs and behaviour
+        cannot drift apart."""
+        from harness.engine import VERB_GAP_TEACHING, render_verb_gap_block
+        doc = (Path(__file__).parents[2] / "docs" / "V4-AGENT-INTERFACE.md").read_text(
+            encoding="utf-8")
+        for verb in ("call", "phone", "dial", "sign", "annotate", "seal",
+                     "verify", "check", "open", "unlock"):
+            self.assertIn(verb, VERB_GAP_TEACHING,
+                          f"§2.2 的动作缺口清单必须覆盖 {verb}")
+        self.assertIn(render_verb_gap_block(), doc,
+                      "§2.2 的缺口清单必须与运行时常量逐字一致")
+
+    def test_checker_flags_a_read_claim_without_a_read(self):
+        """(4) metric A: a first-person read claim naming an object the actor
+        has no document_read for that day is counted (review only)."""
+        module = _checker_module()
+        claimed = _speech_artifact(
+            [(12, 17, "宿管阿姨",
+              "你阿姨这本子翻了十二年——没见着\"林瑶\"俩字")])["world_events"]
+        hits = module.read_claims_without_a_read(claimed, 1)
+        self.assertTrue(hits, "宿管阿姨 5 次 read 全被拒，却叙述成问过本子")
+        self.assertEqual(hits[0]["actor"], "宿管阿姨")
+
+        read_it = _speech_artifact(
+            [(12, 17, "宿管阿姨", "我读过晚归登记本，上面没有她的名字。")],
+            reads=[(11, 0, "宿管阿姨", "晚归登记本")])["world_events"]
+        self.assertEqual(
+            module.read_claims_without_a_read(read_it, 1), [],
+            "真的读过时不得误报")
+
+    def test_checker_flags_unregistered_named_objects(self):
+        """(4) metric B: a named-object-shaped token outside the registry is
+        counted with a sample; a registered item is not."""
+        module = _checker_module()
+        registry = {"晚归登记本", "借阅登记本"}
+        fabricated = _speech_artifact(
+            [(10, 56, "陈大爷",
+              "好，柜开了——蓝皮夹就这一册，你接稳了。")])["world_events"]
+        hits = module.unregistered_object_claims(fabricated, 1, registry=registry)
+        self.assertTrue(hits, "extra 叙述了没有注册的蓝皮夹")
+        self.assertEqual(hits[0]["object"], "蓝皮夹")
+        self.assertEqual(hits[0]["actor"], "陈大爷")
+
+        registered = _speech_artifact(
+            [(11, 51, "宿管阿姨",
+              "晚归登记本我翻了，昨晚没人登记回来。")])["world_events"]
+        self.assertEqual(
+            module.unregistered_object_claims(registered, 1, registry=registry), [],
+            "注册过的具名物件（晚归登记本）不得误报")
 
 
 if __name__ == "__main__":

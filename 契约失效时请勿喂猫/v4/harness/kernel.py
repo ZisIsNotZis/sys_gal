@@ -54,6 +54,15 @@ def _as_int(value, what="value"):
         raise ValueError(f"invalid {what}: {value!r}") from exc
 
 
+def _unknown_name_note(note: str | None) -> bool:
+    """True when a name note means *no candidate matches at all*.
+
+    Ticket 48: only this case offers the intent-preserving "find out who it
+    is" path. A partial formal name that does exist (``unverified partial
+    name``) and a genuine ambiguity (``ambiguous``) are different answers."""
+    return bool(note) and str(note).startswith("unknown name")
+
+
 def tick_ceil(seconds: float) -> int:
     """Round a raw duration up to whole ticks, minimum one tick
     (V4-ENGINE §2.1: every world action, even a query-like one, costs at
@@ -1723,7 +1732,7 @@ class World:
         decision could see never comes back as `unknown name`. Exact match
         wins silently; a fuzzy hit is used with a teaching note; ambiguity or
         nothing is a rejection."""
-        from .kb import resolve_name
+        from .kb import normalize, resolve_name
         formal_names = set(actor.known_contacts)
         formal_names.update(other.id for other in self.actors.values()
                             if other.id != actor.id and other.location == actor.location)
@@ -1734,13 +1743,32 @@ class World:
             return formal, None
 
         # An alias is verified only because this actor explicitly recorded it
-        # for one formal contact. A unique fuzzy hit among those personal aliases
-        # can safely correct to that same identity; arbitrary formal-name
-        # substrings cannot.
-        alias, alias_note = resolve_name(query, actor.contact_aliases)
-        if alias is not None:
-            return actor.contact_aliases[alias], alias_note
-        note = formal_note or alias_note or f"unknown name '{query}'"
+        # for one formal contact. Ticket 48 (identity-preserving resolution):
+        # resolve the actor's own nicknames as a GROUP — when every matching
+        # nickname denotes the same person (a phone number plus a description,
+        # say), that is one intended recipient, not an ambiguity to reject. A
+        # unique fuzzy hit among one person's nicknames can safely correct to
+        # that same identity; arbitrary formal-name substrings still cannot.
+        nickname_hits: dict[str, list[str]] = {}
+        exact_nickname = False
+        for nickname, owner in actor.contact_aliases.items():
+            hit, _note = resolve_name(query, [nickname])
+            if hit is None:
+                continue
+            nickname_hits.setdefault(owner, []).append(str(nickname))
+            if normalize(nickname) == normalize(query):
+                exact_nickname = True
+        if len(nickname_hits) == 1:
+            owner, matched = next(iter(nickname_hits.items()))
+            if exact_nickname and len(matched) == 1:
+                return owner, None
+            return owner, (f"resolved '{query}' to your contact '{owner}' by the "
+                           "nickname(s) you recorded — use the exact formal name or "
+                           "nickname next time")
+        if len(nickname_hits) > 1:
+            listed = " / ".join(sorted(nickname_hits))
+            return None, f"ambiguous name '{query}': {listed}"
+        note = formal_note or f"unknown name '{query}'"
         if formal is not None:
             note = (f"unverified partial name '{query}'; use an exact formal name or "
                     "a registered personal nickname")
@@ -1770,10 +1798,14 @@ class World:
                 # is always textable, but a hand-over needs someone here.
                 candidates = (self._message_targets(actor) if intention.kind == "text"
                               else self._present_others(actor))
-                raise ActionRejected(
-                    str(note),
-                    context={key: query, "name_resolution": True,
-                             "recipient_candidates": candidates})
+                context = {key: query, "name_resolution": True,
+                           "recipient_candidates": candidates}
+                if _unknown_name_note(note):
+                    # Ticket 48: the actor named someone by a KB nickname/
+                    # number that denotes nobody it can reach — the answer
+                    # must preserve the recipient intent.
+                    context["unknown_recipient"] = True
+                raise ActionRejected(str(note), context=context)
             if resolved != query:
                 args[key] = resolved
                 changed = True
@@ -1867,7 +1899,10 @@ class World:
             raise ActionRejected(
                 f"unknown or ambiguous speak recipient: {'; '.join(notes)}",
                 context={"unknown": notes, "name_resolution": True,
-                         "recipient_candidates": self._present_others(actor)})
+                         "recipient_candidates": self._present_others(actor),
+                         "query": requested[0] if requested else "",
+                         "unknown_recipient": any(_unknown_name_note(note)
+                                                  for note in unresolved)})
         if requested or "to" in args:
             args["to"] = delivered + (["陌生人"] if strangers else [])
         if undelivered:

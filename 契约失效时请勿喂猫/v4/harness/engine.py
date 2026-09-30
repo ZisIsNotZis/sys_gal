@@ -28,6 +28,7 @@ Invariants implemented here (V4-ENGINE §2):
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from datetime import datetime, timedelta
 from typing import Any, Callable, Iterable, Mapping, Protocol, Sequence
@@ -56,6 +57,75 @@ _UNDELIVERED_REASONS = {
     "whisper": "耳语不会传给尚未出现的路人",
     "closed": "当前地点封闭，路人听不到这里的话",
 }
+
+# Ticket 48: verb-gap teaching (V4-AGENT-INTERFACE §2.2). Characters reach
+# for actions this world deliberately does not model — a phone call, a
+# signature, a face-to-face "verification", opening a locked cabinet. None of
+# these is a new action: each is refused explicitly and maps onto an action
+# the world really has, or names the alternative that can succeed. The
+# documented §2.2 block is rendered from these strings, so the spec and the
+# behaviour cannot drift apart.
+_VERB_GAP_DIAL = (
+    "【打电话 / 拨号 / 拨个电话】这个世界没有打电话这个动作：你不能拨号，也听不到铃声、"
+    "忙音或空号音，更不会有人“接电话”。要联系不在身边的人，用真实动作 text（与距离无关，"
+    "一个 tick 后送达）：{\"name\": \"text\", \"arguments\": {\"target\": \"<你认识的人>\", "
+    "\"text\": \"<你要说的话>\"}}。要当面说，先 move 到他在的地方再用 speak。把“给某人打电话”"
+    "当成打算记下来用 update_memory——那是计划，不是已经发生的事。"
+)
+_VERB_GAP_SIGN = (
+    "【签字 / 批注 / 盖章 / 落款 / 补个签名】这个世界没有签字、批注、盖章这个动作：你无法在任何"
+    "文书上留下签名或批注，别人也不能“回头补个签字”。要让一件事成立或备案，只能做世界真的有的"
+    "动作：当面把内容说清楚（speak）、把材料交给对方并让他自己看（give + read），或按你确实认识"
+    "的收件人发短信（text）。你自己的承诺和打算用 update_memory 记下——但那是你还没做的事。"
+)
+_VERB_GAP_VERIFY = (
+    "【核验 / 当面核 / 亲眼确认 / 对一下真伪】这个世界没有独立的“核验”动作；“核实过”必须由你真"
+    "的做过的动作支撑：亲眼 read 原件、当面 speak 问当事人（必要时先把材料 give 出去）。你没读过、"
+    "没问过的东西，不是你核过的事实；没有一眼辨真伪的动作。"
+)
+_VERB_GAP_OPEN = (
+    "【开柜 / 开锁 / 撬柜 / 取件 / 打开柜子】这个世界没有开柜、开锁或撬锁这个动作，也没有“锁着、"
+    "要钥匙才能开”的容器：柜子不是能打开的东西。物品要么就在你手边——直接 take 或 read；要么不在。"
+    "要拿到东西，先弄清它在哪（speak 问知道的人、read 相关记录），到它在的地方再 take，拿到后要交"
+    "给谁就用 give。"
+)
+
+VERB_GAP_TEACHING: dict[str, str] = {
+    "call": _VERB_GAP_DIAL,
+    "phone": _VERB_GAP_DIAL,
+    "dial": _VERB_GAP_DIAL,
+    "telephone": _VERB_GAP_DIAL,
+    "sign": _VERB_GAP_SIGN,
+    "annotate": _VERB_GAP_SIGN,
+    "seal": _VERB_GAP_SIGN,
+    "label": _VERB_GAP_SIGN,
+    "verify": _VERB_GAP_VERIFY,
+    "check": _VERB_GAP_VERIFY,
+    "inspect": _VERB_GAP_VERIFY,
+    "compare": _VERB_GAP_VERIFY,
+    "open": _VERB_GAP_OPEN,
+    "unlock": _VERB_GAP_OPEN,
+}
+
+
+def verb_gap_teaching(name: str) -> str | None:
+    """The ticket-48 teaching line for a verb the world does not model.
+
+    ``None`` for any name that is not a known gap verb, so the caller keeps
+    its ordinary retired-tool / unknown-action handling."""
+    return VERB_GAP_TEACHING.get(str(name))
+
+
+def render_verb_gap_block() -> str:
+    """The verb-gap notes in documentation order, one per paragraph.
+
+    This exact text is the fenced block in V4-AGENT-INTERFACE §2.2; a gate
+    asserts the two stay byte-identical."""
+    seen: list[str] = []
+    for note in VERB_GAP_TEACHING.values():
+        if note not in seen:
+            seen.append(note)
+    return "\n\n".join(seen)
 
 
 class ExtraCall(Protocol):
@@ -759,6 +829,11 @@ class AsyncEngine:
         (this turn's perception snapshot included) and only names people the
         call can actually reach."""
         context = exc.context
+        gap = verb_gap_teaching(name)
+        if gap is not None:
+            # Ticket 48: a verb this world never modelled — state that plainly
+            # and point at the action that can actually do the job.
+            return gap
         if name in {"text", "speak", "give"} and (
                 context.get("name_resolution") or context.get("recipient_unavailable")
                 or context.get("missing") == "target"):
@@ -770,6 +845,21 @@ class AsyncEngine:
             message += " No message, speech, or transfer was redirected to another person."
             if context.get("name_resolution"):
                 message += " Confirm the intended person's exact formal name or a registered personal nickname."
+                attempted = str(context.get("target") or context.get("query") or "").strip()
+                if attempted and context.get("unknown_recipient"):
+                    # Ticket 48: the actor addressed someone by their own KB
+                    # nickname/number and it denotes nobody reachable. Keep
+                    # the recipient intent: never redirect the private body,
+                    # never silently rename, but hand back an executable path
+                    # (record the lead, find out who it is). The hint gives
+                    # the row shape in prose — a JSON call carrying the body
+                    # is exactly what ticket 31 forbids.
+                    message += (f" 你 KB 里的称呼/号码「{attempted}」不对应任何你能联系的人——"
+                                "你写下的原话不会被改发给别人，也不会被悄悄改名。要找这个人，"
+                                "先用真实动作弄清他是谁（speak 问在场的人，或 read 手边的记录）；"
+                                "线索用私人记事本记下（update_memory）："
+                                f"keys=[\"{attempted}\", \"待核实的人\"]、op=\"open\"、"
+                                "desc=\"还没弄清是谁，等核实\"。")
             elif context.get("missing") == "target":
                 message += " Specify the intended recipient; do not reuse private content for a candidate."
             return message
@@ -786,7 +876,6 @@ class AsyncEngine:
             if candidates:
                 message += f" Names in your personal knowledge or here: {', '.join(candidates)}."
             return message + " No message or speech was redirected to another person."
-        import json
         calls: list[dict[str, Any]] = []
         for alternative in exc.alternatives:
             text = str(alternative).strip()
@@ -997,12 +1086,18 @@ class AsyncEngine:
                         "system_accept", "system_decline"}:
                 # retired tools (ticket 14 / ticket 22 / earlier rulings):
                 # teach, don't fail silently — the model may carry them from
-                # older sessions.
-                teaching = ("ask 已合并进 speak：用 speak(to=[...], text=...) 提问，"
-                            "to 可以是在场的人或 [\"陌生人\"]"
-                            if name == "ask" else
-                            f"unknown action '{name}' (retired); "
-                            "see your tool list for the current actions")
+                # older sessions. Ticket 48: a verb the world never modelled
+                # (拨打/签字/批注/当面核验/开柜取件) gets its own explicit
+                # unavailable-feedback line naming the real action.
+                gap = verb_gap_teaching(name)
+                if gap is not None:
+                    teaching = gap
+                elif name == "ask":
+                    teaching = ("ask 已合并进 speak：用 speak(to=[...], text=...) 提问，"
+                                "to 可以是在场的人或 [\"陌生人\"]")
+                else:
+                    teaching = (f"unknown action '{name}' (retired); "
+                                "see your tool list for the current actions")
                 fail(call, teaching)
                 continue
             if name == "update_memory":
