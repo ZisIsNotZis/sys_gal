@@ -266,6 +266,31 @@ I53 stall gate measured cumulative freeze; one hung decision pinned the clock
     detaches the actor's session so the character acts again; and every stop
     writes "who was in flight, since when, waited how long, last-progress
     moment, stall definition, threshold hit" to the trace + flushed log.
+I54 one provider request had no wall-clock bound (ticket 54) .... test_provider_budget (ProviderWallClockBudgetTests:
+                                                               test_trickling_response_is_cut_off_within_the_budget,
+                                                               test_normal_response_is_unchanged,
+                                                               test_transient_502_retries_the_same_number_of_times,
+                                                               test_slow_but_completing_response_succeeds)
+    The 11:32 freeze of real-20261001T015004 has a provider-side root: in
+    `provider._run_request` the `timeout` passed to `urlopen` is SOCKET-level
+    (one connect/recv of silence), NOT an upper bound for the request, and the
+    retry-budget check only ran at the TOP of each attempt. `response.read()`
+    therefore had no bound at all: an upstream that trickle-feeds or holds the
+    connection open keeps it blocked forever. That is exactly the shape of the
+    辅导员 leg — its live session ends on a 11:32 `user` message with no
+    assistant reply, hours after it had already produced `provider retry
+    deadline exhausted after 4 attempts` at 11:13 and 11:16 — so the only
+    thing that could stop it was the engine-side fallback of ticket 53 (a
+    second layer that wastes a whole turn). Fix: one wall-clock budget per
+    call (`_call_budget_seconds()` = `max_duration`, or the retry policy's
+    structural worst case when unset); every attempt's socket timeout is
+    `min(self.timeout, 剩余预算)`, the body is read one recv-chunk at a time
+    (`read1`) with the deadline re-checked between chunks, and exceeding it
+    closes the connection and raises the usual retryable metadata
+    (`retry_exhausted=True`, `attempts=N`) with a message that names the
+    elapsed budget so "upstream slow" is distinguishable from "upstream
+    hung". `worst_case_seconds()` is unchanged in value (budget + one final
+    socket timeout) and stays a true bound.
 """
 
 import json

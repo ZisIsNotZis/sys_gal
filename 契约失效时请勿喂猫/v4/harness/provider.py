@@ -3,12 +3,55 @@
 from __future__ import annotations
 
 import json
+from http.client import HTTPResponse
 from typing import Any, Callable
 import os
 import threading
 import time
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
+
+
+# Ticket 54: response bodies are read one recv-chunk at a time so the call's
+# wall-clock deadline can be re-checked between chunks — urlopen's socket
+# timeout only bounds a single recv.
+_RESPONSE_CHUNK_BYTES = 65536
+
+
+class _ResponseBudgetExceeded(Exception):
+    """The call's wall-clock budget ran out mid-response (ticket 54)."""
+
+    def __init__(self, *, attempts: int, elapsed: float, budget: float) -> None:
+        super().__init__(f"response budget exceeded on attempt {attempts} "
+                         f"after {elapsed:.1f}s of {budget:.1f}s")
+        self.attempts = attempts
+        self.elapsed = elapsed
+        self.budget = budget
+
+
+def _read_response_body(response: Any, *, deadline: float, started: float,
+                        budget: float, attempts: int) -> bytes:
+    """Read a body without ever outliving the call's budget.
+
+    ``urlopen(timeout=...)`` bounds one socket operation, not the request: an
+    upstream that dribbles a body (or holds the connection open) keeps a
+    plain ``read()`` blocked forever — that is the 11:32 freeze of ticket 54.
+    Real HTTP responses are read one recv-chunk at a time with the deadline
+    re-checked between chunks; a non-HTTP file-like object (test doubles, for
+    which ``read1`` is meaningless) keeps the single-shot read."""
+    if not isinstance(response, HTTPResponse):
+        return response.read()
+    chunks: list[bytes] = []
+    while True:
+        if time.monotonic() >= deadline:
+            raise _ResponseBudgetExceeded(attempts=attempts,
+                                          elapsed=time.monotonic() - started,
+                                          budget=budget)
+        chunk = response.read1(_RESPONSE_CHUNK_BYTES)
+        if not chunk:
+            break
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def _thinking_param(model: str) -> Any:
@@ -266,10 +309,11 @@ class OpenAICompatible:
                                    "Authorization": f"Bearer {self.api_key}"}, method="POST")
         retry_limit = min(self.retries, self.max_retries)
         started = time.monotonic()
+        budget = self._call_budget_seconds()
+        deadline = started + budget
         acquired = False
         try:
-            remaining = None if self.max_duration is None else max(0.0, self.max_duration)
-            acquired = self._slots.acquire(timeout=remaining)
+            acquired = self._slots.acquire(timeout=budget)
             if not acquired:
                 error = RuntimeError("provider concurrency wait exceeded retry deadline")
                 error.attempts = 0  # type: ignore[attr-defined]
@@ -277,15 +321,17 @@ class OpenAICompatible:
                 error.retry_exhausted = True  # type: ignore[attr-defined]
                 raise error
             for attempt in range(retry_limit + 1):
-                if self.max_duration is not None and time.monotonic() - started >= self.max_duration:
-                    error = RuntimeError(f"provider retry deadline exhausted after {attempt} attempts")
-                    error.attempts = attempt  # type: ignore[attr-defined]
-                    error.retryable = True  # type: ignore[attr-defined]
-                    error.retry_exhausted = True  # type: ignore[attr-defined]
-                    raise error
+                now = time.monotonic()
+                if now >= deadline:
+                    raise self._deadline_error(attempt, now - started, budget)
+                # Ticket 54: never let one socket wait outlive what is left of
+                # the call's budget.
+                attempt_timeout = min(self.timeout, deadline - now)
                 try:
-                    with urlopen(request, timeout=self.timeout) as response:
-                        raw_response = response.read()
+                    with urlopen(request, timeout=attempt_timeout) as response:
+                        raw_response = _read_response_body(
+                            response, deadline=deadline, started=started,
+                            budget=budget, attempts=attempt + 1)
                     try:
                         result = json.loads(raw_response.decode())
                     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -315,19 +361,24 @@ class OpenAICompatible:
                             error.retry_exhausted = True  # type: ignore[attr-defined]
                             raise error
                         delay = min(self.retry_backoff * (2 ** attempt), self.max_backoff)
-                        if self.max_duration is not None:
-                            remaining = self.max_duration - (time.monotonic() - started)
-                            if remaining <= 0:
-                                error = RuntimeError(
-                                    f"provider retry deadline exhausted after {attempt + 1} attempts")
-                                error.attempts = attempt + 1  # type: ignore[attr-defined]
-                                error.retryable = True  # type: ignore[attr-defined]
-                                error.retry_exhausted = True  # type: ignore[attr-defined]
-                                raise error
-                            delay = min(delay, remaining)
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            raise self._deadline_error(attempt + 1,
+                                                       time.monotonic() - started, budget)
+                        delay = min(delay, remaining)
                         self.sleep(delay)
                         continue
                     break
+                except _ResponseBudgetExceeded as exc:
+                    error = RuntimeError(
+                        f"provider request budget exhausted on attempt {exc.attempts} "
+                        f"({exc.elapsed:.1f}s of {exc.budget:.1f}s budget): the "
+                        f"response never finished — upstream trickled or held "
+                        f"the connection")
+                    error.attempts = exc.attempts  # type: ignore[attr-defined]
+                    error.retryable = True  # type: ignore[attr-defined]
+                    error.retry_exhausted = True  # type: ignore[attr-defined]
+                    raise error from exc
                 except HTTPError as exc:
                     detail = exc.read().decode(errors="replace")[:800]
                     if exc.code not in {408, 409, 425, 429} and not 500 <= exc.code <= 599:
@@ -340,11 +391,10 @@ class OpenAICompatible:
                         error.retry_exhausted = True  # type: ignore[attr-defined]
                         raise error from exc
                     delay = min(self.retry_backoff * (2 ** attempt), self.max_backoff)
-                    if self.max_duration is not None:
-                        remaining = self.max_duration - (time.monotonic() - started)
-                        if remaining <= 0:
-                            continue
-                        delay = min(delay, remaining)
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        continue
+                    delay = min(delay, remaining)
                     self.sleep(delay)
                 except (URLError, TimeoutError) as exc:
                     if attempt >= retry_limit:
@@ -355,11 +405,10 @@ class OpenAICompatible:
                         error.retry_exhausted = True  # type: ignore[attr-defined]
                         raise error from exc
                     delay = min(self.retry_backoff * (2 ** attempt), self.max_backoff)
-                    if self.max_duration is not None:
-                        remaining = self.max_duration - (time.monotonic() - started)
-                        if remaining <= 0:
-                            continue
-                        delay = min(delay, remaining)
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        continue
+                    delay = min(delay, remaining)
                     self.sleep(delay)
         finally:
             if acquired:
@@ -426,14 +475,36 @@ class OpenAICompatible:
         text = "".join(pieces).strip()
         return text or None
 
+    def _call_budget_seconds(self) -> float:
+        """Hard wall-clock budget for one provider call, over all attempts.
+
+        ``max_duration`` when the caller set one; otherwise the structural
+        worst case of the retry policy, so even a provider without an explicit
+        duration still has a total bound instead of only per-recv timeouts."""
+        if self.max_duration is not None:
+            return self.max_duration
+        backoff = sum(min(self.retry_backoff * (2 ** i), self.max_backoff)
+                      for i in range(min(self.retries, self.max_retries)))
+        return (self.retries + 1) * self.timeout + backoff
+
+    @staticmethod
+    def _deadline_error(attempt: int, elapsed: float, budget: float) -> RuntimeError:
+        """Budget-exhausted error with the same retry metadata as before."""
+        error = RuntimeError(
+            f"provider retry deadline exhausted after {attempt} attempts "
+            f"({elapsed:.1f}s of {budget:.1f}s budget)")
+        error.attempts = attempt  # type: ignore[attr-defined]
+        error.retryable = True  # type: ignore[attr-defined]
+        error.retry_exhausted = True  # type: ignore[attr-defined]
+        return error
+
     def worst_case_seconds(self) -> float:
-        """Conservative wall-clock upper bound for one provider call."""
-        # max_duration bounds retry bookkeeping/backoff; one request may have
-        # already entered urlopen when that budget expires.
-        return (self.max_duration if self.max_duration is not None
-                else (self.retries + 1) * self.timeout +
-                     sum(min(self.retry_backoff * (2 ** i), self.max_backoff)
-                         for i in range(min(self.retries, self.max_retries)))) + self.timeout
+        """Conservative wall-clock upper bound for one provider call.
+
+        Ticket 54 bounds the call itself by ``_call_budget_seconds()`` and
+        checks that deadline between response chunks; the final chunk read may
+        still block for at most one socket timeout past the deadline."""
+        return self._call_budget_seconds() + self.timeout
 
 
 def provider_from_env(*, timeout: int | None = None, retries: int | None = None,
@@ -447,6 +518,11 @@ def provider_from_env(*, timeout: int | None = None, retries: int | None = None,
     ``V3_PROVIDER_*`` so a run can survive an outage instead of exhausting a
     small fixed budget. The run's wall deadline is the ultimate bound; a run
     that dies anyway is resumable from its last checkpoint.
+
+    ``V3_PROVIDER_MAX_DURATION`` is a true wall-clock bound for ONE call
+    (ticket 54): it caps each attempt's socket timeout and is re-checked
+    between response chunks, so a trickling or held-open upstream can no
+    longer hang a single request past it.
     """
     timeout = int(os.environ.get("V3_PROVIDER_TIMEOUT", str(timeout if timeout is not None else 30)))
     retries = int(os.environ.get("V3_PROVIDER_RETRIES", str(retries if retries is not None else 8)))
