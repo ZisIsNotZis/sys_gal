@@ -173,6 +173,45 @@ I46 recipient checks judged the live world, not the decision snapshot . test_one
 H1/H4 empty checkpoint written at launch ...................... test_launch_checkpoint_is_a_valid_loadable_trace
 H2  duplicate run artifacts ................................... test_runner (unique run ids)
 H3  failed/truncated artifact mislabeled as clean .............. test_trace_completion_gate_rejects_truncated_run (runner)
+K1  mystery answer delivered before any read (ticket 47) ...... test_puzzle_answer_leak_fails_seed_lint
+    d1-am artifact (real-20260930T160727): 辅导员's first screen `# knowledge`
+    carried the audit-case concept desc verbatim ("汇总表两个总额没标用途，
+    手写更正没署名，底层凭证不在包里", known_to=[…,辅导员,…]); she wrote the
+    conclusion into memory at i=238 without reading the 学生会审计包, so her T6
+    "亲眼看看包里是什么" was a formality. Root cause: a puzzle entry's desc is
+    handed to its known_to actors as knowledge, and the seed wrote the ANSWER
+    there. Fix: the puzzle desc states only the question/visible anomaly; a
+    `puzzle: {reveal, answer}` declaration binds the answer clauses to the
+    carrier document content, and seed lint turns red if an answer clause
+    appears in the desc/memory (leak) or is missing from the reveal (unreachable).
+K2  suppression guard unreachable by plot words (ticket 47) ... test_guard_row_unreachable_by_plot_phrase_fails_seed_lint,
+                                                               test_hits_cannot_reach_old_street_rep_from_the_plot_sentence
+    d1-am artifact: 陈默妈's guardrail row ("具体姓名我记不清了——不该猜的就不
+    猜") was keyed only [老街坊代表]; 陈默's SMS asked about "落款签字的街坊代表"
+    ("2013年台风撤离…"), so kb.hits never surfaced it and she invented
+    "张建国＋1395731xxxx（他儿子）", spreading it to 陈默. Root cause: 陈默妈 is
+    remote, so she holds no concept row; the guardrail is a private kb row, and
+    hits() only matches row keys, forward or reverse, against the whole query
+    text — a long plot sentence containing "街坊代表" cannot reach the longer
+    key "老街坊代表". Fix: guard rows carry `triggers` (the plot phrases they
+    must answer to) and a key that is a substring of one; seed lint turns red
+    when no key is reachable.
+K47c persona promises an unregistered prop (ticket 47) ......... test_unregistered_persona_prop_fails_seed_lint
+    班长's card promised "志愿报名表、体测表、活动签到表" (and the run reached
+    for 考勤表/二班考勤表); none were registered, so he failed three take/hand
+    actions (i=230/256/268). Fix: character cards and concept memories may only
+    name props from the controlled prop vocabulary that resolve to a registered
+    item/concept; seed lint turns red otherwise.
+K47d inline manifest content name unchecked (ticket 47) ........ test_unresolved_inline_content_name_fails_seed_lint
+    seed_lint scanned only the .md prose files; `content:` scalars on the four
+    registers (小满/纪风) were a legal vacuum (registered aliases by luck). Fix:
+    name-like tokens in items/documents inline content/desc must resolve to a
+    registered entity/concept.
+K47e homonym collision is warned, not blocked (ticket 47) ....... test_name_collision_warning_names_the_confusable_pair
+    失踪学生「小陈」 shared 陈默's common address "小陈"; 林瑶 conflated them at
+    12:42 and the 大爷 had to disambiguate at 12:51 (world #1273/#1277/#1320).
+    Fix: registered names that nest or share a surname form emit an advisory
+    (non-blocking) collision line for human judgement.
 """
 
 import json
@@ -2089,6 +2128,140 @@ class RecipientSnapshotGates(unittest.TestCase):
         self.assertIn("not executed", results[1]["text"])
         self.assertIn('"name": "speak"', results[1]["text"])
         self.assertIn(world.actors["班长"].busy_until.isoformat(), results[1]["text"])
+
+
+class SeedKnowledgeContractGates(unittest.TestCase):
+    """Ticket 47: the seed may not leak a mystery answer, strand a guardrail,
+    or promise a prop the world cannot produce. Each rule is proven red on a
+    deliberately broken copy of the shipped seed and green on the real one."""
+
+    @staticmethod
+    def _module():
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "seed_lint_ticket47",
+            Path(__file__).parents[2] / "scripts" / "seed_lint.py")
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    @staticmethod
+    def _source():
+        return Path(__file__).parents[2] / "world"
+
+    @staticmethod
+    def _copy(directory):
+        import shutil
+        root = Path(directory) / "world"
+        shutil.copytree(SeedKnowledgeContractGates._source(), root)
+        return root
+
+    @staticmethod
+    def _edit_manifest(root, mutate):
+        import yaml
+        path = root / "manifest.yml"
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        mutate(data)
+        path.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False),
+                        encoding="utf-8")
+
+    def test_puzzle_answer_leak_fails_seed_lint(self):
+        """K1: writing the audit answer back into the puzzle desc must go red."""
+        module = self._module()
+        self.assertEqual(module.lint(self._source()), [],
+                         "the shipped seed separates the mystery from its answer")
+        with TemporaryDirectory() as directory:
+            root = self._copy(directory)
+
+            def leak(data):
+                for row in data["concepts"]:
+                    if row["id"] == "audit-case":
+                        row["desc"] = ("[[学生会办公室]]的一份在办审计：汇总表上有两个"
+                                       "总额没有标注用途，手写更正没有署名。核对期限是今天 16:00。")
+
+            self._edit_manifest(root, leak)
+            findings = module.lint(root)
+            self.assertTrue(any("谜底泄漏" in f for f in findings), findings)
+
+    def test_guard_row_unreachable_by_plot_phrase_fails_seed_lint(self):
+        """K2: a guard row whose only key misses the plot phrase must go red."""
+        module = self._module()
+        self.assertEqual(module.lint(self._source()), [])
+        with TemporaryDirectory() as directory:
+            root = self._copy(directory)
+
+            def strand(data):
+                for row in data["kb"]["陈默妈"]:
+                    if "老街坊代表" in row.get("keys", []):
+                        row["keys"] = ["老街坊代表"]
+
+            self._edit_manifest(root, strand)
+            findings = module.lint(root)
+            self.assertTrue(any("检索不到" in f for f in findings), findings)
+
+    def test_hits_cannot_reach_old_street_rep_from_the_plot_sentence(self):
+        """K2 root cause, pinned at the matcher: hits() only compares row keys
+        against the whole query, so a longer key hides inside a shorter plot
+        word and vice versa only for a short query."""
+        from harness.kb import hits
+        sms = "妈，问个旧事：2013年台风撤离那张许可证，落款签字的街坊代表是谁？"
+        self.assertFalse(hits(["老街坊代表"], [sms]))
+        self.assertTrue(hits(["街坊代表"], [sms]))
+        self.assertTrue(hits(["2013年台风"], [sms]))
+
+    def test_unregistered_persona_prop_fails_seed_lint(self):
+        """K47c: a named prop a character card promises must resolve."""
+        module = self._module()
+        self.assertEqual(module.lint(self._source()), [])
+        with TemporaryDirectory() as directory:
+            root = self._copy(directory)
+            card = root / "characters" / "班长.md"
+            card.write_text(card.read_text(encoding="utf-8")
+                            + "\n他手里永远压着一张二班的考勤表。\n",
+                            encoding="utf-8")
+            findings = module.lint(root)
+            self.assertTrue(any("考勤表" in f for f in findings), findings)
+
+    def test_unresolved_inline_content_name_fails_seed_lint(self):
+        """K47d: a name-like token inside inline content must resolve."""
+        module = self._module()
+        self.assertEqual(module.lint(self._source()), [])
+        with TemporaryDirectory() as directory:
+            root = self._copy(directory)
+
+            def break_name(data):
+                for row in data["items"]:
+                    if row["id"] == "值班簿":
+                        row["content"] = row["content"].replace("值班干事", "王阿姨")
+
+            self._edit_manifest(root, break_name)
+            findings = module.lint(root)
+            self.assertTrue(any("王阿姨" in f for f in findings), findings)
+
+    def test_counselor_knows_the_question_not_the_answer(self):
+        """K1 at the world level: 辅导员's first-screen KB holds the deadline
+        question but not the conclusion, which only reading the package gives."""
+        from harness.world_loader import load_world_pack
+        pack = load_world_pack(self._source())
+        delivered = "\n".join(str(row["desc"]) for row in pack.kb["辅导员"])
+        self.assertIn("核对期限", delivered)
+        for clause in ("汇总表上有两个总额没有标注用途",
+                       "旁边一处手写更正没有署名",
+                       "底层的报销凭证不在这包里"):
+            self.assertNotIn(clause, delivered)
+        world = pack.build_world()
+        self.assertIn("底层的报销凭证不在这包里",
+                      world.document_defs["学生会审计包"]["content"])
+
+    def test_name_collision_warning_names_the_confusable_pair(self):
+        """K47e: the 小陈/陈默 clash is warned, and warnings never block."""
+        module = self._module()
+        joined = "\n".join(module.collision_warnings(self._source()))
+        self.assertIn("小陈", joined)
+        self.assertIn("陈默", joined)
+        self.assertEqual(module.lint(self._source()), [],
+                         "a homonym warning must not gate the seed")
 
 
 if __name__ == "__main__":

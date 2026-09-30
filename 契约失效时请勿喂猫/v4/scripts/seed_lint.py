@@ -15,6 +15,11 @@ Usage:
     python3 scripts/seed_lint.py [world_dir] [--verbose]
 
 Exit code 0 when the seed is self-consistent, 1 with a report otherwise.
+Besides the name registry gate, this enforces the ticket-47 knowledge
+contract: a puzzle entry never carries its answer in the delivered desc, a
+guardrail row is reachable by the plot words its owner hears, a persona only
+names props the world can produce, and inline manifest content is a name
+carrier. Homonym collisions are printed as non-blocking `warning:` lines.
 """
 
 from __future__ import annotations
@@ -26,7 +31,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from harness.world_loader import load_world_pack, ref_names  # noqa: E402
+from harness.world_loader import (  # noqa: E402
+    _CONCRETE_PROP_WORDS, load_world_pack, ref_names)
+from harness.kb import normalize  # noqa: E402
 
 # Surname table for 姓+身份 patterns (李阿姨, 方老师, 郑大爷, ...).
 _SURNAMES = ("王李张刘陈杨黄赵吴周徐孙马朱胡郭何高林罗郑梁谢宋唐许韩冯邓曹彭曾肖田董袁潘"
@@ -52,6 +59,21 @@ _PATTERNS: tuple[re.Pattern[str], ...] = (
                r"登记本|抄件|保温杯|糖罐子|老照片|旧记录|校报草稿|审计包)"),
     re.compile(r"(?:台风|纪念活动|无障碍|审计|值班表)"),
 )
+
+# ticket 47: named props a character card or a memory may promise by name.
+# The objective half is world_loader's controlled prop vocabulary (the same
+# list its concrete-presence gate uses); the persona half adds the register and
+# roster props the v4 d1-am artifact showed actors reaching for. Kept as an
+# explicit controlled list, never inferred from a 表/单 suffix pattern — a bare
+# generic noun (表格) is not a "named prop", and flagging every 作息表/时间表
+# would drown the gate.
+_PERSONA_PROP_WORDS: tuple[str, ...] = _CONCRETE_PROP_WORDS + (
+    "考勤表", "志愿报名表", "体测表", "活动签到表", "查寝表",
+)
+# For the advisory name-collision scan: a short personal address is a name that
+# starts 小/老, ends with a known role title, or ends with a kinship suffix.
+_ROLE_NAMES: tuple[str, ...] = tuple(part for part in _ROLES.split("|") if part)
+_KINSHIP_TAILS = "爸妈哥姐弟妹儿女"
 
 # Authored prose the lint scans; generated runs/traces are excluded.
 _PROSE_GLOBS = ("characters/*.md", "items/*.md", "documents/*.md",
@@ -258,10 +280,225 @@ def lint(world_root: str | Path) -> list[str]:
     # claims — but they must still be registered names, which ② covers via
     # `declared` resolution in the .md scan of location files.
 
+    # ---------- ④ ticket 47: knowledge-entry grading ----------
+    # A puzzle entry states only the question/anomaly; its answer lives in the
+    # document that can be read. A suppression/guardrail row must be reachable
+    # by the plot words its owner hears. A persona may only name props the
+    # world can produce. Inline manifest content is a name carrier like prose.
+    findings.extend(_puzzle_findings(pack))
+    findings.extend(_guard_findings(pack))
+    findings.extend(_prop_findings(pack, root))
+    findings.extend(_inline_content_findings(pack))
+
     # ---------- ③ dead registry entries (informational) ----------
     for note in dead_aliases(root):
         findings.append(note)
     return findings
+
+
+def _contains(haystack: str, needle: str) -> bool:
+    """Substring test under the KB's own normalization (的/之 and punctuation
+    collapse) so "底层的报销凭证" and "底层报销凭证" compare equal."""
+    text = normalize(haystack)
+    return bool(text) and normalize(needle) in text
+
+
+def _entity_contents(pack) -> dict[str, str]:
+    """Readable bodies an actor can obtain by reading, keyed by entity id."""
+    return {str(row["id"]): str(row["content"])
+            for row in (*pack.items, *pack.documents)
+            if isinstance(row.get("content"), str) and str(row["content"]).strip()}
+
+
+def _puzzle_findings(pack) -> list[str]:
+    """Ticket 47 / K1: a puzzle entry's desc is the question, never the answer.
+
+    A concept declares ``puzzle: {reveal: <document/item id>, answer: [...]}``.
+    Every answer clause must be absent from the desc/memory (or the entry leaks
+    the conclusion before any read) and present in the reveal carrier's content
+    (or the answer is unreachable).
+    """
+    findings: list[str] = []
+    contents = _entity_contents(pack)
+    for row in pack.manifest.get("concepts", ()) or ():
+        puzzle = row.get("puzzle")
+        if puzzle is None:
+            continue
+        cid = str(row.get("id", "?"))
+        where = f"concept {cid} puzzle"
+        if not isinstance(puzzle, dict):
+            findings.append(f"{where}: puzzle must be a mapping")
+            continue
+        reveal = str(puzzle.get("reveal", ""))
+        answer = puzzle.get("answer")
+        if (not isinstance(answer, (list, tuple)) or not answer
+                or any(not isinstance(a, str) or not a.strip() for a in answer)):
+            findings.append(f"{where}: answer must be a non-empty list of clause strings")
+            continue
+        if reveal not in contents:
+            findings.append(
+                f"{where}: reveal {reveal!r} is not a document/item with readable "
+                "content, so the answer can never be obtained")
+            continue
+        carrier = contents[reveal]
+        delivered = [str(row.get("desc", ""))]
+        delivered.extend(str(v) for v in (row.get("memory") or {}).values())
+        for clause in answer:
+            if any(_contains(text, clause) for text in delivered):
+                findings.append(
+                    f"{where}: 谜底泄漏 — answer {clause!r} is already in the desc/memory "
+                    "delivered before any read; keep the entry to the question and put "
+                    f"the answer only in {reveal!r}")
+            if not _contains(carrier, clause):
+                findings.append(
+                    f"{where}: 谜底不可达 — answer {clause!r} is not in the content of "
+                    f"{reveal!r}")
+    return findings
+
+
+def _guard_findings(pack) -> list[str]:
+    """Ticket 47 / K2: a suppression/guardrail row must be reachable by the plot
+    words its owner actually hears.
+
+    A kb row carrying ``triggers: ["<plot phrase>", ...]`` declares the phrases
+    that should surface it. Because :func:`harness.kb.hits` matches the whole
+    query text against a key (both directions), the operative direction for a
+    long plot sentence is *key is a substring of the trigger*. A guard whose
+    nearest key can only be reached from the other direction is invisible.
+    """
+    findings: list[str] = []
+    for actor, rows in (pack.manifest.get("kb", {}) or {}).items():
+        for row in rows:
+            triggers = row.get("triggers")
+            if triggers is None:
+                continue
+            keys = [str(k) for k in (row.get("keys") or row.get("fields") or ())
+                    if not str(k).startswith("!")]
+            where = f"kb[{actor}] {sorted(keys)}"
+            if (not isinstance(triggers, (list, tuple)) or not triggers
+                    or any(not isinstance(t, str) or not t.strip() for t in triggers)):
+                findings.append(f"{where}: triggers must be a non-empty list of plot phrases")
+                continue
+            if not any(normalize(k) and normalize(k) in normalize(t)
+                       for k in keys for t in triggers):
+                findings.append(
+                    f"{where}: 抑制/守则行检索不到 — no key is a substring of any trigger "
+                    f"{list(map(str, triggers))}; the row can never surface for {actor}")
+    return findings
+
+
+def _pattern_names(text: str) -> list[str]:
+    """Controlled name-like tokens (the _PATTERNS detector), markers ignored."""
+    body = re.sub(r"\[\[[^\]\[]+\]\]", "\u0002", str(text))
+    tokens: list[str] = []
+    for pattern in _PATTERNS:
+        tokens.extend(pattern.findall(body))
+    return [token for token in tokens
+            if not any(char in _FUNCTION_CHARS for char in token)]
+
+
+def _prop_findings(pack, root: Path) -> list[str]:
+    """Ticket 47 / K47c: a named prop promised by a card or memory must land.
+
+    Scans character cards (skipping markdown headings) and concept memories for
+    the controlled prop vocabulary; each token must resolve to a registered
+    entity or concept. A prop the world cannot produce is a promise the actor
+    will fail to keep in play.
+    """
+    declared = _declared(pack)
+    pattern = re.compile("|".join(re.escape(word) for word in
+                                   sorted(set(_PERSONA_PROP_WORDS), key=len, reverse=True)))
+    findings: list[str] = []
+
+    def scan(where: str, text: str) -> None:
+        for token in sorted(set(pattern.findall(text))):
+            if not _resolves(token, declared):
+                findings.append(
+                    f"{where}: named prop {token!r} does not resolve to a registered "
+                    "item/concept — register it or reword the promise")
+
+    for path in sorted(root.glob("characters/*.md")):
+        body = "\n".join(line for line in path.read_text(encoding="utf-8").splitlines()
+                         if not line.lstrip().startswith("#"))
+        scan(str(path.relative_to(root)), body)
+    for concept in pack.concepts:
+        for owner, memory in concept["memory"].items():
+            scan(f"concept {concept['id']} memory[{owner}]", str(memory))
+    return findings
+
+
+def _inline_content_findings(pack) -> list[str]:
+    """Ticket 47 / K47d: inline manifest `content`/`desc` is a name carrier.
+
+    A name-like token written straight into an items/documents/locations row is
+    model-visible after load (markers stripped), so it must resolve to a
+    registered entity or concept just like prose — otherwise new content smuggles
+    in a name neither the model nor flashback can resolve.
+    """
+    declared = _declared(pack)
+    findings: list[str] = []
+    for kind in ("items", "documents", "locations"):
+        for row in getattr(pack, kind):
+            for field in ("content", "desc"):
+                text = row.get(field)
+                if not isinstance(text, str) or not text.strip():
+                    continue
+                for token in sorted(set(_pattern_names(text))):
+                    if _resolves(token, declared):
+                        continue
+                    findings.append(
+                        f"{kind} {row['id']} {field}: inline name {token!r} does not "
+                        "resolve to a registered entity/concept — register it or wrap "
+                        "it as [[...]]")
+    return findings
+
+
+def _person_address(name: str) -> bool:
+    return (name[0] in "小老" or name.endswith(_ROLE_NAMES)
+            or name[-1] in _KINSHIP_TAILS)
+
+
+def collision_warnings(world_root: str | Path) -> list[str]:
+    """Ticket 47 / K47e: advisory homonym collisions (never block).
+
+    Two registered names are confusable when a short personal address nests
+    inside a longer name owned by a different entity, or when a 小<姓> form sits
+    beside an actor of the same surname (the 「小陈」/陈默 clash). Returns plain
+    warning lines for a human to judge; seed lint stays green.
+    """
+    pack = load_world_pack(Path(world_root))
+    owners: dict[str, set[str]] = {}
+    for kind in ("locations", "items", "documents", "actors"):
+        for row in getattr(pack, kind):
+            owners.setdefault(str(row["id"]), set()).add(f"{kind}:{row['id']}")
+    for concept in pack.concepts:
+        owners.setdefault(concept["name"], set()).add(f"concept:{concept['id']}")
+        for alias in concept["aliases"]:
+            owners.setdefault(alias, set()).add(f"concept:{concept['id']}")
+    actor_ids = {str(row["id"]) for row in pack.actors}
+    names = [name for name in owners if len(name) >= 2]
+    warnings: list[str] = []
+    for name in sorted(names):
+        if len(name) == 2 and name[0] == "小" and name[1] in _SURNAMES:
+            surname = name[1]
+            others = sorted(other for other in actor_ids
+                            if other != name and other.startswith(surname))
+            if others:
+                warnings.append(
+                    f"name collision 小名 {name!r} 与同姓角色称呼 {', '.join(others)} "
+                    "（不同实体，易混称，供人判断）")
+    for short in sorted(names, key=lambda n: (-len(n), n)):
+        if not _person_address(short):
+            continue
+        for long in names:
+            if short == long or short not in long:
+                continue
+            if owners[short] & owners[long]:
+                continue  # same entity/id: a 的/alias derivation, not a clash
+            warnings.append(
+                f"name collision {short!r} ⊂ {long!r}（{sorted(owners[short])} vs "
+                f"{sorted(owners[long])}，供人判断）")
+    return warnings
 
 
 def sources_md(root: Path) -> list[tuple[str, str]]:
@@ -313,6 +550,12 @@ def main() -> int:
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
     findings = lint(args.world)
+    try:
+        warnings = collision_warnings(args.world)
+    except ValueError:
+        warnings = []
+    for note in warnings:
+        print(f"warning: {note}")
     if args.verbose:
         for note in dead_aliases(args.world):
             print(f"note: {note}")
