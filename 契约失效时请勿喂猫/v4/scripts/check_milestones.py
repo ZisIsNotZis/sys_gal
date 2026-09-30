@@ -1063,12 +1063,31 @@ def health_report(data, day: int):
     auto_reads = [e for e in day_reads if (e.get("payload") or {}).get("auto") is True]
     observed_events = [e for e in _day_events(data.get("world_events", []), day)
                        if e.get("kind") == "observed"]
+    # Ticket 43: repetition/stagnation observability. A stagnation notice is
+    # the frontier line naming the wait length and the actions still available;
+    # the longest consecutive wait shows the shape of a stalled stretch.
+    # Printed for review, never a gate.
+    stagnation_turns = [t for t in turns if "waiting in place for about" in str(
+        t.get("perception", {}).get("situational_notice") or "")]
+    longest_wait: dict[str, int] = {}
+    running: dict[str, int] = {}
+    for turn in sorted(turns, key=lambda t: str(t.get("perception", {}).get("time", ""))):
+        actor = str(turn.get("actor"))
+        kind = str((turn.get("intention") or {}).get("kind") or "")
+        if kind == "wait":
+            running[actor] = running.get(actor, 0) + 1
+            longest_wait[actor] = max(longest_wait.get(actor, 0), running[actor])
+        else:
+            running[actor] = 0
+    worst = max(sorted(longest_wait.items()), key=lambda item: item[1], default=("", 0))
     return {"当日在册轮次": len(turns), "错误轮次": len(errs),
             "提供商HTTP错误": len(http), "标记泄漏条数": leak,
             "inner填充率": inner_rate,
             "疑似心声混进speech": inner_in_speech,
             "亲读（AUTO/主动）": f"{len(auto_reads)}/{len(day_reads) - len(auto_reads)}",
-            "首次看见登记": len(observed_events)}
+            "首次看见登记": len(observed_events),
+            "停滞提示次数": len(stagnation_turns),
+            "最长连续wait": f"{worst[1]}（{worst[0]}）" if worst[0] else "0"}
 
 
 # ---------------------------------------------------------------- main

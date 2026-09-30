@@ -77,6 +77,14 @@ SSOT：引擎时序语义、并发架构、冻结/唤醒/中断机制、失败�
 - **兜底取用**：角色对一件"看见过但没有可读正文"的东西发起 `read`（`present_without_body` / `known_not_readable_not_here`）时，拒绝文本附上系统层客观描述原文，措辞明确是"你看见过的"客观陈述，不含任何主观推断；没看见过的东西绝不编造描述。
 - **停留即读**：可读实体（`document_defs`，且 `available_now`）进入视野后，角色连续停留达到其 `reading_seconds`，引擎自动产出一条 `document_read`（payload `auto: true`），正文投给该角色；同一实体只自动读一次；中途离开（`leave`/到达新地点）作废该次计时，回原处需重新计满；主动 `read` 先于计时完成则不重复。文档行可写 `auto_read: false`（缺省 true）要求必须主动读。`document_read` 事件、私有投递通道与可见性不变；`auto` 标记让里程碑证据（亲读）仍可区分。
 
+### 7.2 反重复与停滞提示（ticket 43，2026-09-30 裁定）
+
+- **注入通道**：`RepetitionMonitor` 在每条世界消息的**前沿**注入一行 `situational_notice`（不改 system/初始化/已埋上下文，缓存不变）。三种检测：同一目标连续未回消息；同一有意义动作（kind + 精确 args）重复；连续 `wait` 造成的停滞。
+- **链路径必须记录真实意图**：v4 回合走工具链（`_execute_chain`），监测器收到的是链的 `recorded` Intention（首个调用的 kind + 整条调用列表，一条链按一个整体动作计）。链内世界动作全部被拒时结果记为 `rejected`，否则 `submitted`；引擎旧写法传 `None` 会被 `note_turn` 首句直接丢弃，实测导致整个 run 零计数（九次同样的失败读、十八次 `wait 900` 一条提示都没有）。
+- **wait 计入停滞**：`_EXCLUDED_ACTIONS` 只保留 `sleep`/`text`（`text` 另有未回消息计数）。连续 `wait` 达到 `stagnation_threshold`（默认 4）触发一次停滞提示，其后每 `stagnation_stride`（默认 4）再触发，不逐回合刷屏；提示给出已等待的模拟时长，并列出本回合 affordances 中**仍可执行**的动作（move/read/take/speak/text/give/… 取少量，排除 `wait`/`sleep`/`route_hints`）。
+- **重置**：任何非 `wait` 动作或 location 变化都打断连续计数，重新起算。
+- 阈值全部是 `RepetitionMonitor(...)` 的构造参数，不写死；状态随检查点往返（`state()`/`restore()`）。
+
 ## 8. 实现映射
 
 - **替换**：runner.py 轮询主循环与 waiting/npc_pending/extras 三条 ad-hoc 路径 → 统一协程循环（§0）。迁移期间旧 `Runner` 仅作为存量测试的遗留驱动保留，生产入口（real_run/resume_run）已切换 `AsyncEngine`。

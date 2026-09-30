@@ -523,12 +523,14 @@ class AsyncEngine:
             perception["operational_facts"] = [dict(fact) for fact in fresh]
             for fact in fresh:
                 fact["delivered"] = True
-        notice = self._repetition.notice(actor_id)
-        if notice:
-            perception["situational_notice"] = notice
         affordances = list(world.affordances(actor_id))
         if self.system is not None:
             affordances.extend(self.system.affordances(actor_id))
+        # Ticket 43: the stagnation notice lists what the actor can still do,
+        # so the affordances must be built before the notice is produced.
+        notice = self._repetition.notice(actor_id, affordances=affordances)
+        if notice:
+            perception["situational_notice"] = notice
         npc_reason = self._npc_pending.pop(actor_id, None)
         version_before = world.version
         self._inflight[actor_id] = world.now
@@ -1124,13 +1126,23 @@ class AsyncEngine:
             str(r.get("text", "")) for r in results if r.get("text"))
         self._remember_lines(actor_id, perception)
         result = "submitted" if (world_actions or calls) else "none"
-        self._repetition.note_turn(actor_id, None, result)
         recorded = (Intention(actor_id, str(calls[0].get("name", "unknown")),
                               {"calls": [{"name": c.get("name"),
                                            "args": c.get("arguments") or {}}
                                           for c in calls]},
                               inner=turn_inner)
                     if calls else None)
+        # Ticket 43: the chain path must hand the monitor the REAL intention.
+        # It used to pass `None`, which `note_turn` drops on its first line, so
+        # on the run's actual path no action was ever counted — nine identical
+        # failing `read 签到本` produced no notice at all. `recorded` frames the
+        # whole chain as one action. The outcome is derived here because the
+        # turn-level `result` reads as "submitted" whenever the chain carried
+        # any call, even if every world action was rejected; the monitor treats
+        # only a world action that actually landed as a resolution.
+        monitor_result = "submitted" if world_actions else ("rejected" if calls else "none")
+        self._repetition.note_turn(actor_id, recorded, monitor_result,
+                                   location=a.location)
         self.trace.record_agent(state=self.states[actor_id], perception=perception,
                                 affordances=affordances, intention=recorded,
                                 result=result, error="; ".join(failures) or None,
@@ -1194,7 +1206,8 @@ class AsyncEngine:
                     pass
             except Exception as exc:
                 result, error = "engine_error", f"{type(exc).__name__}: {exc}"
-        self._repetition.note_turn(actor_id, intention, result)
+        self._repetition.note_turn(actor_id, intention, result,
+                                   location=world.actors[actor_id].location)
         self.trace.record_agent(state=self.states[actor_id], perception=perception,
                                 affordances=affordances, intention=intention,
                                 result=result, error=error,

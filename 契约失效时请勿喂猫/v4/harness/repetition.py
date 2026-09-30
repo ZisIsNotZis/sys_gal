@@ -12,31 +12,148 @@ that they have asked the same thing many times or kept hitting the same wall.
 Each character then reacts as a person (pause, change tactic, or let it go),
 so a loop can break from either side.
 
-Two detectors:
+Three detectors:
 - message loop: N messages sent to the same target with no reply from it;
-- action loop: the same meaningful action (kind + exact args) N times.
+- action loop: the same meaningful action (kind + exact args) N times;
+- stagnation: M consecutive waits. ``wait`` is the main visible symptom of a
+  stalled character (ticket 43), so it is counted separately instead of being
+  exempted; its notice names how long the character has waited and the actions
+  it can still take, so the model is not just told "stop waiting".
 """
 
 from __future__ import annotations
 
 import json
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 # Pacing/no-op actions are not "the same thing done over and over".
-_EXCLUDED_ACTIONS = {"wait", "sleep", "text"}
+# ``wait`` is deliberately NOT here (ticket 43): consecutive waits are the
+# stagnation detector's job now. ``text`` has its own unanswered-message
+# counter and ``sleep`` is the overnight, legitimate rest.
+_EXCLUDED_ACTIONS = {"sleep", "text"}
+
+# Affordance kinds that are not an "executable action" to suggest in a
+# stagnation notice: pacing itself, and the route-hint advisory row.
+_NON_ACTIONABLE_KINDS = {"wait", "sleep", "route_hints"}
 
 
 def _args_key(args: Mapping[str, Any]) -> str:
     return json.dumps(args, sort_keys=True, ensure_ascii=False)
 
 
+def _text_targets(intention: Any) -> list[str]:
+    """Recipients of a message intention, for either intention shape.
+
+    The single-action path carries ``target`` directly; the chain path records
+    the whole call list under ``calls`` (ticket 43). Without this the
+    unanswered-message counter was also dead on the run's real path.
+    """
+    args = intention.args or {}
+    target = args.get("target")
+    if isinstance(target, str) and target:
+        return [target]
+    targets: list[str] = []
+    for call in args.get("calls") or ():
+        if not isinstance(call, Mapping) or call.get("name") != "text":
+            continue
+        inner = (call.get("args") or {}).get("target")
+        if isinstance(inner, str) and inner:
+            targets.append(inner)
+    return targets
+
+
+def _wait_seconds(intention: Any) -> float:
+    """Simulated seconds a wait intention covers.
+
+    The single-action path carries ``duration_seconds`` directly; the chain
+    path records the whole call list under ``calls`` (ticket 43), so the inner
+    wait calls are summed. Both shapes stay deterministic.
+    """
+    args = intention.args or {}
+    direct = args.get("duration_seconds")
+    if isinstance(direct, (int, float)):
+        return float(direct)
+    total = 0.0
+    for call in args.get("calls") or ():
+        if not isinstance(call, Mapping) or call.get("name") != "wait":
+            continue
+        inner = (call.get("args") or {}).get("duration_seconds")
+        if isinstance(inner, (int, float)):
+            total += float(inner)
+    return total
+
+
+def _format_duration(seconds: float) -> str:
+    total_minutes = max(0, int(round(seconds / 60)))
+    hours, minutes = divmod(total_minutes, 60)
+    if hours and minutes:
+        return f"{hours} h {minutes} min"
+    if hours:
+        return f"{hours} h"
+    return f"{total_minutes} min"
+
+
+def _action_highlights(affordances: Sequence[Mapping[str, Any]] | None,
+                       limit: int = 5) -> list[str]:
+    """A few concrete, readable actions from this turn's affordances.
+
+    Deterministic: the affordance order is the engine's, duplicates are
+    dropped by label, and the list is capped. Only real world actions appear —
+    never ``wait``/``sleep`` (the pacing the notice is warning about) or the
+    ``route_hints`` advisory row.
+    """
+    out: list[str] = []
+    seen: set[str] = set()
+    for option in affordances or ():
+        if not isinstance(option, Mapping):
+            continue
+        kind = str(option.get("kind") or "")
+        if not kind or kind in _NON_ACTIONABLE_KINDS:
+            continue
+        if kind == "speak":
+            targets = [str(person) for person in option.get("to", ())
+                       if person and str(person) != "陌生人"]
+            label = (f"speak to {targets[0]}" if targets
+                     else "speak to a passer-by")
+        elif kind == "text":
+            label = f"text {option.get('target')}"
+        elif kind == "move":
+            label = f"move to {option.get('target')}"
+        elif kind == "take":
+            label = f"take {option.get('item')}"
+        elif kind == "read":
+            label = f"read {option.get('item')}"
+        elif kind == "give":
+            label = f"give {option.get('item')} to {option.get('target')}"
+        elif kind == "place":
+            label = f"place {option.get('item')}"
+        elif kind == "trash":
+            label = f"trash {option.get('item')}"
+        elif kind == "knock":
+            label = f"knock on {option.get('target')}"
+        elif kind == "leave_note":
+            label = "leave a note"
+        else:
+            label = kind
+        if label in seen:
+            continue
+        seen.add(label)
+        out.append(label)
+        if len(out) >= limit:
+            break
+    return out
+
+
 class RepetitionMonitor:
     def __init__(self, *, message_threshold: int = 4, action_threshold: int = 5,
-                 message_stride: int = 3, action_stride: int = 4) -> None:
+                 message_stride: int = 3, action_stride: int = 4,
+                 stagnation_threshold: int = 4, stagnation_stride: int = 4) -> None:
         self.message_threshold = int(message_threshold)
         self.action_threshold = int(action_threshold)
         self.message_stride = int(message_stride)
         self.action_stride = int(action_stride)
+        self.stagnation_threshold = int(stagnation_threshold)
+        self.stagnation_stride = int(stagnation_stride)
         # actor -> {target: count of unanswered messages}
         self._sent: dict[str, dict[str, int]] = {}
         # actor -> {(kind, args_key): count of identical meaningful actions}
@@ -45,15 +162,39 @@ class RepetitionMonitor:
         self._msg_fired: dict[str, dict[str, int]] = {}
         # actor -> {action_key: count at which we last announced}
         self._act_fired: dict[str, dict[str, int]] = {}
+        # actor -> consecutive waits / summed simulated seconds / last fired
+        self._stagnation: dict[str, int] = {}
+        self._stagnation_seconds: dict[str, float] = {}
+        self._stagnation_fired: dict[str, int] = {}
+        # actor -> last location seen; a change restarts the wait run.
+        self._last_location: dict[str, str] = {}
 
-    def note_turn(self, actor: str, intention: Any, result: str) -> None:
+    def _break_stagnation(self, actor: str) -> None:
+        self._stagnation.pop(actor, None)
+        self._stagnation_seconds.pop(actor, None)
+        self._stagnation_fired.pop(actor, None)
+
+    def note_turn(self, actor: str, intention: Any, result: str, *,
+                  location: str | None = None) -> None:
+        if location is not None:
+            previous = self._last_location.get(actor)
+            self._last_location[actor] = str(location)
+            if previous is not None and previous != str(location):
+                # Moving restarts the count: waiting elsewhere is a new run.
+                self._break_stagnation(actor)
         if intention is None or not hasattr(intention, "kind"):
             return
         kind = intention.kind
+        if kind == "wait":
+            self._stagnation[actor] = self._stagnation.get(actor, 0) + 1
+            self._stagnation_seconds[actor] = (
+                self._stagnation_seconds.get(actor, 0.0) + _wait_seconds(intention))
+            return
+        # Any non-wait turn breaks the consecutive-wait run (ticket 43).
+        self._break_stagnation(actor)
         if kind == "text":
-            target = intention.args.get("target")
-            if isinstance(target, str) and target:
-                counts = self._sent.setdefault(actor, {})
+            counts = self._sent.setdefault(actor, {})
+            for target in _text_targets(intention):
                 counts[target] = counts.get(target, 0) + 1
             return
         if kind in _EXCLUDED_ACTIONS:
@@ -72,7 +213,8 @@ class RepetitionMonitor:
             counts[sender] = 0
             self._msg_fired.setdefault(actor, {}).pop(sender, None)
 
-    def notice(self, actor: str) -> str | None:
+    def notice(self, actor: str, *,
+               affordances: Sequence[Mapping[str, Any]] | None = None) -> str | None:
         fired = self._msg_fired.setdefault(actor, {})
         for target, count in self._sent.get(actor, {}).items():
             if count >= self.message_threshold and (
@@ -94,6 +236,22 @@ class RepetitionMonitor:
                         f"You have attempted the same action {count} times. You notice it is "
                         "not working; a real person would try something else."
                     )
+        count = self._stagnation.get(actor, 0)
+        if count >= self.stagnation_threshold and (
+                count - self.stagnation_threshold) % self.stagnation_stride == 0:
+            if self._stagnation_fired.get(actor) != count:
+                self._stagnation_fired[actor] = count
+                waited = _format_duration(self._stagnation_seconds.get(actor, 0.0))
+                message = (
+                    f"You have been waiting in place for about {waited} "
+                    f"({count} waits in a row). Waiting again changes nothing. A real "
+                    "person would use the time."
+                )
+                options = _action_highlights(affordances)
+                if options:
+                    message += (" Concrete things you can still do here: "
+                                + ", ".join(options) + ".")
+                return message
         return None
 
     def state(self) -> dict[str, Any]:
@@ -106,6 +264,10 @@ class RepetitionMonitor:
             "act_fired": {actor: {f"{kind}::{args}": count
                                   for (kind, args), count in values.items()}
                           for actor, values in self._act_fired.items()},
+            "stagnation": dict(self._stagnation),
+            "stagnation_seconds": dict(self._stagnation_seconds),
+            "stagnation_fired": dict(self._stagnation_fired),
+            "last_location": dict(self._last_location),
         }
 
     def restore(self, state: Mapping[str, Any]) -> None:
@@ -121,3 +283,11 @@ class RepetitionMonitor:
             actor: {(kind, args): int(count) for item, count in values.items()
                     for kind, args in [tuple(item.split("::", 1))]}
             for actor, values in state.get("act_fired", {}).items()}
+        self._stagnation = {actor: int(count)
+                            for actor, count in state.get("stagnation", {}).items()}
+        self._stagnation_seconds = {actor: float(seconds)
+                                    for actor, seconds in state.get("stagnation_seconds", {}).items()}
+        self._stagnation_fired = {actor: int(count)
+                                  for actor, count in state.get("stagnation_fired", {}).items()}
+        self._last_location = {actor: str(loc)
+                               for actor, loc in state.get("last_location", {}).items()}

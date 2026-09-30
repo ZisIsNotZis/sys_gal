@@ -160,12 +160,14 @@ class Runner:
                             fact["delivered"] = True
                     self._turn_sequence += 1
                     perception["_turn_id"] = f"turn-{self._turn_sequence}"
-                    notice = self._repetition.notice(actor_id)
-                    if notice:
-                        perception["situational_notice"] = notice
+                    # Ticket 43: build affordances before the notice so a
+                    # stagnation notice can name what the actor can still do.
                     affordances = self.world.affordances(actor_id)
                     if self.system is not None:
                         affordances.extend(self.system.affordances(actor_id))
+                    notice = self._repetition.notice(actor_id, affordances=affordances)
+                    if notice:
+                        perception["situational_notice"] = notice
                 else:
                     perception, affordances, turn_id = retry_context
                     perception = dict(perception)
@@ -287,7 +289,8 @@ class Runner:
                         })
                     except Exception as exc:
                         result, error = "engine_error", f"{type(exc).__name__}: {exc}"
-                self._repetition.note_turn(actor_id, intention, result)
+                self._repetition.note_turn(actor_id, intention, result,
+                                           location=self.world.actors[actor_id].location)
                 self.trace.record_agent(state=self.states[actor_id], perception=perception,
                                         affordances=affordances, intention=intention,
                                         result=result, error=error,

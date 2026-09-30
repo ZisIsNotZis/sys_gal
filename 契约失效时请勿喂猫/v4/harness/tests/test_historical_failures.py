@@ -85,6 +85,18 @@ I39 item prose bodies unreadable; read rejections lied ......... test_turn_305_h
                      test_known_to_does_not_grant_remote_read_or_description,
                      test_undeclared_item_body_fails_seed_lint_and_declaring_it_turns_green
     test_historical_failures (I39 item-body regression)
+I43 chain path fed the repetition monitor None (ticket 43) ... test_chain_path_feeds_the_repetition_monitor,
+                                                               test_chain_path_counts_waits_as_stagnation_with_a_next_action
+    engine.py `_execute_chain` called `note_turn(actor_id, None, result)`;
+    `RepetitionMonitor.note_turn` returns immediately on `intention is None`.
+    The run's real (chain) path therefore counted nothing, and `wait` was also
+    unconditionally exempt (`_EXCLUDED_ACTIONS`). On the d1-am artifact nine
+    identical failing `read 签到本` and eighteen `wait 900` turns produced zero
+    notices. Fix (user ruling 2026-09-30): hand the chain's `recorded`
+    Intention to the monitor with a rejected/submitted outcome, count
+    consecutive waits as stagnation (its own threshold/stride, reset by a
+    non-wait action or a location change), and list the character's real
+    remaining actions. `sleep`/`text` stay exempt.
 I49 objective description was a one-shot snapshot ................ test_objective_observation (observed record/event,
     checkpoint round-trip, read fallback, stay-read, auto_read opt-out),
     test_historical_failures test_objective_description_survives_compaction
@@ -1404,6 +1416,95 @@ class HistoricalFailureGates(unittest.TestCase):
                          {"agent_error", "decision_timeout", "engine_error"})
         self.assertIn("inner", turn["error"] or "")
         self.assertTrue(any("inner" in str(r.get("text")) for r in agent.delivered))
+
+
+class RepetitionMonitorGates(unittest.TestCase):
+    """I43 (ticket 43, user ruling 2026-09-30): the chain execution path fed
+    the repetition monitor `None` — `engine.py _execute_chain` called
+    `note_turn(actor_id, None, result)` and `RepetitionMonitor.note_turn`
+    drops the turn on its first line (`intention is None`). Every run's real
+    path is the chain path, so on the d1-am artifact not one identical action
+    was ever counted: nine identical failing `read 签到本` and eighteen
+    `wait 900` turns produced zero "same action" notices. These gates pin the
+    chain -> monitor wire and the wait-stagnation notice that must follow it."""
+
+    START = datetime.fromisoformat("2026-03-16T07:00:00+08:00")
+
+    def _run(self, world, agent, *, stop_minutes, **kw):
+        trace = Trace("v4-test", "chain-repetition")
+        engine = AsyncEngine(world, {"a": agent}, {"a": PrivateState("a")},
+                             trace, None, decision_timeout=10,
+                             max_wall_seconds=30, mc_idle_heartbeat=60, **kw)
+        engine.run(stop_at=self.START + timedelta(minutes=stop_minutes),
+                   max_turns=60)
+        return [turn["perception"].get("situational_notice") or ""
+                for turn in trace.agent_turns if turn["actor"] == "a"]
+
+    def test_chain_path_feeds_the_repetition_monitor(self):
+        """(a) An identical failing world action repeated on the chain path
+        must reach the monitor and fire the \"same action\" notice."""
+        from harness.kernel import ActorState, LocationState
+
+        class _FailingChain:
+            session_obj = object()
+
+            def __init__(self):
+                self.delivered = []
+
+            def __call__(self, world_message, state):
+                return {"text": "", "calls": [
+                    {"name": "move", "arguments": {"target": "nowhere"},
+                     "tool_call_id": "c1"}]}
+
+            def deliver_tool_results(self, results):
+                self.delivered.extend(results)
+
+            def consume_compaction(self):
+                return False
+
+            def session_snapshot(self):
+                return None
+
+        world = World(start=self.START, actors=[ActorState("a", "room")],
+                      locations=[LocationState("room")])
+        agent = _FailingChain()
+        notices = self._run(world, agent, stop_minutes=20)
+        self.assertTrue(any("same action" in notice for notice in notices),
+                        f"the chain path never reached the monitor: {notices}")
+        # The fixture's action really did fail; otherwise the gate proves nothing.
+        self.assertTrue(any("nowhere" in str(r.get("text"))
+                            for r in agent.delivered))
+
+    def test_chain_path_counts_waits_as_stagnation_with_a_next_action(self):
+        """(b) Consecutive waits on the chain path become stagnation, and the
+        notice lists a concrete action still available here."""
+        from harness.kernel import ActorState, LocationState
+
+        class _WaitingChain:
+            session_obj = object()
+
+            def __call__(self, world_message, state):
+                return {"text": "", "calls": [
+                    {"name": "wait", "arguments": {"duration_seconds": 60},
+                     "tool_call_id": "c1"}]}
+
+            def deliver_tool_results(self, results):
+                pass
+
+            def consume_compaction(self):
+                return False
+
+            def session_snapshot(self):
+                return None
+
+        world = World(start=self.START, actors=[ActorState("a", "room")],
+                      locations=[LocationState("room"), LocationState("far")],
+                      routes={("room", "far"): 120})
+        notices = self._run(world, _WaitingChain(), stop_minutes=20)
+        stagnation = [notice for notice in notices if "waiting in place" in notice]
+        self.assertTrue(stagnation, f"waits were not counted as stagnation: {notices}")
+        self.assertTrue(any("move to far" in notice for notice in stagnation),
+                        f"stagnation notice listed no executable action: {stagnation}")
 
 
 class ExtraCheckpointGates(unittest.TestCase):
