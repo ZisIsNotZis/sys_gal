@@ -14,12 +14,17 @@ was a one-shot snapshot: never entered memory, could not survive compaction".
 
 import unittest
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from harness.engine import AsyncEngine
 from harness.kb import ActorKB
 from harness.kernel import (ActionRejected, ActorState, Intention, LocationState,
                             World)
 from harness.prompt import render_world_message
+from harness.world_loader import load_world_pack
+
+
+ROOT = Path(__file__).parents[2]
 
 
 class _PerceptionProbe:
@@ -307,6 +312,68 @@ class WorldMessageDeliveryTests(_WorldMixin, unittest.TestCase):
         self.assertIn("[old_whistle]: 一只小小的红色哨子", legacy)
         self.assertIn("# knowledge", legacy)
         self.assertNotIn("[所见", legacy)
+
+
+class ObservationDedupTests(_WorldMixin, unittest.TestCase):
+    """Ticket 49 dedup: the loader already auto-expands a visible entity's
+    description into a KB row (`world_loader._expand_entity_rows`), so the row
+    would render the same prose this turn as `[所见 X]: desc`. The seen line is
+    suppressed only for a byte-identical KB description; an entity with no KB
+    row keeps it — the case the ticket exists for."""
+
+    def test_a_same_text_kb_row_suppresses_the_seen_line(self):
+        world = self.world()
+        perception = world.poll("a")
+        objective = PROP.split("\n\n")[1]
+        kb = ActorKB("a", [{"keys": ["a"], "desc": "我，a。"},
+                           {"keys": ["old_whistle"], "desc": objective}],
+                     world.now, valid_contact_names=set(world.actors))
+        lines = _PerceptionProbe(world, {"a": kb}).knowledge_lines(
+            "a", perception, [])
+        self.assertFalse(any(str(line).startswith("[所见 old_whistle]")
+                             for line in lines))
+        self.assertTrue(any(str(line).startswith("[old_whistle]")
+                            for line in lines))
+        text = render_world_message(perception, [], observer="a",
+                                    knowledge_lines=lines)
+        self.assertEqual(text.count(objective), 1)
+
+    def test_a_differing_kb_row_leaves_both_lines(self):
+        # Only byte-identical descriptions suppress: the actor's own rewritten
+        # note must not swallow the objective first-sight line.
+        world = self.world()
+        perception = world.poll("a")
+        kb = ActorKB("a", [{"keys": ["a"], "desc": "我，a。"},
+                           {"keys": ["old_whistle"],
+                            "desc": "我自己关于这只哨子的笔记。"}],
+                     world.now, valid_contact_names=set(world.actors))
+        lines = _PerceptionProbe(world, {"a": kb}).knowledge_lines(
+            "a", perception, [])
+        self.assertTrue(any(str(line).startswith("[所见 old_whistle]")
+                            for line in lines))
+        self.assertTrue(any(str(line).startswith("[old_whistle]") and "笔记" in line
+                            for line in lines))
+
+    def test_an_entity_without_a_kb_row_keeps_its_seen_line(self):
+        # Real seed fixture: 晚归登记本 (known_to 宿管阿姨/林瑶室友) lies in
+        # 女生宿舍. 陈默 has no row for it but physically sees it, so the
+        # [所见] line is the only delivery of its description — the ticket's
+        # unique value. The public location row still suppresses its own echo.
+        pack = load_world_pack(ROOT / "world")
+        world = pack.build_world()
+        self.assertEqual(world.item_locations.get("晚归登记本"), "女生宿舍")
+        self.assertFalse(any("晚归登记本" in row["keys"] for row in pack.kb["陈默"]))
+        world.actors["陈默"].location = "女生宿舍"
+        probe = _PerceptionProbe(world, {"陈默": ActorKB(
+            "陈默", pack.kb["陈默"], world.now,
+            valid_contact_names=set(world.actors))})
+        lines = probe.knowledge_lines("陈默", world.poll("陈默"), [])
+        self.assertTrue(any(str(line).startswith("[所见 晚归登记本]")
+                            for line in lines))
+        self.assertFalse(any(str(line).startswith("[晚归登记本]")
+                             for line in lines))
+        self.assertFalse(any(str(line).startswith("[所见 女生宿舍]")
+                             for line in lines))
 
 
 class ObservedRecallTests(_WorldMixin, unittest.TestCase):

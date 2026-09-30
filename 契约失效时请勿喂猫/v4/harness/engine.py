@@ -67,6 +67,17 @@ def _as_float(value: Any, what: str = "value") -> float:
         raise ValueError(f"invalid {what}: {value!r}") from exc
 
 
+def _knowledge_line_description(line: str) -> str | None:
+    """The description half of a rendered knowledge line `[label]: desc`.
+
+    Ticket 49 dedup: `[所见 <entity>]: desc` and the entity's KB row
+    `[<keys>]: desc` share this shape, so the byte-identical description can be
+    compared directly. `None` when the line has no `]: ` separator (a notice
+    with no label is never treated as covering a description)."""
+    _, sep, desc = line.partition("]: ")
+    return desc if sep else None
+
+
 class AsyncEngine:
     def __init__(self, world: World, agents: dict[str, AgentFn],
                  states: dict[str, PrivateState], trace: Any,
@@ -614,23 +625,34 @@ class AsyncEngine:
         first arrival, on a `description_refresh_rounds` refresh, or when a new
         entity enters view — never every turn. The engine takes exactly that
         and renders each as `[所见 <entity>]: <description>`, ahead of the KB
-        rows and visually distinct from them (`[<keys>]: desc`); it adds no
-        repetition of its own.
+        rows and visually distinct from them (`[<keys>]: desc`).
+
+        Ticket 49 dedup: the loader already auto-expands a visible entity's
+        description into a KB row (`world_loader._expand_entity_rows`), so for
+        those entities the row would render the SAME prose this turn. The
+        `[所见]` line is then suppressed and the description appears once;
+        suppression compares the KB text actually rendered this turn
+        byte-for-byte, so a row that differs (the actor's own note, an outline)
+        leaves both lines. An entity with NO KB row — a `known_to`-gated item
+        seen by an unauthorized actor, or a remote actor with no public rows —
+        keeps its `[所见]` line: that first-sight delivery is the ticket's
+        point, and `observed` remains the authoritative "seen is remembered"
+        record.
 
         The haystack for KB mention matching is this turn's world message with
         the knowledge block removed — so a surfaced row's own description
         cannot re-trigger its neighbours — plus the previous turn's tool-result
         text."""
-        lines: list[str] = [
+        seen = [
             f"[所见 {entity}]: {_clean_description(description)}"
             for entity, description in perception.get("descriptions", {}).items()]
         if actor_id not in self._kb:
-            return lines
+            return seen
         base = render_world_message(perception, affordances, observer=actor_id,
                                     knowledge_lines=[])
         haystack = base + "\n" + self._last_tool_text.get(actor_id, "")
         kb = self._kb[actor_id]
-        lines.extend(kb.due_lines(self.world.now, haystack))
+        lines = list(kb.due_lines(self.world.now, haystack))
         lines.extend(self._recall_lines.pop(actor_id, []))
         lines.extend(self._pending_notices.pop(actor_id, []))
         for event in perception.get("events", []):
@@ -640,7 +662,10 @@ class AsyncEngine:
             kb.close_scheduled(str(payload.get("row_id", "")))
             lines.append(f"[!at={payload.get('rendered', '')}]: "
                          f"{payload.get('desc', '')}（到期）")
-        return lines
+        rendered = {desc for line in lines
+                    if (desc := _knowledge_line_description(line)) is not None}
+        return [line for line in seen
+                if _knowledge_line_description(line) not in rendered] + lines
 
     def _flashback_query(self, actor_id: str, entity: str) -> list[str]:
         """flashback tool: recall everything the actor knows or lived that
