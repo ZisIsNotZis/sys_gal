@@ -123,10 +123,13 @@ SSOT：v4 角色-引擎接口的全部设计。实现必须逐条遵循本文；
 | note_read | （无公开行）—— 每张字条等到第一位非作者进入该地点，经 └ 私有投递收到正文与引擎记录的作者、留条时间：字条内容："{text}"（{author} 于 {left_at} 留）（字条已阅，随即化去）。作者返场不消费自己的字条；同刻多人进入按事件顺序逐条判定，读者随后销毁所读字条 |
 | trash | {actor} 销毁了 {item} |
 | read | {actor} 读了 {item} —— **内容不进公开行**；content 仅私有投递给读者本人 |
+| observed | （无公开行）—— 首次看见某实体（地点/在此的物品/手上的东西）时，其客观描述写入该角色记忆（`ActorState.observed`），同时发一条只对该角色可见的 `observed` 事件，payload = {entity, where}；`known_to` 不参与 |
 | move（到达） | {actor} 到达 {location} |
 | item 增减 | {item} 出现在 {location} / 从 {location} 消失 |
 
 私有投递（仅收件人可见，进其 #events）：read 的物品 content、whisper 的文本、text 的正文、note_read 的字条正文与引擎生成的作者/留条时间信封（阅后即焚）、系统私有事件叙述（§6）。作者与时间来自引擎保存的不可变字条记录，不由模型写入正文。
+
+**客观观测与停留即读（ticket 49，2026-09-30 裁定）**：每个实体都有一份客观描述（world pack 的 Markdown 正文）。角色一旦真的看见它（地点、地点内物品、手上的东西；不含 `known_to`）：① 引擎立即把客观描述写成该角色的**新增记忆**（`ActorState.observed`），首次仍按既有描述通道（实体 KB 行 / `descriptions`）给出；此后不再因 compaction 丢失——对一件"看见过却没有可读正文"的东西 `read` 时，拒绝文本会附上系统层客观描述原文（措辞明确是"你看见过的"客观陈述，不含主观推断），而不是让模型猜或回"不在你手边"。② 可读实体进入视野后，连续停留满其 `reading_seconds` 即视为读过，自动产生一条 `document_read`（payload `auto: true`），正文经 └ 私有投递给读者："（你在此处停留足够，已读完《X》）正文"。同一实体只自动读一次；中途离开则计时作废，回来重计；文档行可写 `auto_read: false`（缺省 true）要求必须主动 `read`。主动 `read` 与 auto 读都是 `document_read`，里程碑"亲读"证据一视同仁，payload 的 `auto` 标记区分。
 
 ## 4. 响应设计（模型 → 工具调用 + 文本即说话）
 

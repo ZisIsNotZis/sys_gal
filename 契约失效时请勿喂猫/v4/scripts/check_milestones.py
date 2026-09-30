@@ -1056,10 +1056,19 @@ def health_report(data, day: int):
             if stripped.startswith("（") or '{"inner"' in txt:
                 inner_in_speech += 1
                 break
+    # Ticket 49: stay-read produces the same document_read milestone evidence
+    # as an active read — count them apart so the evidence stays reviewable.
+    day_reads = [e for e in _day_events(data.get("world_events", []), day)
+                 if e.get("kind") == "document_read"]
+    auto_reads = [e for e in day_reads if (e.get("payload") or {}).get("auto") is True]
+    observed_events = [e for e in _day_events(data.get("world_events", []), day)
+                       if e.get("kind") == "observed"]
     return {"当日在册轮次": len(turns), "错误轮次": len(errs),
             "提供商HTTP错误": len(http), "标记泄漏条数": leak,
             "inner填充率": inner_rate,
-            "疑似心声混进speech": inner_in_speech}
+            "疑似心声混进speech": inner_in_speech,
+            "亲读（AUTO/主动）": f"{len(auto_reads)}/{len(day_reads) - len(auto_reads)}",
+            "首次看见登记": len(observed_events)}
 
 
 # ---------------------------------------------------------------- main

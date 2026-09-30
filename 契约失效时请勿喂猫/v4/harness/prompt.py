@@ -276,6 +276,14 @@ def _private_line(event: Mapping[str, Any], observer: str) -> str | None:
                 "（字条已阅，随即化去）")
     # document_read 的 content 不在这里投递——它是 read 调用的 tool 结果
     # （V4-AGENT-INTERFACE §3）：公开行只描述事实。
+    # Ticket 49 例外：stay-read 没有 tool 调用，停留满 reading_seconds 后正文
+    # 由这条私有投递送到读者本人（auto 标记区分于主动 read）。
+    if kind == "document_read" and payload.get("auto") and observer == who:
+        title = str(payload.get("title") or payload.get("document") or "")
+        content = str(payload.get("content") or "")
+        if content:
+            return f"（你在此处停留足够，已读完《{title}》）{content}"
+        return f"（你在此处停留足够，已翻完《{title}》，没有可读的正文。）"
     # documents_compared 的判定在 compare 调用的 tool 结果里。
     if kind == "knock" and observer == who:
         return "有人应声。" if payload.get("responded") else "没有人回应。"

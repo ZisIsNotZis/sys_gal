@@ -69,6 +69,13 @@ SSOT：引擎时序语义、并发架构、冻结/唤醒/中断机制、失败�
 - trace 改为：每角色时间线 + 全局 journal——比回合快照更强的 happens-before 分析材料。
 - 确定性种子与历史失败闸门（v3 pre-run gate 惯例）必须在新排序下全绿后才许大跑。
 
+### 7.1 客观观测与停留即读（ticket 49，2026-09-30 裁定）
+
+- **看见即写记忆**：每个实体（地点/物品/文档）都有一份客观描述（world pack 的 Markdown 正文，`entity_descriptions`）。感知构造（`World.poll`）时按**在场**判定——所在地点、地点内物品、手上的东西（`known_to` 不参与）——把首次进入视野的实体的客观描述写入该角色的 `ActorState.observed`（`{objective, at, where}`），并发出一条只对该角色可见的 `observed` 世界事件。客观描述不再是"首到那一回合的一次性快照"：它落成记忆行，随检查点往返，压缩也不丢。
+- **首次投递**：描述仍经既有描述通道（实体 KB 行 / `descriptions`）在首次看见时给出；此后由 `observed` 持有。
+- **兜底取用**：角色对一件"看见过但没有可读正文"的东西发起 `read`（`present_without_body` / `known_not_readable_not_here`）时，拒绝文本附上系统层客观描述原文，措辞明确是"你看见过的"客观陈述，不含任何主观推断；没看见过的东西绝不编造描述。
+- **停留即读**：可读实体（`document_defs`，且 `available_now`）进入视野后，角色连续停留达到其 `reading_seconds`，引擎自动产出一条 `document_read`（payload `auto: true`），正文投给该角色；同一实体只自动读一次；中途离开（`leave`/到达新地点）作废该次计时，回原处需重新计满；主动 `read` 先于计时完成则不重复。文档行可写 `auto_read: false`（缺省 true）要求必须主动读。`document_read` 事件、私有投递通道与可见性不变；`auto` 标记让里程碑证据（亲读）仍可区分。
+
 ## 8. 实现映射
 
 - **替换**：runner.py 轮询主循环与 waiting/npc_pending/extras 三条 ad-hoc 路径 → 统一协程循环（§0）。迁移期间旧 `Runner` 仅作为存量测试的遗留驱动保留，生产入口（real_run/resume_run）已切换 `AsyncEngine`。

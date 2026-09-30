@@ -127,6 +127,7 @@ class WorldPack:
             "title": _as_str(row.get("title", row.get("id")), "document title"),
             "content": strip_refs(_as_str(row.get("content", ""), "document content")),
             "reading_seconds": _as_int(row.get("reading_seconds", 30), "reading_seconds"),
+            "auto_read": bool(row.get("auto_read", True)),
             **({"labels": list(row["labels"])} if "labels" in row else {}),
         } for row in self.documents}
         # issue 39: an `items:` row that carries `content` is read exactly like
@@ -139,6 +140,7 @@ class WorldPack:
                 "title": _as_str(row.get("title", row.get("id")), "item title"),
                 "content": strip_refs(_as_str(row.get("content"), "item content")),
                 "reading_seconds": _as_int(row.get("reading_seconds", 30), "reading_seconds"),
+                "auto_read": bool(row.get("auto_read", True)),
                 **({"labels": list(row["labels"])} if "labels" in row else {}),
             }
         for row in self.documents:
@@ -597,6 +599,8 @@ def _validate(fields: dict[str, tuple[dict[str, Any], ...]], manifest: dict[str,
             raise ValueError("known_to must be a list")
         if any(actor not in actors for actor in row.get("known_to", ())):
             raise ValueError(f"entity {row['id']} has unknown actor in known_to")
+        if "auto_read" in row and not isinstance(row["auto_read"], bool):
+            raise ValueError(f"entity {row['id']} auto_read must be a boolean")
     for field_name in ("public_knowledge", "private_knowledge"):
         value = manifest.get(field_name, {})
         if not isinstance(value, dict):

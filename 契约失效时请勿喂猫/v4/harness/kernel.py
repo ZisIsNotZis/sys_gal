@@ -63,6 +63,19 @@ def tick_ceil(seconds: float) -> int:
     return max(1, ticks) * TICK_SECONDS
 
 
+def _objective_text(description: str) -> str:
+    """The objective description as prose (ticket 49).
+
+    Drops the leading Markdown heading — it is only the entity name — and
+    blank-line noise, keeping the body verbatim. Used for the observation
+    record and for the read-fallback, so both show the same single text.
+    """
+    lines = [line for line in str(description).splitlines() if line.strip()]
+    while lines and lines[0].lstrip().startswith("#"):
+        lines.pop(0)
+    return "\n".join(lines).strip()
+
+
 WAKE_EVENT_KINDS = frozenset({"speech", "message_delivered", "knock", "interaction",
                               "item_given", "extra_arrived", "extra_removed",
                               "action_interrupted", "enter", "note_read"})
@@ -95,6 +108,18 @@ class ActorState:
     described_locations: set[str] = field(default_factory=set)
     rounds_since_descriptions: int = 0
     force_observation: bool = False
+    # Ticket 49: the actor's own objective observation record, entity_id ->
+    # {"objective", "at", "where"}. Registered once, on the poll where the
+    # entity first enters view (place reached, item here, thing held) — never
+    # from `known_to`. This is the persistent memory row that survives
+    # compaction; `descriptions` is only the first-sight delivery of it.
+    observed: dict[str, dict[str, str]] = field(default_factory=dict)
+    # Ticket 49 stay-read: entities this actor has already read (actively or
+    # by staying), so a stay never reads the same thing twice.
+    read_entities: set[str] = field(default_factory=set)
+    # Ticket 49 stay-read: per-entity continuous-stay start times. Cleared on
+    # leaving a location, so a departure voids the dwell.
+    reading_dwell: dict[str, datetime] = field(default_factory=dict)
     # V4-CAST §1: mc | npc | extra. NPCs are event-driven (never clock
     # scheduled); extras are conversation-scoped strangers, destroyed with
     # zero memory when the conversation ends.
@@ -308,6 +333,11 @@ class World:
                               "described_locations": sorted(value.described_locations),
                               "rounds_since_descriptions": value.rounds_since_descriptions,
                               "force_observation": value.force_observation,
+                              "observed": {key: dict(entry)
+                                           for key, entry in value.observed.items()},
+                              "read_entities": sorted(value.read_entities),
+                              "reading_dwell": {key: moment.isoformat()
+                                                for key, moment in value.reading_dwell.items()},
                               "role": value.role}
                        for key, value in self.actors.items()},
             "locations": {key: {"id": value.id, "open": value.open, "x": value.x,
@@ -373,6 +403,11 @@ class World:
                     described_locations=set(row.get("described_locations", ())),
                     rounds_since_descriptions=int(row.get("rounds_since_descriptions", 0)),
                     force_observation=bool(row.get("force_observation", False)),
+                    observed={str(key): dict(entry)
+                              for key, entry in (row.get("observed") or {}).items()},
+                    read_entities=set(row.get("read_entities", ())),
+                    reading_dwell={str(key): datetime.fromisoformat(moment)
+                                   for key, moment in (row.get("reading_dwell") or {}).items()},
                     role=str(row.get("role", "mc")))
             locations = {key: LocationState(str(row["id"]), bool(row["open"]), float(row["x"]),
                 float(row["y"]), float(row["sound_radius"]), float(row["sound_loss"]),
@@ -497,6 +532,7 @@ class World:
         if a.location == new:
             return
         a.location = new
+        a.reading_dwell.clear()   # ticket 49: a departure voids the stay clock
         enter = self._commit("enter", actor_id, {"location": new}, None)
         # Each pending note goes to its first non-author entrant. The event
         # queue's (time, sequence) ordering breaks same-timestamp ties.
@@ -947,6 +983,12 @@ class World:
 
     def poll(self, actor_id: str) -> dict[str, Any]:
         a = self._actor(actor_id)
+        # Ticket 49 (ruling 2026-09-30): perception construction is also the
+        # moment of seeing. Record each newly visible entity's objective
+        # description as an actor memory row + an observable `observed`
+        # event, then honour a stay long enough to count as reading.
+        newly = self._record_observations(a)
+        self._stay_reads(a)
         cursor = self._cursor[actor_id]
         visible = [e for e in self.event_log[cursor:] if actor_id in e.visible_to]
         self._cursor[actor_id] = len(self.event_log)
@@ -982,9 +1024,18 @@ class World:
                   "inbox": inbox, "events": [self._public(e, observer=actor_id) for e in visible],
                   "knowledge": self._knowledge(a) if full_state else {}}
         if full_desc:
-            result["descriptions"] = {entity_id: self.entity_descriptions[entity_id]
-                                      for entity_id in self._visible_descriptions(a)
-                                      if entity_id in self.entity_descriptions}
+            result["descriptions"] = {
+                entity_id: self.entity_descriptions[entity_id]
+                for entity_id in sorted(self._visible_descriptions(a))
+                if entity_id in self.entity_descriptions}
+        else:
+            # An entity that just came into view still gets its first-sight
+            # description even when the place was described before; thereafter
+            # it lives in `observed` and the read-fallback can return it.
+            fresh = {entity_id: self.entity_descriptions[entity_id]
+                     for entity_id in newly if entity_id in self.entity_descriptions}
+            if fresh:
+                result["descriptions"] = fresh
         if a.pending is not None:
             result["pending"] = {"action": a.pending["payload"].get("action"),
                                  "remaining_seconds": a.pending["remaining_seconds"],
@@ -1033,6 +1084,67 @@ class World:
         visible.update(item for item, location in self.item_locations.items() if location == actor.location)
         visible.update(item for item in actor.inventory)
         return visible
+
+    def _record_observations(self, actor: ActorState) -> list[str]:
+        """Ticket 49: write each newly visible entity's objective description
+        into the actor's memory and emit one private `observed` event.
+
+        The visible set is exactly :meth:`_visible_descriptions` — the place,
+        items here, and things held; `known_to` awareness grants nothing.
+        Each entity is registered at most once, which is what lets a resumed
+        actor stay silent about what it already saw."""
+        newly: list[str] = []
+        for entity_id in sorted(self._visible_descriptions(actor)):
+            if entity_id in actor.observed:
+                continue
+            objective = self.entity_descriptions.get(entity_id)
+            if objective is None:
+                continue  # an undescribed entity has nothing objective to record
+            actor.observed[entity_id] = {
+                "objective": _objective_text(objective),
+                "at": self.now.isoformat(),
+                "where": actor.location,
+            }
+            self._commit("observed", actor.id,
+                         {"entity": entity_id, "where": actor.location}, None)
+            newly.append(entity_id)
+        return newly
+
+    def _stay_reads(self, actor: ActorState) -> None:
+        """Ticket 49 stay-read: staying in view of a readable thing for its
+        ``reading_seconds`` counts as having read it (ruling 2026-09-30).
+
+        The dwell is per-entity and continuous: it starts at the first poll
+        that sees the entity, is voided by any departure (the mover clears
+        ``reading_dwell``), and is dropped when the entity stops being here or
+        held. An entity is auto-read at most once, and a document declared
+        ``auto_read: false`` is never read this way. The committed event is an
+        ordinary ``document_read`` (the same private channel), marked
+        ``auto`` so the milestone evidence stays distinguishable."""
+        present = self._available_readables(actor)
+        for entity_id in list(actor.reading_dwell):
+            if entity_id not in present:
+                del actor.reading_dwell[entity_id]
+        for entity_id in present:
+            if (entity_id in actor.read_entities
+                    or self.document_defs[entity_id].get("auto_read", True) is False):
+                actor.reading_dwell.pop(entity_id, None)
+                continue
+            started = actor.reading_dwell.setdefault(entity_id, self.now)
+            seconds = _as_int(self.document_defs[entity_id].get("reading_seconds", 30),
+                              "reading_seconds")
+            if (self.now - started).total_seconds() < seconds:
+                continue
+            del actor.reading_dwell[entity_id]
+            actor.read_entities.add(entity_id)
+            definition = self.document_defs[entity_id]
+            self._commit("document_read", actor.id, {
+                "document": entity_id,
+                "title": definition.get("title", entity_id),
+                "content": definition.get("content", ""),
+                "annotations": [dict(entry) for entry in definition.get("annotations", [])],
+                "auto": True,
+            }, None)
 
     def replayable_log(self) -> tuple[dict[str, Any], ...]:
         return tuple(self._public(e) | {"visible_to": sorted(e.visible_to), "world_version": e.world_version} for e in self.event_log)
@@ -1310,8 +1422,11 @@ class World:
             reason = "readable_not_here"
         elif item in here or item in held:
             # (b) physically here, but it carries no readable text.
+            objective = self._observed_objective(actor, item)
+            seen = (f"你看见过它，这里是它的客观描述（系统所记，不是任何人的推测）："
+                    f"{objective}" if objective else "")
             message = (f"「{item}」没有可读的正文：它是一件实物，不是写着字的文书，读不出内容。"
-                       f"{here_line}你可以先把它拿上，或带在身上去问知道的人。")
+                       f"{here_line}你可以先把它拿上，或带在身上去问知道的人。{seen}")
             alternatives = []
             if item in here:
                 alternatives.append(f"take {item}")
@@ -1324,8 +1439,11 @@ class World:
             reason = "present_without_body"
         elif self.aware_of(actor.id, item):
             # (a) a thing the actor knows of, but not readable and not here.
+            objective = self._observed_objective(actor, item)
+            seen = (f"你看见过它，这里是它的客观描述（系统所记，不是任何人的推测）："
+                    f"{objective}" if objective else "")
             message = (f"「{item}」不是能读的文书，现在也不在{actor.location}，不在你手上。"
-                       f"{here_line}")
+                       f"{here_line}{seen}")
             alternatives = []
             reason = "known_not_readable_not_here"
         else:
@@ -1339,13 +1457,27 @@ class World:
                                        "readable_now": readable_now,
                                        "held": held, "items_here": here})
 
+    def _observed_objective(self, actor: ActorState, item: str) -> str | None:
+        """The objective description the actor already has for `item`.
+
+        Ticket 49 fallback: when a thing was seen but memory shows no body,
+        the system layer hands over the stored objective text instead of
+        letting the model guess. A thing never seen returns None — the world
+        never invents a description."""
+        entry = actor.observed.get(item)
+        if entry is None:
+            return None
+        return str(entry.get("objective") or "") or None
+
     def _complete(self, actor_id: str, payload: Mapping[str, Any]) -> None:
         if actor_id not in self.actors:
             # Defensive: a despawned extra's leftover job must not crash the
             # clock — the event stands (it happened), nothing mutates.
             return
         a = self._actor(actor_id); kind = payload["action"]
-        if kind == "move": a.location = str(payload["target"])
+        if kind == "move":
+            a.location = str(payload["target"])
+            a.reading_dwell.clear()   # leaving voids the stay-read clock
         elif kind == "text":
             target_id = str(payload["target"])
             if target_id not in self.actors:
@@ -1360,6 +1492,11 @@ class World:
             item = str(payload["item"]); a.inventory.remove(item)
             self._require_described(item)
             self.item_locations[item] = a.location
+        elif kind == "read":
+            # Ticket 49: a manual read also settles the stay-read book-keeping
+            # so the same document is never read twice in one stay.
+            a.read_entities.add(str(payload["item"]))
+            a.reading_dwell.pop(str(payload["item"]), None)
         elif kind == "leave_note":
             # Ruling 2026-09-22: a note is a room message attribute, not an
             # item — it joins the location's notes list and burns when read.
@@ -1456,6 +1593,10 @@ class World:
             return {str(actor)} if actor is not None else set()
         if kind == "document_read":
             # Content privacy: only the reader sees the text.
+            return {str(actor)}
+        if kind == "observed":
+            # Ticket 49: the first-sight record is the actor's own memory row;
+            # co-located people do not share it.
             return {str(actor)}
         if kind == "documents_compared":
             # The equality verdict is the actor's private analysis.

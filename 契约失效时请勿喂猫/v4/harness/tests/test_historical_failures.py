@@ -60,6 +60,17 @@ I39 item prose bodies unreadable; read rejections lied ......... test_turn_305_h
                      test_held_item_without_a_body_says_so_and_offers_real_actions,
                      test_known_to_does_not_grant_remote_read_or_description,
                      test_undeclared_item_body_fails_seed_lint_and_declaring_it_turns_green
+    test_historical_failures (I39 item-body regression)
+I49 objective description was a one-shot snapshot ................ test_objective_observation (observed record/event,
+    checkpoint round-trip, read fallback, stay-read, auto_read opt-out),
+    test_historical_failures test_objective_description_survives_compaction
+    issue 49 (user ruling 2026-09-30): the objective description existed but
+    was delivered only on the arrival turn — never entered memory, and could
+    not survive context compaction. A seen-but-bodyless prop made `read`
+    either guess or answer "not in your hand". Fix: `ActorState.observed`
+    records the objective text once, per entity, on first sight (emitting a
+    private `observed` event); a `read` of a seen thing returns that text;
+    and staying in view for `reading_seconds` auto-produces a `document_read`.
 H1/H4 empty checkpoint written at launch ...................... test_launch_checkpoint_is_a_valid_loadable_trace
 H2  duplicate run artifacts ................................... test_runner (unique run ids)
 H3  failed/truncated artifact mislabeled as clean .............. test_trace_completion_gate_rejects_truncated_run (runner)
@@ -440,6 +451,45 @@ class HistoricalFailureGates(unittest.TestCase):
         self.assertNotIn("不在你手边", str(caught.exception))
         self.assertNotIn("移交存根",
                          caught.exception.context.get("readable_now", []))
+
+    def test_objective_description_survives_compaction(self):
+        """I49: the objective description used to be a one-shot snapshot — it
+        never entered memory and a compacted actor lost it. It must now be
+        recorded once as a memory row + an `observed` event, survive a
+        checkpoint, answer a `read` of a bodyless prop, and count as read
+        from a stay long enough."""
+        from harness.kernel import (ActionRejected, ActorState, Intention,
+                                    LocationState, World)
+        world = World(
+            start=datetime.fromisoformat("2026-03-16T07:00:00+08:00"),
+            actors=[ActorState("a", "lab")],
+            locations=[LocationState("lab")],
+            item_locations={"old_whistle": "lab", "ledger": "lab"},
+            document_defs={"ledger": {"title": "台账", "content": "正文甲。",
+                                       "reading_seconds": 120}},
+            entity_descriptions={"lab": "# 实验室\n\n一排铁皮柜。",
+                                 "old_whistle": "# 旧哨子\n\n一只小小的红色哨子。",
+                                 "ledger": "# 台账\n\n一本登记簿。"},
+        )
+        world.poll("a")
+        observed = world.actors["a"].observed
+        self.assertIn("一只小小的红色哨子", observed["old_whistle"]["objective"])
+        self.assertTrue(any(e.kind == "observed" and e.payload["entity"] == "old_whistle"
+                            for e in world.event_log))
+        restored = World.from_checkpoint(
+            World(start=datetime.fromisoformat("2026-03-16T07:00:00+08:00"),
+                  actors=[ActorState("a", "lab")], locations=[LocationState("lab")],
+                  entity_descriptions={"lab": "x", "old_whistle": "y", "ledger": "z"}),
+            world.checkpoint_state())
+        self.assertEqual(restored.actors["a"].observed, observed)
+        with self.assertRaises(ActionRejected) as caught:
+            restored.submit(Intention("a", "read", {"item": "old_whistle"},
+                                      restored.version))
+        self.assertIn(observed["old_whistle"]["objective"], str(caught.exception))
+        restored.advance(until=world.now + timedelta(seconds=120))
+        restored.poll("a")
+        self.assertTrue(any(e.kind == "document_read" and e.payload.get("auto")
+                            for e in restored.event_log))
 
     def test_launch_checkpoint_is_a_valid_loadable_trace(self):
         """H1/H4: a checkpoint written at launch is structurally valid and round-trips."""
