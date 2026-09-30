@@ -15,8 +15,27 @@ was a one-shot snapshot: never entered memory, could not survive compaction".
 import unittest
 from datetime import datetime, timedelta
 
+from harness.engine import AsyncEngine
+from harness.kb import ActorKB
 from harness.kernel import (ActionRejected, ActorState, Intention, LocationState,
                             World)
+from harness.prompt import render_world_message
+
+
+class _PerceptionProbe:
+    """Binds the engine's knowledge/flashback builders to a bare world, the
+    way the live engine calls them (only world + KB/session bookkeeping)."""
+
+    def __init__(self, world, kb=None):
+        self.world = world
+        self._kb = kb or {}
+        self._last_tool_text: dict[str, str] = {}
+        self._recall_lines: dict[str, list[str]] = {}
+        self._pending_notices: dict[str, list[str]] = {}
+        self._flashback_pool: dict[str, list] = {}
+
+    knowledge_lines = AsyncEngine._knowledge_lines
+    flashback = AsyncEngine._flashback_query
 
 START = datetime.fromisoformat("2026-03-16T07:00:00+08:00")
 # Objective prose must read as fact; these are the slips that turn a
@@ -223,7 +242,6 @@ class StayReadTests(_WorldMixin, unittest.TestCase):
     def test_auto_read_body_reaches_the_reader_alone(self):
         # Ticket 49: stay-read has no tool call, so its body must arrive
         # through the document_read private delivery — and nothing else.
-        from harness.prompt import render_world_message
         world = self.world()
         world.poll("a")
         world.advance(until=START + timedelta(seconds=120))
@@ -232,6 +250,82 @@ class StayReadTests(_WorldMixin, unittest.TestCase):
         other = world.poll("b")
         self.assertFalse(any(e["kind"] == "document_read" for e in other["events"]))
         self.assertNotIn("正文甲。", render_world_message(other, [], knowledge_lines=[]))
+
+
+class WorldMessageDeliveryTests(_WorldMixin, unittest.TestCase):
+    """Ticket 49 follow-up: the v4 engine builds the world message with
+    ``knowledge_lines = _knowledge_lines(...)``, and ``render_world_message``
+    only renders ``perception["descriptions"]`` when that argument is None.
+    So the objective description of a first-seen entity never reached the
+    model even though the kernel produced it. `_knowledge_lines` now carries
+    them as `[所见 <entity>]: <description>` — distinct from the actor's own
+    KB rows — and takes exactly what the kernel gates."""
+
+    def test_first_sight_description_reaches_the_engine_world_message(self):
+        world = self.world()
+        perception = world.poll("a")
+        lines = _PerceptionProbe(world).knowledge_lines("a", perception, [])
+        text = render_world_message(perception, [], observer="a",
+                                    knowledge_lines=lines)
+        self.assertIn("[所见 old_whistle]", text)
+        self.assertIn("一只小小的红色哨子", text)
+        self.assertIn("# knowledge", text)
+
+    def test_a_settled_place_does_not_reinject_descriptions(self):
+        world = self.world()
+        probe = _PerceptionProbe(world)
+        probe.knowledge_lines("a", world.poll("a"), [])   # first sight
+        second = world.poll("a")                          # kernel gives none
+        lines = probe.knowledge_lines("a", second, [])
+        self.assertFalse(any(str(line).startswith("[所见") for line in lines))
+        text = render_world_message(second, [], observer="a",
+                                    knowledge_lines=lines)
+        self.assertNotIn("一只小小的红色哨子", text)
+
+    def test_seen_lines_are_distinct_from_the_actors_own_kb_rows(self):
+        world = self.world()
+        perception = world.poll("a")
+        kb = ActorKB("a", [{"keys": ["a"], "desc": "我，a。"},
+                            {"keys": ["old_whistle"],
+                             "desc": "我自己关于这只哨子的笔记。"}],
+                     world.now, valid_contact_names=set(world.actors))
+        lines = _PerceptionProbe(world, {"a": kb}).knowledge_lines(
+            "a", perception, [])
+        self.assertTrue(any(str(line).startswith("[所见 old_whistle]") for line in lines))
+        self.assertTrue(any(str(line).startswith("[old_whistle]") and "笔记" in line
+                            for line in lines))
+
+    def test_legacy_render_path_still_narrates_descriptions(self):
+        # prompt.py's legacy branch (`knowledge_lines is None`) narrates
+        # `perception["descriptions"]` itself as `[<entity>]: desc`; the
+        # natural_agent caller still depends on it. The v4 engine always
+        # passes a list, so the [所见] route must not orphan this one: both
+        # shapes stay live and distinguishable.
+        world = self.world()
+        perception = world.poll("a")
+        legacy = render_world_message(perception, [], observer="a")
+        self.assertIn("[old_whistle]: 一只小小的红色哨子", legacy)
+        self.assertIn("# knowledge", legacy)
+        self.assertNotIn("[所见", legacy)
+
+
+class ObservedRecallTests(_WorldMixin, unittest.TestCase):
+    def test_flashback_returns_the_objective_for_a_seen_entity(self):
+        # Seeing is remembering: the observed objective row answers flashback.
+        world = self.world()
+        world.poll("a")
+        lines = _PerceptionProbe(world).flashback("a", "old_whistle")
+        self.assertTrue(any("一只小小的红色哨子" in line for line in lines), lines)
+        self.assertTrue(any(str(line).startswith("[所见 old_whistle]") for line in lines))
+
+    def test_flashback_does_not_duplicate_a_kb_row_of_the_same_text(self):
+        world = self.world()
+        world.poll("a")
+        kb = ActorKB("a", [{"keys": ["a"], "desc": "我，a。"},
+                            {"keys": ["old_whistle"], "desc": PROP.split("\n\n")[1]}],
+                     world.now, valid_contact_names=set(world.actors))
+        lines = _PerceptionProbe(world, {"a": kb}).flashback("a", "old_whistle")
+        self.assertEqual(sum(1 for line in lines if "一只小小的红色哨子" in line), 1)
 
 
 if __name__ == "__main__":

@@ -39,7 +39,7 @@ from .kernel import (ActionRejected, Intention, TICK_SECONDS,
 from .npc_agent import (build_extra_briefing, build_extra_system_prompt,
                         extra_heard_speech_since, extra_scene_transcript,
                         generate_stranger_name, sample_extra)
-from .prompt import render_world_message, _event_sentence
+from .prompt import render_world_message, _event_sentence, _clean_description
 from .kb import CONTACT_KEY
 from .repetition import RepetitionMonitor
 
@@ -606,20 +606,31 @@ class AsyncEngine:
 
     def _knowledge_lines(self, actor_id: str, perception: dict,
                          affordances: list[dict]) -> list[str]:
-        """#knowledge block: KB rows whose keys are mentioned in what the actor
-        is currently reading/hearing/saying (V4-AGENT-INTERFACE §3), plus due
-        scheduled-row notices (auto-closed after notification, §4).
+        """#knowledge block: the actor's own KB rows (mentioned rows / recall /
+        due notices) plus, first, the objective descriptions of what the actor
+        has just seen.
 
-        The haystack is this turn's world message with the knowledge block
-        removed — so a surfaced row's own description cannot re-trigger its
-        neighbours — plus the previous turn's tool-result text."""
+        Ticket 49: the kernel hands over `perception["descriptions"]` only on
+        first arrival, on a `description_refresh_rounds` refresh, or when a new
+        entity enters view — never every turn. The engine takes exactly that
+        and renders each as `[所见 <entity>]: <description>`, ahead of the KB
+        rows and visually distinct from them (`[<keys>]: desc`); it adds no
+        repetition of its own.
+
+        The haystack for KB mention matching is this turn's world message with
+        the knowledge block removed — so a surfaced row's own description
+        cannot re-trigger its neighbours — plus the previous turn's tool-result
+        text."""
+        lines: list[str] = [
+            f"[所见 {entity}]: {_clean_description(description)}"
+            for entity, description in perception.get("descriptions", {}).items()]
         if actor_id not in self._kb:
-            return []
+            return lines
         base = render_world_message(perception, affordances, observer=actor_id,
                                     knowledge_lines=[])
         haystack = base + "\n" + self._last_tool_text.get(actor_id, "")
         kb = self._kb[actor_id]
-        lines = list(kb.due_lines(self.world.now, haystack))
+        lines.extend(kb.due_lines(self.world.now, haystack))
         lines.extend(self._recall_lines.pop(actor_id, []))
         lines.extend(self._pending_notices.pop(actor_id, []))
         for event in perception.get("events", []):
@@ -668,6 +679,23 @@ class AsyncEngine:
             if line in seen:
                 continue
             if entities & {entity} or entity in line:
+                seen.add(line)
+                ordered.append(line)
+        # Ticket 49: seeing is remembering. An entity the actor has observed
+        # (its objective description written to `ActorState.observed`) can be
+        # recalled by name even when no KB row or delivered event covers it.
+        actor = self.world.actors.get(actor_id)
+        if actor is not None:
+            for entity_id, entry in actor.observed.items():
+                if not (entity_id == entity or entity in entity_id
+                        or entity_id in entity):
+                    continue
+                objective = str(entry.get("objective") or "").strip()
+                if not objective or any(objective in line for line in ordered):
+                    continue
+                line = f"[所见 {entity_id}]: {objective}"
+                if line in seen:
+                    continue
                 seen.add(line)
                 ordered.append(line)
         return ordered[:8]
