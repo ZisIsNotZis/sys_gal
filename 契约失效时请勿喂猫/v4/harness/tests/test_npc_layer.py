@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import random
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from harness.adapter import parse_decision
 from harness.agent_state import PrivateState
@@ -467,6 +467,194 @@ class ExtraPoolTests(unittest.TestCase):
         plain = build_extra_system_prompt("普通同学", "", "食堂")
         self.assertNotIn("内情", plain.split("输出")[0].replace("你恰好知道一些内情：", "")) if False else None
         self.assertNotIn("内情", plain)
+
+
+class NpcWakeContractTests(unittest.TestCase):
+    """Ticket 45: an NPC must wake for its own due reminder and for a
+    face-to-face question it never answered, and must stay asleep otherwise.
+    Exercised on the production driver AsyncEngine (harness/real_run.py), not
+    the legacy sync Runner."""
+
+    def _world(self, *, scheduled=()):
+        return World(start=START,
+                     actors=[ActorState("陈默", "咖啡馆"),
+                             ActorState("宿管阿姨", "宿舍", role="npc")],
+                     locations=[LocationState("咖啡馆"), LocationState("宿舍")],
+                     scheduled=list(scheduled))
+
+    def _run(self, world, agents, *, stop_minutes, delay=None):
+        states = {actor: PrivateState(actor) for actor in world.actors}
+        trace = Trace("v4-test", "npc-wake-contract")
+        extra = {} if delay is None else {"owed_response_delay": delay}
+        engine = AsyncEngine(world, agents, states, trace, None,
+                             cold_ticks=100000, mc_idle_heartbeat=100000,
+                             decision_timeout=10, max_wall_seconds=30, **extra)
+        engine.run(stop_at=START + timedelta(minutes=stop_minutes), max_turns=400)
+        return engine, trace
+
+    @staticmethod
+    def _npc_turn_times(trace, actor="宿管阿姨"):
+        return [datetime.fromisoformat(t["perception"]["time"])
+                for t in trace.agent_turns if t["actor"] == actor]
+
+    def test_unanswered_face_to_face_question_is_nudged_after_a_bounded_delay(self):
+        """(a) A named NPC whose wake turns never answer must get a second
+        wake after owed_response_delay. Before ticket 45 the named question
+        bought exactly one (silent) turn and then nothing (宿管阿姨: 3h12m)."""
+        world = self._world(scheduled=[
+            {"time": (START + timedelta(minutes=29)).isoformat(),
+             "kind": "world_event", "notice": "远处一个拍点"}])
+        world.actors["宿管阿姨"].location = "咖啡馆"   # 当面：同地才能点名
+        spoke = {"done": False}
+
+        def agent(private, perception, affordances):
+            if private.actor_id == "陈默":
+                if not spoke["done"]:
+                    spoke["done"] = True
+                    return Intention("陈默", "speak",
+                                     {"text": "阿姨，305 的林瑶昨晚几点回来的？",
+                                      "volume": "normal", "to": ["宿管阿姨"]},
+                                     perception["world_version"])
+                # 60s waits keep the clock stepping so the debt check runs.
+                return Intention("陈默", "wait", {"duration_seconds": 60},
+                                 perception["world_version"])
+            return None   # 沉默：既不为问题开口，也不为自己找事
+
+        engine, trace = self._run(world, {"陈默": agent, "宿管阿姨": agent},
+                                  stop_minutes=30)
+        turns = self._npc_turn_times(trace)
+        self.assertTrue(turns, "the named question itself must wake the NPC")
+        self.assertTrue([t for t in turns if t >= START + timedelta(minutes=10)],
+                        f"no nudge wake after the default 10-min delay; turns: {turns}")
+        self.assertEqual(engine._wake_times, [],
+                         "the owed-response nudge must not spend cold-scene budget")
+
+    def test_own_due_reminder_wakes_the_npc(self):
+        """(b) An NPC's own `!at=` row coming due must wake it. The kernel
+        only force-interrupts a busy actor, so an idle NPC needed the CAST
+        wake slot too (陈默妈's 12:00 reminder fired with no wake)."""
+        world = self._world()
+        rows = [{"keys": ["宿管阿姨"], "desc": "我是宿管阿姨。"},
+                {"keys": ["!at=3/16(周一) 07:03", "回电话"],
+                 "desc": "给陈默回午间电话"}]
+
+        def agent(private, perception, affordances):
+            return None
+
+        states = {actor: PrivateState(actor) for actor in world.actors}
+        trace = Trace("v4-test", "npc-reminder")
+        engine = AsyncEngine(world, {"陈默": agent, "宿管阿姨": agent}, states,
+                             trace, None, kb_seeds={"宿管阿姨": rows},
+                             cold_ticks=100000, mc_idle_heartbeat=100000,
+                             decision_timeout=10, max_wall_seconds=30)
+        engine.run(stop_at=START + timedelta(minutes=20), max_turns=400)
+        turns = self._npc_turn_times(trace)
+        self.assertTrue([t for t in turns if t >= START + timedelta(minutes=3)],
+                        f"a due own reminder never woke the NPC; turns: {turns}")
+
+    def test_own_due_reminder_reason_names_the_schedule(self):
+        """(b') The reminder wake reason states what came due, so the NPC's
+        message is 'your plan is due', not a generic nudge."""
+        world = self._world()
+        rows = [{"keys": ["宿管阿姨"], "desc": "我是宿管阿姨。"},
+                {"keys": ["!at=3/16(周一) 07:03", "回电话"],
+                 "desc": "给陈默回午间电话"}]
+
+        def agent(private, perception, affordances):
+            return None
+
+        engine = AsyncEngine(world, {"陈默": agent, "宿管阿姨": agent},
+                             {a: PrivateState(a) for a in world.actors},
+                             Trace("v4-test", "npc-reminder-reason"), None,
+                             kb_seeds={"宿管阿姨": rows}, decision_timeout=10,
+                             max_wall_seconds=30)
+        engine._init_kb(world.now)
+        engine._reminder_scan()
+        world.advance(until=START + timedelta(minutes=3))
+        engine._npc_triggers()
+        self.assertEqual(engine._npc_pending.get("宿管阿姨"),
+                         "你的安排到点了：给陈默回午间电话")
+
+    def test_npc_with_neither_trigger_gets_no_extra_wake(self):
+        """(c) 不打扰: an NPC with no due reminder and no owed reply is never
+        clock-polled — the debt machinery must not become a heartbeat."""
+        world = self._world()   # 两人不同地：不触发冷场唤醒
+
+        def agent(private, perception, affordances):
+            if private.actor_id == "陈默":
+                return Intention("陈默", "wait", {"duration_seconds": 60},
+                                 perception["world_version"])
+            return None
+
+        engine, trace = self._run(world, {"陈默": agent, "宿管阿姨": agent},
+                                  stop_minutes=20)
+        self.assertEqual(self._npc_turn_times(trace), [])
+
+    def test_a_speaking_turn_settles_the_owed_response(self):
+        """(d) Once the addressed NPC speaks, its debt is settled: no later
+        nudge. Guards against turning 欠回应 into a repeating wake."""
+        world = self._world()
+        world.actors["宿管阿姨"].location = "咖啡馆"
+
+        def agent(private, perception, affordances):
+            return None
+
+        engine = AsyncEngine(world, {"陈默": agent, "宿管阿姨": agent},
+                             {a: PrivateState(a) for a in world.actors},
+                             Trace("v4-test", "owed-cleared"), None,
+                             owed_response_delay=120, cold_ticks=100000,
+                             decision_timeout=10, max_wall_seconds=30)
+        world.submit(Intention("陈默", "speak",
+                               {"text": "阿姨，昨晚几点？", "volume": "normal",
+                                "to": ["宿管阿姨"]}, world.version))
+        engine._npc_triggers()
+        self.assertIn("宿管阿姨", engine._npc_owed)
+
+        world.submit(Intention("宿管阿姨", "speak",
+                               {"text": "十一点半回来的。", "volume": "normal",
+                                "to": ["陈默"]}, world.version))
+        engine._npc_triggers()   # 开口即还债
+        self.assertNotIn("宿管阿姨", engine._npc_owed)
+        engine._npc_pending.clear()   # 模拟已消化的那次唤醒
+        world.advance(until=START + timedelta(minutes=30))
+        engine._npc_debt_check()
+        self.assertNotIn("宿管阿姨", engine._npc_pending)
+
+    def test_owed_response_debt_round_trips_through_the_checkpoint(self):
+        """(e) The 欠回应 state is not stored half: address time, asker and
+        the once-per-debt nudge flag all survive a restore; an old checkpoint
+        without the key restores as no-debt with no crash."""
+        world = self._world()
+        world.actors["宿管阿姨"].location = "咖啡馆"
+
+        def agent(private, perception, affordances):
+            return None
+
+        states = {actor: PrivateState(actor) for actor in world.actors}
+        agents = {"陈默": agent, "宿管阿姨": agent}
+        engine = AsyncEngine(world, agents, states, Trace("v4-test", "owed-ckpt"),
+                             None, decision_timeout=10, max_wall_seconds=30)
+        world.submit(Intention("陈默", "speak",
+                               {"text": "阿姨，昨晚几点？", "volume": "normal",
+                                "to": ["宿管阿姨"]}, world.version))
+        engine._npc_triggers()   # 真实接口建债，不走手工赋值
+        engine._npc_owed["宿管阿姨"]["nudged"] = True
+        about = engine._npc_owed["宿管阿姨"]["at"]
+
+        restored = AsyncEngine(world, agents, {a: PrivateState(a) for a in world.actors},
+                               Trace("v4-test", "owed-ckpt-2"), None,
+                               decision_timeout=10, max_wall_seconds=30)
+        restored.restore_checkpoint(engine.checkpoint_state())
+        debt = restored._npc_owed["宿管阿姨"]
+        self.assertEqual(debt["at"], about)
+        self.assertEqual(debt["from"], "陈默")
+        self.assertTrue(debt["nudged"])
+
+        legacy = AsyncEngine(world, agents, {a: PrivateState(a) for a in world.actors},
+                             Trace("v4-test", "owed-ckpt-legacy"), None,
+                             decision_timeout=10, max_wall_seconds=30)
+        legacy.restore_checkpoint({})   # 旧格式缺 npc_owed 键
+        self.assertEqual(legacy._npc_owed, {})
 
 
 if __name__ == "__main__":

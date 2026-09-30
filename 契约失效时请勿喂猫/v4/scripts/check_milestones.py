@@ -1080,6 +1080,26 @@ def health_report(data, day: int):
         else:
             running[actor] = 0
     worst = max(sorted(longest_wait.items()), key=lambda item: item[1], default=("", 0))
+    # Ticket 45: longest NPC silence — the dorm-mother sleeps (3h12m / 2h13m in
+    # the d1 a.m. artifact) were invisible in the totals. Max gap between an
+    # NPC's consecutive turns that day, named so a single human read catches
+    # it. Printed for review, never a gate.
+    npc_turn_times: dict[str, list[str]] = {}
+    for turn in turns:
+        if turn.get("role") == "npc":
+            stamp = str(turn.get("perception", {}).get("time", ""))
+            if stamp:
+                npc_turn_times.setdefault(str(turn.get("actor")), []).append(stamp)
+    silence_gap, silence_actor = 0, ""
+    for actor, stamps in npc_turn_times.items():
+        ordered = sorted(stamps)
+        for before, after in zip(ordered, ordered[1:]):
+            gap = int((datetime.fromisoformat(after)
+                       - datetime.fromisoformat(before)).total_seconds())
+            if gap > silence_gap:
+                silence_gap, silence_actor = gap, actor
+    silence = (f"{silence_gap // 3600}h{silence_gap % 3600 // 60:02d}m（{silence_actor}）"
+               if silence_actor else "0")
     return {"当日在册轮次": len(turns), "错误轮次": len(errs),
             "提供商HTTP错误": len(http), "标记泄漏条数": leak,
             "inner填充率": inner_rate,
@@ -1087,7 +1107,8 @@ def health_report(data, day: int):
             "亲读（AUTO/主动）": f"{len(auto_reads)}/{len(day_reads) - len(auto_reads)}",
             "首次看见登记": len(observed_events),
             "停滞提示次数": len(stagnation_turns),
-            "最长连续wait": f"{worst[1]}（{worst[0]}）" if worst[0] else "0"}
+            "最长连续wait": f"{worst[1]}（{worst[0]}）" if worst[0] else "0",
+            "NPC最长沉寂": silence}
 
 
 # ---------------------------------------------------------------- main

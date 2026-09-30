@@ -114,6 +114,24 @@ I44 note left while the recipient is present goes nowhere .... test_leave_note_r
     test_note_author_reentry_preserves_own_note_for_a_later_reader):
     read-once-and-burn, the author never consumes their own, co-located people
     never get the content, the first non-author entrant gets the full text.
+I45 NPC 休止：待答提问与到期提醒都叫不醒 ......................... test_npc_layer (NpcWakeContractTests:
+    named-question nudge / own-reminder wake / reminder-reason / no-extra-wake /
+    speaking-turn-settles-debt / owed-debt checkpoint round-trip)
+    d1-am artifact (real-20260930T160727): 宿管阿姨 i=88→254 (08:39–11:51)
+    went 3h12m with zero turns while 林瑶室友's two face-to-face questions
+    (08:30/08:31) sat in her perception; 陈默妈 after i=197 (10:46) went 2h13m
+    with zero turns even though her 12:00 reminder did fire (world event
+    #1069, visible_to includes her). Root cause: `reminder_due` never set
+    `_npc_pending` (an idle NPC's own due `!at=` row woke nothing — the
+    kernel only force-interrupts a busy actor), and the named-speech wake had
+    no "named but hasn't answered" persistence, so a non-speaking turn
+    (read/wait) swallowed the question for good. Fix: a `reminder_due` for an
+    NPC queues it with "你的安排到点了：<desc>"; a named speech or directed
+    message opens a `_npc_owed` debt {at, from, nudged} that a speaking turn
+    (speech/message_sent) settles, and that grants one extra wake after
+    `owed_response_delay` (default 600s) while idle — never a per-turn wake,
+    never spending cold-scene wake budget. The debt round-trips through the
+    checkpoint and a legacy checkpoint without the key restores as no-debt.
 I49 objective description was a one-shot snapshot ................ test_objective_observation (observed record/event,
     checkpoint round-trip, read fallback, stay-read, auto_read opt-out),
     test_historical_failures test_objective_description_survives_compaction

@@ -90,6 +90,7 @@ class AsyncEngine:
                  mc_idle_heartbeat: int = 1800,
                  extra_idle_seconds: int = 600,
                  cold_ticks: int = 6, npc_wake_budget: int = 12,
+                 owed_response_delay: int = 600,
                  stall_budget_ratio: float = 0.25,
                  max_transient_failures: int = 3,
                  kb_seeds: Mapping[str, list[dict]] | None = None,
@@ -113,11 +114,16 @@ class AsyncEngine:
         self.extra_idle_seconds = _as_int(extra_idle_seconds, 'extra_idle_seconds')
         self.cold_ticks = _as_int(cold_ticks, 'cold_ticks')
         self.npc_wake_budget = _as_int(npc_wake_budget, 'npc_wake_budget')
+        self.owed_response_delay = _as_int(owed_response_delay, 'owed_response_delay')
         self.stall_budget_ratio = _as_float(stall_budget_ratio, 'stall_budget_ratio')
         self.max_transient_failures = _as_int(max_transient_failures, 'max_transient_failures')
         self.stop_reason: str | None = None
         # CAST state (V4-CAST): NPC wake reasons, extras, cold-scene bookkeeping.
         self._npc_pending: dict[str, str] = {}
+        # Ticket 45: an NPC that was directly addressed and has not answered
+        # yet keeps a debt row {actor: {at, from, nudged}} so a bounded-delay
+        # nudge can grant a second decision chance (see _npc_debt_check).
+        self._npc_owed: dict[str, dict[str, Any]] = {}
         self._wake_times: list[datetime] = []
         self._last_speech: dict[str, datetime] = {}
         self._cold_woken: dict[str, datetime] = {}
@@ -1321,6 +1327,7 @@ class AsyncEngine:
 
     def _cast_scan(self) -> None:
         self._npc_triggers()
+        self._npc_debt_check()
         self._handle_extras()
         self._cold_scene_check()
 
@@ -1338,6 +1345,12 @@ class AsyncEngine:
         new_events = self.world.event_log[self._npc_scan:]
         self._npc_scan = len(self.world.event_log)
         for event in new_events:
+            # Ticket 45: an NPC that opens its mouth (speech or a sent
+            # message) has answered whatever was addressed to it — the
+            # "owed response" debt is settled by a speaking turn.
+            if (event.kind in {"speech", "message_sent"} and event.actor
+                    and self._role(event.actor) == "npc"):
+                self._npc_owed.pop(event.actor, None)
             if event.kind == "speech":
                 if event.actor in self.world.actors:
                     loc = self.world.actors[event.actor].location
@@ -1346,6 +1359,10 @@ class AsyncEngine:
                 for npc in event.payload.get("to", ()) or ():
                     if self._role(str(npc)) == "npc":
                         self._npc_pending.setdefault(str(npc), "有人当面对你说话")
+                        # A named recipient now owes an answer; the debt
+                        # outlives a non-speaking turn (ticket 45).
+                        self._npc_owed[str(npc)] = {
+                            "at": event.time, "from": event.actor, "nudged": False}
                 # Ambient nearby speech (ticket 22): co-located NPCs are free
                 # to react per persona — usually nothing, but their persona
                 # decides. Budget-bound.
@@ -1357,6 +1374,17 @@ class AsyncEngine:
                 npc = str(event.payload.get("target", ""))
                 if self._role(npc) == "npc":
                     self._npc_pending.setdefault(npc, "收到一条消息")
+                    self._npc_owed[npc] = {
+                        "at": event.time, "from": event.actor, "nudged": False}
+            elif event.kind == "reminder_due":
+                # Ticket 45: an NPC's own due `!at=` row must wake it. The
+                # kernel only force-interrupts a busy actor, so an idle NPC
+                # needs the CAST wake slot too.
+                npc = str(event.actor or "")
+                if self._role(npc) == "npc":
+                    desc = str(event.payload.get("desc", "")).strip()
+                    reason = "你的安排到点了" + (f"：{desc}" if desc else "")
+                    self._npc_pending.setdefault(npc, reason)
             elif event.kind == "knock":
                 loc = str(event.payload.get("target", ""))
                 for npc_id, actor in self.world.actors.items():
@@ -1385,6 +1413,39 @@ class AsyncEngine:
                            "place": f"{event.actor} 放下了 {event.payload.get('item', '一样东西')}"}.get(
                     event.kind, f"{event.actor} 有动作")
                 self._wake_nearby_npcs(event.actor, f"附近发生：{summary}")
+
+    def _npc_debt_check(self) -> None:
+        """Ticket 45: one bounded-delay nudge for an NPC that was directly
+        addressed and has not answered.
+
+        The existing named-speech trigger wakes the NPC once, but if that
+        turn reads/waits instead of replying, the question can sit unperceived
+        for hours (宿管阿姨, 3h12m). A debt is created when the NPC is named
+        (or messaged) and is settled by a speaking turn; here it grants a
+        second decision chance `owed_response_delay` sim-seconds later. It
+        only fires for an otherwise-idle, unqueued NPC and nudges once per
+        debt, so it never becomes a per-turn wake and consumes no cold-scene
+        wake budget."""
+        now = self.world.now
+        for npc, debt in list(self._npc_owed.items()):
+            if npc not in self.world.actors or self._role(npc) != "npc":
+                self._npc_owed.pop(npc, None)
+                continue
+            if debt.get("nudged"):
+                continue
+            if (now - debt["at"]).total_seconds() < self.owed_response_delay:
+                continue
+            actor = self.world.actors[npc]
+            if actor.pending is not None or (
+                    actor.busy_until is not None and actor.busy_until > now):
+                continue
+            if npc in self._npc_pending:
+                continue
+            sender = debt.get("from")
+            self._npc_pending[npc] = (
+                f"有人当面对你说话，你还没有回应（{sender}）" if sender
+                else "有人当面对你说话，你还没有回应")
+            debt["nudged"] = True
 
     def _wake_nearby_npcs(self, source: str, reason: str) -> None:
         """Wake co-located NPCs for a nearby happening (ticket 22). They are
@@ -1676,6 +1737,10 @@ class AsyncEngine:
                 "turn_sequence": self._turns, "retry_context": {},
                 "repetition": self._repetition.state(), "rep_scan": self._rep_scan,
                 "npc_pending": dict(self._npc_pending),
+                "npc_owed": {actor: {"at": debt["at"].isoformat(),
+                                      "from": debt.get("from"),
+                                      "nudged": bool(debt.get("nudged"))}
+                             for actor, debt in self._npc_owed.items()},
                 "npc_scan": self._npc_scan, "extras_scan": self._extras_scan,
                 "wake_scan": self._wake_scan,
                 "extras": {name: {"fragment": x["fragment"], "knowledge_notes": x["knowledge_notes"],
@@ -1724,6 +1789,17 @@ class AsyncEngine:
         self._repetition.restore(state.get("repetition", {}))
         self._rep_scan = _as_int(state.get("rep_scan", len(self.world.event_log)), "rep_scan")
         self._npc_pending = dict(state.get("npc_pending", {}))
+        # Ticket 45: safe for old-format checkpoints (key absent -> no debt).
+        self._npc_owed = {}
+        for actor, row in (state.get("npc_owed") or {}).items():
+            at = row.get("at")
+            if not at:
+                continue
+            self._npc_owed[str(actor)] = {
+                "at": _dt.fromisoformat(str(at)),
+                "from": row.get("from"),
+                "nudged": bool(row.get("nudged")),
+            }
         self._npc_scan = _as_int(state.get("npc_scan", len(self.world.event_log)), "npc_scan")
         self._extras_scan = _as_int(state.get("extras_scan", len(self.world.event_log)), "extras_scan")
         self._wake_scan = _as_int(state.get("wake_scan", len(self.world.event_log)), "wake_scan")
