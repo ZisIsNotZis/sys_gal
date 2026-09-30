@@ -284,9 +284,10 @@ class CharacterSession:
             parts.append("\n\n" + self.world_primer)
         parts.append(
             "\n\n【怎么行动】\n"
-            "每次行动，输出恰好一个 JSON 对象，先想后动，inner 永远放在最前：\n"
-            '{"inner":"你的第一人称心声，三五句话，谁也听不见","name":"动作名","arguments":{...}}\n'
-            "inner 是你心里没说出口的话——写它，然后照着它行动。name 必须是供给列表里的动作；"
+            "每次行动，输出恰好一个 JSON 对象，先想后动；inner 必须写在 arguments 里、非空：\n"
+            '{"name":"动作名","arguments":{"inner":"你的第一人称心声，三五句话，谁也听不见", ...}}\n'
+            "inner 是你心里没说出口的话——每次调用都要写它，谁也听不见；不写或写空，这个调用不会被执行。"
+            "name 必须是供给列表里的动作；"
             "参数名照抄供给列表（take/drop/give/read/annotate 用 item；compare "
             "用 first 和 second；move 用 target；wait 用 duration_seconds；send_message "
             "和 give 用 target）。对具体的人说话用 speak：to=[对谁说]（在场的名字，"

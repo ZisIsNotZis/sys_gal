@@ -538,6 +538,7 @@ class AsyncEngine:
         intention, result, error = None, "none", None
         chain_calls: list[dict[str, Any]] | None = None
         spoken_text = ""
+        turn_inner: str | None = None
         try:
             decision = await asyncio.wait_for(asyncio.shield(decide_task),
                                               timeout=self.decision_timeout)
@@ -546,6 +547,10 @@ class AsyncEngine:
                 decision_map = decision if isinstance(decision, dict) else {"text": "", "calls": decision or []}
                 spoken_text = str(decision_map.get("text", "")).strip()
                 chain_calls = list(decision_map.get("calls") or [])
+                # Ticket 38: the v4 session attaches the turn's lifted inner
+                # (its calls' non-empty monologues, in order); the trace keeps
+                # it private.
+                turn_inner = decision_map.get("inner") or None
             elif isinstance(decision, tuple):
                 intention, updates = decision
             else:
@@ -584,7 +589,7 @@ class AsyncEngine:
                     world.advance(until=limit)
             self._execute_chain(actor_id, chain_calls or [], perception,
                                 affordances, version_before,
-                                spoken_text=spoken_text)
+                                spoken_text=spoken_text, turn_inner=turn_inner)
         else:
             self._submit(actor_id, perception, affordances, intention, version_before)
         self._rearm_heartbeat(actor_id)
@@ -808,7 +813,8 @@ class AsyncEngine:
 
     def _execute_chain(self, actor_id: str, calls: Any, perception: dict,
                        affordances: list[dict], version_before: int,
-                       *, spoken_text: str = "") -> None:
+                       *, spoken_text: str = "",
+                       turn_inner: str | None = None) -> None:
         """V4-AGENT-INTERFACE §4: execute the turn's tool calls in order —
         memory tools are engine-side and free; world actions submit through
         the kernel with time accumulating between calls; a chain with no
@@ -1068,7 +1074,8 @@ class AsyncEngine:
         recorded = (Intention(actor_id, str(calls[0].get("name", "unknown")),
                               {"calls": [{"name": c.get("name"),
                                            "args": c.get("arguments") or {}}
-                                          for c in calls]})
+                                          for c in calls]},
+                              inner=turn_inner)
                     if calls else None)
         self.trace.record_agent(state=self.states[actor_id], perception=perception,
                                 affordances=affordances, intention=recorded,

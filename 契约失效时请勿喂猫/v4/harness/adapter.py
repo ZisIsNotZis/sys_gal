@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import re
 from collections import Counter
-from typing import Any
+from typing import Any, Mapping
 
 from .kernel import Intention
 
@@ -30,6 +30,13 @@ from .kernel import Intention
 # telemetry.
 WIRE_KEYS = {"inner", "name", "arguments"}
 IGNORED_KEYS = {"updates"}
+
+# Ticket 38: the private monologue also rides inside a native call's
+# ``arguments`` (the only slot a native tool_call has). It is lifted out before
+# the action schema validates the call, so ``inner`` never trips
+# ``additionalProperties`` as an unknown key.
+INNER_KEY = "inner"
+_INNER_EXAMPLE_VALUE = "这里写你的第一人称心声"
 
 # (action-kind, wrong-name) -> canonical argument name. A hit renames the
 # argument, executes the action, and counts the hit for aggregate review.
@@ -173,6 +180,43 @@ def load_model_json(raw: str | dict[str, Any] | None) -> Any:
     raise ValueError("output is not recognizable JSON")
 
 
+def inner_call_example(name: str, args: Mapping[str, Any]) -> str:
+    """A corrected call JSON: non-empty ``inner`` plus the action's arguments."""
+    example = {"name": name,
+               "arguments": {INNER_KEY: _INNER_EXAMPLE_VALUE, **dict(args)}}
+    return json.dumps(example, ensure_ascii=False)
+
+
+def missing_inner_message(name: str, args: Mapping[str, Any]) -> str:
+    """Self-correcting rejection for a call without a non-empty inner."""
+    return ("every call must carry a non-empty inner inside its arguments — "
+            "your first-person inner monologue, heard by nobody. "
+            "每次调用都要在 arguments 里带非空 inner：你的第一人称心声，谁也听不见。"
+            " Corrected call: " + inner_call_example(name, args))
+
+
+def lift_native_call(name: str, args: Mapping[str, Any]
+                     ) -> tuple[dict[str, Any], str | None, str | None]:
+    """Split a native tool call into ``(args_without_inner, inner, error)``.
+
+    ``inner`` must be a non-empty string. ``error`` is a self-correcting
+    message when it is missing, empty, or not a string, else ``None``. The v4
+    native path rejects the call on ``error``; the legacy envelope parser
+    reuses the same lift for extraction but stays lenient about absence.
+    """
+    clean = dict(args)
+    inner = clean.pop(INNER_KEY, None)
+    if isinstance(inner, str):
+        if not inner.strip():
+            return clean, None, missing_inner_message(name, clean)
+        return clean, _bound_inner(inner), None
+    if inner is None:
+        return clean, None, missing_inner_message(name, clean)
+    return clean, None, (
+        f"{name}: inner must be a string (the actor's first-person inner "
+        f"monologue): {inner_call_example(name, clean)}")
+
+
 def parse_decision(actor: str, raw: str | dict[str, Any] | None,
                    world_version: int | None) -> tuple[Intention | None, dict[str, Any]]:
     """Parse one action; private-state updates are no longer part of the
@@ -217,6 +261,11 @@ def parse_decision(actor: str, raw: str | dict[str, Any] | None,
     inner = renamed_top.get("inner")
     if inner is not None and not isinstance(inner, str):
         raise ValueError("inner must be a string (the actor's first-person inner monologue)")
+    # Native calls carry inner inside arguments; the legacy envelope carries it
+    # at the top level. Both are supported (ticket 38).
+    renamed_args, args_inner, _inner_error = lift_native_call(kind, renamed_args)
+    if not (isinstance(inner, str) and inner.strip()):
+        inner = args_inner
     if inner:
         inner = _bound_inner(inner)
     # Action-specific switches live in arguments; the parser lifts them into

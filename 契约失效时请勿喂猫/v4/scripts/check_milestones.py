@@ -1042,8 +1042,24 @@ def health_report(data, day: int):
         for m in s.get("messages", []):
             if "[[" in str(m.get("content", "")):
                 leak += 1
+    # Ticket 38: the private inner channel must be reachable, and private
+    # deliberation must not leak into broadcast speech. Conservative, manual
+    # heuristics — printed for review, never a gate.
+    inner_turns = [t for t in turns if str(t.get("inner") or "").strip()]
+    inner_rate = f"{len(inner_turns)}/{len(turns)}"
+    inner_in_speech = 0
+    for e in _day_events(data.get("world_events", []), day):
+        if e.get("kind") != "speech":
+            continue
+        for txt in _texts(e):
+            stripped = txt.strip()
+            if stripped.startswith("（") or '{"inner"' in txt:
+                inner_in_speech += 1
+                break
     return {"当日在册轮次": len(turns), "错误轮次": len(errs),
-            "提供商HTTP错误": len(http), "标记泄漏条数": leak}
+            "提供商HTTP错误": len(http), "标记泄漏条数": leak,
+            "inner填充率": inner_rate,
+            "疑似心声混进speech": inner_in_speech}
 
 
 # ---------------------------------------------------------------- main

@@ -236,5 +236,33 @@ class CheckMilestonesCliTests(unittest.TestCase):
         self.assertEqual(code, 0, out)
 
 
+class InnerHealthMetricTests(unittest.TestCase):
+    """Ticket 38: the system-health block reports the inner fill rate and a
+    conservative count of inner monologue that leaked into broadcast speech.
+    Printed for review, never gating the exit code."""
+
+    def _health(self, data):
+        return _load_module().health_report(data, 1)
+
+    def test_inner_fill_rate_and_suspected_speech_leak_are_counted(self):
+        data = {
+            "agent_turns": [
+                {"perception": {"time": _dt(7, 0)}, "inner": "我在盘算。",
+                 "error": None},
+                {"perception": {"time": _dt(7, 1)}, "inner": None,
+                 "error": None},
+            ],
+            "world_events": [
+                _speech(1, 7, 2, "陈默", "（记性这东西……）", ["林瑶"]),
+                _speech(2, 7, 3, "陈默", '{"inner":"漏出来了","name":"speak"}', []),
+                _speech(3, 7, 4, "陈默", "正常的一句话", []),
+            ],
+            "sessions": {},
+        }
+        report = self._health(data)
+        self.assertEqual(report["inner填充率"], "1/2")
+        self.assertEqual(report["疑似心声混进speech"], 2)
+
+
 if __name__ == "__main__":
     unittest.main()

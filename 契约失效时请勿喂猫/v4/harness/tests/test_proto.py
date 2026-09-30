@@ -37,10 +37,22 @@ class ToolsTests(unittest.TestCase):
         self.assertEqual(names, expected)
         self.assertNotIn("sleep", SCHEMAS)  # M1: sleep merged into wait
         # Static full declaration, cache-safe: every tool carries a Chinese
-        # description and its schema as parameters.
+        # description; its wire parameters are the action shape plus a
+        # required non-empty inner (ticket 38), and the action shape itself
+        # stays inner-free for the kernel.
         for tool in TOOLS:
+            name = tool["function"]["name"]
             self.assertTrue(tool["function"]["description"])
-            self.assertIs(tool["function"]["parameters"], SCHEMAS[tool["function"]["name"]])
+            wire = tool["function"]["parameters"]
+            action = SCHEMAS[name]
+            self.assertEqual(wire["required"][0], "inner")
+            self.assertEqual(wire["properties"]["inner"],
+                             {"type": "string", "minLength": 1})
+            self.assertNotIn("inner", action["properties"])
+            for key, prop in action["properties"].items():
+                self.assertEqual(wire["properties"][key], prop)
+            for key in action.get("required", ()):
+                self.assertIn(key, wire["required"])
 
     def test_memory_tool_arg_validation(self):
         rows_err = validate_action_args("update_memory", {})
@@ -162,6 +174,7 @@ class ToolsTests(unittest.TestCase):
 
     def test_speak_only_tools_for_extras(self):
         self.assertEqual([tool["function"]["name"] for tool in SPEAK_TOOLS], ["speak"])
+        self.assertIn("inner", SPEAK_TOOLS[0]["function"]["parameters"]["required"])
 
 
 class ChatWithToolsTests(unittest.TestCase):

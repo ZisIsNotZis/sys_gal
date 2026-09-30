@@ -46,6 +46,11 @@ T4  authored pre-run history compiles + flashback replays it .... test_authored_
 E1  extra turns die silently at trace-record time ............. test_extra_turns_are_recorded_and_conversational
 E2  extra self-wake chatter loop (replies to own speech) ...... test_extra_turns_are_recorded_and_conversational
 E3  extras permanently silent: content-only replies dropped ... test_extra_turns_are_recorded_and_conversational
+I38 private inner channel unreachable — 0/1356 turns (3 runs) ... test_inner_channel_is_reachable_on_the_wire_and_native_path,
+                                                               test_legacy_envelope_inner_still_works,
+                                                               test_missing_inner_native_call_is_rejected_with_a_self_correcting_example,
+                                                               test_reasoning_content_fills_a_missing_inner,
+                                                               test_engine_records_turn_inner_and_a_failed_call_is_not_a_dead_turn
 H1/H4 empty checkpoint written at launch ...................... test_launch_checkpoint_is_a_valid_loadable_trace
 H2  duplicate run artifacts ................................... test_runner (unique run ids)
 H3  failed/truncated artifact mislabeled as clean .............. test_trace_completion_gate_rejects_truncated_run (runner)
@@ -811,6 +816,216 @@ class HistoricalFailureGates(unittest.TestCase):
         lines = probe.flashback_for("下棋大爷", "老赵头")
         self.assertTrue(any("2013-03-16 21:58" in line for line in lines), lines)
         self.assertEqual(probe.flashback_for("林瑶", "老赵头"), [])
+
+    def test_inner_channel_is_reachable_on_the_wire_and_native_path(self):
+        """I38 (ticket 38): three live runs never filled inner (0/1356 turns) —
+        the wire schema had no slot for it and the native tool-call decoder
+        never lifted it, so every private deliberation was broadcast as
+        speech. Keep the whole channel: (a) the wire schema declares a
+        required non-empty inner while SCHEMAS (the kernel's action shape)
+        stays contaminated-free; (b) a native call carrying inner yields a
+        non-empty Intention.inner and inner-free, schema-valid action args."""
+        from harness.action_schema import (SCHEMAS, SPEAK_TOOLS, TOOLS,
+                                           WIRE_PARAMETERS, validate_action_args)
+        from harness.adapter import parse_decision
+
+        # (a) Wire contract. inner is first in required; the action shape is
+        # untouched so validate_action_args still judges action arguments only.
+        for kind, action in SCHEMAS.items():
+            wire = WIRE_PARAMETERS[kind]
+            self.assertEqual(wire["required"][0], "inner", kind)
+            self.assertEqual(wire["properties"]["inner"],
+                             {"type": "string", "minLength": 1}, kind)
+            self.assertNotIn("inner", action["properties"], kind)
+            for key, prop in action["properties"].items():
+                self.assertEqual(wire["properties"][key], prop, kind)
+            for key in action.get("required", ()):
+                self.assertIn(key, wire["required"], kind)
+        self.assertEqual({t["function"]["name"]: t["function"]["parameters"]
+                          for t in TOOLS}, WIRE_PARAMETERS)
+        self.assertIn("inner",
+                      SPEAK_TOOLS[0]["function"]["parameters"]["required"])
+
+        # (b) Native call -> parser lift. inner never reaches the action args.
+        intention = parse_decision("陈默", {
+            "name": "speak",
+            "arguments": {"inner": "先问清楚再说。", "text": "阿姨，登记本在哪？",
+                          "volume": "normal", "to": ["宿管阿姨"]}}, 7)[0]
+        self.assertIsNotNone(intention)
+        self.assertEqual(intention.inner, "先问清楚再说。")
+        self.assertNotIn("inner", intention.args)
+        self.assertIsNone(validate_action_args("speak", intention.args))
+
+        # The production decoder (V4Session) lifts identically and keeps the
+        # turn's monologue for the trace.
+        from harness.natural_agent import V4Session
+
+        class _Provider:
+            def chat_with_tools(self, messages, tools):
+                return {"role": "assistant", "content": "", "tool_calls": [
+                    {"id": "c1", "type": "function",
+                     "function": {"name": "wait", "arguments": json.dumps(
+                         {"inner": "先等一分钟。", "duration_seconds": 60})}}]}
+
+            def __call__(self, messages):
+                return "记忆。"
+
+        decision = V4Session("a", _Provider(), system_prompt="S").decide("7:00")
+        self.assertEqual(decision["calls"][0]["arguments"], {"duration_seconds": 60})
+        self.assertEqual(decision["inner"], "先等一分钟。")
+
+        # Several calls in one turn: the turn's inner is their non-empty
+        # monologues joined in call order (deterministic).
+        class _Two:
+            def chat_with_tools(self, messages, tools):
+                return {"role": "assistant", "content": "", "tool_calls": [
+                    {"id": "c1", "type": "function", "function": {
+                        "name": "wait", "arguments": json.dumps(
+                            {"inner": "第一句。", "duration_seconds": 60})}},
+                    {"id": "c2", "type": "function", "function": {
+                        "name": "recall", "arguments": json.dumps(
+                            {"inner": "第二句。", "keys": ["草稿"]})}}]}
+
+            def __call__(self, messages):
+                return "记忆。"
+
+        two = V4Session("a", _Two(), system_prompt="S").decide("7:00")
+        self.assertEqual(two["inner"], "第一句。\n第二句。")
+        self.assertEqual(two["calls"][1]["arguments"], {"keys": ["草稿"]})
+
+    def test_legacy_envelope_inner_still_works(self):
+        """I38/38c: the top-level envelope inner (the pre-native path) keeps
+        working alongside the in-arguments slot."""
+        from harness.adapter import parse_decision
+
+        intention = parse_decision(
+            "陈默",
+            '{"inner":"老信封也能用。","name":"wait","arguments":{"duration_seconds":60}}',
+            3)[0]
+        self.assertIsNotNone(intention)
+        self.assertEqual(intention.inner, "老信封也能用。")
+        self.assertNotIn("inner", intention.args)
+
+    def test_missing_inner_native_call_is_rejected_with_a_self_correcting_example(self):
+        """I38: a native call without a non-empty inner is rejected per call
+        (not a dead turn), and the rejection teaches — it states the rule and
+        shows a corrected call."""
+        from harness.natural_agent import V4Session
+
+        class _Provider:
+            def chat_with_tools(self, messages, tools):
+                return {"role": "assistant", "content": "", "tool_calls": [
+                    {"id": "c1", "type": "function",
+                     "function": {"name": "wait",
+                                  "arguments": json.dumps({"duration_seconds": 60})}}]}
+
+            def __call__(self, messages):
+                return "记忆。"
+
+        decision = V4Session("a", _Provider(), system_prompt="S").decide("7:00")
+        call = decision["calls"][0]
+        self.assertIn("parse_error", call)
+        message = call["parse_error"]
+        self.assertIn("inner", message)
+        self.assertIn("谁也听不见", message)
+        self.assertIn('"name": "wait"', message)
+        self.assertIn('"inner"', message)
+        self.assertIsNone(decision["inner"])
+
+        class _Empty:
+            def chat_with_tools(self, messages, tools):
+                return {"role": "assistant", "content": "", "tool_calls": [
+                    {"id": "c1", "type": "function",
+                     "function": {"name": "wait", "arguments": json.dumps(
+                         {"inner": "   ", "duration_seconds": 60})}}]}
+
+            def __call__(self, messages):
+                return "记忆。"
+
+        empty = V4Session("a", _Empty(), system_prompt="S").decide("7:00")
+        self.assertIn("parse_error", empty["calls"][0])
+        self.assertIsNone(empty["inner"])
+
+    def test_reasoning_content_fills_a_missing_inner(self):
+        """I38/38e: an open-source chat model returns its reasoning outside the
+        call; when that call omits inner, the reasoning IS the monologue and
+        the provider extraction layer adopts it as inner."""
+        import io
+        from unittest import mock
+
+        from harness.natural_agent import V4Session
+        from harness.provider import OpenAICompatible
+
+        class _Resp(io.BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        payload = {"choices": [{"message": {
+            "content": "", "reasoning_content": "我先在心里盘算一下。",
+            "tool_calls": [{"id": "c1", "type": "function",
+                            "function": {"name": "wait",
+                                         "arguments": json.dumps(
+                                             {"duration_seconds": 60})}}]}}]}
+        provider = OpenAICompatible(base_url="http://gw/v1", model="m", timeout=1,
+                                    retries=0, max_concurrency=1, retry_backoff=0.0)
+        session = V4Session("a", provider, system_prompt="S")
+        with mock.patch("harness.provider.urlopen",
+                        lambda request, timeout=None:
+                        _Resp(json.dumps(payload).encode())):
+            decision = session.decide("7:00 @room")
+        self.assertNotIn("inner", decision["calls"][0]["arguments"])
+        self.assertNotIn("parse_error", decision["calls"][0])
+        self.assertEqual(decision["inner"], "我先在心里盘算一下。")
+
+    def test_engine_records_turn_inner_and_a_failed_call_is_not_a_dead_turn(self):
+        """I38/38f: the engine writes the turn's inner into the private trace
+        field the health report reads, and a call-level parse_error (missing
+        inner) is a normal per-call failure — the turn is not an agent error."""
+        from harness.engine import AsyncEngine
+        from harness.kernel import ActorState, LocationState, World
+
+        class _Agent:
+            session_obj = object()
+
+            def __init__(self):
+                self.delivered = []
+
+            def __call__(self, world_message, state):
+                return {"text": "", "inner": "我在原地等一会儿。",
+                        "calls": [{"name": "wait",
+                                   "arguments": {"duration_seconds": 60},
+                                   "tool_call_id": "c1",
+                                   "parse_error": "every call must carry a non-empty "
+                                                  "inner: 谁也听不见"}]}
+
+            def deliver_tool_results(self, results):
+                self.delivered.extend(results)
+
+            def consume_compaction(self):
+                return False
+
+            def session_snapshot(self):
+                return None
+
+        world = World(start=datetime.fromisoformat("2026-03-16T07:00:00+08:00"),
+                      actors=[ActorState("a", "room")],
+                      locations=[LocationState("room")])
+        trace = Trace("v4-test", "inner-trace")
+        agent = _Agent()
+        engine = AsyncEngine(world, {"a": agent}, {"a": PrivateState("a")}, trace, None,
+                             decision_timeout=10, max_wall_seconds=30)
+        engine.run(stop_at=datetime.fromisoformat("2026-03-16T07:03:00+08:00"),
+                   max_turns=20)
+        turn = next(t for t in trace.agent_turns if t["actor"] == "a"
+                    and t.get("inner"))
+        self.assertEqual(turn["inner"], "我在原地等一会儿。")
+        self.assertNotIn(turn["result"],
+                         {"agent_error", "decision_timeout", "engine_error"})
+        self.assertIn("inner", turn["error"] or "")
+        self.assertTrue(any("inner" in str(r.get("text")) for r in agent.delivered))
 
 
 if __name__ == "__main__":

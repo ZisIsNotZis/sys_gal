@@ -139,6 +139,34 @@ def _extract_responses_tool_message(result: dict) -> dict | None:
     return {"role": "assistant", "content": text, "tool_calls": calls}
 
 
+def _fill_inner_from_reasoning(message: dict) -> None:
+    """Use an open-source model's ``reasoning_content`` as the inner monologue.
+
+    Ticket 38: when a chat tool call omits ``inner`` but the message carries
+    its reasoning, that reasoning IS the private monologue — adopt it so a
+    model that reasons outside the call still populates the inner channel.
+    """
+    reasoning = message.get("reasoning_content")
+    if not isinstance(reasoning, str) or not reasoning.strip():
+        return
+    for call in message.get("tool_calls") or []:
+        function = call.get("function") if isinstance(call, dict) else None
+        if not isinstance(function, dict):
+            continue
+        raw = function.get("arguments")
+        try:
+            args = json.loads(raw) if isinstance(raw, str) else raw
+        except (TypeError, ValueError):
+            continue
+        if not isinstance(args, dict):
+            continue
+        inner = args.get("inner")
+        if isinstance(inner, str) and inner.strip():
+            continue
+        args["inner"] = reasoning
+        function["arguments"] = json.dumps(args, ensure_ascii=False)
+
+
 class OpenAICompatible:
     def __init__(self, *, base_url: str | None = None, model: str | None = None,
                  api_key: str | None = None, timeout: int = 12,
@@ -372,6 +400,7 @@ class OpenAICompatible:
                 return {"role": message.get("role", "assistant"),
                         "content": message.get("content", ""), "tool_calls": []}
             return None
+        _fill_inner_from_reasoning(message)
         return message
 
     def _extract_text(self, result: dict) -> str | None:

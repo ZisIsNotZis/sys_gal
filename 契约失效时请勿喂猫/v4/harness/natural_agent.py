@@ -9,7 +9,8 @@ from typing import Any
 from .character_loader import CharacterSeed
 from .character_session import CharacterSession, ModelCall, NaturalIntention
 from .agent_state import PrivateState
-from .action_schema import TOOLS as _TOOLS_FOR_ACTOR, SPEAK_TOOLS
+from .action_schema import SCHEMAS, TOOLS as _TOOLS_FOR_ACTOR, SPEAK_TOOLS
+from .adapter import lift_native_call
 
 
 GMCall = Any
@@ -73,6 +74,7 @@ class V4Session:
                               "tool_calls": message.get("tool_calls") or []})
         spoken = str(message.get("content") or "").strip()
         calls: list[dict[str, Any]] = []
+        turn_inners: list[str] = []
         for raw in message.get("tool_calls") or []:
             function = raw.get("function") or {}
             name = str(function.get("name", ""))
@@ -83,11 +85,24 @@ class V4Session:
                 args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
                 if not isinstance(args, dict):
                     raise ValueError("arguments must be a JSON object")
+                if name in SCHEMAS:
+                    # Ticket 38: inner rides in arguments; lift it out so the
+                    # action schema never sees it, and reject the call (not
+                    # the whole turn) when it is missing or empty.
+                    args, inner, inner_error = lift_native_call(name, args)
+                    if inner_error is not None:
+                        call["arguments"] = args
+                        call["parse_error"] = inner_error
+                        calls.append(call)
+                        continue
+                    if inner:
+                        turn_inners.append(inner)
                 call["arguments"] = args
             except (ValueError, TypeError) as exc:
                 call["parse_error"] = f"{type(exc).__name__}: {exc}: {str(raw_args)[:200]}"
             calls.append(call)
-        return {"text": spoken, "calls": calls}
+        return {"text": spoken, "calls": calls,
+                "inner": "\n".join(turn_inners) or None}
 
     def deliver_tool_results(self, results: list[dict[str, Any]]) -> None:
         """Report each tool call's result (V4-AGENT-INTERFACE §3): content is

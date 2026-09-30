@@ -90,6 +90,28 @@ SCHEMAS: dict[str, dict[str, Any]] = {
     "trash": _ONE_ITEM,
 }
 
+# Ticket 38: the model-facing (wire) parameters are the action shape plus a
+# required non-empty ``inner`` — the actor's private first-person monologue.
+# ``inner`` rides inside ``arguments`` (the native tool-call slot); the parser
+# lifts it out before the kernel validates the action shape, so it never trips
+# ``additionalProperties``. ``SCHEMAS`` stays the action shape (single source
+# of truth for the kernel); only ``TOOLS``/``SPEAK_TOOLS`` carry the merge.
+INNER_KEY = "inner"
+INNER_PROPERTY: dict[str, Any] = {"type": "string", "minLength": 1}
+
+
+def wire_parameters(kind: str) -> dict[str, Any]:
+    """Model-facing parameters for ``kind``: action arguments + required inner."""
+    action = SCHEMAS[kind]
+    return {"type": "object",
+            "required": [INNER_KEY, *action.get("required", ())],
+            "properties": {INNER_KEY: INNER_PROPERTY, **action["properties"]},
+            "additionalProperties": False}
+
+
+WIRE_PARAMETERS: dict[str, dict[str, Any]] = {
+    kind: wire_parameters(kind) for kind in SCHEMAS}
+
 # 每个工具的中文一句话说明（docs §2）。注意：每个调用的 arguments 都必须带
 # 非空 inner——这一动作当下的心声（感受、意图、为什么）；缺 inner 或空 inner
 # 的调用不会被执行。
@@ -148,7 +170,7 @@ _TOOL_DESCRIPTIONS: dict[str, str] = {
 TOOLS: list[dict[str, Any]] = [
     {"type": "function",
      "function": {"name": kind, "description": _TOOL_DESCRIPTIONS[kind],
-                  "parameters": SCHEMAS[kind]}}
+                  "parameters": WIRE_PARAMETERS[kind]}}
     for kind in SCHEMAS
 ]
 

@@ -13,7 +13,7 @@ import json
 import random
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Sequence
 
-from .adapter import parse_decision
+from .adapter import lift_native_call, parse_decision
 from .character_loader import CharacterSeed
 from .action_schema import SPEAK_TOOLS
 
@@ -130,8 +130,8 @@ def build_npc_briefing(*, actor_id: str, perception: Mapping[str, Any],
     if beat_goal:
         parts.append(f"【本场目标】{beat_goal}")
     parts.append(
-        "像平常那样回应眼前的事。输出一个 JSON 对象（inner 放最前，name/arguments 同"
-        "供给列表）；没有非要你出手的时刻，就选 wait。")
+        "像平常那样回应眼前的事。输出一个 JSON 对象（name/arguments 同供给列表，"
+        "arguments 里必须带非空 inner：你的第一人称心声）；没有非要你出手的时刻，就选 wait。")
     return "\n\n".join(parts)
 
 
@@ -182,7 +182,7 @@ class NpcAgent:
                     {"role": "assistant", "content": str(raw)[:400]},
                     {"role": "user", "content": (
                         "世界无法执行上面的输出：它必须是一个 JSON 对象 "
-                        '{\"inner\":…,\"name\":…,\"arguments\":{…}}，前面不能有别的文字。'
+                        '{\"name\":…,\"arguments\":{\"inner\":…,…}}，前面不能有别的文字。'
                         "重新输出一次，不要解释错误。")}]
         if decision is None:
             raise last_error if last_error is not None else ValueError("NPC wake produced no decision")
@@ -210,8 +210,8 @@ def build_extra_system_prompt(fragment: str, knowledge_notes: str, location: str
     if knowledge_notes:
         prompt += f"你恰好知道一些内情：{knowledge_notes}\n（只在被问到相关话题时才自然带出，绝不主动全盘托出。）\n"
     return prompt + (
-        "\n输出一个 JSON 对象：{\"inner\":\"你的心思，一两句\",\"name\":\"speak\","
-        "\"arguments\":{\"text\":\"你说的话\"}}")
+        "\n输出一个 JSON 对象：{\"name\":\"speak\","
+        "\"arguments\":{\"inner\":\"你的心思，一两句\",\"text\":\"你说的话\"}}")
 
 
 def _extra_speech_audience(event: Any) -> Iterable[str]:
@@ -368,6 +368,10 @@ def extra_tool_calls(provider: Any, system_text: str, briefing_text: str) -> lis
                           "tool_call_id": raw.get("id"),
                           "parse_error": f"{type(exc).__name__}: {exc}"})
             continue
+        # Ticket 38: SPEAK_TOOLS declares inner; extras' inbox is envelope-free,
+        # so lift the monologue out of the arguments before it reaches the
+        # kernel (never reject an extra over it).
+        args, _inner, _inner_error = lift_native_call(str(function.get("name", "")), args)
         calls.append({"name": str(function.get("name", "")), "arguments": args,
                       "tool_call_id": raw.get("id")})
     if not calls:
@@ -392,6 +396,8 @@ def extra_tool_calls(provider: Any, system_text: str, briefing_text: str) -> lis
                     args = parsed.get("arguments")
                     if not isinstance(args, dict):
                         args = {"text": str(parsed.get("text") or parsed.get("inner") or parsed.get("content") or "")}
+                    else:
+                        args, _inner, _inner_error = lift_native_call(parsed["name"], args)
                     calls.append({"name": parsed["name"], "arguments": args})
                     return calls
             # No volume/to: the kernel treats a speak without volume as
