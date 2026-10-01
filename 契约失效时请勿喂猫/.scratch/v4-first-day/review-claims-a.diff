@@ -1,0 +1,1137 @@
+diff --git a/契约失效时请勿喂猫/.scratch/v4-first-day/issues/35-actionable-claim-coverage-gap.md b/契约失效时请勿喂猫/.scratch/v4-first-day/issues/35-actionable-claim-coverage-gap.md
+index 15ae218..8794ca7 100644
+--- a/契约失效时请勿喂猫/.scratch/v4-first-day/issues/35-actionable-claim-coverage-gap.md
++++ b/契约失效时请勿喂猫/.scratch/v4-first-day/issues/35-actionable-claim-coverage-gap.md
+@@ -17,3 +17,33 @@ Need-test-cases: yes
+ 3. 回归：删掉注册/placement 但保留客观“签到本在门口”时 lint 红；保留“按惯例本该在，今日未找到”时合法且角色不可读取；申请表/纸笔/提交路径若剧情要求应有可验的取得或失败事件；检查器不把读档文本或到达时间等同申请提交。
+ 
+ - 2026-09-28, pi：本段 `check_milestones.py --half d1-am` 的台账差异锚点 FAIL（林瑶没读两份材料），另两项 PASS；这不证明她没学到差异，也不能降低世界一致性门。人手逐人审阅正在完成，不续下午。
++
++## 裁决与实现（2026-09-29，AREA A+B）
++
++系统性覆盖门已落地，不再逐样例补 `actionable_refs`：
++1. **世界加载契约（`harness/world_loader.py`）**：新增行级 `object_presence`
++   （`[{name, place, state}]`，`state = present|expected|missing`；`present` 必须与
++   真实 placement 一致，否则加载即报错）与行级 `completeness`
++   （`expectation|belief|missing`）。`_validate_scene_objects` 扫描每个排程
++   notice 与地点场景文本，用“受控高风险物件词 ∪ 已注册 item/document id”+
++   “物件词紧邻放置/取得线索”的就近匹配（不做逐名词 NLP）找出具体在场断言；
++   断言必须由 `actionable_refs`／`object_presence`／`completeness` 之一承载，
++   否则加载失败，`scripts/seed_lint.py` 输出确切修复文本。
++2. **回归**：删掉 `签到本` 注册/placement 而保留客观“签到本在门口”→ lint 红；
++   “按惯例本该在、今天未找到”+ `completeness: expectation` → lint 绿且角色
++   不可读取（未放置）；具体物件断言不覆盖 → 红。测试：
++   `test_world_pack.SceneObjectContractTests`（9 项，含上面三条与申请表/纸笔/
++   拒收路径）、`HistoricalFailureGates.test_uncovered_concrete_prop_claim_blocks_the_seed`
++   （台账 P10）。
++3. **种子修复**：`签到本` 注册为 `校史档案室` 的真实 item，值班通知与档案室 KB
++   行改写以区分它和缺失案里的 `借阅登记本`（后者也注册为真实 item，开局
++   `location: null`，由 day-4 `ledger_found` 的 `add_item` 还原，附
++   `object_presence: present`）；08:20 排程在 `学生会办公室` 张贴注册文档
++   `场地申请表`（`actionable_refs` read/take）并加入 `可用纸笔` item；
++   12:30 增加广播 `application_rejected`——本周不受理场地申请、无收件渠道
++   （有界机构性拒收，明确措辞），使“找不到委员会”是设计内失败而非世界缺建模。
++
++- 2026-09-29, /worker（AREA C）：本单提到的 `check_milestones.py --half d1-am`
++  台账差异锚点 FAIL 由 issue 36 的路线网检查器解决（亲读互证/当面传达+承认
++  待核，防上帝视角；见 36 与 `harness/tests/test_milestones.py`）。属同一
++  `fix/v4-world-contracts` 分支，世界完备性门与棋盘修复（上节）不受影响。
+diff --git a/契约失效时请勿喂猫/.scratch/v4-first-day/issues/36-d1-evidence-route-checker.md b/契约失效时请勿喂猫/.scratch/v4-first-day/issues/36-d1-evidence-route-checker.md
+index 9c54a21..e409f6a 100644
+--- a/契约失效时请勿喂猫/.scratch/v4-first-day/issues/36-d1-evidence-route-checker.md
++++ b/契约失效时请勿喂猫/.scratch/v4-first-day/issues/36-d1-evidence-route-checker.md
+@@ -13,3 +13,25 @@ Need-test-cases: yes
+ 在不放宽“差异具体值必须由已读的人说出”的前提下，增加“亲读互证 / 当面传达并谨慎记为待核”可选路线；anchor 判断两名主角都获得具体差异信息、没有越权认为自己已读原件。以两类工件/合成事件回归：仅世界全局出现数值但无人看见不得过；陈默读后在场当面说、林瑶听见并确认待核可过；林瑶自己亲读也可过。半天子集与整日路线网结果一致解释，不能用 clock endpoint 替代。
+ 
+ - 2026-09-28, pi：这是一项检查器误判，但当前 run 另有世界完备性缺陷 issue 35，故不单靠放宽锚点继续下午。
++
++## 裁决与实现（2026-09-29，AREA C）
++
++`scripts/check_milestones.py` 的 `_d1_discrepancy_recorded` 重写为可见证据链
++上的路线网，锚点改为“两名主角都获得 22:05/23:30 的具体差异”，不再硬要求
++两人亲读原件：
++1. **路线[亲读互证]**：陈默与林瑶各自亲读台账与导出件（`document_read`）。
++2. **路线[当面传达]**：读过两份原件的一方当面对另一方（`speech.heard` 含
++   对方）说出两个差异值，另一方在自己的发言里承认差异并记为待核
++   （`差异/对不上/不一致` + `待核/不知道/未确认/不猜…`）。
++3. **防上帝视角**：差异具体值必须由已读者说出；全局 `world_event` 通知或
++   未被另一主角听到的发言不能充当证据；非读者说值、只说“对不上”不带具体
++   值、只在他人（非主角本人）发言里出现承认、承认早于传达，均判 FAIL。
++   传达未获对方承认也判 FAIL。
++4. **回归**（failing-first）：新增 `harness/tests/test_milestones.py` 13 项，
++   旧检查器下 5 项红、新实现下全绿。含半天/整日一致性：证据在上午时
++   `--half d1-am` 子集与整日视图结论一致；证据仅在下午时上午锚点不通过。
++5. **真实工件复核**：`runs/real-20260928T205206+0800-1345945-532332572.json`
++   的 `--half d1-am` 现在 `d1-台账差异记录` PASS（陈默 07:23/07:28 亲读，
++   07:29 当面对林瑶说出 22:05/23:30，林瑶 07:31 记待核），三项门全绿——
++   证明这是合法路线而非叙事失败。文档：V4-STORY-MILESTONES §2.1 与第 1 天
++   节拍已同步。
+diff --git a/契约失效时请勿喂猫/.scratch/v4-first-day/issues/37-d1am-world-contract-review.md b/契约失效时请勿喂猫/.scratch/v4-first-day/issues/37-d1am-world-contract-review.md
+index b1194df..b98a311 100644
+--- a/契约失效时请勿喂猫/.scratch/v4-first-day/issues/37-d1am-world-contract-review.md
++++ b/契约失效时请勿喂猫/.scratch/v4-first-day/issues/37-d1am-world-contract-review.md
+@@ -23,3 +23,15 @@ v4 `runs/real-20260928T205206+0800-1345945-532332572.json` + 同名前缀 `.chec
+ **不续上午 checkpoint 之后的下午段，也不把此工件当健康 Demo。** 先建立客观具体物件声明的强制覆盖门（不依赖作者自愿列 `actionable_refs`），把签到本改成真实对象/状态或将通知准确写成“本应在、今天未见”；给场地申请一条可操作的表/文具/正式收件或有界拒收路径，并校对 deadline；修路线网检查器用人物实际可见信息。重新跑完整 v3/v4 预门、dry_run，重新从种子跑半天，再逐人审阅。原工件和 checkpoint 保留做因果对照。当前本地 LiteLLM 代理已主动关闭。
+ 
+ - 2026-09-28, pi：这是用户授权的“下一个重大缺陷/总结报告”停止点；所有 15 名实际出场人物的审阅结果已收齐并与世界事件核对。
++
++- 2026-09-29, /worker（AREA A+B）：世界完备性覆盖门与种子修复已提交在
++  `fix/v4-world-contracts`；issue 36（差异锚点路线网检查器）与
++  V4-STORY-MILESTONES 属 AREA C，不在本次改动。全量 v3/v4 预门、seed lint、
++  dry_run 均绿。
++
++- 2026-09-29, /worker（AREA C）：issue 36 的差异锚点路线网检查器已实现并提交
++  在同一 `fix/v4-world-contracts` 分支（AREA A+B 之后）。`_d1_discrepancy_recorded`
++  改为“亲读互证 或 当面传达并被承认待核”，差异值必须由已读者说出、另一主角
++  须实际听到；`harness/tests/test_milestones.py` 13 项 failing-first 回归（旧
++  检查器 5 红）。问题工件 `real-20260928T205206…json` 的 `--half d1-am` 三项
++  全绿。V4-STORY-MILESTONES §2.1/第 1 天已同步。
+diff --git a/契约失效时请勿喂猫/v4/docs/V4-AGENT-INTERFACE.md b/契约失效时请勿喂猫/v4/docs/V4-AGENT-INTERFACE.md
+index 99c55a4..ed4ba14 100644
+--- a/契约失效时请勿喂猫/v4/docs/V4-AGENT-INTERFACE.md
++++ b/契约失效时请勿喂猫/v4/docs/V4-AGENT-INTERFACE.md
+@@ -217,6 +217,10 @@ concepts:
+   ① 每个 `[[x]]` 必须在**收到该文本的每个角色**的 KB key 中可解析（角色自己的人设→本人；
+   地点/物品描述→所有持有该自动行的角色；concept→known_to ∪ memory；排程 notice→target）；
+   ② 未加标记的「名字样」token 也是错误（"忘了加标记？"）。二者互补，缺一不可。
++  ③ 客观通知与地点场景文本里每个“X 在 Y”式具体物件断言，必须由
++  `actionable_refs`、行级 `object_presence` 或行级 `completeness`
++  （ `expectation|belief|missing`）承载（issue 35，见 V4-DESIGN §3）；未覆盖的
++  具体在场断言在加载时即报错，lint 输出确切修复文本。
+   这样「陈默家.md 写了 妈妈、而陈默的记事本里没有 妈妈 这行」会在加载时直接报错，
+   而不是让角色在运行时撞上 `unknown actor: 妈妈`。
+ - **contacts: 初始联系人（T3）**：manifest 的 `contacts:` 段声明每人开局的联系人，
+diff --git a/契约失效时请勿喂猫/v4/docs/V4-DESIGN.md b/契约失效时请勿喂猫/v4/docs/V4-DESIGN.md
+index 2ade881..1f17b9b 100644
+--- a/契约失效时请勿喂猫/v4/docs/V4-DESIGN.md
++++ b/契约失效时请勿喂猫/v4/docs/V4-DESIGN.md
+@@ -108,6 +108,19 @@ The configured `github_copilot/gpt-6-luna` LiteLLM route is Responses-only: nati
+   substitute for one. This is an explicit authoring contract, not an NLP
+   parser: ordinary nouns and abstract references are not automatically props,
+   and there are no hidden opaque IDs or aliases that bypass the registry.
++- **Concrete presence coverage**（issue 35）: 客观通知与地点场景文本里每一句
++  “X 在 Y / 可从 Y 取、读、交”式的具体物件断言，必须由三种声明之一承载，
++  否则 seed lint（`scripts/seed_lint.py`）报错并给出修复文本：
++  ① `actionable_refs`——声明可执行动作（已有机制）；② `object_presence`——
++  行级物件在场声明，`[{name, place, state}]`，`state` = `present|expected|
++  missing`（`present` 必须与真实 placement 一致，否则加载即报错）；
++  ③ `completeness`——行级完整性声明，值 `expectation|belief|missing`，用于
++  “按惯例本该在、今天未见到”一类预期/信念/失踪叙述，放行该行所有具体物件断言。
++  检测用受控词表（高风险物件词 + 本局已注册 item/document id）加
++  “物件词 + 放置/取得线索”的就近匹配，不做逐名词 NLP；普通名词不会被自动
++  当作 prop。未注册的具体物件（如曾经的“签到本”）必须注册为真实 item/
++  document 并放置，或显式声明为预期/信念/失踪；作者不得靠客观通知断言不存在
++  的当前物件。
+ - Volume: `whisper` (only the addressed party hears; tagged perceptually as
+   suspicious — a stranger whispering at you reads as fishy unless you are
+   close to them) and `normal` (whole location). No loud tier for now.
+diff --git a/契约失效时请勿喂猫/v4/docs/V4-STORY-MILESTONES.md b/契约失效时请勿喂猫/v4/docs/V4-STORY-MILESTONES.md
+index 307e9f4..56c2ca3 100644
+--- a/契约失效时请勿喂猫/v4/docs/V4-STORY-MILESTONES.md
++++ b/契约失效时请勿喂猫/v4/docs/V4-STORY-MILESTONES.md
+@@ -82,6 +82,17 @@
+   - 路线[现场互证程序]：陈默×林瑶档案室相互核证 + 边界/留痕表述（连续
+     运行，核证发言 25+42 条）。
+   任一路线成立即算该日通过；两条都成立更佳。
++- **锚点内部的路线网（issue 36）**：某些锚点自身也有多条合法路线。D1 的
++  "台账差异被记录"只要求**两名主角都获得 22:05/23:30 的具体差异**，不锁死
++  "两人都亲读原件"：
++  - 路线[亲读互证]：陈默与林瑶各自亲读台账与导出件；
++  - 路线[当面传达]：读过两份原件的一方当面对另一方说出差异值，另一方在
++    自己的发言里承认差异、明确记为待核。
++  差异具体值必须由已读者说出；全局通知或未被另一主角听到的发言不能充当
++  证据（防上帝视角泄漏）。实现见 `scripts/check_milestones.py` 的
++  `_d1_discrepancy_recorded`，回归见 `harness/tests/test_milestones.py`。
++  （2026-09-29，issue 36：旧锚点硬要求"陈默与林瑶都亲读两份原件"，把林瑶
++  遵守登记/授权流程、听到后谨慎记为待核的合法路线误判为失败。）
+ - **纹理（flavor）**：路线各自的点缀（字条编号、老周托话、妈妈承诺措辞、
+   审计自查）——记录、复述、不裁决。
+ - **待后续**：跨日锚点在工件未覆盖其日期时记"待后续"，不阻断当天判定。
+@@ -100,7 +111,8 @@
+ ### 第 1 天（3/16 周一）：S1+S2+S3 — 发现、程序、档案室碰撞
+ 历史 D1 工件 `runs/real-20260916T203133+0800-1925444-482223735.json` 用当前检查器（12 项）复核为 11 项通过、`d1-字条留痕程序` 失败（留字条 4 次、读到 0 次）。D1 的锚点与两条故事路线仍成立；旧版“10/10”统计不代表当前检查集，也不是 12 天全弧成功证明。
+ 关键节拍：台账案开场（07:00）；登记本缺失与全员取证程序；台账 22:05 vs
+-导出件 23:30 差异被两位 MC 记录；档案室共处；老周托话；纪念活动通知。
++导出件 23:30 差异被两名 MC 获取（各自亲读，或一方当面说出、另一方记为待核）；
++档案室共处；老周托话；纪念活动通知。
+ 
+ ### 第 2 天（3/17 周二）：S4a — 正式答复与"体面的版本"
+ - d2-书面说明提交：三份个人说明按期交给辅导员（"情况说明"+"提交"）
+diff --git a/契约失效时请勿喂猫/v4/harness/tests/test_historical_failures.py b/契约失效时请勿喂猫/v4/harness/tests/test_historical_failures.py
+index 68e16ac..d1a5a10 100644
+--- a/契约失效时请勿喂猫/v4/harness/tests/test_historical_failures.py
++++ b/契约失效时请勿喂猫/v4/harness/tests/test_historical_failures.py
+@@ -35,6 +35,8 @@ P6  reading a file not at your location ....................... test_kernel (rej
+ P7  send_message with a missing/wrong target key (new probe) ... test_send_message_without_target_is_helpful
+ P8  document action with wrong key (2-day run, 97 rejections) . test_document_action_with_wrong_key_is_helpful
+ P9  flashback returned nothing for seeded backstory ............ test_flashback_recalls_seeded_history_and_resolves_aliases
++P10 uncovered concrete-presence claim in objective prose ....... test_uncovered_concrete_prop_claim_blocks_the_seed,
++                                                               test_world_pack SceneObjectContractTests
+ T1a world clock races during a slow deliberation (7:35->7:40) ... test_deliberation_pins_the_world_clock
+ T1b no auto-wait after text (reply arrives to a departed actor) . test_text_auto_wait_and_npc_reply_followup
+ T1c NPC memory-only turn parks with the reply uncomposed ........ test_text_auto_wait_and_npc_reply_followup
+@@ -266,6 +268,32 @@ class HistoricalFailureGates(unittest.TestCase):
+         self.assertEqual(opened, set(closed),
+                          "every closed location must have a scheduled opening effect")
+ 
++    def test_uncovered_concrete_prop_claim_blocks_the_seed(self):
++        """Issue 35 / P10: an objective "X 在 Y" claim whose prop is not a
++        placed entity is a pre-run block, not a runtime surprise. The regression
++        deletes the 签到本 placement while keeping the shift notice that asserts
++        it; seed lint must go red with the prop named."""
++        import importlib.util
++        import shutil
++        spec = importlib.util.spec_from_file_location(
++            "seed_lint_gate", Path(__file__).parents[2] / "scripts" / "seed_lint.py")
++        assert spec is not None and spec.loader is not None
++        module = importlib.util.module_from_spec(spec)
++        spec.loader.exec_module(module)
++        source = Path(__file__).parents[2] / "world"
++        self.assertEqual(module.lint(source), [], "the shipped seed must be covered")
++        with TemporaryDirectory() as directory:
++            root = Path(directory) / "world"
++            shutil.copytree(source, root)
++            manifest = root / "manifest.yml"
++            broken = manifest.read_text(encoding="utf-8").replace(
++                "- id: 签到本\n  location: 校史档案室\n",
++                "- id: 签到本\n  location:\n", 1)
++            manifest.write_text(broken, encoding="utf-8")
++            findings = module.lint(root)
++            self.assertTrue(findings, "an unplaced 签到本 must fail the seed gate")
++            self.assertIn("签到本", findings[0])
++
+     def test_seed_route_graph_is_connected(self):
+         """P5: any two characters can reach a common place; co-location is feasible."""
+         pack = load_story_pack()
+diff --git a/契约失效时请勿喂猫/v4/harness/tests/test_milestones.py b/契约失效时请勿喂猫/v4/harness/tests/test_milestones.py
+new file mode 100644
+index 0000000..5ca7e5f
+--- /dev/null
++++ b/契约失效时请勿喂猫/v4/harness/tests/test_milestones.py
+@@ -0,0 +1,240 @@
++"""Story-milestone route-network gates (issue 36).
++
++The d1 discrepancy anchor ("d1-台账差异记录") must be satisfied by a visible
++evidence chain, not by one hard-coded route. Two legal routes:
++
++  A 亲读互证 — both MCs personally read the paper ledger and the export.
++  B 当面传达 — one reader states the specific discrepancy values (22:05/23:30)
++    face-to-face to the other MC, who acknowledges the discrepancy as still
++    pending in their own speech.
++
++Anti-omniscient: the values must be spoken by someone who actually read the
++originals and heard by the other MC. A global notice carrying the values, or a
++line the other MC never heard, must not pass. The half and whole-day views of
++the anchor must agree.
++
++These tests fail against the pre-issue-36 checker, which required 陈默 *and*
++林瑶 to read both originals and looked for the values in any day text.
++"""
++import contextlib
++import importlib.util
++import io
++import json
++import sys
++import unittest
++from pathlib import Path
++from tempfile import TemporaryDirectory
++
++ROOT = Path(__file__).parents[2]
++DAY1 = "2026-03-16"
++
++TELL = "纸质台账和导出件对不上：两台抽水泵的时间从22:05变成23:30，呼入少了一通。"
++ACK = "至于这份台账差异要交什么材料、由谁负责，我目前不知道。"
++
++
++def _load_module():
++    spec = importlib.util.spec_from_file_location(
++        "check_milestones", ROOT / "scripts" / "check_milestones.py")
++    assert spec is not None and spec.loader is not None
++    module = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(module)
++    return module
++
++
++def _dt(hour, minute):
++    return f"{DAY1}T{hour:02d}:{minute:02d}:00+08:00"
++
++
++def _read(i, hour, minute, actor, document):
++    return {"id": i, "time": _dt(hour, minute), "kind": "document_read",
++            "actor": actor, "payload": {"document": document},
++            "visible_to": [actor], "world_version": i}
++
++
++def _speech(i, hour, minute, actor, text, heard):
++    return {"id": i, "time": _dt(hour, minute), "kind": "speech", "actor": actor,
++            "payload": {"text": text, "heard": list(heard), "to": list(heard)},
++            "visible_to": [actor] + list(heard), "world_version": i}
++
++
++def _global_notice(i, hour, minute, text):
++    return {"id": i, "time": _dt(hour, minute), "kind": "world_event",
++            "actor": None, "payload": {"event": "probe", "notice": text},
++            "visible_to": [], "world_version": i}
++
++
++def _am(events):
++    """The --half d1-am event subset exactly as check_milestones.main filters it."""
++    return [e for e in events
++            if str(e["time"]).startswith(DAY1)
++            and 0 <= int(str(e["time"])[11:13]) < 13]
++
++
++class DiscrepancyRouteTests(unittest.TestCase):
++    def setUp(self):
++        # Instance attribute (not a class attribute) so the stored function is
++        # not turned into a bound method.
++        module = _load_module()
++        self.fn = next(c["fn"] for c in module.MILESTONES[1]
++                       if c["id"] == "d1-台账差异记录")
++
++    def _ok(self, events):
++        ok, _ = self.fn(events, [], {})
++        return ok
++
++    # ---- route A: 亲读互证 ------------------------------------------------
++    def test_both_actors_reading_both_originals_pass(self):
++        events = [
++            _read(1, 7, 23, "陈默", "2013年台风台账"),
++            _read(2, 7, 28, "陈默", "2013年外借记录导出件"),
++            _read(3, 7, 24, "林瑶", "2013年台风台账"),
++            _read(4, 7, 29, "林瑶", "2013年外借记录导出件"),
++        ]
++        self.assertTrue(self._ok(events))
++
++    # ---- route B: 当面传达 + 承认待核 ------------------------------------
++    def test_reader_tells_and_hearer_acknowledges_pending_pass(self):
++        events = [
++            _read(1, 7, 23, "陈默", "2013年台风台账"),
++            _read(2, 7, 28, "陈默", "2013年外借记录导出件"),
++            _speech(3, 7, 29, "陈默", TELL, ["林瑶"]),
++            _speech(4, 7, 31, "林瑶", ACK, ["陈默"]),
++        ]
++        self.assertTrue(self._ok(events))
++
++    def test_symmetric_reader_is_linyao_pass(self):
++        events = [
++            _read(1, 7, 23, "林瑶", "2013年台风台账"),
++            _read(2, 7, 28, "林瑶", "2013年外借记录导出件"),
++            _speech(3, 7, 29, "林瑶", TELL, ["陈默"]),
++            _speech(4, 7, 31, "陈默", ACK, ["林瑶"]),
++        ]
++        self.assertTrue(self._ok(events))
++
++    # ---- anti-omniscient / strictness ------------------------------------
++    def test_global_notice_values_unseen_by_actors_do_not_pass(self):
++        events = [
++            _read(1, 7, 23, "陈默", "2013年台风台账"),
++            _read(2, 7, 28, "陈默", "2013年外借记录导出件"),
++            _global_notice(3, 7, 30, "台账 22:05 与导出件 23:30 存在差异。"),
++        ]
++        self.assertFalse(self._ok(events))
++
++    def test_values_not_heard_by_the_other_mc_do_not_pass(self):
++        events = [
++            _read(1, 7, 23, "陈默", "2013年台风台账"),
++            _read(2, 7, 28, "陈默", "2013年外借记录导出件"),
++            _speech(3, 7, 29, "陈默", TELL, ["林瑶室友"]),
++            _speech(4, 7, 31, "林瑶", ACK, ["陈默"]),
++        ]
++        self.assertFalse(self._ok(events))
++
++    def test_non_reader_stating_values_does_not_pass(self):
++        events = [
++            _read(1, 7, 23, "陈默", "2013年台风台账"),
++            _read(2, 7, 28, "陈默", "2013年外借记录导出件"),
++            _speech(3, 7, 29, "林瑶", TELL, ["陈默"]),
++            _speech(4, 7, 31, "陈默", ACK, ["林瑶"]),
++        ]
++        self.assertFalse(self._ok(events))
++
++    def test_reader_tells_without_specific_values_does_not_pass(self):
++        events = [
++            _read(1, 7, 23, "陈默", "2013年台风台账"),
++            _read(2, 7, 28, "陈默", "2013年外借记录导出件"),
++            _speech(3, 7, 29, "陈默", "台账和导出件对不上，呼入少了一通。", ["林瑶"]),
++            _speech(4, 7, 31, "林瑶", ACK, ["陈默"]),
++        ]
++        self.assertFalse(self._ok(events))
++
++    def test_reader_tells_but_other_never_acknowledges_does_not_pass(self):
++        events = [
++            _read(1, 7, 23, "陈默", "2013年台风台账"),
++            _read(2, 7, 28, "陈默", "2013年外借记录导出件"),
++            _speech(3, 7, 29, "陈默", TELL, ["林瑶"]),
++            _speech(4, 7, 31, "林瑶", "好，我知道了。", ["陈默"]),
++        ]
++        self.assertFalse(self._ok(events))
++
++    def test_acknowledgement_must_be_the_other_mc_in_their_own_speech(self):
++        events = [
++            _read(1, 7, 23, "陈默", "2013年台风台账"),
++            _read(2, 7, 28, "陈默", "2013年外借记录导出件"),
++            _speech(3, 7, 29, "陈默", TELL, ["林瑶", "林瑶室友"]),
++            _speech(4, 7, 31, "林瑶室友", ACK, ["陈默", "林瑶"]),
++        ]
++        self.assertFalse(self._ok(events))
++
++    def test_acknowledgement_before_the_tell_does_not_pass(self):
++        events = [
++            _read(1, 7, 23, "陈默", "2013年台风台账"),
++            _read(2, 7, 28, "陈默", "2013年外借记录导出件"),
++            _speech(3, 7, 27, "林瑶", ACK, ["陈默"]),
++            _speech(4, 7, 29, "陈默", TELL, ["林瑶"]),
++        ]
++        self.assertFalse(self._ok(events))
++
++    # ---- half / whole-day consistency ------------------------------------
++    def test_half_subset_and_full_day_agree_on_am_evidence(self):
++        events = [
++            _read(1, 7, 23, "陈默", "2013年台风台账"),
++            _read(2, 7, 28, "陈默", "2013年外借记录导出件"),
++            _speech(3, 7, 29, "陈默", TELL, ["林瑶"]),
++            _speech(4, 7, 31, "林瑶", ACK, ["陈默"]),
++            _global_notice(5, 14, 5, "台账 22:05 与导出件 23:30 存在差异。"),
++        ]
++        self.assertEqual(self._ok(events), self._ok(_am(events)))
++        self.assertTrue(self._ok(_am(events)))
++
++    def test_pm_only_evidence_does_not_satisfy_the_am_anchor(self):
++        events = [
++            _read(1, 14, 23, "陈默", "2013年台风台账"),
++            _read(2, 14, 28, "陈默", "2013年外借记录导出件"),
++            _speech(3, 14, 29, "陈默", TELL, ["林瑶"]),
++            _speech(4, 14, 31, "林瑶", ACK, ["陈默"]),
++        ]
++        self.assertFalse(self._ok(_am(events)))
++
++
++class CheckMilestonesCliTests(unittest.TestCase):
++    """Half-day checkpoint gate end to end: the anchor passes for the shipped
++    route (one reader tells, the other acknowledges) without requiring both to
++    personally read the originals."""
++
++    def _artifact(self, directory):
++        events = [
++            _speech(1, 7, 5, "宿管阿姨", "登记本的事我们还在问。", ["陈默"]),
++            _speech(2, 7, 6, "班长", "登记本我去核对。", ["陈默"]),
++            _speech(3, 7, 7, "辅导员", "登记本按规矩登记。", ["陈默"]),
++            _read(4, 7, 23, "陈默", "2013年台风台账"),
++            _read(5, 7, 28, "陈默", "2013年外借记录导出件"),
++            _speech(6, 7, 29, "陈默", TELL, ["林瑶"]),
++            _speech(7, 7, 31, "林瑶", ACK, ["陈默"]),
++            _speech(8, 7, 32, "林瑶", "我们先按规矩来。", ["陈默"]),
++        ]
++        path = Path(directory) / "artifact.json"
++        path.write_text(json.dumps({"world_events": events,
++                                    "agent_turns": [], "sessions": {}}),
++                        encoding="utf-8")
++        return path
++
++    def test_half_d1_am_passes_with_route_b_evidence(self):
++        module = _load_module()
++        with TemporaryDirectory() as directory:
++            path = self._artifact(directory)
++            argv = ["check_milestones.py", str(path), "--half", "d1-am"]
++            buf = io.StringIO()
++            old = sys.argv
++            sys.argv = argv
++            try:
++                with contextlib.redirect_stdout(buf):
++                    code = module.main()
++            finally:
++                sys.argv = old
++        out = buf.getvalue()
++        self.assertIn("[PASS] d1-台账差异记录", out, out)
++        self.assertEqual(code, 0, out)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/契约失效时请勿喂猫/v4/harness/tests/test_world_pack.py b/契约失效时请勿喂猫/v4/harness/tests/test_world_pack.py
+index aae947f..4bb1364 100644
+--- a/契约失效时请勿喂猫/v4/harness/tests/test_world_pack.py
++++ b/契约失效时请勿喂猫/v4/harness/tests/test_world_pack.py
+@@ -835,3 +835,154 @@ class ConceptRegistryTests(unittest.TestCase):
+         module = importlib.util.module_from_spec(spec)
+         spec.loader.exec_module(module)
+         self.assertEqual(module.lint(ROOT / "world"), [])
++
++
++class SceneObjectContractTests(unittest.TestCase):
++    """Issue 35: concrete-presence coverage for objective notices and prose.
++
++    A scheduled notice or location description that asserts a concrete prop is
++    at a place ("X 在 Y" / "可从 Y 取、读、交") must carry an actionable_refs
++    entry, object_presence metadata, or a completeness declaration, or seed
++    lint fails with remediation text. The regression: deleting the registration
++    of 签到本 while keeping the notice must turn the seed red.
++    """
++
++    def _write_world(self, directory, *, notice=None, location_prose="一间屋子。",
++                     item=None, item_location=None, scheduled_row=None):
++        import yaml
++        root = Path(directory)
++        for category in ("locations", "items", "documents"):
++            (root / category).mkdir()
++        (root / "locations" / "room.md").write_text(
++            f"# room\n\n{location_prose}\n", encoding="utf-8")
++        items = []
++        if item:
++            (root / "items" / f"{item}.md").write_text(
++                f"# {item}\n\n一件东西。\n", encoding="utf-8")
++            items.append({"id": item, "location": item_location})
++        row = {"event": "contract_test", "time": "2026-03-16T07:10:00+08:00"}
++        if notice is not None:
++            row["notice"] = notice
++        if scheduled_row:
++            row.update(scheduled_row)
++        manifest = {
++            "schema_version": 1,
++            "clock": {"start": "2026-03-16T07:00:00+08:00",
++                      "stop": "2026-03-16T08:00:00+08:00"},
++            "locations": [{"id": "room"}],
++            "actors": [{"id": "aa", "location": "room"}],
++            "items": items, "documents": [], "routes": [], "barriers": [],
++            "scheduled": [row],
++            "kb": {"aa": [{"keys": ["aa"], "desc": "我，aa。"}]},
++        }
++        (root / "manifest.yml").write_text(
++            yaml.safe_dump(manifest, allow_unicode=True), encoding="utf-8")
++        return root
++
++    def _lint(self, world_root):
++        import importlib.util
++        spec = importlib.util.spec_from_file_location(
++            "seed_lint_contract", ROOT / "scripts" / "seed_lint.py")
++        assert spec is not None and spec.loader is not None
++        module = importlib.util.module_from_spec(spec)
++        spec.loader.exec_module(module)
++        return module.lint(world_root)
++
++    def test_uncovered_presence_claim_fails_seed_lint_with_remediation(self):
++        with TemporaryDirectory() as directory:
++            root = self._write_world(
++                directory, item="登记本", item_location=None,
++                notice="门边的值班桌上，登记本就在那里。")
++            findings = self._lint(root)
++            self.assertTrue(findings, "an uncovered presence claim must fail")
++            self.assertIn("登记本", findings[0])
++            self.assertIn("completeness", findings[0])
++
++    def test_expectation_narration_is_legal_and_object_stays_unreadable(self):
++        with TemporaryDirectory() as directory:
++            root = self._write_world(
++                directory, item="登记本", item_location=None,
++                notice="按惯例登记本本该在门口，今天没有找到。",
++                scheduled_row={"completeness": "expectation"})
++            self.assertEqual(self._lint(root), [])
++            world = load_world_pack(root).build_world()
++            with self.assertRaises(ActionRejected):
++                world.submit(Intention("aa", "read", {"item": "登记本"},
++                                       world.version))
++
++    def test_object_presence_present_must_match_a_real_placement(self):
++        with TemporaryDirectory() as directory:
++            root = self._write_world(
++                directory, item="登记本", item_location=None,
++                notice="登记本就在桌上。",
++                scheduled_row={"object_presence": [
++                    {"name": "登记本", "place": "room", "state": "present"}]})
++            with self.assertRaisesRegex(ValueError, "actually placed at None"):
++                load_world_pack(root)
++
++    def test_declared_object_presence_covers_a_placed_prop(self):
++        with TemporaryDirectory() as directory:
++            root = self._write_world(
++                directory, item="登记本", item_location="room",
++                notice="登记本就在桌上。",
++                scheduled_row={"object_presence": [
++                    {"name": "登记本", "place": "room", "state": "present"}]})
++            self.assertEqual(self._lint(root), [])
++
++    def test_unknown_completeness_state_is_rejected(self):
++        with TemporaryDirectory() as directory:
++            root = self._write_world(
++                directory, item="登记本", item_location=None,
++                notice="登记本就在桌上。",
++                scheduled_row={"completeness": "perhaps"})
++            with self.assertRaisesRegex(ValueError, "completeness"):
++                load_world_pack(root)
++
++    def test_cue_before_prop_claim_is_also_covered(self):
++        # "压着一本没人翻的值班簿" asserts presence as strongly as prop-then-cue.
++        with TemporaryDirectory() as directory:
++            root = self._write_world(
++                directory, notice="桌上压着一本没人翻的值班簿。")
++            findings = self._lint(root)
++            self.assertTrue(findings, "cue-before-prop claims must not slip through")
++            self.assertIn("值班簿", findings[0])
++
++    def test_unregistered_concrete_prop_claim_fails(self):
++        with TemporaryDirectory() as directory:
++            root = self._write_world(
++                directory, notice="门边的值班桌上，登记本就在那里。")
++            findings = self._lint(root)
++            self.assertTrue(findings)
++            self.assertIn("register", findings[0])
++
++    def test_location_scene_prose_presence_claim_needs_coverage(self):
++        with TemporaryDirectory() as directory:
++            root = self._write_world(
++                directory, item="登记本", item_location=None,
++                location_prose="门边桌上，登记本就在那里。")
++            findings = self._lint(root)
++            self.assertTrue(findings)
++            self.assertIn("location room", findings[0])
++
++    def test_signin_and_borrow_registers_are_distinct_placed_entities(self):
++        from datetime import datetime
++        world = load_world_pack(ROOT / "world").build_world()
++        self.assertEqual(world.item_locations.get("签到本"), "校史档案室")
++        self.assertNotIn("借阅登记本", world.item_locations)
++        world.advance(until=datetime.fromisoformat("2026-03-19T08:25:00+08:00"))
++        self.assertEqual(world.item_locations.get("借阅登记本"), "校史档案室")
++
++    def test_application_form_is_posted_with_supplies_and_rejected(self):
++        from datetime import datetime
++        world = load_world_pack(ROOT / "world").build_world()
++        world.actors["林瑶"].location = "学生会办公室"
++        world.advance(until=datetime.fromisoformat("2026-03-16T08:25:00+08:00"))
++        self.assertEqual(world.item_locations.get("场地申请表"), "学生会办公室")
++        self.assertEqual(world.item_locations.get("可用纸笔"), "学生会办公室")
++        readable = {row["item"] for row in world.affordances("林瑶")
++                    if row["kind"] == "read"}
++        self.assertIn("场地申请表", readable)
++        events = world.advance(until=datetime.fromisoformat("2026-03-16T12:31:00+08:00"))
++        rejected = [e for e in events
++                    if e.payload.get("event") == "application_rejected"]
++        self.assertTrue(rejected, "the office must reject applications at 12:30")
+diff --git a/契约失效时请勿喂猫/v4/harness/world_loader.py b/契约失效时请勿喂猫/v4/harness/world_loader.py
+index 7566a5c..46c7cb6 100644
+--- a/契约失效时请勿喂猫/v4/harness/world_loader.py
++++ b/契约失效时请勿喂猫/v4/harness/world_loader.py
+@@ -221,6 +221,7 @@ def load_world_pack(root: str | Path) -> WorldPack:
+     _validate(fields, manifest)
+     _validate_descriptions(fields, descriptions)
+     _validate_actionable_refs(fields, descriptions)
++    _validate_scene_objects(fields, descriptions)
+     actor_ids = {str(row["id"]) for row in fields["actors"]}
+     entity_ids = (actor_ids
+                   | {str(row["id"]) for row in fields["locations"]}
+@@ -258,6 +259,58 @@ def ref_names(text: Any) -> list[str]:
+     return _REF_RE.findall(str(text))
+ 
+ 
++# --- issue 35: concrete-presence coverage in objective prose ----------------
++# Objective scheduled notices and location scene prose may assert that a
++# concrete prop is at a place ("X 在 Y" / "可从 Y 取、读、交 X"). Such a claim
++# must map to a real placed entity, or be declared on the row with
++# object_presence (state present/expected/missing) or completeness
++# (expectation/belief/missing). The words below are the controlled list of
++# high-risk object words; registered item/document ids are added at run time.
++# This is deliberately not an NLP pass over every noun: only a prop token
++# directly followed by a placement/availability cue counts.
++_CONCRETE_PROP_WORDS: tuple[str, ...] = (
++    "签到本", "借阅登记本", "晚归登记本", "登记本", "场地申请表", "申请表",
++    "空白纸", "纸笔", "值班簿", "值班表", "清单", "存根", "一览表",
++    "凭证", "单据", "哨套", "红色哨子", "雨伞", "贴纸", "马克杯",
++    "抽水泵", "保温杯", "糖罐子", "木盒", "老照片", "旧记录", "审计包",
++)
++_PLACEMENT_CUES: tuple[str, ...] = (
++    "放在", "摆在", "摊在", "压在", "贴在", "落在", "留在", "码在", "放到",
++    "挂到", "塞进", "找到", "取出", "交给", "递给", "拿来", "在",
++    "放在着", "摆在着", "摊着", "压着", "贴着", "放着", "摆着", "落到",
++)
++# Bare "在" is too loose to lead a cue-first match ("在旁边记下了存根" would
++# otherwise falsely claim 存根): cue-first uses only unambiguous cues.
++_CUE_FIRST_CUES: tuple[str, ...] = tuple(c for c in _PLACEMENT_CUES if c != "在")
++_PRESENCE_GAP = 5
++_CUE_FIRST_GAP = 8
++_COMPLETENESS_STATES = frozenset({"expectation", "belief", "missing"})
++_PRESENCE_STATES = frozenset({"present", "expected", "missing"})
++
++
++def concrete_presence_claims(text: Any, registered: Any = ()) -> list[str]:
++    """Concrete props asserted present/available in a piece of objective prose.
++
++    ``registered`` adds the run's item/document ids to the controlled
++    vocabulary. Markers are stripped first so ``X`` and ``[[X]]`` scan alike.
++    """
++    words = sorted(set(_CONCRETE_PROP_WORDS) | {str(name) for name in registered},
++                   key=lambda word: (-len(word), word))
++    pattern = re.compile(
++        r"(?P<prop>" + "|".join(re.escape(word) for word in words)
++        + r")[^，。！？；、\n]{0,%d}(?:%s)" % (
++            _PRESENCE_GAP, "|".join(re.escape(cue) for cue in _PLACEMENT_CUES)))
++    # A placement cue may also PRECEDE the prop within the same clause:
++    # "压着一本没人翻的值班簿" asserts presence as strongly as "值班簿放在桌上".
++    pattern_cue_first = re.compile(
++        r"(?:%s)[^，。！？；、\n]{0,%d}(?P<prop>" % (
++            "|".join(re.escape(cue) for cue in _CUE_FIRST_CUES), _CUE_FIRST_GAP)
++        + "|".join(re.escape(word) for word in words) + r")")
++    claims = [match.group("prop") for match in pattern.finditer(strip_refs(text))]
++    claims.extend(match.group("prop") for match in pattern_cue_first.finditer(strip_refs(text)))
++    return claims
++
++
+ def _plain_description(markdown: str) -> str:
+     """Strip the '# 标题' heading and join the first paragraph — the KB row
+     carries the plain description, not the markdown wrapper. Also strips
+@@ -781,6 +834,105 @@ def _validate_actionable_refs(fields: dict[str, tuple[dict[str, Any], ...]],
+                        where=f"scheduled {row.get('event')}")
+ 
+ 
++def _validate_scene_objects(fields: dict[str, tuple[dict[str, Any], ...]],
++                            descriptions: dict[str, DescriptionCatalog]) -> None:
++    """Coverage gate for objective prose (issue 35).
++
++    Validates the row-level declarations (``object_presence``,
++    ``completeness``) and requires every concrete-presence claim in a
++    location description or scheduled notice to be covered by a declared
++    actionable reference, an object-presence entry, or a completeness
++    declaration. A claim naming an entity that is not even registered fails
++    here with the remediation text seed_lint surfaces.
++    """
++    items = {str(row["id"]): row for row in fields["items"]}
++    documents = {str(row["id"]): row for row in fields["documents"]}
++    registered = set(items) | set(documents)
++    locations = {str(row["id"]) for row in fields["locations"]}
++    placements = {entity: str(row["location"])
++                  for entity, row in (items | documents).items()
++                  if row.get("location") is not None}
++    findings: list[str] = []
++
++    def declarations(row: dict[str, Any], where: str) -> tuple[Any, tuple[dict[str, Any], ...]]:
++        completeness = row.get("completeness")
++        if completeness is not None and str(completeness) not in _COMPLETENESS_STATES:
++            raise ValueError(
++                f"{where} completeness must be one of "
++                f"{'/'.join(sorted(_COMPLETENESS_STATES))}: {completeness!r}")
++        presence = row.get("object_presence")
++        if presence is None:
++            return completeness, ()
++        if not isinstance(presence, list):
++            raise ValueError(f"{where} object_presence must be a list")
++        normalized = []
++        for entry in presence:
++            if not isinstance(entry, Mapping):
++                raise ValueError(f"{where} object_presence entries must be mappings")
++            name = str(entry.get("name", ""))
++            if name not in registered:
++                raise ValueError(
++                    f"{where} object_presence {name!r} is not a registered item or document")
++            state = str(entry.get("state", ""))
++            if state not in _PRESENCE_STATES:
++                raise ValueError(
++                    f"{where} object_presence state must be one of "
++                    f"{'/'.join(sorted(_PRESENCE_STATES))}: {state!r}")
++            place = entry.get("place")
++            normalized.append({"name": name,
++                               "place": None if place is None else str(place),
++                               "state": state})
++        return completeness, tuple(normalized)
++
++    def check_row(row: dict[str, Any], where: str, text: str,
++                  current: dict[str, str]) -> None:
++        completeness, presence = declarations(row, where)
++        for entry in presence:
++            if entry["state"] == "present":
++                if entry["place"] not in locations:
++                    raise ValueError(
++                        f"{where} object_presence {entry['name']!r} has an unknown "
++                        f"place {entry['place']!r}")
++                if current.get(entry["name"]) != entry["place"]:
++                    raise ValueError(
++                        f"{where} object_presence says {entry['name']!r} is present at "
++                        f"{entry['place']!r}, but it is actually placed at "
++                        f"{current.get(entry['name'])!r}")
++            elif entry["place"] is not None and entry["place"] not in locations:
++                raise ValueError(
++                    f"{where} object_presence {entry['name']!r} has an unknown "
++                    f"place {entry['place']!r}")
++        targets = {str(ref.get("target", "")) for ref in (row.get("actionable_refs") or ())
++                   if isinstance(ref, Mapping)}
++        declared = targets | {entry["name"] for entry in presence}
++        for claim in concrete_presence_claims(text, registered):
++            if completeness is not None or claim in declared:
++                continue
++            findings.append(
++                f"{where}: concrete presence claim {claim!r} is not covered — register it "
++                f"in items:/documents:, place it, and add an actionable_refs or "
++                f"object_presence entry naming {claim!r}; or mark this row "
++                f"completeness: expectation/belief/missing")
++
++    for row in fields["locations"]:
++        place = str(row["id"])
++        check_row(row, f"location {place}",
++                  descriptions["locations"].get(place, ""), dict(placements))
++    for row in sorted(fields["scheduled"],
++                      key=lambda r: datetime.fromisoformat(str(r["time"]))):
++        for effect in row.get("effects", ()):
++            op = str(effect.get("op", ""))
++            entity = str(effect.get("id", ""))
++            if op in {"add_item", "add_document", "move_item"}:
++                placements[entity] = str(effect["location"])
++            elif op == "remove_item":
++                placements.pop(entity, None)
++        check_row(row, f"scheduled {row.get('event')}",
++                  str(row.get("notice", "")), dict(placements))
++    if findings:
++        raise ValueError("; ".join(findings))
++
++
+ def world_primer(pack: WorldPack) -> str:
+     """世界设定段（V4-DESIGN 首验日反馈 #4）：从世界包自动生成的中文常识，
+     作为**逐字公共前言之后的世界段**进入每个角色的 system prompt。
+diff --git a/契约失效时请勿喂猫/v4/scripts/check_milestones.py b/契约失效时请勿喂猫/v4/scripts/check_milestones.py
+index af55e4f..8c68f88 100755
+--- a/契约失效时请勿喂猫/v4/scripts/check_milestones.py
++++ b/契约失效时请勿喂猫/v4/scripts/check_milestones.py
+@@ -111,19 +111,65 @@ def _d1_register_missing_known(ev, turns, sess):
+     return ok, f"{len(actors)} 个角色提及：{ev_lines}"
+ 
+ 
++# 台账差异锚点（issue 36）：锚点是“两名主角都获得具体差异信息并如实记为
++# 待核”，不是“两人都亲读原件”——后者会把遵守登记/授权、宁可暂缓翻阅的
++# 合法路线误判成失败。两条有效路线：
++#   A 亲读互证——陈默与林瑶各自亲读台账与导出件；
++#   B 当面传达——读过两份原件的一方当面对另一方说出具体差异值，另一方在
++#     自己的发言里承认差异、明确记为待核。
++# 差异具体值必须由已读者说出，只说“对不上”不算；全局通知或未被另一主角
++# 听到的发言都不能充当证据（防上帝视角泄漏）。
++D1_DISCREPANCY_VALUES = ("22:05", "23:30")
++D1_DISCREPANCY_SUBJECT = ("差异", "对不上", "不一致")
++D1_DISCREPANCY_PENDING = ("待核", "未核", "待确认", "未确认", "没确认",
++                          "不知道", "无法确认", "没法确认", "不猜", "不能替")
++
++
++def _d1_read_originals(reads, actor):
++    docs = {doc for _, who, doc in reads if who == actor}
++    return any("台账" in d for d in docs) and any("导出件" in d for d in docs)
++
++
++def _d1_pending_ack(text):
++    return (any(s in text for s in D1_DISCREPANCY_SUBJECT)
++            and any(w in text for w in D1_DISCREPANCY_PENDING))
++
++
+ def _d1_discrepancy_recorded(ev, turns, sess):
+     reads = _reads(ev, 1)
+-    chen = [r for r in reads if r[1] == "陈默" and "台账" in r[2]]
+-    chen2 = [r for r in reads if r[1] == "陈默" and "导出件" in r[2]]
+-    lin = [r for r in reads if r[1] == "林瑶" and "台账" in r[2]]
+-    ok_reads = chen and chen2 and lin
+-    lines = _day_texts(ev, 1)
+-    n, hits = _mentioning(lines, "22:05")
+-    n2, _ = _mentioning(lines, "23:30")
+-    both = min(n, n2) >= 1
+-    ok = bool(ok_reads) and both
+-    evd = f"陈默读档 {chen[0][0] if chen else '-'}；林瑶读档 {lin[0][0] if lin else '-'}；22:05/23:30 提及 {n}/{n2} 次"
+-    return ok, evd
++    mcs = ("陈默", "林瑶")
++    paired = {a: _d1_read_originals(reads, a) for a in mcs}
++    speeches = [(e["time"][11:16], str(e.get("actor")), e.get("payload") or {})
++                for e in _day_events(ev, 1) if e.get("kind") == "speech"]
++
++    tell = None
++    for i, (t, actor, pay) in enumerate(speeches):
++        if not paired.get(actor):
++            continue
++        text = str(pay.get("text", ""))
++        if not all(v in text for v in D1_DISCREPANCY_VALUES):
++            continue
++        other = "林瑶" if actor == "陈默" else "陈默"
++        if other not in (pay.get("heard") or []):
++            continue
++        ack = next(((t2, a2) for t2, a2, p2 in speeches[i + 1:]
++                    if a2 == other and _d1_pending_ack(str(p2.get("text", "")))),
++                   None)
++        if ack:
++            tell = (t, actor, ack)
++            break
++
++    ok_reads = all(paired.values())
++    route = ("无" if not (ok_reads or tell) else
++             "亲读互证" if ok_reads else "当面传达")
++    if tell:
++        other = "林瑶" if tell[1] == "陈默" else "陈默"
++        route_note = f"；{tell[1]} {tell[0]} 说差异→{other} {tell[2][0]} 记待核"
++    else:
++        route_note = ""
++    evd = (f"亲读两份原件 陈默={'✓' if paired['陈默'] else '✗'}"
++           f" 林瑶={'✓' if paired['林瑶'] else '✗'}；路线={route}{route_note}")
++    return (ok_reads or tell is not None), evd
+ 
+ 
+ def _d1_counselor_intervention(ev, turns, sess):
+@@ -792,7 +838,7 @@ def _d7_romance_date(ev, turns, sess):
+ MILESTONES = {
+     1: [
+         _mk_check("d1-登记缺失知晓", "登记本/值班表缺失被 ≥3 角色知晓", _d1_register_missing_known, half="am"),
+-        _mk_check("d1-台账差异记录", "陈默与林瑶都读台账+导出件，22:05/23:30 差异被发言记录", _d1_discrepancy_recorded, half="am"),
++        _mk_check("d1-台账差异记录", "两名主角各获台账差异（亲读互证 或 当面传达并被承认待核），22:05/23:30 由已读者说出", _d1_discrepancy_recorded, half="am"),
+         _mk_check("d1-辅导员介入", "辅导员 ≥5 条发言并出现程序纪律语句", _d1_counselor_intervention, half="pm"),
+         _mk_check("d1-三份个人说明", "≥3 角色提交个人情况说明", _d1_three_statements, half="pm"),
+         _mk_check("d1-字条留痕程序", "临时字条被读取且编号被提及", _d1_note_procedure, half="pm"),
+diff --git a/契约失效时请勿喂猫/v4/scripts/seed_lint.py b/契约失效时请勿喂猫/v4/scripts/seed_lint.py
+index e1ab1d5..e78c369 100644
+--- a/契约失效时请勿喂猫/v4/scripts/seed_lint.py
++++ b/契约失效时请勿喂猫/v4/scripts/seed_lint.py
+@@ -151,7 +151,13 @@ def lint(world_root: str | Path) -> list[str]:
+     ③ no dead registry entries.
+     """
+     root = Path(world_root)
+-    pack = load_world_pack(root)
++    try:
++        pack = load_world_pack(root)
++    except ValueError as exc:
++        # The world-completeness contract (issue 35) is enforced at load time:
++        # an uncovered concrete-presence claim, a bad object_presence entry, or
++        # an unknown completeness state surfaces here with the remediation text.
++        return [f"world pack violates the seed contract: {exc}"]
+     declared = _declared(pack)
+     kb_keys, universal = _kb_keys(pack)
+     universal |= universal_from_titles(sources_md(root))
+diff --git a/契约失效时请勿喂猫/v4/world/documents/场地申请表.md b/契约失效时请勿喂猫/v4/world/documents/场地申请表.md
+new file mode 100644
+index 0000000..a90bdcb
+--- /dev/null
++++ b/契约失效时请勿喂猫/v4/world/documents/场地申请表.md
+@@ -0,0 +1,3 @@
++# 场地申请表
++
++一份空白的表格，一格一格等着填。谁要用场地，自己取一张、填好、交到值班干事手上登记。
+diff --git a/契约失效时请勿喂猫/v4/world/documents/移交存根.md b/契约失效时请勿喂猫/v4/world/documents/移交存根.md
+new file mode 100644
+index 0000000..ee92eb7
+--- /dev/null
++++ b/契约失效时请勿喂猫/v4/world/documents/移交存根.md
+@@ -0,0 +1,3 @@
++# 移交存根
++
++2013 年档案交接时留存的[[移交存根]]：列明接收的册目与页数，备注栏写着"2013 年 3 月那页接收时已有缺角"。核对缺页来龙去脉时以这份原件为准。
+diff --git a/契约失效时请勿喂猫/v4/world/items/借阅登记本.md b/契约失效时请勿喂猫/v4/world/items/借阅登记本.md
+new file mode 100644
+index 0000000..fe30244
+--- /dev/null
++++ b/契约失效时请勿喂猫/v4/world/items/借阅登记本.md
+@@ -0,0 +1,3 @@
++# 借阅登记本
++
++档案室登记"谁借走过什么"的本子，平时压在进门左手的抽屉里。登记本缺失案要找的就是它——今天不在抽屉里，谁最后借走、什么时候还，都要查。
+diff --git a/契约失效时请勿喂猫/v4/world/items/值班簿.md b/契约失效时请勿喂猫/v4/world/items/值班簿.md
+new file mode 100644
+index 0000000..0b878aa
+--- /dev/null
++++ b/契约失效时请勿喂猫/v4/world/items/值班簿.md
+@@ -0,0 +1,3 @@
++# 值班簿
++
++[[学生会办公室]]长桌上摊开的一本[[值班簿]]，记录每天谁值班、何时换班。排班以正式公告为准，这本簿子只是办公室现场的随手记录。
+diff --git a/契约失效时请勿喂猫/v4/world/items/可用纸笔.md b/契约失效时请勿喂猫/v4/world/items/可用纸笔.md
+new file mode 100644
+index 0000000..db2dcd3
+--- /dev/null
++++ b/契约失效时请勿喂猫/v4/world/items/可用纸笔.md
+@@ -0,0 +1,3 @@
++# 可用纸笔
++
++长桌抽屉里的公用纸笔：几支能写的笔和一沓空白纸，谁要填表、写申请都可以取用。
+diff --git a/契约失效时请勿喂猫/v4/world/items/晚归登记本.md b/契约失效时请勿喂猫/v4/world/items/晚归登记本.md
+new file mode 100644
+index 0000000..bc40165
+--- /dev/null
++++ b/契约失效时请勿喂猫/v4/world/items/晚归登记本.md
+@@ -0,0 +1,3 @@
++# 晚归登记本
++
++[[女生宿舍]]一楼值班台上摊着的本子，晚归的学生自己签名、写时间；宿管每天核对这一页。
+diff --git a/契约失效时请勿喂猫/v4/world/items/签到本.md b/契约失效时请勿喂猫/v4/world/items/签到本.md
+new file mode 100644
+index 0000000..b455821
+--- /dev/null
++++ b/契约失效时请勿喂猫/v4/world/items/签到本.md
+@@ -0,0 +1,3 @@
++# 签到本
++
++档案室门口桌上的签到簿，值班学生到岗先在上面签名、写时间。它记录的是"谁来过"，跟记录"谁借走过什么"的[[借阅登记本]]是两回事——查借阅别翻这本。
+diff --git a/契约失效时请勿喂猫/v4/world/locations/女生宿舍.md b/契约失效时请勿喂猫/v4/world/locations/女生宿舍.md
+index a717a98..5ba8aed 100644
+--- a/契约失效时请勿喂猫/v4/world/locations/女生宿舍.md
++++ b/契约失效时请勿喂猫/v4/world/locations/女生宿舍.md
+@@ -1,5 +1,5 @@
+ # 女生宿舍
+ 
+-和[[男生宿舍]]隔一条小路，楼却新一些。一楼大厅有[[宿管阿姨]]的值班台，台上的登记本永远摊开在当天那一页。公告栏贴着查寝表和一张已经褪色的"文明寝室"奖状。三楼及以上，男生止步。
++和[[男生宿舍]]隔一条小路，楼却新一些。一楼大厅有[[宿管阿姨]]的值班台，台上的[[晚归登记本]]永远摊开在当天那一页。公告栏贴着查寝表和一张已经褪色的"文明寝室"奖状。三楼及以上，男生止步。
+ 
+ [[林瑶]]住 305，靠门的上铺，桌上一盏绿罩台灯。
+diff --git a/契约失效时请勿喂猫/v4/world/locations/学生会办公室.md b/契约失效时请勿喂猫/v4/world/locations/学生会办公室.md
+index 57cae7a..70f220a 100644
+--- a/契约失效时请勿喂猫/v4/world/locations/学生会办公室.md
++++ b/契约失效时请勿喂猫/v4/world/locations/学生会办公室.md
+@@ -1,3 +1,3 @@
+ # 学生会办公室
+ 
+-两张长桌，门边钉着一块公共公告栏，过期通知压在底下。新贴的通知以纸张形式放在这里；赶上排程张贴时，纸面会出现在“附近”，可以直接读，排程撤下时，纸张会从现场消失。审计包摊在最右边那张桌上，压着一本没人翻的值班簿。白天进进出出的人多，真正坐下来核账的没有几个。门口的公告栏是全校消息的起点，也是终点。
++两张长桌，门边钉着一块公共公告栏，过期通知压在底下。新贴的通知以纸张形式放在这里；赶上排程张贴时，纸面会出现在“附近”，可以直接读，排程撤下时，纸张会从现场消失。[[学生会审计包]]摊在最右边那张桌上，压着一本没人翻的[[值班簿]]。白天进进出出的人多，真正坐下来核账的没有几个。门口的公告栏是全校消息的起点，也是终点。
+diff --git a/契约失效时请勿喂猫/v4/world/manifest.yml b/契约失效时请勿喂猫/v4/world/manifest.yml
+index 7dd8fd9..532df1a 100644
+--- a/契约失效时请勿喂猫/v4/world/manifest.yml
++++ b/契约失效时请勿喂猫/v4/world/manifest.yml
+@@ -63,6 +63,8 @@ locations:
+     rarity: rare
+     knowledge_notes: 见过[[林瑶]]最近常往[[校史档案室]]跑；听她提过一句'旧邻居'，没细说
+     weight: 1
++  object_presence:
++  - {name: 晚归登记本, place: 女生宿舍, state: present}
+ - id: 校史档案室
+   x: 14
+   y: 0
+@@ -106,6 +108,9 @@ locations:
+     rarity: rare
+     knowledge_notes: 审计包两个总额的校内公开背景：经费来源与用途的争议
+     weight: 1
++  object_presence:
++  - {name: 学生会审计包, place: 学生会办公室, state: present}
++  - {name: 值班簿, place: 学生会办公室, state: present}
+ - id: 半坡咖啡馆
+   x: 14
+   y: 12
+@@ -365,6 +370,23 @@ items:
+ - id: 蓝色兔子贴纸
+   location:
+   known_to: [林瑶]
++# 档案室两本册子分工（issue 35）：签到本记录到岗，真实放在档案室；
++# 借阅登记本记录借还，是登记本缺失案里的那本——开局不在原位。
++- id: 签到本
++  location: 校史档案室
++  known_to: [陈默, 林瑶]
++- id: 借阅登记本
++  location:
++  known_to: [陈默, 林瑶]
++- id: 晚归登记本
++  location: 女生宿舍
++  known_to: [宿管阿姨, 林瑶室友]
++- id: 可用纸笔
++  location: 学生会办公室
++  known_to: [唐小岚, 班长]
++- id: 值班簿
++  location: 学生会办公室
++  known_to: [唐小岚, 班长, 辅导员]
+ documents:
+ - id: 2013年邻里撤离通知书
+   title: 2013年邻里撤离通知书
+@@ -404,11 +426,23 @@ documents:
+   known_to: []
+   reading_seconds: 20
+   content: 审计核对仍未完成，说明最迟明早交。
++- id: 移交存根
++  title: 2013 年档案移交存根
++  location: 校史档案室
++  known_to: [陈默, 林瑶]
++  reading_seconds: 25
++  content: 当年档案交接时留存的移交存根：列明接收的册目与页数，备注栏写着“2013 年 3 月那页接收时已有缺角”。
+ - id: 校报草稿
+   title: 校报草稿
+   location: 半坡咖啡馆
+   reading_seconds: 50
+   content: 一份校报的打印草稿，讲一件涉及报销争议的旧闻：引用了不愿具名的信源，多处句子下画着"待核实"的铅笔线，页眉写着编辑的催稿批注。
++- id: 场地申请表
++  title: 场地申请表
++  location:
++  known_to: [林瑶]
++  reading_seconds: 25
++  content: 一份空白的场地申请表格，一格一格等着填。谁要用场地，自己取一张、填好、交到值班干事手上登记。
+ routes:
+ - from: 男生宿舍
+   to: 女生宿舍
+@@ -626,7 +660,10 @@ scheduled:
+ - event: shift_reminder
+   time: '2026-03-16T07:30:00+08:00'
+   target: 陈默
+-  notice: 别忘了今天上午的[[校史档案室]]班——8:10 到岗，签到本在门口桌上。管理员交代过：先登记、后翻阅。
++  notice: 别忘了今天上午的[[校史档案室]]班——8:10 到岗，门口的[[签到本]]就在桌上，先签上名字和时间。要查借阅记录，那本[[借阅登记本]]今天不在原位——别把签到本当成它。
++  object_presence:
++  - {name: 签到本, place: 校史档案室, state: present}
++  - {name: 借阅登记本, place: 校史档案室, state: missing}
+ - event: morning_class_bell
+   time: '2026-03-16T08:00:00+08:00'
+   notice: "[[教学楼]]那边上课铃响了，[[中庭]]和[[河堤]]一下子空了下来。"
+@@ -636,7 +673,20 @@ scheduled:
+ - event: 校史档案室_shift
+   time: '2026-03-16T08:10:00+08:00'
+   target: 陈默
+-  notice: 你在档案室的上午班开始了。签到本在门口桌上，管理员今天不在，值班的学生只有你。
++  notice: 你在档案室的上午班开始了。门口的[[签到本]]就在桌上，先签上名字和时间；管理员今天不在，值班的学生只有你。[[借阅登记本]]今天不在抽屉里——要找它，得先查移交。
++  object_presence:
++  - {name: 签到本, place: 校史档案室, state: present}
++  - {name: 借阅登记本, place: 校史档案室, state: missing}
++- event: application_form_posted
++  time: '2026-03-16T08:20:00+08:00'
++  notice: "[[学生会办公室]]的公告栏上，一张《[[场地申请表]]》就贴在那里；旁边长桌的抽屉里有[[可用纸笔]]，填表可以取用。"
++  actionable_refs:
++  - {action: read, target: 场地申请表, at: 学生会办公室}
++  - {action: take, target: 场地申请表, at: 学生会办公室}
++  object_presence:
++  - {name: 可用纸笔, place: 学生会办公室, state: present}
++  effects:
++  - {op: add_document, id: 场地申请表, location: 学生会办公室}
+ - event: accessibility_check
+   time: '2026-03-16T09:30:00+08:00'
+   target: 林瑶
+@@ -661,6 +711,9 @@ scheduled:
+ - event: rain_start
+   time: '2026-03-16T12:00:00+08:00'
+   notice: 下雨了。不大，但足够让[[中庭]]的人跑进屋檐下，咖啡馆里慢慢坐满了躲雨的人。
++- event: application_rejected
++  time: '2026-03-16T12:30:00+08:00'
++  notice: "[[学生会办公室]]值班干事把话说明白了：本周的场地申请一律不受理——受理窗口过了，负责审批的委员会本周不开会；今天递来的材料当场退回，下周例会之前没有收件渠道。"
+ - event: afternoon_class
+   time: '2026-03-16T14:00:00+08:00'
+   notice: 下午课的铃声把[[教学楼]]填满，走廊里都是赶去占座的人。
+@@ -749,7 +802,11 @@ scheduled:
+ - event: ledger_found
+   time: '2026-03-19T08:20:00+08:00'
+   target: [陈默, 林瑶]
+-  notice: 管理员 W 返岗前整理旧档案柜，借阅登记本在底层柜缝里被找到了——但 2013 年 3 月那一页有搴角，缺了小半页。陈默和[[林瑶]]对视了一眼：又少了一页。
++  notice: 管理员 W 返岗前整理旧档案柜，[[借阅登记本]]在底层柜缝里被找到了——但 2013 年 3 月那一页有搴角，缺了小半页。陈默和[[林瑶]]对视了一眼：又少了一页。
++  object_presence:
++  - {name: 借阅登记本, place: 校史档案室, state: present}
++  effects:
++  - {op: add_item, id: 借阅登记本, location: 校史档案室}
+ - event: photocopy_pressure
+   time: '2026-03-19T10:30:00+08:00'
+   target: 林瑶
+@@ -850,6 +907,8 @@ scheduled:
+   time: '2026-03-23T08:30:00+08:00'
+   target: [陈默, 林瑶]
+   notice: 管理员 W 和[[陈默]]逐项核对移交清单，2013 年 3 月那页的缺角对照当年的移交存根——"接收时就缺，不是我弄丢的。"[[林瑶]]在旁边记下了存根编号。
++  actionable_refs:
++  - {action: read, target: 移交存根, at: 校史档案室}
+ - event: coop_thread
+   time: '2026-03-23T11:00:00+08:00'
+   target: [陈默, 唐小岚]
+@@ -947,7 +1006,7 @@ kb:
+   - keys: ["!always", 借出记录]
+     desc: 查清[[2013年台风台账]]的借出记录为什么被改动。
+   - keys: [校史档案室]
+-    desc: 上午班一般只有我一个人，登记本压在进门左手的抽屉里。
++    desc: 上午班一般只有我一个人。门口桌上的[[签到本]]是我到岗先签的；压在进门左手抽屉里的[[借阅登记本]]这阵子不在原位，谁借走过要另查。
+   - keys: ["!at=3/16(周一) 08:30", 上午班]
+     desc: 档案室上午班，别迟到。
+   林瑶:
+@@ -958,9 +1017,9 @@ kb:
+   - keys: ["!always", 值班表]
+     desc: 搞清楚档案室值班表这周为什么换了人。
+   - keys: [校史档案室]
+-    desc: 档案室角落的桌位光线最好，下午人少。
++    desc: 档案室角落的桌位光线最好，下午人少；门口桌上那本[[签到本]]是值班签到的，[[借阅登记本]]才是记借还的。
+   - keys: ["!at=3/16(周一) 12:30", 场地申请表]
+-    desc: 中午去[[学生会]]交无障碍改造的场地申请表。
++    desc: 中午去[[学生会]]，取一张[[场地申请表]]填好，交值班干事登记。
+   唐小岚:
+   - keys: [唐小岚]
+     desc: 我，[[唐小岚]]，二十三岁，[[半坡咖啡馆]]的咖啡师，干了四个月，还在试用期。常客的口味、座位、上一位同桌是谁我都记得；吧台是全校消息最灵的位置。

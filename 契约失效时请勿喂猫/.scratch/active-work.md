@@ -1,81 +1,51 @@
 # Active work — 契约失效时请勿喂猫 (v4 harness)
 
-Last updated: 2026-09-30 15:58 +0800
+Last updated: 2026-10-01 03:30 +0800
 
-## In flight
+## Where we are (2026-10-01 07:0x)
 
-Nothing running. D1-AM completed 2026-09-30 17:12.
+**The fixed harness completed a full d1-am run** — `runs/real-20261001T065553+0800-3307430-743575990.json`
+(`stop_at_reached` 12:59, 410 turns, 1858 events, wall 94 min). All three d1-am anchors PASS.
+Checkpoint copied to `checkpoints/d1-am.json`.
 
-**D1-AM result** — artifact `v4/runs/real-20260930T160727+0800-522904-846830380.json`
-(+ `.checkpoint.json`), model `zai-coding/glm-5.3-flash`, 317 turns / 1362 world events,
-stopped exactly at 2026-03-16T12:59:00+08:00 (`stop_at_reached`).
-Gates: all three d1-am anchors PASS; provider HTTP errors 0; marker leaks 0;
-BUT 72/317 turns were error turns (23%) — see issues 38–48.
-Per-actor review done: 12 fresh-context reviewers, each verified against its exact turn count.
+### Pre-fix vs post-fix (both to 12:59)
 
-To continue: run the `d1-pm` segment from `checkpoints/d1-am.json` **only after** the P0s
-(38 inner channel, 39 unreadable items) are fixed — the morning's defects shaped the story.
+| metric | pre-fix | post-fix |
+|---|---|---|
+| error turns | 72/317 = 23% | 52/410 = 12.7% |
+| `inner` fill | 0/317 | 397/410 (96.8%) |
+| 签到本/晚归登记本 read errors | 24+ | 0 |
+| read-claims without document_read | 4 | 1 |
+| unregistered prop claims | 48 | 20 |
+| stagnation notices / longest wait | 0 / 10 | 3 / 4 |
+| NPC longest dormancy | 3h50m | 0h45m |
+| 亲读 AUTO/主动 | 0/17 | 24/19 |
+| first-sight registrations | 0 | 60 |
+| 零回合NPC | 0 | 0 |
 
-- process: `python3 -m harness.real_run`, background, log `v4/runs/seg-d1-am.log` (block-buffered: an empty log early on is normal; check the artifact dir instead).
-- stop condition: `V3_CLOCK_STOP=2026-03-16T12:59:00+08:00` — reached.
-- env used (also in `/tmp/d1am-env.sh`):
-  `OPENAI_BASE_URL=http://127.0.0.1:4000/v1`, `OPENAI_MODEL=zai-coding/glm-5.3-flash`,
-  `V3_PROVIDER_API=chat`, `OPENAI_API_KEY=$LITELLM_API_KEY` (proxy master key),
-  `V3_PROVIDER_CONCURRENCY=8`, `V4_STALL_BUDGET_RATIO=0.60`, no `V3_RESUME_CHECKPOINT`.
+### Per-actor review (12 reviewers, all done)
 
-## New issues filed (2026-09-30, from this run)
+The `inner` field itself is clean, but reviewers cross-confirmed a NEW systemic leak:
+**the model writes private reasoning into assistant plain text, which T1 broadcasts as speech**
+(e.g. 林瑶 i=139 "不急着对陈默说" heard by 陈默; 陈默 i=402 "我一个字不碰"; 林瑶 i=319 quoting tool
+meta-reasoning). Filed as **ticket 56** — lane running now (`eaeb4ef0`).
 
-`v4-first-day/issues/38…48-*.md` — all systemic, each with a failing-first test requirement:
+Other new tickets filed from this run: **57** extras speak-only therefore narrate unperformed
+physical actions / invisible exits · **58** world primer leaks unvisited locations' interiors ·
+**59** update_memory ergonomics (24 of 52 errors — the largest class) · **60** location-prose props
+not under the completeness contract (扫描仪/专用柜/纸笔).
 
-- **38** `inner` private-thought channel unreachable (0/1356 turns across 3 runs) → all
-  deliberation is spoken aloud and heard by co-located actors. P0 information boundary.
-- **39** `world/items/*.md` bodies are not readable at runtime; error lies ("不在你手边" while
-  the item is in inventory) and suggests calls that cannot succeed. 24/72 error turns. P0.
-- **40** `known_to` doubles as a remote read grant (harness suggested an off-site read).
-- **41** 25/81 scheduled notices have no audience → scene-local dialogue broadcast world-wide.
-- **42** extra path: raw JSON + `inner` delivered as speech; extras fabricate props and narrate
-  unperformed actions; extras don't know their own name; idle-removal erases a delegated duty.
-- **43** anti-repetition monitor is a **no-op on the chain path** (`engine.py:1067` passes `None`)
-  and excludes `wait` → 9 identical failed reads / 18 waits drew zero nudges.
-- **44** `leave_note` silently ineffectual when the recipient is co-located (林瑶's 借条 never read).
-- **45** NPC wake ignores pending questions and `reminder_due` (宿管阿姨 3h12m, 陈默妈 2h13m silent).
-- **46** perception snapshot vs submit-time validation mismatch; one bad recipient voids the whole
-  utterance.
-- **47** seed: mystery answer pre-injected in a character's knowledge; inhibition rows unreachable
-  by story vocabulary; signature props never modelled.
-- **48** unperformed actions / unread content asserted as verified fact, then propagated into other
-  actors' memories.
+### Lane queue (one writer at a time)
 
-## Repo state
+56 content-channel leak (running) → 57 extras → 58 primer → 59 update_memory → 60 location props.
+After those: re-run d1-am and compare against the table above; if healthy, chain to d1-pm from
+`checkpoints/d1-am.json` and continue toward a full day.
 
-- repo: `v4` (harness), branch **`fix/v4-world-contracts`**, HEAD `013297f`.
-  `master` is at `87a7157`; the branch is **not merged** (merge once the D1 segment validates).
-- uncommitted: `v4/scripts/half_day_flow.sh` (model switch, see below);
-  untracked `契约失效时请勿喂猫/.scratch/v4-first-day/review-claims-a.diff`.
-- gates run green at this revision on 2026-09-30 15:52: v4 unittest suite **377 OK** (1 skip),
-  `scripts/seed_lint.py` OK. v3 suite 218 not re-run this session.
+### Traps learned the hard way
 
-## Decisions in force
-
-- Story model: user ruled 2026-09-30 "always use the zai/ model, via the endpoint
-  litellm provides", corrected to **`zai-coding/glm-5.3-flash`**. Route disambiguation:
-  `zai-coding/glm-5.3-flash` works (verified with native tool calls); `zai/glm-5.3-flash`
-  and every other `zai/glm-5*` group are **429 余额不足**; `volcengine/*` is **not** the
-  sanctioned route. Copilot `gpt-6-luna` (Responses transport) is monthly-quota
-  exhausted; switch back when it resets.
-- The machine proxy on `127.0.0.1:4000` rejects `sk-noauth` (400); the master key is required.
-- copy the finished artifact to `checkpoints/d1-am.json` before resuming (`segment()` in
-  `scripts/half_day_flow.sh` does this); per-actor review used
-  `/tmp/d1am-review/<actor>.json` extracts + 12 `reviewer` subagents.
-
-## Known blockers
-
-- `zai` (non-coding) account balance (user-only action) if that route is ever wanted.
-- Copilot monthly quota (resets on its own schedule).
-
-## Open follow-ups
-
-- Issues ledger: `v4-first-day/issues/27…37-*.md` (last filed: 37 world-contract review).
-- P2s noted but not yet done: single compaction regression test; 值班簿-style sweeps
-  are now lint-gated, so no further per-sample patches.
-- Merge `fix/v4-world-contracts` → `master` after the D1 segment passes its checks.
+- The litellm proxy gets restarted externally and quota resets shift model availability: probe
+  before launching (`zai/glm-5.3-flash` works now; `volcengine/*` hits a 5-hour quota; workers use
+  `deepseek/deepseek-flash`; reviewers `deepseek/deepseek-v4-pro`).
+- `runs/*.checkpoint.json` is NOT the run artifact — a progress probe must exclude `*.checkpoint.json`
+  and `*.seed-checkpoint.json` (`/tmp/probe.py <stem>` does).
+- Environment-dependent gates: v3 and v4 suites need `OPENAI_MODEL` set.
