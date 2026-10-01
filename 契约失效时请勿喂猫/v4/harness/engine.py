@@ -45,6 +45,7 @@ from .npc_agent import (build_extra_briefing, build_extra_system_prompt,
                         extra_heard_speech_since, extra_scene_transcript,
                         generate_stranger_name, looks_like_private_reasoning,
                         looks_like_protocol_envelope,
+                        looks_like_protocol_reasoning,
                         restore_extra_prompt, sample_extra)
 from .prompt import render_world_message, _event_sentence, _clean_description
 from .kb import CONTACT_KEY
@@ -126,6 +127,16 @@ def verb_gap_teaching(name: str) -> str | None:
     ``None`` for any name that is not a known gap verb, so the caller keeps
     its ordinary retired-tool / unknown-action handling."""
     return VERB_GAP_TEACHING.get(str(name))
+
+
+# Ticket 56 extension: a protocol/tool meta-reasoning line that arrives in a
+# speak/text `text` argument is a formatting error, never content — the world
+# refuses to deliver it and tells the actor how to fix it. Only the protocol
+# tokens apply here; the concealment/plan markers stay plain-content-only
+# (a person may say "我不能让他们知道" aloud).
+PROTOCOL_TEXT_WITHHELD = (
+    "世界没有把这段送出去：它带着协议/工具字段的说明（inner/arguments/记忆调用/格式错 之类），"
+    "是格式错误，不是你说出口的话。请只写真正的台词，把心里话放进工具调用的 inner。")
 
 
 def render_verb_gap_block() -> str:
@@ -1471,6 +1482,20 @@ class AsyncEngine:
                 results.append({"tool_call_id": call.get("tool_call_id"), "ok": True,
                                 "text": "\n".join(lines) or "（没有与你经历相关的可回放历史。）"})
                 continue
+            if name in {"speak", "text"}:
+                # Ticket 56 extension: a line carrying protocol/tool
+                # meta-reasoning can never be a real spoken line or message,
+                # even inside speak/text's own `text` argument — it is a
+                # formatting error. Withhold it (never submit), record it
+                # privately and show the same self-correction. The
+                # concealment/plan markers do NOT apply here.
+                line = str(args.get("text") or "")
+                if looks_like_protocol_reasoning(line):
+                    withheld_private = True
+                    if not withheld_text:
+                        withheld_text = line
+                    fail(call, PROTOCOL_TEXT_WITHHELD)
+                    continue
             if name == "speak":
                 # Merged ask (ticket 22): speak is the only addressed speech
                 # tool. to is schema-required (present people or ["陌生人"]);

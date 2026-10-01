@@ -427,6 +427,23 @@ _PRIVATE_CONCEALMENT_PLEDGE = re.compile(
     r"|不急着[对跟和向给][^。！？\n]{0,20}说")
 
 
+def looks_like_protocol_reasoning(text: str) -> str | None:
+    """Return the matched protocol/tool meta-reasoning marker, else None.
+
+    Ticket 56 extension: this is class (a) alone — the tokens that describe
+    the protocol itself (`inner`/`arguments`/记忆调用/格式错/指令词/占一格) and
+    can never be a real spoken line. Unlike ``looks_like_private_reasoning``
+    it deliberately excludes the concealment/plan markers, because a person
+    MAY say "我不能让他们知道" aloud. The engine applies this one to the
+    `text` argument of ``speak``/``text``; the full predicate stays the
+    plain-content guard."""
+    stripped = str(text).strip()
+    if not stripped:
+        return None
+    match = _PRIVATE_PROTOCOL_TOKENS.search(stripped)
+    return match.group(0) if match is not None else None
+
+
 def looks_like_private_reasoning(text: str) -> str | None:
     """Return the matched private marker for a would-be spoken line, else None.
 
@@ -436,12 +453,10 @@ def looks_like_private_reasoning(text: str) -> str | None:
     不急着对陈默说" (heard 陈默), 林瑶 "记忆调用格式错了——指令词得单独占
     一格" (heard 辅导员/陈默). The match is the audit reading; the engine only
     needs its truthiness."""
-    stripped = str(text).strip()
-    if not stripped:
-        return None
-    match = _PRIVATE_PROTOCOL_TOKENS.search(stripped)
-    if match is None:
-        match = _PRIVATE_CONCEALMENT_PLEDGE.search(stripped)
+    marker = looks_like_protocol_reasoning(text)
+    if marker is not None:
+        return marker
+    match = _PRIVATE_CONCEALMENT_PLEDGE.search(str(text).strip())
     return match.group(0) if match is not None else None
 
 

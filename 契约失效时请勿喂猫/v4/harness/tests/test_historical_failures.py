@@ -317,7 +317,13 @@ T56 private reasoning in the assistant正文 was broadcast (ticket 56) . test_pr
                                                                test_genuine_line_still_broadcasts,
                                                                test_self_correction_note_states_the_rule,
                                                                test_prompt_names_the_inner_channel_and_stays_verbatim,
-                                                               test_checker_counts_withheld_and_still_broadcast_private
+                                                               test_checker_counts_withheld_and_still_broadcast_private,
+                                                               test_protocol_marker_scope_excludes_concealment,
+                                                               test_protocol_text_in_speak_is_never_broadcast,
+                                                               test_protocol_text_in_text_is_never_sent,
+                                                               test_genuine_speak_text_still_goes_out,
+                                                               test_genuine_text_message_still_goes_out,
+                                                               test_concealment_in_speak_text_is_not_withheld
     real-20261001T065553, five independent reviewers: the `inner` FIELD was
     clean (ticket 38) but the model wrote private reasoning into the assistant
     PLAIN TEXT, which T1 broadcasts as `speak`. 陈默 i=402 ("回答要挑着说…
@@ -331,6 +337,13 @@ T56 private reasoning in the assistant正文 was broadcast (ticket 56) . test_pr
     recording it in that actor's private turn, counting it, and showing the
     actor one self-correction — while genuine lines, including
     "（把热美式推过吧台）给，趁烫。" and "我先走了。", still broadcast.
+    Extension (this lane, per the acceptance review): the protocol/tool
+    meta-reasoning markers alone also apply to the `text` argument of
+    `speak`/`text` — such a line is a formatting error, never a line or a
+    message, so it is withheld (not spoken, not sent) with the same private
+    record, self-correction and count; the concealment/plan markers stay
+    plain-content-only (a person may say "我不能让他们知道" aloud). A lone
+    "格式" never triggers — only the 格式错 pairing does.
 """
 
 import json
@@ -3145,6 +3158,168 @@ class Ticket56PrivateContentGates(unittest.TestCase):
         reading = report["正文被判为私密而未广播"]
         self.assertIn("1（", reading)
         self.assertIn("仍被广播的私密正文 1", reading)
+
+
+# Ticket 56 extension red fixtures: protocol/tool meta-reasoning placed in a
+# speak/text `text` argument. It cannot be a real line or message. The second
+# is the same line the content path already withholds.
+_T56_PROTOCOL_ARG_LINES = [
+    "记忆调用格式错了——指令词得单独占一格。",
+    "inner 里该写心里话，不该写进正文。",
+]
+# Green: genuine lines that must still go out through the same tool args. The
+# format one pins that a lone "格式" never triggers (only the 格式错 pairing).
+_T56_GENUINE_ARG_LINES = [
+    "（把热美式推过吧台）给，趁烫。",
+    "这张表的格式我看看，回头给你回话。",
+    "我先走了。",
+]
+
+
+class _NoteRecordingSession:
+    """Records the ticket-56 self-corrections the engine sends the actor."""
+
+    def __init__(self):
+        self.notes = 0
+
+    def note_private_content(self):
+        self.notes += 1
+
+
+class _ProtocolArgChainAgent(_ChainAgent):
+    """`_ChainAgent` whose session object records self-corrections."""
+
+    def __init__(self):
+        super().__init__()
+        self.session_obj = _NoteRecordingSession()
+
+
+def _protocol_arg_engine(world):
+    """A chain engine on the ticket-56 extension seam (session-aware)."""
+    agents = {actor_id: _ProtocolArgChainAgent() for actor_id in world.actors}
+    engine = AsyncEngine(world, agents,
+                         {actor_id: PrivateState(actor_id) for actor_id in world.actors},
+                         Trace("v4-test", "ticket56-protocol-arg"), None,
+                         decision_timeout=10, max_wall_seconds=30)
+    engine._scheduler_wake = threading.Event()
+    engine._stop_horizon = None
+    return engine, agents
+
+
+class Ticket56ProtocolArgumentGates(unittest.TestCase):
+    """Ticket 56 extension: protocol/tool meta-reasoning is a formatting
+    error even inside a speak/text `text` argument. Withhold it (never
+    broadcast / never send), record it privately, self-correct and count.
+    Concealment/plan markers stay plain-content-only."""
+
+    START = datetime.fromisoformat("2026-03-16T09:00:00+08:00")
+
+    def _scene(self):
+        return World(start=self.START,
+                     actors=[ActorState("陈默", "档案室"), ActorState("班长", "档案室")],
+                     locations=[LocationState("档案室")], routes={})
+
+    def _perception(self, world, who="陈默"):
+        return {"time": world.now.isoformat(),
+                "nearby_actors": [a for a in ("陈默", "班长") if a != who],
+                "events": []}
+
+    def test_protocol_marker_scope_excludes_concealment(self):
+        from harness.npc_agent import (looks_like_private_reasoning,
+                                       looks_like_protocol_reasoning)
+        for line in _T56_PROTOCOL_ARG_LINES:
+            self.assertIsNotNone(looks_like_protocol_reasoning(line), line)
+        # Concealment is class (b) only: the speak/text-arg guard must not
+        # apply it (a person may say it aloud).
+        self.assertIsNone(looks_like_protocol_reasoning("这事我不能让他们知道。"))
+        self.assertIsNotNone(looks_like_private_reasoning("这事我不能让他们知道。"))
+        for line in _T56_GENUINE_ARG_LINES:
+            self.assertIsNone(looks_like_protocol_reasoning(line), line)
+
+    def test_protocol_text_in_speak_is_never_broadcast(self):
+        for line in _T56_PROTOCOL_ARG_LINES:
+            world = self._scene()
+            engine, agents = _protocol_arg_engine(world)
+            engine._execute_chain("陈默", [{
+                "name": "speak",
+                "arguments": {"text": line, "volume": "normal", "to": ["班长"]},
+                "tool_call_id": "s1"}], self._perception(world),
+                world.affordances("陈默"), world.version)
+            self.assertFalse(any(e.kind == "speech" for e in world.event_log),
+                             f"协议文本被当作台词广播：{line}")
+            result = agents["陈默"].delivered[0]
+            self.assertFalse(result["ok"])
+            self.assertIn("不是你说出口的话", result["text"])
+            turn = engine.trace.agent_turns[-1]
+            self.assertTrue(turn["withheld_private"], line)
+            self.assertIn(line, str(turn["withheld_text"]))
+            self.assertEqual(agents["陈默"].session_obj.notes, 1,
+                             "speak 参数路径缺少自纠提示")
+
+    def test_protocol_text_in_text_is_never_sent(self):
+        for line in _T56_PROTOCOL_ARG_LINES:
+            world = self._scene()
+            engine, agents = _protocol_arg_engine(world)
+            engine._execute_chain("陈默", [{
+                "name": "text",
+                "arguments": {"target": "班长", "text": line},
+                "tool_call_id": "t1"}], self._perception(world),
+                world.affordances("陈默"), world.version)
+            kinds = [e.kind for e in world.event_log]
+            self.assertNotIn("message_sent", kinds, f"协议文本被当作短信发出：{line}")
+            self.assertNotIn("message_delivered", kinds)
+            result = agents["陈默"].delivered[0]
+            self.assertFalse(result["ok"])
+            turn = engine.trace.agent_turns[-1]
+            self.assertTrue(turn["withheld_private"], line)
+            self.assertEqual(agents["陈默"].session_obj.notes, 1)
+
+    def test_genuine_speak_text_still_goes_out(self):
+        for line in ("（把热美式推过吧台）给，趁烫。",
+                     "这张表的格式我看看，回头给你回话。", "我先走了。"):
+            world = self._scene()
+            engine, agents = _protocol_arg_engine(world)
+            engine._execute_chain("陈默", [{
+                "name": "speak",
+                "arguments": {"text": line, "volume": "normal", "to": ["班长"]},
+                "tool_call_id": "s1"}], self._perception(world),
+                world.affordances("陈默"), world.version)
+            speech = next(e for e in world.event_log if e.kind == "speech")
+            self.assertEqual(speech.payload["text"], line)
+            self.assertTrue(agents["陈默"].delivered[0]["ok"], line)
+            self.assertFalse(any(t.get("withheld_private")
+                                 for t in engine.trace.agent_turns))
+
+    def test_genuine_text_message_still_goes_out(self):
+        line = "班长，这张表的格式我看看，回头给你回话。"
+        world = self._scene()
+        engine, agents = _protocol_arg_engine(world)
+        engine._execute_chain("陈默", [{
+            "name": "text",
+            "arguments": {"target": "班长", "text": line},
+            "tool_call_id": "t1"}], self._perception(world),
+            world.affordances("陈默"), world.version)
+        sent = next(e for e in world.event_log if e.kind == "message_sent")
+        self.assertEqual(sent.payload["target"], "班长")
+        delivered = next(e for e in world.event_log if e.kind == "message_delivered")
+        self.assertEqual(delivered.payload["text"], line)
+        self.assertTrue(agents["陈默"].delivered[0]["ok"])
+
+    def test_concealment_in_speak_text_is_not_withheld(self):
+        """Scoping pin: the concealment/plan markers stay plain-content-only,
+        so a real line like "这事我不能让他们知道" still goes out."""
+        line = "班长，这事我不能让他们知道，你帮我把口风咬紧。"
+        world = self._scene()
+        engine, agents = _protocol_arg_engine(world)
+        engine._execute_chain("陈默", [{
+            "name": "speak",
+            "arguments": {"text": line, "volume": "normal", "to": ["班长"]},
+            "tool_call_id": "s1"}], self._perception(world),
+            world.affordances("陈默"), world.version)
+        speech = next(e for e in world.event_log if e.kind == "speech")
+        self.assertEqual(speech.payload["text"], line)
+        self.assertTrue(agents["陈默"].delivered[0]["ok"])
+        self.assertFalse(any(t.get("withheld_private") for t in engine.trace.agent_turns))
 
 
 if __name__ == "__main__":
