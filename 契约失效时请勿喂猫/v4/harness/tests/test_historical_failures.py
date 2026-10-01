@@ -179,6 +179,33 @@ I61 unmarked placed documents were world-public (ticket 61) ..... test_document_
     non-blocking seed lint flags a placed document whose body asserts a
     concrete state (折痕/缺页/涂改/缺角…) while `known_to` is empty, so the
     author confirms the state is not meant to be common knowledge.
+I62 concepts' desc carried state/conclusions to a wide known_to (ticket 62) ... ConceptStateLeakGates
+    (test_unmet_actors_do_not_carry_the_concept_conclusions,
+     test_the_world_primer_carries_no_concept_state,
+     test_reaching_the_ledger_yields_the_borrow_state,
+     test_holding_the_notice_yields_the_unfinished_arrow,
+     test_plot_owners_keep_the_concepts_they_need,
+     test_wide_known_to_with_a_state_desc_warns_and_narrowing_silences_it)
+    d1-am artifacts: 食堂大妈's #knowledge block (real-20260930T160727) carried
+    the verbatim concept line "[器材室]: 借出两台抽水泵的地方，登记人签名潦草。
+    2013 年那晚的借出时间在纸质台账和导出件上对不上。" although she never read
+    the 台账/导出件; flood-route-note's "箭头没画完" reached all ten actors
+    (known_to 全列), and old-neighbor-rep's desc named the signer outright.
+    Root cause is the ticket-61 family: `known_to` means "knows the thing
+    exists" (ticket 40), but the concept `desc` is delivered as a knowledge
+    line, so "knows of it" read as "knows the state/conclusion". Fix: a concept
+    desc states only what the thing is; state/conclusions (未画完 / 对不上 /
+    签名人) come from a source through the ticket-49 observed path;
+    flood-route-note narrows to the two actors the plot needs (陈默 holds the
+    notice in his drawer, 林瑶 needs its evidence), and the notice stays
+    unmarked — its body's names resolve for nobody, matching ticket 61's
+    runtime default (the seed lint's structural scope for an unmarked
+    item/document is now "nobody", not "everyone"). A non-blocking seed lint
+    warns when a desc still carries a state/conclusion word while `known_to`
+    lists ≥5 actors. Residual, deliberately NOT fixed in this lane: the
+    characters' own memory rows and the other concepts (primary-school,
+    flood-route-2013, audit-case) still state conclusions; only the three
+    flagged concepts are in scope.
 I59 update_memory key friction was the run's largest error class (ticket 59) ... test_scheduled_key_label_and_bare_weekday_are_accepted,
                                                                test_fused_always_label_is_accepted,
                                                                test_compound_key_error_names_the_closest_existing_row,
@@ -3821,6 +3848,117 @@ class DocumentWorldPublicGuardTests(unittest.TestCase):
         self.assertIn(self.LEDGER_STATE, packet["descriptions"]["2013年台风台账"])
         self.assertIn(self.LEDGER_STATE,
                       world.actors["宿管阿姨"].observed["2013年台风台账"]["objective"])
+
+
+class ConceptStateLeakGates(unittest.TestCase):
+    """I62 (ticket 62, d1-am artifacts): a concept's `desc` is the identity
+    shared with its `known_to` actors, never a state or a conclusion.
+
+    食堂大妈's #knowledge block (real-20260930T160727) carried "[器材室]: 借出两台
+    抽水泵的地方，登记人签名潦草。2013 年那晚的借出时间在纸质台账和导出件上对
+    不上。" though she never read either document; flood-route-note's "箭头没画完"
+    reached all ten actors; old-neighbor-rep's desc named the signer outright.
+    `known_to` means "knows it exists" (ticket 40); the detail must come from a
+    source (ticket 49). These gates pin the leak, the source, and the plot need.
+    """
+
+    # Verbatim clauses of the three descs before the fix. None is identity.
+    LEAKED = (
+        "箭头没画完",                        # flood-route-note: unfinished arrow
+        "登记人签名潦草",                    # equipment-room: the register's state
+        "借出时间在纸质台账和导出件上对不上",  # equipment-room: the discrepancy
+        "落款上签名的那个人",                # old-neighbor-rep: who signed
+        "审计要的责任人指向他",              # old-neighbor-rep: the conclusion
+    )
+    # d1-am actors who never reached the notice or either 2013 document.
+    UNMET = ("宿管阿姨", "辅导员", "班长", "陈默妈", "林瑶室友", "唐小岚",
+             "食堂大妈")
+
+    def test_unmet_actors_do_not_carry_the_concept_conclusions(self):
+        # (a) red before the fix: every actor's KB held flood-route-note's
+        # "箭头没画完", and 食堂大妈 carried equipment-room's "对不上" clause.
+        pack = load_story_pack()
+        for actor in self.UNMET:
+            delivered = "\n".join(str(row["desc"]) for row in pack.kb[actor])
+            for phrase in self.LEAKED:
+                self.assertNotIn(phrase, delivered,
+                                 f"{actor} never reached the source (I62)")
+
+    def test_the_world_primer_carries_no_concept_state(self):
+        from harness.world_loader import world_primer
+        primer = world_primer(load_story_pack())
+        for phrase in self.LEAKED:
+            self.assertNotIn(phrase, primer)
+
+    def test_reaching_the_ledger_yields_the_borrow_state(self):
+        # (b) the state survives as a real source: reading the two 2013
+        # documents yields the signature state and the two timestamps.
+        world = load_story_pack().build_world()
+        world.actors["宿管阿姨"].location = "校史档案室"
+        for document, expect in (("2013年台风台账", ("经手人签名潦草", "22:05")),
+                                 ("2013年外借记录导出件", ("23:30", "对不上"))):
+            world.submit(Intention("宿管阿姨", "read", {"item": document},
+                                   world.version))
+            world.advance()
+            world.advance()
+            read = next(e for e in world.event_log if e.kind == "document_read"
+                        and e.payload.get("document") == document)
+            for clause in expect:
+                self.assertIn(clause, read.payload["content"])
+
+    def test_holding_the_notice_yields_the_unfinished_arrow(self):
+        # (b) 陈默 holds the notice, so the ticket-49 observation gives him the
+        # objective line with the unfinished arrow — identity-only desc loses
+        # nothing a source cannot return.
+        world = load_story_pack().build_world()
+        packet = world.poll("陈默")
+        self.assertIn("没写完的箭头", packet["descriptions"]["2013年邻里撤离通知书"])
+        self.assertIn(
+            "没写完的箭头",
+            world.actors["陈默"].observed["2013年邻里撤离通知书"]["objective"])
+
+    def test_plot_owners_keep_the_concepts_they_need(self):
+        # (c) narrowing must not cut a legitimately-knowing actor: 陈默/林瑶 are
+        # the two actors the plot needs, and 食堂大妈's own card asserts the
+        # public 器材室 rumor.
+        pack = load_story_pack()
+        keys = {actor: {key for row in rows for key in row["keys"]}
+                for actor, rows in pack.kb.items()}
+        for actor in ("陈默", "林瑶"):
+            for concept in ("洪水路线旁注", "老街坊代表", "器材室"):
+                self.assertIn(concept, keys[actor])
+        self.assertIn("器材室", keys["食堂大妈"],
+                      "her card states the public 器材室 rumor")
+        for actor in ("宿管阿姨", "辅导员", "班长", "陈默妈", "林瑶室友"):
+            self.assertNotIn("洪水路线旁注", keys[actor])
+
+    def test_wide_known_to_with_a_state_desc_warns_and_narrowing_silences_it(self):
+        # (3) the non-blocking lint: a state/conclusion word in a desc handed
+        # to ≥5 actors is visible; narrowing `known_to` silences it.
+        lint = _seed_lint_module()
+        self.assertEqual(lint.concept_state_warnings(_world_root()), [],
+                         "the shipped descs carry identity only")
+        with TemporaryDirectory() as directory:
+            root = _copy_world(directory)
+
+            def widen(data):
+                row = next(c for c in data["concepts"] if c["id"] == "flood-route-note")
+                row["desc"] = "撤离通知书页边一条铅笔画的窄窄洪水路线，箭头没画完。"
+                row["known_to"] = ["陈默", "林瑶", "唐小岚", "宿管阿姨", "食堂大妈",
+                                   "辅导员", "班长", "陈默妈", "林瑶室友", "下棋大爷"]
+
+            _edit_manifest(root, widen)
+            warnings = lint.concept_state_warnings(root)
+            self.assertTrue(any("flood-route-note" in w and "没画完" in w
+                                for w in warnings), warnings)
+
+            def narrow(data):
+                row = next(c for c in data["concepts"] if c["id"] == "flood-route-note")
+                row["known_to"] = ["陈默", "林瑶"]
+
+            _edit_manifest(root, narrow)
+            self.assertEqual(lint.concept_state_warnings(root), [],
+                             "a narrow known_to is not a shared conclusion")
 
 
 class Ticket59UpdateMemoryGates(unittest.TestCase):

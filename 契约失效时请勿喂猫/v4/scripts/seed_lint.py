@@ -22,7 +22,10 @@ names props the world can produce, and inline manifest content is a name
 carrier. Ticket 60 extends that prop contract to a location's interior detail:
 a concrete prop named there must resolve to a registered entity/concept or be
 written as unusable in the same sentence. Homonym collisions are printed as
-non-blocking `warning:` lines.
+non-blocking `warning:` lines, as are two ticket-61/62 silent-default traps: a
+placed document whose body asserts a concrete state while naming no
+`known_to` (ticket 61), and a concept whose `desc` states a status/conclusion
+while `known_to` hands it to many actors (ticket 62).
 """
 
 from __future__ import annotations
@@ -178,7 +181,14 @@ def _scope_holders(pack, source: str) -> list[str] | None:
             return []
         known_to = rows[entity].get("known_to")
         if known_to is None:
-            return None  # public visible layer: every actor holds this row
+            # Ticket 61 changed the runtime default: a location's brief stays
+            # world-level (every aware actor holds that row), but an item or
+            # document is world-public only when the seed says so. An unmarked
+            # one expands to nobody's KB, so it imposes no per-actor marker
+            # resolution — whoever reaches it gets the body through the
+            # ticket-49 observation instead (ticket 62 narrows concepts that
+            # appear only in such a body).
+            return None if kind == "locations" else []
         return [str(a) for a in known_to if str(a) in pack.kb]
     if source == "manifest.yml":
         return None  # checked separately, per structured scope
@@ -572,6 +582,48 @@ def document_state_warnings(world_root: str | Path) -> list[str]:
     return warnings
 
 
+# Ticket 62: a concept's `desc` is the identity shared with every `known_to`
+# actor — "what this thing is", never its state or a conclusion drawn from a
+# source. A state/conclusion word in a widely-shared desc is the ticket-61
+# pattern again: `known_to` means "knows it exists" (ticket 40), but the desc
+# rides out as a knowledge line, so "knows of it" reads as "knows its detail".
+# The d1-am artifacts show the cost — 宿管阿姨/辅导员/食堂大妈 all carried
+# `flood-route-note`'s "箭头没画完", and 食堂大妈's KB held 器材室's
+# "借出时间…对不上" verbatim though she never read the 台账/导出件. The detail
+# belongs to a source (reading / being shown / being told; ticket 49).
+_CONCEPT_STATE_WORDS: tuple[str, ...] = (
+    "未画完", "没画完", "没写完", "对不上", "签名人", "签名潦草", "墨迹深浅",
+    "缺页", "缺角", "涂改", "折痕", "破损", "磨损", "水渍", "霉斑", "虫蛀",
+    "撕破", "没署名", "没有署名", "没标注", "没有标注", "代笔", "责任人",
+)
+# A `known_to` this wide turns a leaked state into a shared conclusion.
+_WIDE_KNOWN_TO = 5
+
+
+def concept_state_warnings(world_root: str | Path) -> list[str]:
+    """Ticket 62 (non-blocking): a concept whose `desc` states a status or a
+    conclusion while its `known_to` hands that line to many actors.
+
+    The fix has two halves that must both hold: write only the identity into
+    `desc`, and let whoever reads / is shown / is told the source obtain the
+    state (ticket 49). This warns when only the first half is missing — a
+    state word still sits in a desc delivered to at least `_WIDE_KNOWN_TO`
+    actors — so a human confirms whether the conclusion is really shared.
+    Returns warning lines for the non-blocking channel (never a finding).
+    """
+    pack = load_world_pack(Path(world_root))
+    warnings: list[str] = []
+    for concept in pack.concepts:
+        hit = next((word for word in _CONCEPT_STATE_WORDS if word in concept["desc"]), None)
+        if hit is None or len(concept["known_to"]) < _WIDE_KNOWN_TO:
+            continue
+        warnings.append(
+            f"concept {concept['id']}: desc 含状态/结论词 {hit!r} 而 known_to 列了 "
+            f"{len(concept['known_to'])} 人 — 这等于把结论发给多人：desc 只写「这是什么」，"
+            "细节应由读到/被展示/被告知获得（ticket 49）；确认这份结论确实众知，否则收窄。")
+    return warnings
+
+
 def _inline_content_findings(pack) -> list[str]:
     """Ticket 47 / K47d: inline manifest `content`/`desc` is a name carrier.
 
@@ -701,6 +753,10 @@ def main() -> int:
         warnings = []
     try:
         warnings.extend(document_state_warnings(args.world))
+    except ValueError:
+        pass
+    try:
+        warnings.extend(concept_state_warnings(args.world))
     except ValueError:
         pass
     for note in warnings:
