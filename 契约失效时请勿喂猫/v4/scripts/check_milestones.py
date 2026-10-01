@@ -23,6 +23,9 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from harness.npc_agent import looks_like_private_reasoning  # noqa: E402
+
 DAY_DATES = {
     1: "2026-03-16", 2: "2026-03-17", 3: "2026-03-18", 4: "2026-03-19",
     5: "2026-03-20", 6: "2026-03-21", 7: "2026-03-22", 8: "2026-03-23",
@@ -1167,6 +1170,36 @@ def unregistered_object_claims(world_events, day: int, *, registry=None):
     return hits
 
 
+def withheld_private_turns(turns, day: int):
+    """Ticket 56 (review only): turns whose plain text the engine withheld as
+    private reasoning instead of broadcasting it as speech (the trace records
+    it on the private turn as `withheld_private`/`withheld_text`)."""
+    date = DAY_DATES[day]
+    return [t for t in turns
+            if t.get("withheld_private")
+            and str((t.get("perception") or {}).get("time", "")).startswith(date)]
+
+
+def broadcast_private_speeches(world_events, day: int):
+    """Ticket 56 (review only): same-day speech the high-precision predicate
+    classifies as private reasoning — private content the artifact still
+    broadcast. On a post-fix run this is the leak the guard missed; on a
+    pre-fix artifact it is the original defect's evidence."""
+    hits = []
+    for event in _day_events(world_events, day):
+        if event.get("kind") != "speech":
+            continue
+        for txt in _texts(event):
+            marker = looks_like_private_reasoning(txt)
+            if not marker:
+                continue
+            hits.append({"time": str(event.get("time") or ""),
+                         "actor": str(event.get("actor") or ""),
+                         "marker": marker, "text": txt.strip()})
+            break
+    return hits
+
+
 def _reading(hits, fmt) -> str:
     """Render a review-only reading as a count plus up to three samples."""
     if not hits:
@@ -1216,6 +1249,18 @@ def health_report(data, day: int):
     unread_claims = read_claims_without_a_read(data.get("world_events", []), day)
     unregistered_objects = unregistered_object_claims(
         data.get("world_events", []), day, registry=registry)
+    # Ticket 56: private reasoning written into the assistant's plain text
+    # (which T1 would broadcast). The first number is what the guard withheld
+    # this run; the second is the same predicate applied to the day's speech
+    # events — private content the artifact still broadcast. Review only.
+    private_withheld = withheld_private_turns(turns, day)
+    private_broadcast = broadcast_private_speeches(data.get("world_events", []), day)
+    private_reading = (f"{len(private_withheld)}（仍被广播的私密正文 "
+                       f"{len(private_broadcast)}")
+    if private_broadcast:
+        private_reading += "；" + "；".join(
+            f"{h['time'][11:16]} {h['actor']}" for h in private_broadcast[:3])
+    private_reading += "）"
     # Ticket 43: repetition/stagnation observability. A stagnation notice is
     # the frontier line naming the wait length and the actions still available;
     # the longest consecutive wait shows the shape of a stalled stretch.
@@ -1282,6 +1327,7 @@ def health_report(data, day: int):
             "提供商HTTP错误": len(http), "标记泄漏条数": leak,
             "inner填充率": inner_rate,
             "疑似心声混进speech": inner_in_speech,
+            "正文被判为私密而未广播": private_reading,
             "亲读（AUTO/主动）": f"{len(auto_reads)}/{len(day_reads) - len(auto_reads)}",
             "首次看见登记": len(observed_events),
             "断言读过但无document_read": _reading(

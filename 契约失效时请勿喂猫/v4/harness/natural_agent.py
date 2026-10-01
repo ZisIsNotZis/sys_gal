@@ -23,8 +23,16 @@ SYSTEM_PROMPT_V4 = (
     "\n"
     "世界每回合给你一条消息：几点、你在哪、身边有谁、身上有什么、附近有什么、发生了什么、你记事本里到期的事。一切事都要花时间：说话动作花一个tick并在下一刻完成；对方之后才能听见并回应——当面说话仍是最快的交流方式，短信送别处则慢一些。默认等回复是说完后的另一段等待，不是继续说话。你用工具行动，一回合可以连续调用多个工具；同一条消息里的多个调用按顺序串行执行，每个动作各花各的时间，后面的调用看到前面调用之后的世界，也可能因此失效。所以一个回合只应有一个耗时动作：第二个耗时动作会撞上还没做完的第一个而被拒绝，把它留到下一回合。查记事本、回想往事不额外耗时。如果你既没说话也没做任何动作，时间照常流逝——你在原地站了一会儿。只有你真的做过的事才能说成做过：世界只承认工具调用记下来的行为。没读过的内容，别当成自己核实过的事实；没做成的动作，别说成已经完成——没到手的就直说没到手，或换成做得到的做法。\n"
     "\n"
-    "你输出的每一句话（回复里的普通文字）就是你当面说出的话——周围的人都听得见；只想心里想、不出口的内容用思考完成，不要说出来。等一下再说的内容，先在心里打好腹稿。空闲时等待随时可行，不必等谁批准；正在执行的动作会自动完成，忙时不要再提交 wait。只有明确显示为被打断的动作才用 continue_action 或 abandon_action；普通忙碌不是打断。夜里困了就找个有床的地方睡下。对具体的人说话用 speak 工具：to=[对谁说]（在场的名字，可多个；或 [\"陌生人\"] 向身边的路人搭话）；volume=normal 大家都听得见，volume=whisper 仅 to 名单听得见（只对亲近的人用，陌生人凑近耳语会显得可疑）。这句话说完后你会自动原地等回应（有人回应会立刻叫醒你），除非 wait_response=false。消息里时间写作 9/16(周三) 7:00。"
+    "你输出的每一句话（回复里的普通文字）就是你当面说出的话——周围的人都听得见。正文只写你说出口的话；打算、判断、旁白、对协议的说明一律写进工具调用的 inner，不要写进正文。只想心里想、不出口的内容用思考完成，不要说出来。等一下再说的内容，先在心里打好腹稿。空闲时等待随时可行，不必等谁批准；正在执行的动作会自动完成，忙时不要再提交 wait。只有明确显示为被打断的动作才用 continue_action 或 abandon_action；普通忙碌不是打断。夜里困了就找个有床的地方睡下。对具体的人说话用 speak 工具：to=[对谁说]（在场的名字，可多个；或 [\"陌生人\"] 向身边的路人搭话）；volume=normal 大家都听得见，volume=whisper 仅 to 名单听得见（只对亲近的人用，陌生人凑近耳语会显得可疑）。这句话说完后你会自动原地等回应（有人回应会立刻叫醒你），除非 wait_response=false。消息里时间写作 9/16(周三) 7:00。"
 )
+
+# Ticket 56: the one self-correction shown to an actor whose plain text was
+# withheld as private reasoning (the engine refuses to broadcast it). It names
+# the mistake, states the world did not hear it, and points at `inner`.
+PRIVATE_CONTENT_NOTE = (
+    "【自我纠正】你上一条回复的正文里混进了心里话／打算／旁白／对协议的说明——"
+    "那属于心里话，不是你说出口的话；世界没有把它当台词，也没有广播给任何人。"
+    "正文只写你真正说出口的话；打算、判断、旁白、对协议的说明一律写进工具调用的 inner。")
 
 
 class V4Session:
@@ -138,6 +146,14 @@ class V4Session:
             self.messages.append({"role": "tool",
                                   "tool_call_id": result.get("tool_call_id"),
                                   "content": str(result.get("text", "ok"))})
+
+    def note_private_content(self) -> None:
+        """Ticket 56: this turn's plain text was private reasoning and the
+        engine refused to broadcast it. Append the self-correction as a user
+        turn so the next decision sees the mistake. The engine calls this
+        AFTER deliver_tool_results, so an assistant's tool_calls keep their
+        role:tool pairing (strict gateways reject a user turn in between)."""
+        self.messages.append({"role": "user", "content": PRIVATE_CONTENT_NOTE})
 
     def _maybe_compact(self) -> None:
         if sum(len(str(m.get("content", ""))) for m in self.messages) <= self.compaction_threshold:

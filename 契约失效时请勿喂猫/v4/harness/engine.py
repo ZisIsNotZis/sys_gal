@@ -43,7 +43,8 @@ from .kernel import (ActionRejected, Intention, TICK_SECONDS,
                      WAKE_EVENT_KINDS, World)
 from .npc_agent import (build_extra_briefing, build_extra_system_prompt,
                         extra_heard_speech_since, extra_scene_transcript,
-                        generate_stranger_name, looks_like_protocol_envelope,
+                        generate_stranger_name, looks_like_private_reasoning,
+                        looks_like_protocol_envelope,
                         restore_extra_prompt, sample_extra)
 from .prompt import render_world_message, _event_sentence, _clean_description
 from .kb import CONTACT_KEY
@@ -960,6 +961,10 @@ class AsyncEngine:
         chain_calls: list[dict[str, Any]] | None = None
         spoken_text = ""
         turn_inner: str | None = None
+        # Ticket 56: set when this turn's plain text was private reasoning and
+        # was therefore withheld from speech (recorded privately instead).
+        withheld_private = False
+        withheld_text: str | None = None
         try:
             decision = await asyncio.wait_for(asyncio.shield(decide_task),
                                               timeout=self.decision_timeout)
@@ -972,6 +977,13 @@ class AsyncEngine:
                 # (its calls' non-empty monologues, in order); the trace keeps
                 # it private.
                 turn_inner = decision_map.get("inner") or None
+                # Ticket 56: T1 broadcasts plain text as speech, so private
+                # reasoning written into it (protocol/tool meta-talk, plans,
+                # asides, explicit concealment) must be withheld, not spoken.
+                if spoken_text and looks_like_private_reasoning(spoken_text):
+                    withheld_private = True
+                    withheld_text = spoken_text
+                    spoken_text = ""
             elif isinstance(decision, tuple):
                 intention, updates = decision
             else:
@@ -1001,7 +1013,9 @@ class AsyncEngine:
         if v4:
             # T1 文本即说话: the model's plain text output is spoken aloud to
             # everyone present (docs §4). Committed before the tool chain so
-            # the chronicle reads speak-then-act.
+            # the chronicle reads speak-then-act. Ticket 56: a line the guard
+            # classified as private reasoning was already cleared from
+            # `spoken_text`, so it never reaches this submit.
             if spoken_text:
                 self.world.submit(Intention(actor_id, "speak",
                                             {"text": spoken_text}, world.version))
@@ -1012,7 +1026,9 @@ class AsyncEngine:
                     world.advance(until=limit)
             self._execute_chain(actor_id, chain_calls or [], perception,
                                 affordances, version_before,
-                                spoken_text=spoken_text, turn_inner=turn_inner)
+                                spoken_text=spoken_text, turn_inner=turn_inner,
+                                withheld_private=withheld_private,
+                                withheld_text=withheld_text)
         else:
             self._submit(actor_id, perception, affordances, intention, version_before)
         self._note_progress()
@@ -1360,12 +1376,18 @@ class AsyncEngine:
     def _execute_chain(self, actor_id: str, calls: Any, perception: dict,
                        affordances: list[dict], version_before: int,
                        *, spoken_text: str = "",
-                       turn_inner: str | None = None) -> None:
+                       turn_inner: str | None = None,
+                       withheld_private: bool = False,
+                       withheld_text: str | None = None) -> None:
         """V4-AGENT-INTERFACE §4: execute the turn's tool calls in order —
         memory tools are engine-side and free; world actions submit through
         the kernel with time accumulating between calls; a chain with no
         world action = 发呆 1 tick; more than 8 calls truncate at the call
-        boundary ("truncated: N calls dropped")."""
+        boundary ("truncated: N calls dropped").
+
+        Ticket 56: ``withheld_private``/``withheld_text`` carry a plain-text
+        line the engine already refused to broadcast as speech; the turn is
+        recorded with it privately and the actor gets one self-correction."""
         world = self.world
         results: list[dict[str, Any]] = []
         failures: list[str] = []
@@ -1658,7 +1680,16 @@ class AsyncEngine:
                                 result=result, error="; ".join(failures) or None,
                                 version_before=version_before,
                                 version_after=world.version, event_ids=[],
-                                role=self._role(actor_id))
+                                role=self._role(actor_id),
+                                withheld_private=withheld_private,
+                                withheld_text=withheld_text)
+        # Ticket 56: after the tool results (ordering) show the actor its own
+        # withheld line so the next decision writes speech only.
+        if withheld_private:
+            note = getattr(getattr(self.agents[actor_id], "session_obj", None),
+                           "note_private_content", None)
+            if callable(note):
+                note()
         consume = getattr(self.agents[actor_id], "consume_compaction", None)
         if consume is not None and consume():
             if actor_id in self._kb:

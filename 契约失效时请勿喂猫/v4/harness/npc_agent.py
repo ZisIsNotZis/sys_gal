@@ -406,6 +406,45 @@ def looks_like_protocol_envelope(text: str) -> bool:
     return bool(_PROTOCOL_ENVELOPE_KEY.search(str(text)))
 
 
+# Ticket 56: the model writes private reasoning — protocol/tool meta-talk,
+# plans, asides, explicit concealment — into the assistant's plain text,
+# which T1 would broadcast as `speak`. The marker set is deliberately
+# HIGH-PRECISION: every token below is something a person never says aloud in
+# this world, so a single hit is enough to withhold the line. "（把热美式推过
+# 吧台）给，趁烫。" and "我先走了。" must keep broadcasting.
+_PRIVATE_PROTOCOL_TOKENS = re.compile(
+    r"(?i)\b(?:inner|arguments|tool_calls|valid call)\b"
+    r"|记忆调用|格式错|指令词|占一格")
+# A concealment / plan-of-record pledge (controlled phrases) or the
+# combination "不急着" + a preposition + an addressee + a speech verb within
+# one clause (不急着对陈默说) — the preposition is required so a genuine
+# "这事不急着说" is not swallowed.
+_PRIVATE_CONCEALMENT_PLEDGE = re.compile(
+    r"一个字(?:都)?不碰"
+    r"|不能让他们知道|不能让人知道|不能让他们晓得"
+    r"|不让他们知道|别让他们知道"
+    r"|记在自己本子"
+    r"|不急着[对跟和向给][^。！？\n]{0,20}说")
+
+
+def looks_like_private_reasoning(text: str) -> str | None:
+    """Return the matched private marker for a would-be spoken line, else None.
+
+    Ticket 56: in real-20261001T065553 the `inner` field was clean yet the
+    plain text carried private reasoning that T1 broadcast as speech —
+    陈默 "…我一个字不碰" (heard 班长/食堂大妈), 林瑶 "…先记在自己本子里，
+    不急着对陈默说" (heard 陈默), 林瑶 "记忆调用格式错了——指令词得单独占
+    一格" (heard 辅导员/陈默). The match is the audit reading; the engine only
+    needs its truthiness."""
+    stripped = str(text).strip()
+    if not stripped:
+        return None
+    match = _PRIVATE_PROTOCOL_TOKENS.search(stripped)
+    if match is None:
+        match = _PRIVATE_CONCEALMENT_PLEDGE.search(stripped)
+    return match.group(0) if match is not None else None
+
+
 def _strip_code_fence(text: str) -> str:
     stripped = text.strip()
     if stripped.startswith("`"):

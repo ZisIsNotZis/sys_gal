@@ -62,7 +62,9 @@ class Trace:
                      result: str, error: str | None = None,
                      version_before: int | None = None, version_after: int | None = None,
                      event_ids: list[int] | None = None,
-                     role: str = "mc") -> None:
+                     role: str = "mc",
+                     withheld_private: bool = False,
+                     withheld_text: str | None = None) -> None:
         self.agent_turns.append({
             "actor": state.actor_id, "perception": deepcopy(perception),
             "private_state": state.snapshot(), "affordances": deepcopy(affordances),
@@ -72,6 +74,9 @@ class Trace:
             },
             # 心声：the actor's private monologue; never part of world events.
             "inner": getattr(intention, "inner", None), "private": True,
+            # Ticket 56: the plain text this turn that was withheld as private
+            # reasoning and therefore never broadcast; private like `inner`.
+            "withheld_private": withheld_private, "withheld_text": withheld_text,
             # V4-CAST §1: mc | npc | extra — analysis marker, never shown to MCs.
             "role": role,
             "result": result, "error": error,
