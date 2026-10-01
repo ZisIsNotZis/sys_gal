@@ -125,17 +125,47 @@ def _split_at_key(key: str, now: datetime) -> tuple[str | None, str | None]:
     return f"{_AT_PREFIX}{format_reminder_time(when)}", match.group(2)
 
 
+def _split_fused_directive(key: str) -> list[str] | None:
+    """Split a bare directive whose label/name was fused into one key.
+
+    ``!always 无障碍改造`` -> ["!always", "无障碍改造"]
+    ``!contact 辅导员``    -> ["!contact", "辅导员"]
+
+    The model writes the directive and its text in one string; keys are single
+    tokens, so each whitespace-separated token becomes its own text key.
+    Returns None for anything else — a bare ``!always``/``!contact`` and an
+    unknown ``!contactx`` fall through to :func:`_validate_keys` unchanged.
+    """
+    for directive in sorted(_KNOWN_DIRECTIVES):
+        if key.startswith(directive + " "):
+            parts = [part for part in key[len(directive):].split() if part]
+            if parts:
+                return [directive, *parts]
+    return None
+
+
 def _expand_keys(keys: list[str], now: datetime) -> list[str]:
     """Lenient directive parsing for seeds and ``update_memory`` (ticket 59).
 
-    The model often fuses a row's label into its ``!at=`` key
-    (``!at=3/16(周一) 08:10 上午班``). Accept it: split the label out as its
-    own text key and canonicalize the weekday spelling, so the time key stays
-    the reminder handle while the label survives as a mention needle. A value
-    that is not a reminder at all is left verbatim for :func:`_validate_keys`.
+    Two fused spellings the model actually writes are accepted:
+
+    - a label inside the ``!at=`` key (``!at=3/16(周一) 08:10 上午班``), split
+      out as its own text key with the weekday canonicalized, so the time key
+      stays the reminder handle while the label survives as a mention needle;
+    - the bare directive fused with its text (``!always 无障碍改造``,
+      ``!contact 辅导员``), split back onto the directive plus one text key per
+      token. ``!contact`` keeps its ticket-31 check: the first text key must
+      still be a registered actor.
+
+    A value that is not a reminder at all is left verbatim for
+    :func:`_validate_keys`.
     """
     out: list[str] = []
     for key in keys:
+        fused = _split_fused_directive(key)
+        if fused is not None:
+            out.extend(fused)
+            continue
         if key.startswith(_AT_PREFIX):
             time_key, label = _split_at_key(key, now)
             if time_key is not None:

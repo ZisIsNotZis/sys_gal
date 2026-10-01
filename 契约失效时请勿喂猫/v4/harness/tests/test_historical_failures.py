@@ -180,22 +180,28 @@ I61 unmarked placed documents were world-public (ticket 61) ..... test_document_
     concrete state (折痕/缺页/涂改/缺角…) while `known_to` is empty, so the
     author confirms the state is not meant to be common knowledge.
 I59 update_memory key friction was the run's largest error class (ticket 59) ... test_scheduled_key_label_and_bare_weekday_are_accepted,
+                                                               test_fused_always_label_is_accepted,
                                                                test_compound_key_error_names_the_closest_existing_row,
+                                                               test_normal_always_and_contact_are_unchanged,
                                                                test_partial_update_memory_reports_each_row_and_keeps_the_valid_ones,
                                                                test_checker_splits_out_update_memory_failures
     d1-am artifact (real-20261001T065553): 24 of the 52 error turns were
-    update_memory. Three real shapes: (1) the label fused into the time key
-    (`!at=3/16(周一) 08:10 上午班`, `!at=3/16(一) 12:05`) was rejected
-    "unparseable scheduled key"; (2) a multi-key target whose keys live on
-    DIFFERENT rows (`!contact 林瑶 桂姨`, `!always 签名人 老街坊代表`) answered
-    "no row keyed" with only per-key nearest keys, no executable retry; (3) a
-    batch row failing failed the whole call, so the valid rows that HAD been
-    written read as lost. Fix: `!at=` keys accept a fused label (split into a
-    second text key) and both `周X`/bare `X` weekday spellings (canonicalized to
-    one handle); a no-match error adds the open row with the largest key overlap
-    named with its exact keys; and update_memory applies row by row, reporting
-    each outcome (partial success is ok=True with the failed rows also recorded
-    in `memory_rejections`). Safety is unchanged: keys still match verbatim, a
+    update_memory. Three real shapes: (1) the label/directive fused into one key
+    — the time key (`!at=3/16(周一) 08:10 上午班`, `!at=3/16(一) 12:05`) was
+    rejected "unparseable scheduled key", and the bare directive
+    (`!always 无障碍改造`, `!always 值班表`, `!contact 辅导员`) answered
+    "unknown directive key"; (2) a multi-key target whose keys live on DIFFERENT
+    rows (`!contact 林瑶 桂姨`, `!always 签名人 老街坊代表`) answered "no row
+    keyed" with only per-key nearest keys, no executable retry; (3) a batch row
+    failing failed the whole call, so the valid rows that HAD been written read
+    as lost. Fix: `!at=` keys accept a fused label (split into a second text
+    key) and both `周X`/bare `X` weekday spellings (canonicalized to one handle);
+    a known bare directive fused with its text (`!always ...` / `!contact ...`)
+    is split back onto the directive plus one text key per token; a no-match
+    error adds the open row with the largest key overlap named with its exact
+    keys; and update_memory applies row by row, reporting each outcome (partial
+    success is ok=True with the failed rows also recorded in
+    `memory_rejections`). Safety is unchanged: keys still match verbatim, a
     `!contact` first text key must still be a registered actor, and the
     `!at`/`!always` schedule and reminder_due auto-close are untouched. The
     checker prints `update_memory 失败行数` separately.
@@ -3627,6 +3633,23 @@ class Ticket59UpdateMemoryGates(unittest.TestCase):
         self.assertIn("!at=3/16(周一) 12:05", keys)
         self.assertNotIn("!at=3/16(一) 12:05", keys,
                          "both weekday spellings canonicalize to one handle")
+
+    def test_fused_always_label_is_accepted(self):
+        kb = self._kb()
+        errs, telemetry, _ = kb.apply_ops(
+            [{"keys": ["!always 无障碍改造"], "op": "open", "desc": "盯着无障碍改造"}],
+            self.START)
+        self.assertEqual(errs, [], "a fused !always label must not cost a turn")
+        self.assertEqual(telemetry["applied"], 1)
+        row = next(r for r in kb.snapshot()["rows"] if "无障碍改造" in r["keys"])
+        self.assertEqual(set(row["keys"]), {"!always", "无障碍改造"})
+
+    def test_normal_always_and_contact_are_unchanged(self):
+        kb = self._kb([{"keys": ["宿管阿姨"], "desc": "我"},
+                       {"keys": ["!always", "要紧的事"], "desc": "记住"}])
+        row = next(r for r in kb.snapshot()["rows"] if "要紧的事" in r["keys"])
+        self.assertEqual(set(row["keys"]), {"!always", "要紧的事"},
+                         "the canonical spelling keeps its exact key set")
 
     def test_compound_key_error_names_the_closest_existing_row(self):
         kb = self._kb([{"keys": ["宿管阿姨"], "desc": "我"},

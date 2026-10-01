@@ -311,10 +311,13 @@ class PersistenceTests(unittest.TestCase):
 
 
 class Ticket59UpdateMemoryErgonomicsTests(unittest.TestCase):
-    """Ticket 59: the three real update_memory shapes of the d1-am artifact
-    (real-20261001T065553) must no longer cost a turn. A key is still the
-    row's handle and matches verbatim; only the obvious fused spelling is
-    widened and the no-match error gains one executable correction."""
+    """Ticket 59: the real update_memory shapes of the d1-am artifact
+    (real-20261001T065553) must no longer cost a turn — a label fused into the
+    ``!at=`` time key, a bare directive fused with its text
+    (``!always 无障碍改造``, ``!contact 辅导员``), and compound keys spread
+    over different rows. A key is still the row's handle and matches verbatim;
+    only the obvious fused spelling is widened and the no-match error gains one
+    executable correction."""
 
     def test_scheduled_key_with_a_fused_label_is_split_not_rejected(self):
         kb = ActorKB("陈默", [{"keys": ["陈默"], "desc": "我"}], T0)
@@ -341,6 +344,34 @@ class Ticket59UpdateMemoryErgonomicsTests(unittest.TestCase):
         self.assertEqual(errs, [])
         keys = {k for r in kb.snapshot()["rows"] for k in r["keys"]}
         self.assertEqual(keys, {"陈默", "!at=3/16(周一) 08:10", "上午班", "档案室"})
+
+    def test_fused_always_label_becomes_the_directive_and_its_text_key(self):
+        kb = ActorKB("林瑶", [{"keys": ["林瑶"], "desc": "我"}], T0)
+        errs, telemetry, _ = kb.apply_ops(
+            [{"keys": ["!always 无障碍改造"], "op": "open", "desc": "盯着无障碍改造"}],
+            T0)
+        self.assertEqual(errs, [], "a fused !always label must not cost a turn")
+        self.assertEqual(telemetry["applied"], 1)
+        row = next(r for r in kb.snapshot()["rows"] if "无障碍改造" in r["keys"])
+        self.assertEqual(set(row["keys"]), {"!always", "无障碍改造"})
+        # the !always rule is unchanged: it returns without a mention, once its interval is up
+        lines = kb.due_lines(T0 + timedelta(minutes=61), "无关的一句话", limit=8)
+        self.assertTrue(any(line.startswith("[!always 无障碍改造]") for line in lines))
+
+    def test_fused_contact_name_splits_and_the_ticket31_check_is_unchanged(self):
+        kb = ActorKB("林瑶", [{"keys": ["林瑶"], "desc": "我"}], T0,
+                     valid_contact_names={"林瑶", "辅导员"})
+        errs, telemetry, _ = kb.apply_ops(
+            [{"keys": ["!contact 辅导员"], "op": "open", "desc": "认识辅导员"}], T0)
+        self.assertEqual(errs, [])
+        self.assertEqual(telemetry["applied"], 1)
+        row = next(r for r in kb.snapshot()["rows"] if "辅导员" in r["keys"])
+        self.assertEqual(set(row["keys"]), {"!contact", "辅导员"})
+        # ticket 31: the first text key must still be a registered actor
+        errs, telemetry, _ = kb.apply_ops(
+            [{"keys": ["!contact 桂姨"], "op": "open", "desc": "陌生人"}], T0)
+        self.assertEqual(telemetry["applied"], 0)
+        self.assertIn("not another registered actor", errs[0])
 
     def test_bare_weekday_scheduled_key_is_canonicalized_to_the_same_handle(self):
         kb = ActorKB("宿管阿姨", [{"keys": ["宿管阿姨"], "desc": "我"}], T0)
