@@ -127,6 +127,92 @@ class RepetitionMonitorTests(unittest.TestCase):
             restored.notice("a", affordances=[{"kind": "move", "target": "x"}]),
             monitor.notice("a", affordances=[{"kind": "move", "target": "x"}]))
 
+    def test_same_kind_rejections_with_different_args_stagnate(self):
+        # Ticket 63 (evidence: 尼龙绳 / 一卷尼龙绳 / 捆货用的绳子 / 值班室的粗尼龙绳):
+        # the counter used to key on the EXACT (kind, args), so changing the
+        # wording of the same failed action reset it and nothing was ever
+        # announced. Three refused `take`s are one stuck pattern.
+        monitor = RepetitionMonitor(rejected_kind_threshold=3, rejected_kind_stride=3)
+        for item in ("尼龙绳", "一卷尼龙绳", "捆货用的绳子"):
+            monitor.note_turn("dama", Intention("dama", "take", {"item": item}, 1),
+                              "rejected")
+        notice = monitor.notice("dama", affordances=[
+            {"kind": "take", "item": "晚归登记本"},
+            {"kind": "read", "item": "值班簿"},
+            {"kind": "speak", "to": ["林瑶"]},
+            {"kind": "move", "target": "食堂"}])
+        self.assertIsNotNone(notice, "三例同类被拒必须触发一次停滞提示")
+        self.assertIn("refused in a row", notice)
+        self.assertIn("晚归登记本", notice)      # 此处确实有的东西
+        self.assertIn("值班簿", notice)          # 此处确实能读的东西
+        self.assertIn("speak to 林瑶", notice)     # 可用的替代动作
+
+    def test_same_kind_rejections_only_fire_on_the_stride(self):
+        monitor = RepetitionMonitor(rejected_kind_threshold=3, rejected_kind_stride=3)
+        for item in ("a", "b", "c"):
+            monitor.note_turn("x", Intention("x", "read", {"item": item}, 1), "rejected")
+        self.assertIsNotNone(monitor.notice("x"))
+        for item in ("d", "e"):
+            monitor.note_turn("x", Intention("x", "read", {"item": item}, 1), "rejected")
+        self.assertIsNone(monitor.notice("x"))   # stride: not every turn
+        monitor.note_turn("x", Intention("x", "read", {"item": "f"}, 1), "rejected")
+        self.assertIsNotNone(monitor.notice("x"))
+
+    def test_alternating_kinds_never_accumulate(self):
+        # A round-robin of refused kinds is not "the same thing over and over".
+        monitor = RepetitionMonitor(rejected_kind_threshold=3)
+        for kind, args in (("read", {"item": "a"}), ("take", {"item": "b"}),
+                           ("read", {"item": "c"}), ("take", {"item": "d"}),
+                           ("read", {"item": "e"}), ("take", {"item": "f"})):
+            monitor.note_turn("x", Intention("x", kind, args, 1), "rejected")
+        self.assertIsNone(monitor.notice("x"))
+
+    def test_a_successful_same_kind_action_clears_the_rejection_run(self):
+        monitor = RepetitionMonitor(rejected_kind_threshold=3)
+        monitor.note_turn("x", Intention("x", "take", {"item": "a"}, 1), "rejected")
+        monitor.note_turn("x", Intention("x", "take", {"item": "b"}, 1), "rejected")
+        # The wall came down: a take that actually landed clears the run.
+        monitor.note_turn("x", Intention("x", "take", {"item": "c"}, 1), "submitted")
+        monitor.note_turn("x", Intention("x", "take", {"item": "d"}, 1), "rejected")
+        monitor.note_turn("x", Intention("x", "take", {"item": "e"}, 1), "rejected")
+        self.assertIsNone(monitor.notice("x"))
+
+    def test_successful_other_actions_do_not_clear_a_rejected_run(self):
+        # Ticket 63 evidence: 食堂大妈's refused `take`s were separated by
+        # successful `speak`s; the pattern is still "take keeps failing here".
+        monitor = RepetitionMonitor(rejected_kind_threshold=3)
+        monitor.note_turn("dama", Intention("dama", "take", {"item": "a"}, 1), "rejected")
+        monitor.note_turn("dama", Intention("dama", "speak",
+                                             {"text": "来了"}, 1), "submitted")
+        monitor.note_turn("dama", Intention("dama", "take", {"item": "b"}, 1), "rejected")
+        monitor.note_turn("dama", Intention("dama", "update_memory",
+                                             {"rows": []}, 1), "submitted")
+        monitor.note_turn("dama", Intention("dama", "take", {"item": "c"}, 1), "rejected")
+        self.assertIsNotNone(monitor.notice("dama"))
+
+    def test_normal_multi_target_text_and_speak_never_trip(self):
+        # The anti-misfire case (ticket 63): sending messages to several
+        # different people, or speaking to several people, is normal — only
+        # REFUSED actions count, and `text` keeps its own counter.
+        monitor = RepetitionMonitor(rejected_kind_threshold=3)
+        for target in ("b", "c", "d", "e"):
+            monitor.note_turn("x", Intention("x", "text",
+                                              {"target": target, "text": "?"}, 1),
+                              "submitted")
+        for person in ("b", "c", "d"):
+            monitor.note_turn("x", Intention("x", "speak",
+                                              {"text": "hi", "to": [person]}, 1),
+                              "submitted")
+        self.assertIsNone(monitor.notice("x"))
+
+    def test_rejected_kind_state_round_trips(self):
+        monitor = RepetitionMonitor(rejected_kind_threshold=3)
+        for item in ("a", "b", "c"):
+            monitor.note_turn("x", Intention("x", "take", {"item": item}, 1), "rejected")
+        restored = RepetitionMonitor(rejected_kind_threshold=3)
+        restored.restore(monitor.state())
+        self.assertEqual(restored.notice("x"), monitor.notice("x"))
+
     def test_runner_injects_notice_into_perception_at_frontier(self):
         world = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
                       actors=[ActorState("a", "room"), ActorState("b", "room")],

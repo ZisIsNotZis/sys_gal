@@ -1333,16 +1333,31 @@ class World:
                     context={"target": target.id, "recipient_unavailable": True,
                              "recipient_candidates": self._present_others(a)})
             item = str(x.get("item"))
-            if item not in a.inventory:
-                held = sorted(a.inventory)
+            here, held = self._present_items(a)
+            if item not in a.inventory and self.item_locations.get(item) != a.location:
+                # Ticket 63: the 上菜/递物 gap. `give` also accepts an item
+                # that is physically at the actor's OWN location (the window
+                # counter), i.e. an atomic pick-up-and-hand-over — the
+                # take-then-give semantics are unchanged, just executable when
+                # the thing is right at hand. It never invents an item that is
+                # neither held nor here.
                 alternatives = [f"give {name} to {target.id}" for name in held]
+                alternatives += [f"take {name}" for name in here]
                 valid = "; ".join(self._tool_call_json(
                     "give", {"target": target.id, "item": name}) for name in held)
-                suffix = f" 可行调用：{valid}。" if valid else "先拿起当前地点的一件物品，再递给在场的人。"
+                if valid:
+                    suffix = f" 可行调用：{valid}。"
+                elif here:
+                    suffix = (f"这里可拿：{', '.join(here)}——先 take 再 give 给{target.id}。")
+                else:
+                    suffix = "先拿起当前地点的一件物品，再递给在场的人。"
                 raise ActionRejected(
-                    f"你没有拿着「{item}」。你拿着：{', '.join(held) or '没有'}。{suffix}",
+                    f"你没有拿着「{item}」，这里也没有「{item}」。"
+                    f"你拿着：{', '.join(held) or '没有'}；"
+                    f"这里有的：{', '.join(here) or '没有'}。{suffix}",
                     alternatives=alternatives,
-                    context={"item": item, "available_items": held})
+                    context={"item": item, "available_items": held,
+                             "items_here": here})
             return timedelta(seconds=2)
         if i.kind == "move":
             target = str(x.get("target"))
@@ -1494,15 +1509,37 @@ class World:
             alternatives = []
             reason = "known_not_readable_not_here"
         else:
-            # (a) nothing here by that name.
-            message = (f"这里没有「{item}」这样一件能读的东西。{here_line}"
+            # (a) nothing here by that name. Ticket 63: a location-level
+            # notice board (教学楼正门内侧公告栏 / 公告栏底下的过期通知) is not
+            # a registered document, so with nothing readable here the old
+            # answer was a dead end ("你现在能读的：无"). The rejection must
+            # still name a real next step: what can be taken here, who is here
+            # to ask, or where one can go.
+            message = (f"这里没有「{item}」这样一件能读的文书。{here_line}"
                        f"你现在能读的：{', '.join(readable_now) or '无'}。")
             alternatives = [f"read {name}" for name in readable_now]
+            if not alternatives:
+                alternatives = self._fallback_next_actions(actor)
+                if alternatives:
+                    message += ("这里没有可读的正文——若是贴在地方上的公告栏或通知，"
+                                "要问张贴的人，或到张贴的地方去看："
+                                + "；".join(alternatives) + "。")
             reason = "absent"
         return ActionRejected(message, alternatives=alternatives,
                               context={"item": item, "reason": reason,
                                        "readable_now": readable_now,
                                        "held": held, "items_here": here})
+
+    def _fallback_next_actions(self, actor: ActorState) -> list[str]:
+        """Real, executable next actions when a `read` has nothing readable to
+        offer (ticket 63): what is physically here, who is here to ask, and
+        where one can still go. Deterministic and capped; every entry can be
+        submitted as-is (the caller converts `take`/`speak to`/`move to`)."""
+        here, _held = self._present_items(actor)
+        actions = [f"take {item}" for item in here]
+        actions += [f"speak to {person}" for person in self._present_others(actor)]
+        actions += [f"move to {place}" for place in self._reachable_open(actor)]
+        return actions[:3]
 
     def _observed_objective(self, actor: ActorState, item: str) -> str | None:
         """The objective description the actor already has for `item`.
@@ -1556,7 +1593,13 @@ class World:
             a.inventory.discard(item)
         elif kind == "give":
             item = str(payload["item"]); target = self._actor(str(payload["target"]))
-            a.inventory.remove(item); target.inventory.add(item)
+            if item in a.inventory:
+                a.inventory.remove(item)
+            else:
+                # Ticket 63: an item at the actor's own location was handed
+                # over in one motion (take-then-give); it leaves the location.
+                self.item_locations.pop(item, None)
+            target.inventory.add(item)
         elif kind == "sleep": a.sleeping = False
         a.busy_until = None
         a.current_action = None

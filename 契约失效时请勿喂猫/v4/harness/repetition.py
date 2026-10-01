@@ -12,13 +12,22 @@ that they have asked the same thing many times or kept hitting the same wall.
 Each character then reacts as a person (pause, change tactic, or let it go),
 so a loop can break from either side.
 
-Three detectors:
+Four detectors:
 - message loop: N messages sent to the same target with no reply from it;
 - action loop: the same meaningful action (kind + exact args) N times;
 - stagnation: M consecutive waits. ``wait`` is the main visible symptom of a
   stalled character (ticket 43), so it is counted separately instead of being
   exempted; its notice names how long the character has waited and the actions
-  it can still take, so the model is not just told "stop waiting".
+  it can still take, so the model is not just told "stop waiting";
+- refused-kind run: the same KIND of action refused N times in a row, however
+  the arguments are worded (ticket 63). The exact-args action loop misses the
+  real pattern the d1-am run showed — 尼龙绳 / 一卷尼龙绳 / 捆货用的绳子 /
+  值班室的粗尼龙绳 are the same failed attempt re-worded, so the counter reset
+  each time and six refused ``take``s produced no notice. Only refused actions
+  count, the run is per kind, a successful action of that same kind clears it,
+  and ``text``/``sleep`` stay exempt, so normal multi-target messaging can
+  never trip it. Its notice names what is really here, what is really readable
+  and the other actions this turn can still take.
 """
 
 from __future__ import annotations
@@ -144,16 +153,73 @@ def _action_highlights(affordances: Sequence[Mapping[str, Any]] | None,
     return out
 
 
+def _kind_items(affordances: Sequence[Mapping[str, Any]] | None, kind: str,
+                key: str, limit: int = 4) -> list[str]:
+    """The distinct concrete entities of one affordance kind (ticket 63).
+
+    ``take`` items are the things that really are here; ``read`` items are the
+    things that really can be read. Deterministic: the engine's affordance
+    order, deduplicated, capped.
+    """
+    out: list[str] = []
+    for option in affordances or ():
+        if not isinstance(option, Mapping) or str(option.get("kind")) != kind:
+            continue
+        value = option.get(key)
+        if not isinstance(value, str) or not value or value in out:
+            continue
+        out.append(value)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _refused_kind_notice(count: int, kind: str,
+                         affordances: Sequence[Mapping[str, Any]] | None) -> str:
+    """The refused-kind stagnation notice (ticket 63).
+
+    Names the count and the kind, then the three categories the refusal run
+    was caused by: what is really here (a `take` the world will accept), what
+    is really readable (a `read` the world will accept), and other actions
+    still available — never the kind that keeps failing.
+    """
+    present = _kind_items(affordances, "take", "item")
+    readable = _kind_items(affordances, "read", "item")
+    # `_action_highlights` renders take/read as "take x"/"read x"; those two
+    # lists already carry them, so keep only the other verbs — and never the
+    # kind that keeps failing.
+    alternatives = [label for label in _action_highlights(affordances, limit=8)
+                    if label.split(" ", 1)[0] not in {"take", "read", kind}][:4]
+    message = (f"You have had {count} '{kind}' attempts refused in a row here "
+               "(the latest ones were different tries at the same thing). "
+               f"'{kind}' is not working.")
+    parts: list[str] = []
+    if present:
+        parts.append("Things actually here you can take: " + ", ".join(present) + ".")
+    if readable:
+        parts.append("Things you can read here: " + ", ".join(readable) + ".")
+    if alternatives:
+        parts.append("Other actions you can still take here: "
+                     + ", ".join(alternatives) + ".")
+    if not parts:
+        parts.append("A real person would stop and change approach.")
+    return message + " " + " ".join(parts)
+
+
 class RepetitionMonitor:
     def __init__(self, *, message_threshold: int = 4, action_threshold: int = 5,
                  message_stride: int = 3, action_stride: int = 4,
-                 stagnation_threshold: int = 4, stagnation_stride: int = 4) -> None:
+                 stagnation_threshold: int = 4, stagnation_stride: int = 4,
+                 rejected_kind_threshold: int = 3,
+                 rejected_kind_stride: int = 3) -> None:
         self.message_threshold = int(message_threshold)
         self.action_threshold = int(action_threshold)
         self.message_stride = int(message_stride)
         self.action_stride = int(action_stride)
         self.stagnation_threshold = int(stagnation_threshold)
         self.stagnation_stride = int(stagnation_stride)
+        self.rejected_kind_threshold = int(rejected_kind_threshold)
+        self.rejected_kind_stride = int(rejected_kind_stride)
         # actor -> {target: count of unanswered messages}
         self._sent: dict[str, dict[str, int]] = {}
         # actor -> {(kind, args_key): count of identical meaningful actions}
@@ -168,11 +234,19 @@ class RepetitionMonitor:
         self._stagnation_fired: dict[str, int] = {}
         # actor -> last location seen; a change restarts the wait run.
         self._last_location: dict[str, str] = {}
+        # actor -> (kind, count of consecutive refusals of that kind)
+        self._refused_kind: dict[str, tuple[str, int]] = {}
+        # actor -> (kind, count) at which we last announced the refusal run.
+        self._refused_fired: dict[str, tuple[str, int]] = {}
 
     def _break_stagnation(self, actor: str) -> None:
         self._stagnation.pop(actor, None)
         self._stagnation_seconds.pop(actor, None)
         self._stagnation_fired.pop(actor, None)
+
+    def _break_refused_kind(self, actor: str) -> None:
+        self._refused_kind.pop(actor, None)
+        self._refused_fired.pop(actor, None)
 
     def note_turn(self, actor: str, intention: Any, result: str, *,
                   location: str | None = None) -> None:
@@ -180,11 +254,27 @@ class RepetitionMonitor:
             previous = self._last_location.get(actor)
             self._last_location[actor] = str(location)
             if previous is not None and previous != str(location):
-                # Moving restarts the count: waiting elsewhere is a new run.
+                # Moving restarts the count: waiting (or hitting the same wall)
+                # elsewhere is a new run.
                 self._break_stagnation(actor)
+                self._break_refused_kind(actor)
         if intention is None or not hasattr(intention, "kind"):
             return
         kind = intention.kind
+        # Ticket 63: a run of refusals of the SAME kind, regardless of how the
+        # arguments are worded. Only refused actions count; a successful action
+        # of that same kind clears the run (the wall came down), while a
+        # successful action of another kind does not — the d1-am 食堂大妈 case
+        # separated her refused `take`s with successful `speak`s. `text`/`sleep`
+        # stay exempt so normal multi-target messaging can never trip it. So
+        # does `wait`, which has the stagnation detector above.
+        if kind not in _EXCLUDED_ACTIONS and kind != "wait":
+            if result == "rejected":
+                last_kind, count = self._refused_kind.get(actor, (None, 0))
+                count = count + 1 if last_kind == kind else 1
+                self._refused_kind[actor] = (kind, count)
+            elif self._refused_kind.get(actor, (None, 0))[0] == kind:
+                self._break_refused_kind(actor)
         if kind == "wait":
             self._stagnation[actor] = self._stagnation.get(actor, 0) + 1
             self._stagnation_seconds[actor] = (
@@ -226,6 +316,14 @@ class RepetitionMonitor:
                         "You may be repeating yourself. A real person would pause, consider "
                         "whether this is still needed, and try a different approach."
                     )
+        refused_kind, refused_count = self._refused_kind.get(actor, (None, 0))
+        if (refused_kind is not None
+                and refused_count >= self.rejected_kind_threshold
+                and (refused_count - self.rejected_kind_threshold)
+                % self.rejected_kind_stride == 0
+                and self._refused_fired.get(actor) != (refused_kind, refused_count)):
+            self._refused_fired[actor] = (refused_kind, refused_count)
+            return _refused_kind_notice(refused_count, refused_kind, affordances)
         act_fired = self._act_fired.setdefault(actor, {})
         for key, count in self._identical.get(actor, {}).items():
             if count >= self.action_threshold and (
@@ -268,6 +366,10 @@ class RepetitionMonitor:
             "stagnation_seconds": dict(self._stagnation_seconds),
             "stagnation_fired": dict(self._stagnation_fired),
             "last_location": dict(self._last_location),
+            "refused_kind": {actor: [kind, count]
+                             for actor, (kind, count) in self._refused_kind.items()},
+            "refused_fired": {actor: [kind, count]
+                              for actor, (kind, count) in self._refused_fired.items()},
         }
 
     def restore(self, state: Mapping[str, Any]) -> None:
@@ -291,3 +393,9 @@ class RepetitionMonitor:
                                   for actor, count in state.get("stagnation_fired", {}).items()}
         self._last_location = {actor: str(loc)
                                for actor, loc in state.get("last_location", {}).items()}
+        self._refused_kind = {actor: (str(kind), int(count))
+                              for actor, (kind, count)
+                              in state.get("refused_kind", {}).items()}
+        self._refused_fired = {actor: (str(kind), int(count))
+                               for actor, (kind, count)
+                               in state.get("refused_fired", {}).items()}

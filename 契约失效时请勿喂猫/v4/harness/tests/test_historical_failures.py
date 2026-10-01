@@ -494,6 +494,40 @@ K60 location prose promised props the world could not produce (ticket 60)
     `read` of an invented name in a room with nothing readable (图书馆) has no
     executable alternative to offer; the room's own arrival detail names the
     lock and its key-holder instead.
+I63 same-kind failures and the serve/verb gap (ticket 63) ..... test_same_kind_rejections_with_different_args_stagnate,
+                                                               test_same_kind_rejections_only_fire_on_the_stride,
+                                                               test_alternating_kinds_never_accumulate,
+                                                               test_a_successful_same_kind_action_clears_the_rejection_run,
+                                                               test_successful_other_actions_do_not_clear_a_rejected_run,
+                                                               test_normal_multi_target_text_and_speak_never_trip,
+                                                               test_rejected_kind_state_round_trips,
+                                                               test_same_kind_rejections_reach_the_chain_path_notice,
+                                                               test_a_present_item_can_be_served_with_give,
+                                                               test_give_never_invents_an_absent_item,
+                                                               test_notice_board_read_rejection_offers_a_real_next_step
+    d1-am artifact (real-20261001T121425+0800-223688-090345540): four examples.
+    (1) 下棋大爷/食堂大妈/宿管阿姨 each re-asked for 尼龙绳 in a different
+    wording (尼龙绳 / 一卷尼龙绳 / 捆货用的绳子 / 值班室的粗尼龙绳) and every
+    attempt was refused; the repetition aware monitor keyed on the EXACT
+    (kind, args), so a changed parameter was a brand-new action and none of the
+    six refused `take`s produced any notice. (2) 食堂大妈 asked to remove food
+    four times (一碗豆浆、一个菜包、一个豆沙包 / 荤菜、素菜、米饭、一碗汤 / …)
+    because she was serving her window counter and the world only had `take`
+    (pick up) and `give` (hand over what you hold), with no path for a thing
+    that is already at hand. (3) 班长 read 教学楼正门内侧公告栏 and 陈默 read
+    公告栏底下的过期通知 — a location-level notice board is not a registered
+    document, and the 教学楼 rejection listed nothing readable at all, so it
+    offered no executable next step. Fix: (1) a refused-action run is counted
+    by kind, not by exact args — three refusals of the same kind fire one
+    stagnation notice that names what is really here, what is really readable
+    and the other actions still available; only refused actions count, a
+    successful same-kind action clears the run, and `text`/`sleep` stay exempt
+    so normal multi-target messaging never trips it; (2) `give` hands over an
+    item that is physically at the actor's own location (an atomic pick-up and
+    hand-over), never an item that is neither held nor here; (3) a refused
+    `read` of an unregistered, unreadable thing falls back to the real actions
+    available here (take what is present / speak to someone here / move to a
+    reachable open place) so the answer always has an executable step.
 """
 
 import json
@@ -2063,6 +2097,144 @@ class RepetitionMonitorGates(unittest.TestCase):
         self.assertTrue(stagnation, f"waits were not counted as stagnation: {notices}")
         self.assertTrue(any("move to far" in notice for notice in stagnation),
                         f"stagnation notice listed no executable action: {stagnation}")
+
+
+class SameKindFailureGates(unittest.TestCase):
+    """Ticket 63 (d1-am artifact real-20261001T121425+0800-223688-090345540).
+
+    Four examples: (1) the same failed action re-worded (尼龙绳 / 一卷尼龙绳 /
+    捆货用的绳子 / 值班室的粗尼龙绳) never counted as repetition because the
+    monitor keyed on exact (kind, args); (2) 食堂大妈 tried to take food she
+    was serving at her own window — the world only had take/give; (3) 班长 read
+    教学楼正门内侧公告栏, a location-level notice board that is not a registered
+    document, and the 教学楼 rejection listed nothing readable, so it offered no
+    executable next step. These gates pin the same-kind refusal run, the serve
+    path, and the always-executable read rejection."""
+
+    START = datetime.fromisoformat("2026-03-16T07:00:00+08:00")
+
+    def _chain_run(self, world, agent, *, stop_minutes):
+        trace = Trace("v4-test", "ticket63-same-kind")
+        engine = AsyncEngine(world, {"a": agent}, {"a": PrivateState("a")},
+                             trace, None, decision_timeout=10,
+                             max_wall_seconds=30, mc_idle_heartbeat=60)
+        engine.run(stop_at=self.START + timedelta(minutes=stop_minutes),
+                   max_turns=60)
+        return [turn for turn in trace.agent_turns if turn["actor"] == "a"]
+
+    def test_same_kind_rejections_reach_the_chain_path_notice(self):
+        """(a) Three refused `take`s with different wording must fire one
+        stagnation notice listing what is really here."""
+        from harness.kernel import ActorState, LocationState
+
+        class _DifferentlyWordedTakes:
+            session_obj = object()
+
+            def __init__(self):
+                self.delivered = []
+                self._index = 0
+
+            def __call__(self, world_message, state):
+                word = ("尼龙绳", "一卷尼龙绳", "捆货用的绳子", "值班室的粗尼龙绳")[
+                    self._index % 4]
+                self._index += 1
+                return {"text": "", "calls": [
+                    {"name": "take", "arguments": {"item": word},
+                     "tool_call_id": "c1"}]}
+
+            def deliver_tool_results(self, results):
+                self.delivered.extend(results)
+
+            def consume_compaction(self):
+                return False
+
+            def session_snapshot(self):
+                return None
+
+        world = World(start=self.START, actors=[ActorState("a", "room")],
+                      locations=[LocationState("room")])
+        world.item_locations["晚归登记本"] = "room"
+        turns = self._chain_run(world, _DifferentlyWordedTakes(), stop_minutes=30)
+        # The fixture's attempts really did fail; otherwise the gate proves nothing.
+        self.assertTrue(any("这里没有「尼龙绳」" in str(turn.get("error") or "")
+                            for turn in turns),
+                        "the fixture take never failed")
+        notices = [turn["perception"].get("situational_notice") or ""
+                   for turn in turns]
+        fired = [notice for notice in notices if "refused in a row" in notice]
+        self.assertTrue(fired, f"同类被拒没有触发停滞提示: {notices}")
+        self.assertTrue(any("晚归登记本" in notice for notice in fired),
+                        f"提示没有列出此处确实有的东西: {fired}")
+
+    def test_a_present_item_can_be_served_with_give(self):
+        """(c) The 上菜/递物 gap: an item already at the actor's own location
+        (the window counter) can be handed to someone here without a separate
+        `take` — but only because it is physically present."""
+        from harness.kernel import ActorState, LocationState
+        world = World(start=self.START,
+                      actors=[ActorState("dama", "窗口"),
+                              ActorState("guest", "窗口")],
+                      locations=[LocationState("窗口")])
+        world.item_locations["一碗豆浆"] = "窗口"
+        world.submit(Intention("dama", "give",
+                               {"target": "guest", "item": "一碗豆浆"},
+                               world.version))
+        world.advance()
+        self.assertIn("一碗豆浆", world.actors["guest"].inventory)
+        self.assertNotIn("一碗豆浆", world.item_locations)
+        transfer = next(event for event in world.event_log
+                        if event.kind == "item_given")
+        self.assertEqual(transfer.payload,
+                         {"item": "一碗豆浆", "from": "dama", "to": "guest"})
+
+    def test_give_never_invents_an_absent_item(self):
+        """The boundary of the serve path: `give` still refuses an item that
+        is neither held nor physically here — it never invents one."""
+        from harness.kernel import ActorState, LocationState
+        world = World(start=self.START,
+                      actors=[ActorState("dama", "窗口"),
+                              ActorState("guest", "窗口")],
+                      locations=[LocationState("窗口")])
+        for invented in ("一台抽水泵", "荤菜、素菜、米饭、一碗汤"):
+            with self.assertRaises(ActionRejected) as caught:
+                world.submit(Intention("dama", "give",
+                                       {"target": "guest", "item": invented},
+                                       world.version))
+            self.assertIn(invented, str(caught.exception))
+            self.assertIn("没有拿着", str(caught.exception))
+            self.assertFalse(any(event.kind == "item_given"
+                                 for event in world.event_log))
+
+    def test_notice_board_read_rejection_offers_a_real_next_step(self):
+        """(d) A location-level notice board is not a registered document. The
+        rejection must still hand back an executable step (where to go / who to
+        ask / what is really readable), never a dead end."""
+        world = load_story_pack().build_world()
+        ban = world.actors["班长"]
+        ban.location = "教学楼"
+        with self.assertRaises(ActionRejected) as caught:
+            world.submit(Intention("班长", "read",
+                                   {"item": "教学楼正门内侧公告栏"},
+                                   world.version))
+        message = str(caught.exception)
+        self.assertIn("教学楼正门内侧公告栏", message)
+        alternatives = list(caught.exception.alternatives)
+        self.assertTrue(alternatives,
+                        f"公告栏类 read 拒绝没有给出可执行下一步: {message}")
+        for alternative in alternatives:
+            verb, _, rest = str(alternative).partition(" ")
+            if verb == "move":
+                target = rest.removeprefix("to ").removesuffix(" (open)")
+                self.assertIn(target, world.locations)
+                self.assertTrue(world.locations[target].open)
+            elif verb == "take":
+                self.assertEqual(world.item_locations.get(rest), "教学楼")
+            elif verb == "read":
+                self.assertIn(rest, world._available_readables(ban))
+            elif verb == "speak":
+                self.assertIn(rest.removeprefix("to "), world._present_others(ban))
+            else:
+                self.fail(f"unrecognised alternative '{alternative}'")
 
 
 class _ExtraCheckpointFixtures(unittest.TestCase):
