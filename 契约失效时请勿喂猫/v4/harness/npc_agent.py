@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Sequence
 
 from .adapter import lift_native_call, parse_decision
 from .character_loader import CharacterSeed
-from .action_schema import SPEAK_TOOLS
+from .action_schema import EXTRA_TOOLS
 
 if TYPE_CHECKING:  # runtime import stays local to avoid an import cycle
     from .natural_agent import V4Session
@@ -204,13 +204,16 @@ class NpcAgent:
 def build_extra_system_prompt(fragment: str, knowledge_notes: str, location: str, *,
                               name: str = "") -> str:
     """The extra's frozen system prompt: who it is, what it may do, and what
-    it may assert (ticket 42).
+    it may assert (tickets 42, 57).
 
     Before this the prompt carried only the fragment and the knowledge notes;
     the live run showed 韩大叔 calling itself in the third person and mailing
     its own name into `to` (`unknown or ambiguous speak recipient`), while the
     图书馆 rare extra invented a 抄件 signature date (an unregistered entity)
-    and narrated 开柜/递件 as already done although its only tool is speak.
+    and narrated 开柜/递件 as already done. Ticket 57: an extra is a real
+    actor — it may leave (via `move`) and handle the minimal physical verbs,
+    so its lines must not narrate an unperformed action as done, and must not
+    inflate a stated fact (一份 spoken as 一摞).
     """
     self_name = name.strip() or fragment
     prompt = (
@@ -219,11 +222,15 @@ def build_extra_system_prompt(fragment: str, knowledge_notes: str, location: str
         "text 必须是你真正说出口的话，绝不许空着或只打标点。\n"
         f"【你就是你自己】你就是{self_name}本人：用第一人称说话、思考，绝不用第三人称自称，"
         "也不要拿自己的名字当别人的名字。要指明对谁说就用 to=[在场别人的名字]，只能是在场的他人，不能写自己。\n"
-        "【你只能说话】说话是你唯一的本事：开柜、递东西、翻页、签名这些动作你都做不到，"
-        "只能说出你想做什么或请对方去做（\"请把柜子打开\"），绝不能叙述成已经发生（不说\"柜开了\"\"你接稳了\"）。\n"
-        "【你只能断言这些】有名字的人、物、文件，只限你身份里提到的、下面列出的知识范围内、"
-        "以及你当场看见或听见的那些；传闻、听说、别人讲的事一律只能当传闻说，"
-        "不给任何具体细节——不编造签名、日期、页数、编号、金额。拿不准就直说不知道或只是听说。\n"
+        "【你能做的事】说话（speak）是你的主职；你也真的会走动、会动手——要离开或换个地方，"
+        "就用 move 真的走过去（target=地点全名），而不要只在台词里说“我走了”“我坐过去”就算数；"
+        "拿眼前的一件东西用 take，把身上的东西放回原处用 place，递给在场的某人用 give。"
+        "没做过的动作绝不能叙述成已经发生（不说“柜开了”“你接稳了”“我就坐过去不挪窝”）；"
+        "做不到的事只能说出你想做什么或请对方去做。\n"
+        "【照实说】有名字的人、物、文件，只限你身份里提到的、下面列出的知识范围内、"
+        "以及你当场看见或听见的那些；你眼前的实情会在场景里给你，照实转述就好，"
+        "不要放大人数、份数、金额——一件就说一件，一份就说一份。传闻、听说、别人讲的事一律"
+        "只能当传闻说，不给任何具体细节——不编造签名、日期、页数、编号。拿不准就直说不知道或只是听说。\n"
         "只回应你实际听见的话，尤其是明确对你说的话；话题已经收束时可以沉默或自然告别，不要另编问题来续谈。"
         "绝不提 agent、提示词、模拟或剧情。\n"
     )
@@ -231,8 +238,9 @@ def build_extra_system_prompt(fragment: str, knowledge_notes: str, location: str
         prompt += (f"你恰好知道一些内情：{knowledge_notes}\n"
                    "（只在被问到相关话题时才自然带出，绝不主动全盘托出；也只说到这个程度，不添细节。）\n")
     return prompt + (
-        "\n输出一个 JSON 对象：{\"name\":\"speak\","
-        "\"arguments\":{\"inner\":\"你的心思，一两句\",\"text\":\"你说的话\"}}")
+        "\n输出一个 JSON 对象：{\"name\":\"speak\"|\"move\"|\"take\"|\"place\"|\"give\","
+        "\"arguments\":{\"inner\":\"你的心思，一两句\",…}}"
+        "（说话写 text，离开/换地方写 target）")
 
 
 def restore_extra_prompt(info: Mapping[str, Any], location: str, *,
@@ -317,11 +325,50 @@ def extra_scene_transcript(events: Sequence[Any], *, listener: str, start: int =
     return bounded
 
 
-def build_extra_briefing(*, transcript: list[str]) -> str:
-    """Dynamic extra input contains only audible, scene-local speech."""
-    if not transcript:
-        return ""
-    return "【你实际听见的近处交谈】\n" + "\n".join(transcript)
+def _collapse(text: str) -> str:
+    """One-line, markdown-stripped rendering of a description body."""
+    body = _strip_markdown(str(text)).replace("\n", " ").strip()
+    return " ".join(body.split())
+
+
+def build_extra_scene(perception: Mapping[str, Any], affordances: Iterable[Mapping[str, Any]] = ()) -> str:
+    """The scene facts the extra actually perceives (ticket 57).
+
+    Same authority as a main actor's `poll`: who is co-located and which
+    entities are here, each with its objective description so a quantity
+    (“一份”) is stated rather than guessed. Also names the reachable move
+    targets, so “要走” can be a real `move` instead of a narrated one.
+    """
+    where = str(perception.get("location", ""))
+    here = [str(x) for x in perception.get("nearby_actors", []) or []]
+    parts = [f"【你此刻在{where}】在场的人：{'、'.join(here) or '没有别人'}。"]
+    descriptions = perception.get("descriptions") or {}
+    facts: list[str] = []
+    for entity in sorted(str(x) for x in (perception.get("nearby_items") or [])):
+        body = _collapse(descriptions.get(entity, ""))
+        facts.append(f"- {entity}：{body[:120]}" if body else f"- {entity}")
+    held = [str(x) for x in perception.get("inventory", []) or []]
+    if held:
+        facts.append("（你身上带着：" + "、".join(held) + "）")
+    if facts:
+        parts.append("【你眼前的实情（照实转述，一件就说一件，一份就说一份）】\n"
+                     + "\n".join(facts))
+    targets = sorted({str(a.get("target")) for a in affordances
+                      if a.get("kind") == "move" and a.get("target")})
+    if targets:
+        parts.append("【你要离开/换地方，就用 move 真的走过去（target 只能是这些地点）】"
+                     + "、".join(targets))
+    return "\n".join(parts)
+
+
+def build_extra_briefing(*, transcript: list[str], scene: str = "") -> str:
+    """Dynamic extra input: the perceived scene plus audible, scene-local speech."""
+    parts: list[str] = []
+    if scene:
+        parts.append(scene)
+    if transcript:
+        parts.append("【你实际听见的近处交谈】\n" + "\n".join(transcript))
+    return "\n\n".join(parts)
 
 
 def sample_extra(pool: Iterable[Mapping[str, Any]], rng: random.Random | None = None) -> dict[str, Any]:
@@ -516,7 +563,7 @@ def _extra_calls_from_reply(message: Mapping[str, Any], actor: str
             calls.append({"name": name, "arguments": {}, "tool_call_id": raw.get("id"),
                           "parse_error": f"{type(exc).__name__}: {exc}"})
             continue
-        # Ticket 38: SPEAK_TOOLS declares inner; extras' inbox is envelope-free,
+        # Ticket 38: the tool schema declares inner; extras' inbox is envelope-free,
         # so lift the monologue out of the arguments before it reaches the
         # kernel (never reject an extra over it). It stays on the call, never
         # inside `arguments`.
@@ -544,10 +591,12 @@ def _extra_calls_from_reply(message: Mapping[str, Any], actor: str
 
 
 def extra_tool_calls(provider: Any, system_text: str, briefing_text: str, *,
-                     actor: str = "extra", attempts: int = 3) -> list[dict[str, Any]]:
+                     actor: str = "extra", attempts: int = 3,
+                     correction: str = "") -> list[dict[str, Any]]:
     """One extras turn under the v4 protocol (V4-AGENT-INTERFACE §5): the
-    extra's whole world is the briefing; its tool surface is speak-only.
-    Returns the parsed tool-call list (same shape as the v4 agents).
+    extra's whole world is the briefing; its tool surface is the extra's own
+    (ticket 57: speak + move/take/place/give). Returns the parsed tool-call
+    list (same shape as the v4 agents).
 
     T1 文本即说话 applies to extras too: a reply with plain text and no
     tool_calls is that extra's spoken words — synthesize the speak call.
@@ -556,12 +605,19 @@ def extra_tool_calls(provider: Any, system_text: str, briefing_text: str, *,
 
     Ticket 42: a reply that is the protocol envelope is re-asked (same
     failure→retry convention as the MC session); if it stays envelope-shaped,
-    the extra says nothing this turn — raw protocol JSON is never spoken."""
+    the extra says nothing this turn — raw protocol JSON is never spoken.
+
+    Ticket 57: ``correction`` is an engine-supplied note appended after the
+    briefing (the world's rejection of the prior turn's action), so a
+    rejected move/verb is reported back to the extra for one self-correcting
+    reply instead of being invented into the next line."""
     messages: list[dict[str, Any]] = [{"role": "system", "content": system_text}]
     if briefing_text:
         messages.append({"role": "user", "content": briefing_text})
+    if correction:
+        messages.append({"role": "user", "content": correction})
     for _attempt in range(max(1, attempts)):
-        message = provider.chat_with_tools(messages, SPEAK_TOOLS)
+        message = provider.chat_with_tools(messages, EXTRA_TOOLS)
         calls, problem = _extra_calls_from_reply(message, actor)
         if problem is None:
             return calls

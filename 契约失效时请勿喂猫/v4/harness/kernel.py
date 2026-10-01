@@ -1099,6 +1099,35 @@ class World:
             result["action_state"] = state
         return result
 
+    def scene_perception(self, actor_id: str, *, tail: int = 12) -> dict[str, Any]:
+        """Read-only scene view for a conversation-scoped extra (ticket 57).
+
+        Same delivery authority as :meth:`poll` — ``Event.visible_to`` plus
+        co-location — but with none of poll's side effects: an extra has no
+        perception cursor to advance, no inbox to consume, and no
+        observation / stay-read bookkeeping to run. It exists so an extra can
+        see who is here, what is here (each entity carries its real
+        description, so a quantity like “一份” is stated instead of guessed),
+        and what just happened. It never grants more than a co-located main
+        actor's poll would: the visible set is exactly this location's people
+        and items.
+        """
+        a = self._actor(actor_id)
+        visible = [e for e in self.event_log[-tail:] if actor_id in e.visible_to]
+        return {
+            "observer": actor_id, "time": self.now.isoformat(),
+            "world_version": self.version, "location": a.location,
+            "nearby_actors": sorted(x.id for x in self.actors.values()
+                                    if x.id != actor_id and x.location == a.location),
+            "nearby_items": sorted(i for i, loc in self.item_locations.items()
+                                   if loc == a.location),
+            "inventory": sorted(a.inventory),
+            "events": [self._public(e, observer=actor_id) for e in visible],
+            "descriptions": {entity_id: self.entity_descriptions[entity_id]
+                             for entity_id in sorted(self._visible_descriptions(a))
+                             if entity_id in self.entity_descriptions},
+        }
+
     def notify_compaction(self, actor_id: str) -> None:
         """The actor's context was just rewritten (compaction): force one full
         state + description re-observation on the next poll, since the details

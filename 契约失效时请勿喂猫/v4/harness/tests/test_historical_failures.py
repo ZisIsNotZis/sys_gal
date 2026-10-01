@@ -344,6 +344,29 @@ T56 private reasoning in the assistant正文 was broadcast (ticket 56) . test_pr
     record, self-correction and count; the concealment/plan markers stay
     plain-content-only (a person may say "我不能让他们知道" aloud). A lone
     "格式" never triggers — only the 格式错 pairing does.
+E57 extras could only speak, so they narrated physical acts as done  (ticket 57)
+                                                               test_the_kernel_already_offers_move_to_an_extra,
+                                                               test_a_declared_departure_is_a_real_visible_move,
+                                                               test_the_recorded_turn_carries_real_affordances_and_perception,
+                                                               test_scene_briefing_grounds_a_stated_quantity,
+                                                               test_a_rejected_action_is_reported_back_for_one_correction,
+                                                               test_scene_perception_grants_no_more_than_co_location
+    real-20261001T065553, three independent reviewers: `_extra_turn`
+    hardcoded `affordances=[]` / `perception={events:[],inbox:[],
+    nearby_actors:[]}` and iterated the reply with `if call_name !=
+    "speak": continue`, while the extra tool surface was SPEAK_TOOLS. So
+    孙学长 announced the window seat four times (location always 半坡咖啡馆,
+    no move/leave event), 陈大叔 said "我先回去看书了啊" and was recycled by
+    `extra_removed reason=idle`, and 何大叔 called one 校报草稿 "一摞". The
+    kernel was never the cause — `affordances(extra)` already returned
+    `move`; the harness discarded it. Fix: EXTRA_TOOLS (speak + move/take/
+    place/give, no memory tools), the extra turn executes every offered verb
+    through the kernel (world timing completes a move as leave/enter), a
+    rejected verb is handed back for one self-correcting reply, the trace
+    records the real scene perception + affordances, and the scene block
+    carries the entity descriptions so a quantity is grounded (一份, not
+    一摞). Moving away keeps the existing partner_gone/idle recycle path,
+    whose event is visible to the room.
 """
 
 import json
@@ -1095,11 +1118,13 @@ class HistoricalFailureGates(unittest.TestCase):
         self.assertGreaterEqual(provider.calls, 2, "失败必须带可自纠提示重说")
 
     def test_extra_prompt_states_self_name_and_assertion_bounds(self):
-        """E42 (tickets 42-2/3/4): the extra prompt never said who it was, so
-        韩大叔 called itself by third person and mailed its own name into
-        `to` (`unknown or ambiguous speak recipient`); with no capability or
-        assertion bounds it invented a 抄件 signature date (unregistered
-        entity) and narrated 开柜/递件 as done while its only tool is speak."""
+        """E42 (tickets 42-2/3/4) + E57: the extra prompt never said who it
+        was, so 韩大叔 called itself by third person and mailed its own name
+        into `to` (`unknown or ambiguous speak recipient`); with no capability
+        or assertion bounds it invented a 抄件 signature date (unregistered
+        entity) and narrated 开柜/递件 as done. Ticket 57 keeps the bounds
+        while granting the real verbs: the prompt must offer `move` for an
+        actual departure and still forbid narrating an unperformed act."""
         from harness.npc_agent import build_extra_system_prompt
 
         prompt = build_extra_system_prompt("兼职店员", "三点前守好吧台", "半坡咖啡馆",
@@ -1108,11 +1133,12 @@ class HistoricalFailureGates(unittest.TestCase):
         self.assertIn("第三人称", prompt, "必须禁止第三人称自称")
         self.assertIn("to", prompt)  # to 只能是在场他人
         self.assertIn("在场", prompt)
-        self.assertIn("只能说话", prompt, "只能 speak 的角色不得叙述物理动作")
-        self.assertIn("已经发生", prompt)
+        self.assertIn("move", prompt, "要走就必须真的 move 走过去")
+        self.assertIn("已经发生", prompt, "没做过的动作不得叙述成已发生")
         self.assertIn("传闻", prompt)
         self.assertIn("具体细节", prompt)
         self.assertIn("签名", prompt)  # 反例清单：签名/日期这类细节
+        self.assertIn("一份", prompt, "数量要照实说，不许放大")
         self.assertIn("知识", prompt)
         self.assertIn("JSON", prompt)
 
@@ -1654,6 +1680,173 @@ class HistoricalFailureGates(unittest.TestCase):
                          {"agent_error", "decision_timeout", "engine_error"})
         self.assertIn("inner", turn["error"] or "")
         self.assertTrue(any("inner" in str(r.get("text")) for r in agent.delivered))
+
+
+def _extra_call(name: str, args: dict) -> dict:
+    """A provider reply carrying one native tool call."""
+    return {"role": "assistant", "content": "", "tool_calls": [
+        {"id": f"c-{name}", "type": "function",
+         "function": {"name": name, "arguments": json.dumps(args, ensure_ascii=False)}}]}
+
+
+class _ExtraScript:
+    """A scripted extra provider: records each call's (messages, tools) and
+    answers with ``reply(n)`` for the n-th call."""
+
+    def __init__(self, reply):
+        from copy import deepcopy
+        self._deepcopy = deepcopy
+        self.reply = reply
+        self.calls: list[tuple[list[dict], list[dict]]] = []
+
+    def chat_with_tools(self, messages, tools):
+        self.calls.append((self._deepcopy(messages), self._deepcopy(tools)))
+        return self.reply(len(self.calls))
+
+
+class Ticket57ExtraActionGates(unittest.TestCase):
+    """E57 (ticket 57, real-20261001T065553): an extra could only speak, so
+    the run's three strangers narrated physical acts as done — 孙学长
+    declared the window seat four times (location never changed, no
+    move/leave event), 陈大叔 said "我先回去看书了啊" with no departure, and
+    何大叔 called one 校报草稿 "一摞". `_extra_turn` hardcoded
+    `affordances=[]` and `perception={events:[],inbox:[],nearby_actors:[]}`,
+    iterated `intention_calls` with `if call_name != "speak": continue`, and
+    the extras' tool surface was SPEAK_TOOLS. The kernel's `affordances()`
+    was never the cause — it already returned `move` for role=extra (verified
+    below); the harness threw it away. Fix: extras get EXTRA_TOOLS (speak +
+    move/take/place/give, no memory tools), the turn executes every offered
+    verb through the kernel, a rejected verb is reported back for one
+    correction, and the recorded turn carries the real scene perception and
+    affordances. The scene block grounds a stated quantity (一份, not 一摞)."""
+
+    START = datetime.fromisoformat("2026-03-16T09:00:00+08:00")
+
+    def _run(self, reply, *, stop_minutes: int = 30):
+        pack = load_story_pack()
+        world = pack.build_world()
+        trace = Trace("v4-test", "ticket57-extra-action")
+        asked = False
+
+        def agent(state, perception, affordances):
+            nonlocal asked
+            if state.actor_id == "唐小岚" and not asked:
+                asked = True
+                return Intention("唐小岚", "speak",
+                                 {"text": "同学，你就是新来的兼职吧？",
+                                  "volume": "normal", "to": ["陌生人"]},
+                                 perception["world_version"])
+            return Intention(state.actor_id, "wait", {"duration_seconds": 3600},
+                             perception["world_version"])
+
+        provider = _ExtraScript(reply)
+        states = {a: PrivateState(a) for a in world.actors}
+        agents = {a: agent for a in world.actors if world.actors[a].role != "extra"}
+        engine = AsyncEngine(world, agents, states, trace, None, extra_call=provider,
+                             decision_timeout=10, max_wall_seconds=60,
+                             extra_idle_seconds=3600)
+        engine.run(stop_at=self.START + timedelta(minutes=stop_minutes), max_turns=300)
+        return world, trace, provider
+
+    def _extra_name(self, trace) -> str:
+        return next(t["actor"] for t in trace.agent_turns if t.get("role") == "extra")
+
+    def test_the_kernel_already_offers_move_to_an_extra(self):
+        """The empty affordances were a harness loss, not a role filter: the
+        kernel's affordances() returns move/speak for role=extra on its own."""
+        world = load_story_pack().build_world()
+        world.add_extra("路人甲", "半坡咖啡馆")
+        kinds = {a["kind"] for a in world.affordances("路人甲")}
+        self.assertIn("move", kinds)
+        self.assertIn("speak", kinds)
+        self.assertIn("图书馆", {a.get("target") for a in world.affordances("路人甲")
+                                 if a["kind"] == "move"})
+
+    def test_a_declared_departure_is_a_real_visible_move(self):
+        """孙学长 declared 4 times he was going to the window seat and never
+        moved. A move reply must commit a leave (heard by the room) and an
+        enter, change the location, and despawn via partner_gone."""
+        def reply(n):
+            return _extra_call("move", {"inner": "不掺和了，我先走一步", "target": "图书馆"})
+
+        world, trace, provider = self._run(reply)
+        name = self._extra_name(trace)
+        leaves = [e for e in world.event_log if e.kind == "leave" and e.actor == name]
+        self.assertTrue(leaves, "宣布离开必须落地为真实的 leave 事件")
+        self.assertIn("唐小岚", leaves[0].visible_to,
+                      "同场的发起者必须看得见这次离开")
+        entered = [e for e in world.event_log if e.kind == "enter" and e.actor == name]
+        self.assertTrue(entered, "离开必须落地为真实的 enter 事件")
+        self.assertEqual(entered[-1].payload.get("location"), "图书馆")
+        self.assertNotIn(name, world.actors, "离开后按 partner_gone 回收")
+        removed = [e for e in world.event_log if e.kind == "extra_removed" and e.actor == name]
+        self.assertEqual(removed[-1].payload.get("reason"), "partner_gone")
+        self.assertTrue(any(t["result"] == "submitted" for t in trace.agent_turns
+                            if t["actor"] == name))
+
+    def test_the_recorded_turn_carries_real_affordances_and_perception(self):
+        """(b)(e): the extra turn's trace no longer holds an empty stub — it
+        records the kernel's move affordance and the co-located partner."""
+        world, trace, provider = self._run(
+            lambda n: _extra_call("speak", {"inner": "搭句话", "text": "哎，是我，怎么了？"}))
+        turn = next(t for t in trace.agent_turns if t.get("role") == "extra")
+        self.assertIn("move", {a.get("kind") for a in turn["affordances"]})
+        self.assertIn("speak", {a.get("kind") for a in turn["affordances"]})
+        self.assertIn("唐小岚", turn["perception"]["nearby_actors"])
+        self.assertIn("校报草稿", turn["perception"]["nearby_items"])
+
+    def test_scene_briefing_grounds_a_stated_quantity(self):
+        """(d): 何大叔 turned one 校报草稿 into 一摞. The extra's own scene
+        now states the prop and its real description, so 一份 is grounded and
+        the model need not guess — and the tool surface is the non-memory
+        action set."""
+        world, trace, provider = self._run(
+            lambda n: _extra_call("speak", {"inner": "应一声", "text": "哦，那不打扰你了。"}))
+        user_tail = provider.calls[0][0][-1]["content"]
+        self.assertIn("校报草稿", user_tail)
+        self.assertIn("一份", user_tail)
+        self.assertIn("照实", user_tail)
+        names = [t["function"]["name"] for t in provider.calls[0][1]]
+        self.assertEqual(names, ["speak", "move", "take", "place", "give"])
+        for memory_tool in ("update_memory", "recall", "flashback", "wait", "text"):
+            self.assertNotIn(memory_tool, names)
+
+    def test_a_rejected_action_is_reported_back_for_one_correction(self):
+        """A move the world cannot execute (月球) must not be narrated as
+        done: the rejection is handed back to the extra, which answers once
+        more in bounds, and no leave/enter is ever fabricated."""
+        def reply(n):
+            if n == 1:
+                return _extra_call("move", {"inner": "走了", "target": "月球"})
+            return _extra_call("speak", {"inner": "那天我去不了",
+                                          "text": "月球我可去不了，我就在这儿等你回来。"})
+
+        world, trace, provider = self._run(reply, stop_minutes=10)
+        name = self._extra_name(trace)
+        self.assertGreaterEqual(len(provider.calls), 2, "被拒的动作必须回给 extra 重说")
+        correction = provider.calls[1][0][-1]["content"]
+        self.assertIn("没能执行", correction)
+        self.assertIn("月球", correction)
+        self.assertFalse([e for e in world.event_log if e.kind == "leave" and e.actor == name],
+                         "没发生的离开绝不能变成事实")
+        speeches = [str(e.payload.get("text", "")) for e in world.event_log
+                    if e.kind == "speech" and e.actor == name]
+        self.assertTrue(any("去不了" in s for s in speeches), speeches)
+
+    def test_scene_perception_grants_no_more_than_co_location(self):
+        """The read-only scene view must use the same `visible_to` authority
+        as a main actor's poll — co-location and delivery only, never the
+        private knowledge channel."""
+        world = load_story_pack().build_world()
+        location = "半坡咖啡馆"
+        world.add_extra("路人甲", location)
+        perception = world.scene_perception("路人甲")
+        expected = sorted(a for a in world.actors
+                          if a != "路人甲" and world.actors[a].location == location)
+        self.assertEqual(perception["nearby_actors"], expected)
+        visible_ids = {e.id for e in world.event_log if "路人甲" in e.visible_to}
+        self.assertEqual({e["id"] for e in perception["events"]}, visible_ids)
+        self.assertNotIn("knowledge", perception)
 
 
 class RepetitionMonitorGates(unittest.TestCase):

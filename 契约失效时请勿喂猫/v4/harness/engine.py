@@ -39,11 +39,13 @@ from typing import Any, Callable, Iterable, Mapping, Protocol, Sequence
 
 from .adapter import parse_decision
 from .agent_state import PrivateState
+from .action_schema import EXTRA_ACTION_KINDS
 from .kernel import (ActionRejected, Intention, TICK_SECONDS,
                      WAKE_EVENT_KINDS, World)
-from .npc_agent import (build_extra_briefing, build_extra_system_prompt,
-                        extra_heard_speech_since, extra_scene_transcript,
-                        generate_stranger_name, looks_like_private_reasoning,
+from .npc_agent import (build_extra_briefing, build_extra_scene,
+                        build_extra_system_prompt, extra_heard_speech_since,
+                        extra_scene_transcript, generate_stranger_name,
+                        looks_like_private_reasoning,
                         looks_like_protocol_envelope,
                         looks_like_protocol_reasoning,
                         restore_extra_prompt, sample_extra)
@@ -2197,10 +2199,55 @@ class AsyncEngine:
         transcript = extra_scene_transcript(
             events, listener=name, start=int(info["start"]),
             opening_question=question, questioner=str(info["partner"]))
+        # Ticket 57: an extra perceives its scene through the same visible_to
+        # authority a main actor's poll uses — who is here, what is here (each
+        # with its objective description, so a quantity is grounded), and what
+        # just happened. Its affordances are the kernel's real ones (move
+        # included), not an empty stub.
+        perception = self.world.scene_perception(name)
+        # The kernel's affordances are generic (it already offered move to an
+        # extra); keep only the verbs this extra actually has tools for, so the
+        # recorded affordances match its real surface.
+        affordances = [a for a in self.world.affordances(name)
+                       if a.get("kind") in EXTRA_ACTION_KINDS]
         system = restore_extra_prompt(info, location, name=name)
-        briefing = build_extra_briefing(transcript=transcript)
+        briefing = build_extra_briefing(
+            transcript=transcript,
+            scene=build_extra_scene(perception, affordances))
         intention_calls: list[dict[str, Any]] = []
         result, error = "none", ""
+
+        def run_calls(calls: list[dict[str, Any]]
+                      ) -> tuple[int, list[str], bool, bool]:
+            """Submit each call through the kernel; return
+            (world_actions, failures, envelope_rejected, busy_rejected)."""
+            actions, failures, envelope_rejected, busy = 0, [], False, False
+            for call in calls:
+                call_name = str(call.get("name", ""))
+                args = dict(call.get("arguments") or {})
+                if call_name == "speak":
+                    if looks_like_protocol_envelope(str(args.get("text", ""))):
+                        # Ticket 42 hard stop: whatever the provider path, the
+                        # protocol envelope (and its private inner) is never
+                        # broadcast as an extra's spoken line.
+                        envelope_rejected = True
+                        continue
+                elif call_name not in EXTRA_ACTION_KINDS:
+                    failures.append(f"{call_name}: 不在路人的能力范围内")
+                    continue
+                try:
+                    self.world.submit(
+                        Intention(name, call_name, args, self.world.version),
+                        seen_here=perception.get("nearby_actors"))
+                    actions += 1
+                    info["last_active"] = self.world.now
+                except ActionRejected as exc:
+                    busy = busy or exc.context.get("busy_until") is not None
+                    failures.append(str(exc))
+                except Exception as exc:
+                    failures.append(f"{type(exc).__name__}: {exc}")
+            return actions, failures, envelope_rejected, busy
+
         try:
             if not needs_response:
                 pass
@@ -2210,6 +2257,30 @@ class AsyncEngine:
                 assert extra_call is not None
                 intention_calls = await _run_blocking(
                     extra_tool_calls, extra_call, system, briefing, actor=name)
+                world_actions, failures, envelope_rejected, busy = run_calls(intention_calls)
+                if failures and not busy:
+                    # Ticket 57: report the rejection back to the extra for one
+                    # self-correcting reply, so a failed move/verb is neither
+                    # invented into the next line nor silently dropped. Bounded
+                    # to a single extra round; a busy actor is not re-asked.
+                    correction = ("世界没能执行你上一条动作，照原样改一下重来：\n"
+                                  + "\n".join(f"- {f}" for f in failures[:3])
+                                  + "\n只用一个可执行的动作回应，或直接说你要说的那句话。")
+                    retry_calls = await _run_blocking(
+                        extra_tool_calls, extra_call, system, briefing,
+                        actor=name, correction=correction)
+                    more, retry_failures, retry_envelope, _ = run_calls(retry_calls)
+                    intention_calls = intention_calls + retry_calls
+                    world_actions += more
+                    envelope_rejected = envelope_rejected or retry_envelope
+                    failures = retry_failures
+                if world_actions:
+                    result = "submitted"
+                elif envelope_rejected:
+                    result = "rejected"
+                    error = "speak text is the protocol envelope, not a line"
+                elif failures:
+                    result, error = "rejected", failures[0]
             else:
                 legacy_extra = self.extra_call
                 assert legacy_extra is not None and callable(legacy_extra)
@@ -2221,30 +2292,14 @@ class AsyncEngine:
                 if intention is not None:
                     intention_calls = [{"name": intention.kind,
                                         "arguments": dict(intention.args)}]
-            spoke = False
-            envelope_rejected = False
-            for call in intention_calls:
-                call_name = str(call.get("name", ""))
-                if call_name != "speak":
-                    continue  # extras' tool surface is speak-only (§5)
-                args = call.get("arguments") or {}
-                if looks_like_protocol_envelope(str(args.get("text", ""))):
-                    # Ticket 42 hard stop: whatever the provider path, the
-                    # protocol envelope (and its private inner) is never
-                    # broadcast as an extra's spoken line. The re-ask lives in
-                    # extra_tool_calls; this is the last boundary before the
-                    # world makes it audible.
-                    envelope_rejected = True
-                    continue
-                self.world.submit(Intention(name, "speak", dict(args),
-                                            self.world.version))
-                spoke = True
-                info["last_active"] = self.world.now
-            if spoke:
-                result = "submitted"
-            elif envelope_rejected:
-                result = "rejected"
-                error = "speak text is the protocol envelope, not a line"
+                world_actions, failures, envelope_rejected, _busy = run_calls(intention_calls)
+                if world_actions:
+                    result = "submitted"
+                elif envelope_rejected:
+                    result = "rejected"
+                    error = "speak text is the protocol envelope, not a line"
+                elif failures:
+                    result, error = "rejected", failures[0]
         except ActionRejected as exc:
             result, error = "rejected", str(exc)
         except Exception as exc:
@@ -2253,17 +2308,16 @@ class AsyncEngine:
         # .args); a bare dict made every extra turn die after submitting its
         # speech, so no extra turn was ever recorded (ticket-21). The lifted
         # inner rides on the private trace only (ticket 42: it must never
-        # enter a speech payload).
+        # enter a speech payload). Kind is the turn's first real call.
         trace_inner = next((str(call.get("inner")) for call in intention_calls
                             if str(call.get("inner") or "").strip()), None)
-        trace_intention = Intention(name, "speak",
+        trace_kind = str(intention_calls[0].get("name", "speak")) if intention_calls else "speak"
+        trace_intention = Intention(name, trace_kind,
                                     {"calls": intention_calls},
                                     self.world.version, inner=trace_inner)
         self.trace.record_agent(state=PrivateState(name),
-                                perception={"observer": name, "time": self.world.now.isoformat(),
-                                            "location": location, "events": [], "inbox": [],
-                                            "nearby_actors": [], "nearby_items": []},
-                                affordances=[], intention=trace_intention,
+                                perception=perception,
+                                affordances=affordances, intention=trace_intention,
                                 result=result,
                                 error=error or None, role="extra")
         self._scheduler_wake.set()

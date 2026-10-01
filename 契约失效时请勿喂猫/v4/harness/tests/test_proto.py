@@ -176,6 +176,20 @@ class ToolsTests(unittest.TestCase):
         self.assertEqual([tool["function"]["name"] for tool in SPEAK_TOOLS], ["speak"])
         self.assertIn("inner", SPEAK_TOOLS[0]["function"]["parameters"]["required"])
 
+    def test_extra_tools_add_actions_but_no_memory(self):
+        """Ticket 57: an extra is a real actor — its surface is speak plus
+        the minimal physical verbs, and must never include a memory tool
+        (extras have no KB)."""
+        from harness.action_schema import EXTRA_ACTION_KINDS, EXTRA_TOOLS
+        self.assertEqual([tool["function"]["name"] for tool in EXTRA_TOOLS],
+                         ["speak", "move", "take", "place", "give"])
+        self.assertEqual(set(EXTRA_ACTION_KINDS),
+                         {"speak", "move", "take", "place", "give"})
+        for tool in EXTRA_TOOLS:
+            self.assertIn("inner", tool["function"]["parameters"]["required"])
+        for banned in ("update_memory", "recall", "flashback"):
+            self.assertNotIn(banned, EXTRA_ACTION_KINDS)
+
 
 class ChatWithToolsTests(unittest.TestCase):
     def _provider(self, retries=0):

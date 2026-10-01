@@ -389,7 +389,7 @@ class ExtraContextTests(unittest.TestCase):
 
     def test_extra_tool_static_prefix_is_byte_stable_across_dynamic_tails(self):
         from copy import deepcopy
-        from harness.action_schema import SPEAK_TOOLS
+        from harness.action_schema import EXTRA_TOOLS
         from harness.npc_agent import extra_tool_calls
 
         class Capture:
@@ -410,7 +410,7 @@ class ExtraContextTests(unittest.TestCase):
         extra_tool_calls(provider, system, "")
         self.assertEqual(provider.calls[0][0][0], provider.calls[1][0][0])
         self.assertEqual(provider.calls[0][1], provider.calls[1][1])
-        self.assertEqual(provider.calls[0][1], SPEAK_TOOLS)
+        self.assertEqual(provider.calls[0][1], EXTRA_TOOLS)
         self.assertNotEqual(provider.calls[0][0][1], provider.calls[1][0][1])
         self.assertEqual(provider.calls[2][0], [{"role": "system", "content": system}])
 

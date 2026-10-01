@@ -95,7 +95,8 @@ SCHEMAS: dict[str, dict[str, Any]] = {
 # ``inner`` rides inside ``arguments`` (the native tool-call slot); the parser
 # lifts it out before the kernel validates the action shape, so it never trips
 # ``additionalProperties``. ``SCHEMAS`` stays the action shape (single source
-# of truth for the kernel); only ``TOOLS``/``SPEAK_TOOLS`` carry the merge.
+# of truth for the kernel); only ``TOOLS``/``SPEAK_TOOLS``/``EXTRA_TOOLS`` carry
+# the merge.
 INNER_KEY = "inner"
 INNER_PROPERTY: dict[str, Any] = {"type": "string", "minLength": 1}
 
@@ -176,6 +177,16 @@ TOOLS: list[dict[str, Any]] = [
 
 SPEAK_TOOLS: list[dict[str, Any]] = [tool for tool in TOOLS
                                      if tool["function"]["name"] == "speak"]
+
+# Ticket 57: a conversation-scoped extra is a real actor in the world, not a
+# talking prop. Its surface stays deliberately small — its job is to speak, and
+# to be able to LEAVE (so "我走了" becomes a real move/leaves event instead of
+# a line), with the minimal physical verbs a bystander needs. No memory tools:
+# an extra has no KB, and nothing durable to write.
+EXTRA_ACTION_KINDS: tuple[str, ...] = ("speak", "move", "take", "place", "give")
+
+EXTRA_TOOLS: list[dict[str, Any]] = [tool for tool in TOOLS
+                                     if tool["function"]["name"] in EXTRA_ACTION_KINDS]
 
 _VALIDATORS: dict[str, Draft202012Validator] = {
     kind: Draft202012Validator(schema) for kind, schema in SCHEMAS.items()}

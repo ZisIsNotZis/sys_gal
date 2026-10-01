@@ -8,11 +8,13 @@ import time
 from typing import Any, Callable, Iterable
 
 from .agent_state import PrivateState, validate_private_updates
+from .action_schema import EXTRA_ACTION_KINDS
 from .kernel import ActionRejected, Intention, World
 from .repetition import RepetitionMonitor
 from .system import Ledger
 from .adapter import parse_decision
-from .npc_agent import (build_extra_briefing, build_extra_system_prompt,
+from .npc_agent import (build_extra_briefing, build_extra_scene,
+                         build_extra_system_prompt,
                          extra_scene_transcript, generate_stranger_name,
                          public_mc_digest, restore_extra_prompt, sample_extra,
                          schedule_digest)
@@ -474,8 +476,16 @@ class Runner:
         transcript = extra_scene_transcript(
             self.world.event_log, listener=name, start=int(info["start"]),
             opening_question=question, questioner=str(info["partner"]))
+        # Ticket 57: record what the extra actually perceives (same visible_to
+        # authority as an actor's poll) and its real affordances, so the trace
+        # is not an empty stub that hides the scene.
+        perception = self.world.scene_perception(name)
+        affordances = [a for a in self.world.affordances(name)
+                       if a.get("kind") in EXTRA_ACTION_KINDS]
         system = restore_extra_prompt(info, location)
-        briefing = build_extra_briefing(transcript=transcript)
+        briefing = build_extra_briefing(
+            transcript=transcript,
+            scene=build_extra_scene(perception, affordances))
         intention, result, error = None, ("none" if not transcript else "agent_error"), ""
         try:
             if transcript:
@@ -504,10 +514,8 @@ class Runner:
             result, error = "agent_error", f"{type(exc).__name__}: {exc}"
         state = PrivateState(name)
         self.trace.record_agent(state=state,
-                                perception={"observer": name, "time": self.world.now.isoformat(),
-                                            "location": location, "events": [], "inbox": [],
-                                            "nearby_actors": [], "nearby_items": []},
-                                affordances=[], intention=intention, result=result,
+                                perception=perception,
+                                affordances=affordances, intention=intention, result=result,
                                 error=error or None, role="extra")
         if intention is not None and intention.kind == "move":
             self.trace.record_system({"kind": "extra_removed"},
