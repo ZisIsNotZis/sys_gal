@@ -1264,6 +1264,25 @@ contacts:
   - {of: 宿管阿姨}
   - {of: 辅导员}
 
+# unreachable_targets: ticket 66 可达性契约。有些名字角色会当成地点或联系人来用，
+# 但它们既不在 locations 也不在 contacts 里（校外邻居、住户门牌、楼里的寝室）。
+# 名字不能硬塞进地点表，但拒绝也不能三条路全死：内核按名字查到这里的 reason（这个
+# 名字在世界里到底是什么）和 hint（剧情可执行的替代：问谁／去哪／用哪个动作），
+# 拼进 text/move/knock 的拒绝文案。
+unreachable_targets:
+  李阿姨家:
+    reason: 老家属院的住户门牌，不是一处单独可到达的地点。
+    hint: 老家属院与校内之间只通电话／消息，走不过去；要办事就用 text 联系那边的人。
+  李阿姨:
+    reason: 老家属院的邻居，住在陈默家隔壁；学校没有登记她的号码，人也不在校内。
+    hint: 要给她带话只能托人——text 你通讯录里的人替你捎一句，或先用 update_memory 把这件事记下。
+  老家属院:
+    reason: 与校内之间只通电话／消息，当日无法步行往返。
+    hint: 人过不去；要办的事用 text 联系老家属院那边的人，或先用 update_memory 记下待办。
+  305宿舍:
+    reason: 具体寝室不单独建模，305 就在女生宿舍楼里。
+    hint: 要进的是楼里的房间——先 move 到它所在的楼（女生宿舍）；房间不必单独进入。
+
 # concepts: every named thing that is not an actor/location/item/document.
 # Each gets a definition (what it is), the actors who know it (knowledge row),
 # and per-actor first-person memory (flashback row). A concept whose name equals
