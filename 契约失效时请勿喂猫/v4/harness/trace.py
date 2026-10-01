@@ -64,7 +64,8 @@ class Trace:
                      event_ids: list[int] | None = None,
                      role: str = "mc",
                      withheld_private: bool = False,
-                     withheld_text: str | None = None) -> None:
+                     withheld_text: str | None = None,
+                     memory_rejections: list[str] | None = None) -> None:
         self.agent_turns.append({
             "actor": state.actor_id, "perception": deepcopy(perception),
             "private_state": state.snapshot(), "affordances": deepcopy(affordances),
@@ -79,6 +80,10 @@ class Trace:
             "withheld_private": withheld_private, "withheld_text": withheld_text,
             # V4-CAST §1: mc | npc | extra — analysis marker, never shown to MCs.
             "role": role,
+            # Ticket 59: per-row update_memory rejections. Kept apart from
+            # `error` so a partial write counts as a real success while its
+            # failed rows stay observable (the checker trends them).
+            "memory_rejections": list(memory_rejections or []),
             "result": result, "error": error,
             "version_before": version_before, "version_after": version_after,
             "event_ids": list(event_ids or []),

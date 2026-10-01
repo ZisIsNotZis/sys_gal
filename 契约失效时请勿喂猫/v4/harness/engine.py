@@ -1404,6 +1404,10 @@ class AsyncEngine:
         world = self.world
         results: list[dict[str, Any]] = []
         failures: list[str] = []
+        # Ticket 59: per-row memory rejections, recorded separately from the
+        # turn-level `error` so a partial update_memory is a real success with
+        # countable failures (the checker trends them).
+        memory_rejections: list[str] = []
         world_actions = 0
         # Ticket 46: the people this turn's perception saw here (the same
         # snapshot its affordances came from). The kernel judges recipients
@@ -1455,14 +1459,37 @@ class AsyncEngine:
                 continue
             if name == "update_memory":
                 if actor_id in self._kb:
-                    errs, _tel, warns = self._kb[actor_id].apply_ops(
-                        args.get("rows") or [], world.now)
-                    if errs:
-                        fail(call, "; ".join(errs + warns))
+                    rows = args.get("rows") or []
+                    applied: list[str] = []
+                    rejected: list[str] = []
+                    for row in rows:
+                        entry = row if isinstance(row, dict) else {}
+                        errs, _tel, warns = self._kb[actor_id].apply_ops(
+                            [entry], world.now)
+                        label = " ".join(sorted(str(k) for k in (entry.get("keys") or [])))
+                        op = str(entry.get("op", ""))
+                        if errs:
+                            rejected.append(f"keys=[{label}] op={op}: " + "; ".join(errs + warns))
+                        else:
+                            note = f"（{'；'.join(warns)}）" if warns else ""
+                            applied.append(f"keys=[{label}] op={op}{note}")
+                    if rejected and applied:
+                        # Ticket 59: rows are independent handles, so a bad row
+                        # never rolls back a good one. Report each row's outcome
+                        # instead of failing the whole call and hiding what
+                        # landed.
+                        text = ("部分成功。已记下：" + "；".join(applied)
+                                + "。未记下：" + "；".join(rejected))
+                        results.append({"tool_call_id": call.get("tool_call_id"),
+                                        "ok": True, "text": text})
+                        memory_rejections.extend(rejected)
+                    elif rejected:
+                        memory_rejections.extend(rejected)
+                        fail(call, "; ".join(rejected))
                     else:
                         text = "已记下。" + (("\n" + "\n".join(warns)) if warns else "")
-                        results.append({"tool_call_id": call.get("tool_call_id"), "ok": True,
-                                        "text": text})
+                        results.append({"tool_call_id": call.get("tool_call_id"),
+                                        "ok": True, "text": text})
                 else:
                     fail(call, "no notebook seeded for this actor")
                 continue
@@ -1709,7 +1736,8 @@ class AsyncEngine:
                                 version_after=world.version, event_ids=[],
                                 role=self._role(actor_id),
                                 withheld_private=withheld_private,
-                                withheld_text=withheld_text)
+                                withheld_text=withheld_text,
+                                memory_rejections=memory_rejections)
         # Ticket 56: after the tool results (ordering) show the actor its own
         # withheld line so the next decision writes speech only.
         if withheld_private:

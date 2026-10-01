@@ -1220,6 +1220,14 @@ def health_report(data, day: int):
         for m in s.get("messages", []):
             if "[[" in str(m.get("content", "")):
                 leak += 1
+    # Ticket 59: update_memory failures, split out of the turn totals so the
+    # trend is visible. New artifacts carry per-row `memory_rejections`; an
+    # artifact that predates the field recorded one failed call per turn in
+    # `error`, so count those turns as a proxy.
+    memory_rejected = sum(len(t.get("memory_rejections") or []) for t in turns)
+    if not any("memory_rejections" in t for t in turns):
+        memory_rejected = sum(1 for t in turns
+                              if "update_memory" in str(t.get("error") or ""))
     # Ticket 38: the private inner channel must be reachable, and private
     # deliberation must not leak into broadcast speech. Conservative, manual
     # heuristics — printed for review, never a gate.
@@ -1324,6 +1332,7 @@ def health_report(data, day: int):
         fewest_actor, fewest_count = min(sorted(counts.items()), key=lambda item: item[1])
         fewest = f"{fewest_count}（{fewest_actor}）"
     return {"当日在册轮次": len(turns), "错误轮次": len(errs),
+            "update_memory 失败行数": memory_rejected,
             "提供商HTTP错误": len(http), "标记泄漏条数": leak,
             "inner填充率": inner_rate,
             "疑似心声混进speech": inner_in_speech,

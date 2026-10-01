@@ -308,3 +308,91 @@ class PersistenceTests(unittest.TestCase):
         kb.due_lines(T0, "", limit=8)
         kb.on_compaction()
         self.assertIsNone(kb._rows[frozenset({"唐小岚"})].last_shown)
+
+
+class Ticket59UpdateMemoryErgonomicsTests(unittest.TestCase):
+    """Ticket 59: the three real update_memory shapes of the d1-am artifact
+    (real-20261001T065553) must no longer cost a turn. A key is still the
+    row's handle and matches verbatim; only the obvious fused spelling is
+    widened and the no-match error gains one executable correction."""
+
+    def test_scheduled_key_with_a_fused_label_is_split_not_rejected(self):
+        kb = ActorKB("陈默", [{"keys": ["陈默"], "desc": "我"}], T0)
+        errs, telemetry, _ = kb.apply_ops(
+            [{"keys": ["!at=3/16(周一) 08:10 上午班", "档案室"], "op": "open",
+              "desc": "8:10 到档案室上班"}], T0)
+        self.assertEqual(errs, [])
+        self.assertEqual(telemetry["applied"], 1)
+        row = next(r for r in kb.snapshot()["rows"] if "档案室" in r["keys"])
+        self.assertEqual(set(row["keys"]),
+                         {"!at=3/16(周一) 08:10", "上午班", "档案室"})
+        # the time key is still the reminder handle and fires on schedule
+        due = kb.due_reminders(T0.replace(hour=8, minute=15))
+        self.assertEqual([d["rendered"] for d in due], ["3/16(周一) 08:10"])
+        # the split-out label survives as a mention key
+        all_keys = {k for r in kb.snapshot()["rows"] for k in r["keys"]}
+        self.assertIn("上午班", all_keys)
+
+    def test_a_fused_label_with_two_tokens_splits_into_two_keys(self):
+        kb = ActorKB("陈默", [{"keys": ["陈默"], "desc": "我"}], T0)
+        errs, _, _ = kb.apply_ops(
+            [{"keys": ["!at=3/16(周一) 08:10 上午班 档案室"], "op": "open",
+              "desc": "上班"}], T0)
+        self.assertEqual(errs, [])
+        keys = {k for r in kb.snapshot()["rows"] for k in r["keys"]}
+        self.assertEqual(keys, {"陈默", "!at=3/16(周一) 08:10", "上午班", "档案室"})
+
+    def test_bare_weekday_scheduled_key_is_canonicalized_to_the_same_handle(self):
+        kb = ActorKB("宿管阿姨", [{"keys": ["宿管阿姨"], "desc": "我"}], T0)
+        errs, telemetry, _ = kb.apply_ops(
+            [{"keys": ["!at=3/16(一) 12:05", "林瑶", "中午回来"], "op": "open",
+              "desc": "看林瑶中午回没回来"}], T0)
+        self.assertEqual(errs, [])
+        self.assertEqual(telemetry["applied"], 1)
+        keys = {k for r in kb.snapshot()["rows"] for k in r["keys"]}
+        self.assertIn("!at=3/16(周一) 12:05", keys)
+        self.assertNotIn("!at=3/16(一) 12:05", keys)
+        # the canonical handle the row renders with resolves back to that row
+        errs, telemetry, _ = kb.apply_ops(
+            [{"keys": ["!at=3/16(周一) 12:05", "林瑶", "中午回来"], "op": "edit",
+              "desc": "改一笔"}], T0)
+        self.assertEqual(errs, [])
+        self.assertEqual(telemetry["applied"], 1)
+
+    def test_compound_keys_on_different_rows_name_the_closest_row(self):
+        kb = ActorKB("宿管阿姨", [
+            {"keys": ["宿管阿姨"], "desc": "我"},
+            {"keys": ["!contact", "林瑶"], "desc": "认识林瑶"},
+        ], T0, valid_contact_names={"宿管阿姨", "林瑶", "陈默"})
+        errs, telemetry, _ = kb.apply_ops(
+            [{"keys": ["!contact", "林瑶", "桂姨"], "op": "edit", "desc": "x"}], T0)
+        self.assertEqual(telemetry["applied"], 0)
+        self.assertEqual(len(errs), 1)
+        self.assertIn("no row keyed", errs[0])
+        self.assertIn("键重合最多的现有行是「!contact 林瑶」", errs[0],
+                      "must name the exact keys to retry with")
+        self.assertIn("op=edit", errs[0])
+
+    def test_partial_batch_writes_the_valid_rows(self):
+        kb = ActorKB("陈默", [{"keys": ["陈默"], "desc": "我"}], T0)
+        errs, telemetry, _ = kb.apply_ops(
+            [{"keys": ["新线索A"], "op": "open", "desc": "A"},
+             {"keys": ["没有的行"], "op": "edit", "desc": "B"},
+             {"keys": ["新线索B"], "op": "open", "desc": "B"}], T0)
+        self.assertEqual(telemetry["applied"], 2)
+        self.assertEqual(telemetry["rejected"], 1)
+        keys = {k for r in kb.snapshot()["rows"] for k in r["keys"]}
+        self.assertIn("新线索A", keys)
+        self.assertIn("新线索B", keys)
+        self.assertNotIn("没有的行", keys)
+
+    def test_contact_still_requires_a_real_person(self):
+        # Safety is unchanged: the widened !at handling never touches
+        # !contact's first-text-key contract (ticket 31).
+        kb = ActorKB("宿管阿姨", [{"keys": ["宿管阿姨"], "desc": "我"}], T0,
+                     valid_contact_names={"宿管阿姨", "林瑶"})
+        errs, telemetry, _ = kb.apply_ops(
+            [{"keys": ["!contact", "桂姨"], "op": "open", "desc": "联系人"}], T0)
+        self.assertEqual(telemetry["applied"], 0)
+        self.assertEqual(len(errs), 1)
+        self.assertIn("not another registered actor", errs[0])

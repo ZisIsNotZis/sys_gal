@@ -179,6 +179,26 @@ I61 unmarked placed documents were world-public (ticket 61) ..... test_document_
     non-blocking seed lint flags a placed document whose body asserts a
     concrete state (折痕/缺页/涂改/缺角…) while `known_to` is empty, so the
     author confirms the state is not meant to be common knowledge.
+I59 update_memory key friction was the run's largest error class (ticket 59) ... test_scheduled_key_label_and_bare_weekday_are_accepted,
+                                                               test_compound_key_error_names_the_closest_existing_row,
+                                                               test_partial_update_memory_reports_each_row_and_keeps_the_valid_ones,
+                                                               test_checker_splits_out_update_memory_failures
+    d1-am artifact (real-20261001T065553): 24 of the 52 error turns were
+    update_memory. Three real shapes: (1) the label fused into the time key
+    (`!at=3/16(周一) 08:10 上午班`, `!at=3/16(一) 12:05`) was rejected
+    "unparseable scheduled key"; (2) a multi-key target whose keys live on
+    DIFFERENT rows (`!contact 林瑶 桂姨`, `!always 签名人 老街坊代表`) answered
+    "no row keyed" with only per-key nearest keys, no executable retry; (3) a
+    batch row failing failed the whole call, so the valid rows that HAD been
+    written read as lost. Fix: `!at=` keys accept a fused label (split into a
+    second text key) and both `周X`/bare `X` weekday spellings (canonicalized to
+    one handle); a no-match error adds the open row with the largest key overlap
+    named with its exact keys; and update_memory applies row by row, reporting
+    each outcome (partial success is ok=True with the failed rows also recorded
+    in `memory_rejections`). Safety is unchanged: keys still match verbatim, a
+    `!contact` first text key must still be a registered actor, and the
+    `!at`/`!always` schedule and reminder_due auto-close are untouched. The
+    checker prints `update_memory 失败行数` separately.
 I46 recipient checks judged the live world, not the decision snapshot . test_one_bad_recipient_does_not_void_the_rest_of_the_batch,
                                                                test_a_name_seen_in_the_perception_is_always_resolvable,
                                                                test_every_recipient_offered_in_a_rejection_can_be_reached,
@@ -3573,6 +3593,93 @@ class DocumentWorldPublicGuardTests(unittest.TestCase):
         self.assertIn(self.LEDGER_STATE, packet["descriptions"]["2013年台风台账"])
         self.assertIn(self.LEDGER_STATE,
                       world.actors["宿管阿姨"].observed["2013年台风台账"]["objective"])
+
+
+class Ticket59UpdateMemoryGates(unittest.TestCase):
+    """I59 (ticket 59, d1-am artifact real-20261001T065553).
+
+    update_memory was the run's largest error class (24 of 52 error turns).
+    These gates pin the three real shapes and the split-out health metric:
+    (1) a label fused into the ``!at=`` time key (and the bare-weekday
+    spelling) must be accepted; (2) a multi-key target whose keys live on
+    different rows must name the closest row to retry with; (3) a batch keeps
+    its valid rows and reports each outcome."""
+
+    START = datetime.fromisoformat("2026-03-16T07:00:00+08:00")
+
+    def _kb(self, rows=None):
+        from harness.kb import ActorKB
+        return ActorKB("宿管阿姨", rows or [{"keys": ["宿管阿姨"], "desc": "我"}],
+                       self.START)
+
+    def test_scheduled_key_label_and_bare_weekday_are_accepted(self):
+        kb = self._kb()
+        errs, telemetry, _ = kb.apply_ops(
+            [{"keys": ["!at=3/16(周一) 08:10 上午班", "档案室"], "op": "open",
+              "desc": "上班"},
+             {"keys": ["!at=3/16(一) 12:05", "林瑶", "中午回来"], "op": "open",
+              "desc": "回来没"}], self.START)
+        self.assertEqual(errs, [], "a fused label / bare weekday must not cost a turn")
+        self.assertEqual(telemetry["applied"], 2)
+        keys = {k for r in kb.snapshot()["rows"] for k in r["keys"]}
+        self.assertIn("!at=3/16(周一) 08:10", keys)
+        self.assertIn("上午班", keys, "the fused label becomes its own mention key")
+        self.assertIn("!at=3/16(周一) 12:05", keys)
+        self.assertNotIn("!at=3/16(一) 12:05", keys,
+                         "both weekday spellings canonicalize to one handle")
+
+    def test_compound_key_error_names_the_closest_existing_row(self):
+        kb = self._kb([{"keys": ["宿管阿姨"], "desc": "我"},
+                       {"keys": ["!contact", "林瑶"], "desc": "认识林瑶"}])
+        errs, telemetry, _ = kb.apply_ops(
+            [{"keys": ["!contact", "林瑶", "桂姨"], "op": "edit", "desc": "x"}],
+            self.START)
+        self.assertEqual(telemetry["applied"], 0)
+        self.assertEqual(len(errs), 1)
+        self.assertIn("no row keyed", errs[0])
+        self.assertIn("键重合最多的现有行是「!contact 林瑶」", errs[0],
+                      "the retry must be one step")
+
+    def test_partial_update_memory_reports_each_row_and_keeps_the_valid_ones(self):
+        world = World(start=self.START,
+                      actors=[ActorState("陈默", "校史档案室")],
+                      locations=[LocationState("校史档案室")], routes={})
+        engine, agents = _chain_engine(world)
+        from harness.kb import ActorKB
+        engine._kb["陈默"] = ActorKB("陈默", [{"keys": ["陈默"], "desc": "我"}],
+                                     world.now)
+        engine._execute_chain(
+            "陈默",
+            [{"name": "update_memory",
+              "arguments": {"inner": "记一笔", "rows": [
+                  {"keys": ["新线索A"], "op": "open", "desc": "A"},
+                  {"keys": ["没有的行"], "op": "edit", "desc": "B"}]},
+              "tool_call_id": "mem-1"}],
+            {"time": world.now.isoformat(), "nearby_actors": [], "events": []},
+            world.affordances("陈默"), world.version)
+        result = agents["陈默"].delivered[-1]
+        self.assertTrue(result["ok"], "a partial write is not a lost batch")
+        self.assertIn("部分成功", result["text"])
+        self.assertIn("新线索A", result["text"])
+        self.assertIn("没有的行", result["text"])
+        keys = {k for r in engine._kb["陈默"].snapshot()["rows"] for k in r["keys"]}
+        self.assertIn("新线索A", keys, "the valid row must land")
+        turn = engine.trace.agent_turns[-1]
+        self.assertTrue(turn["memory_rejections"],
+                        "the failed rows stay countable apart from the turn error")
+        self.assertIsNone(turn["error"], "a partial write is not a failed turn")
+
+    def test_checker_splits_out_update_memory_failures(self):
+        module = _checker_module()
+        turns = [
+            {"perception": {"time": "2026-03-16T07:04:00+08:00"},
+             "memory_rejections": ["keys=[a] op=edit: no row keyed 'a'"]},
+            {"perception": {"time": "2026-03-16T07:05:00+08:00"},
+             "memory_rejections": []},
+        ]
+        report = module.health_report(
+            {"agent_turns": turns, "sessions": {}, "world_events": []}, 1)
+        self.assertEqual(report["update_memory 失败行数"], 1)
 
 
 if __name__ == "__main__":

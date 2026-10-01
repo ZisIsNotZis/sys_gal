@@ -42,7 +42,11 @@ _KNOWN_DIRECTIVES = frozenset({ALWAYS_KEY, CONTACT_KEY})
 
 _WEEKDAY = {"一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "日": 6}
 _WEEKDAY_CHAR = {v: k for k, v in _WEEKDAY.items()}
-_REMINDER_RE = re.compile(r"^(\d{1,2})/(\d{1,2})\((周[一二三四五六日])\) (\d{1,2}):(\d{2})$")
+_REMINDER_RE = re.compile(r"^(\d{1,2})/(\d{1,2})\((?:周)?([一二三四五六日])\) (\d{1,2}):(\d{2})$")
+# A lenient ``!at=`` key may fuse the row's label into the same string
+# (``!at=3/16(周一) 08:10 上午班``); the leading time is what the engine needs.
+_AT_TIME_RE = re.compile(
+    r"^(\d{1,2}/\d{1,2}\((?:周)?[一二三四五六日]\) \d{1,2}:\d{2})(?:\s+(\S.*))?$")
 
 # Characters neutral to matching: Chinese particles, whitespace, and the
 # punctuation that separates names in prose. Removing them on both sides makes
@@ -78,7 +82,9 @@ def parse_reminder_time(value: Any, now: datetime) -> datetime | None:
             candidate = datetime(now.year, int(month), int(day), int(hour), int(minute))
         except ValueError:
             return None
-        if candidate.weekday() != _WEEKDAY[weekday[-1]]:
+        # Both 周X and the bare X name the same weekday; format_reminder_time
+        # canonicalizes back to 周X, so the two spellings are one handle.
+        if candidate.weekday() != _WEEKDAY[weekday]:
             return None
         parsed = candidate
     else:
@@ -94,6 +100,52 @@ def parse_reminder_time(value: Any, now: datetime) -> datetime | None:
 def format_reminder_time(when: datetime) -> str:
     return (f"{when.month}/{when.day}(周{_WEEKDAY_CHAR[when.weekday()]}) "
             f"{when.hour:02d}:{when.minute:02d}")
+
+
+def _split_at_key(key: str, now: datetime) -> tuple[str | None, str | None]:
+    """Split an ``!at=`` key into (canonical time key, fused label).
+
+    ``!at=3/16(周一) 08:10``        -> ("!at=3/16(周一) 08:10", None)
+    ``!at=3/16(一) 08:10``          -> ("!at=3/16(周一) 08:10", None)  # bare weekday
+    ``!at=3/16(周一) 08:10 上午班``  -> ("!at=3/16(周一) 08:10", "上午班")
+
+    An unparseable value returns ``(None, None)``, so the caller keeps the key
+    verbatim and :func:`_validate_keys` reports it with its worked example.
+    """
+    value = key[len(_AT_PREFIX):]
+    match = _AT_TIME_RE.match(value.strip())
+    if match is None:
+        when = parse_reminder_time(value, now)          # ISO datetime fallback
+        if when is None:
+            return None, None
+        return f"{_AT_PREFIX}{format_reminder_time(when)}", None
+    when = parse_reminder_time(match.group(1), now)
+    if when is None:
+        return None, None
+    return f"{_AT_PREFIX}{format_reminder_time(when)}", match.group(2)
+
+
+def _expand_keys(keys: list[str], now: datetime) -> list[str]:
+    """Lenient directive parsing for seeds and ``update_memory`` (ticket 59).
+
+    The model often fuses a row's label into its ``!at=`` key
+    (``!at=3/16(周一) 08:10 上午班``). Accept it: split the label out as its
+    own text key and canonicalize the weekday spelling, so the time key stays
+    the reminder handle while the label survives as a mention needle. A value
+    that is not a reminder at all is left verbatim for :func:`_validate_keys`.
+    """
+    out: list[str] = []
+    for key in keys:
+        if key.startswith(_AT_PREFIX):
+            time_key, label = _split_at_key(key, now)
+            if time_key is not None:
+                out.append(time_key)
+                if label:
+                    # Keys are single tokens; a fused "上午班 档案室" is two.
+                    out.extend(part for part in label.split() if part)
+                continue
+        out.append(key)
+    return out
 
 
 def render_key(key: str, at: datetime | None) -> str:
@@ -334,6 +386,7 @@ class ActorKB:
         self._shown_seq = itertools.count(1)
         for entry in rows:
             keys = _row_keys(entry)
+            keys = _expand_keys(keys, now)
             error = _validate_keys(keys, where=f"[{key_id(keys) or '?'}]", now=now,
                                    actor_id=actor_id)
             if error:
@@ -432,8 +485,9 @@ class ActorKB:
 
     def _no_row_error(self, target: frozenset[str]) -> str:
         """Helpful no-match error (ruling 2026-09-22): per unmatched key, the
-        nearest existing keys plus the create-vs-edit guidance, so the agent
-        can recover instead of giving up."""
+        nearest existing keys, the single closest existing row to retry with
+        (ticket 59: a multi-key target whose keys live on *different* rows used
+        to dead-end), plus the create-vs-edit guidance."""
         shown = " ".join(sorted(target))
         existing = sorted({key for row in self._rows.values() for key in row.keys})
         parts: list[str] = []
@@ -443,8 +497,25 @@ class ActorKB:
                 parts.append(f"「{key}」最接近的现有键：" + "、".join(f"「{m}」" for m in nearest))
         nearby = ("；" + "；".join(parts)) if parts else "；记事本里没有相近的现有键"
         return (f"no row keyed '{shown}'：记事本里没有这一行{nearby}。"
+                f"{self._closest_row_hint(target)}"
                 "新建行用 op=open（必须带 desc）；编辑已有行用 op=edit，"
                 "先在 PRIVATE MEMORY 里核对现有行的键。")
+
+    def _closest_row_hint(self, target: frozenset[str]) -> str:
+        """The open row sharing the most keys with ``target``, named with its
+        exact keys so the retry is one step (ticket 59). Empty when no open row
+        shares a key — then only the create guidance is useful."""
+        overlap = [(len(target & row.keys), row) for row in self._rows.values()
+                   if row.status == "open" and target & row.keys]
+        if not overlap:
+            return ""
+        best = max(count for count, _ in overlap)
+        rows = [row for count, row in overlap if count == best]
+        rendered = [" ".join(row.order or sorted(row.keys)) for row in rows[:3]]
+        if len(rows) == 1:
+            return (f"键重合最多的现有行是「{rendered[0]}」——要改它就用这些键原样发 op=edit。")
+        listed = "；".join(f"「{name}」" for name in rendered)
+        return f"键重合最多的现有行有几条：{listed}——挑一条用它的键原样发 op=edit。"
 
     # ------------------------------------------------------------- mutation
 
@@ -459,7 +530,7 @@ class ActorKB:
                      "fuzzy_match": 0, "always_rejected": 0}
         for op in ops:
             kind = str(op.get("op", ""))
-            keys = _row_keys(op)
+            keys = _expand_keys(_row_keys(op), now)
             if kind not in {"open", "edit", "close"}:
                 errors.append(f"keys {sorted(keys)}: unknown op: {kind or '(missing)'}")
                 telemetry["rejected"] += 1
@@ -704,6 +775,7 @@ class ActorKB:
         kb._pending_recall = []
         for entry in state["rows"]:
             keys = _row_keys(entry, legacy=True)
+            keys = _expand_keys(keys, now)
             if not keys:
                 continue  # pre-migration row with no derivable key
             row = _make_row(keys, str(entry.get("desc", "")), now)
