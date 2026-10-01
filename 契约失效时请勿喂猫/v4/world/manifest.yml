@@ -77,7 +77,7 @@ locations:
   extras:
   - fragment: 值班学生
     rarity: common
-    knowledge_notes: 借阅登记规矩、扫描仪用法、管理员不在时的代办流程
+    knowledge_notes: 借阅登记规矩、纸质台账的年份分区、管理员不在时的代办流程
     weight: 3
   - fragment: 来查资料的学姐
     rarity: common
