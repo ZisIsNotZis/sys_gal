@@ -2,50 +2,56 @@
 
 Last updated: 2026-10-01 03:30 +0800
 
-## Where we are (2026-10-01 07:0x)
+## Where we are (2026-10-01 20:2x)
 
-**The fixed harness completed a full d1-am run** — `runs/real-20261001T065553+0800-3307430-743575990.json`
-(`stop_at_reached` 12:59, 410 turns, 1858 events, wall 94 min). All three d1-am anchors PASS.
-Checkpoint copied to `checkpoints/d1-am.json`.
+### The fixed harness completed a full d1-am (two segments, resume exercised)
 
-### Pre-fix vs post-fix (both to 12:59)
+`runs/resumed-20261001T185442+0800-848182-951549918.json` — reached `stop_at_reached` at 12:59.
+The run hit the 2h wall deadline at sim 11:22 (`runs/real-20261001T163024+0800-629102-384711601.json`),
+then `harness.resume_run` continued it from the checkpoint to the endpoint — the resume path works.
+Anchor check: **all three d1-am anchors PASS**. Checkpoint copied to `checkpoints/d1-am.json`.
 
-| metric | pre-fix | post-fix |
-|---|---|---|
-| error turns | 72/317 = 23% | 52/410 = 12.7% |
-| `inner` fill | 0/317 | 397/410 (96.8%) |
-| 签到本/晚归登记本 read errors | 24+ | 0 |
-| read-claims without document_read | 4 | 1 |
-| unregistered prop claims | 48 | 20 |
-| stagnation notices / longest wait | 0 / 10 | 3 / 4 |
-| NPC longest dormancy | 3h50m | 0h45m |
-| 亲读 AUTO/主动 | 0/17 | 24/19 |
-| first-sight registrations | 0 | 60 |
-| 零回合NPC | 0 | 0 |
+### Before → after (all three are full 07:00–12:59 mornings)
 
-### Per-actor review (12 reviewers, all done)
+| metric | baseline (09-30) | +lanes 38–55 | +lanes 56–66 (this) |
+|---|---|---|---|
+| error turns | 72/317 = 23% | 41/390 = 10.5% | 97/746 = 13% |
+| `inner` fill | 0/317 | 388/390 | 716/746 (96%) |
+| private reasoning broadcast | 77 (suspected) | 4 | **1** |
+| content kept private (new) | — | — | 660 (26 flagged possibly-dialogue) |
+| dialogue from `speak/text` | — | 96 | healthy per 11 reviewers |
+| 签到本/晚归本 read failures | 24+ | 0 | 0 |
+| read-claims w/o document_read | 4 | 1 | 2 |
+| unregistered prop claims | 48 | 20 | 13 |
+| NPC longest dormancy | 3h50m | 0h45m | 3h43m (下棋大爷, one actor) |
+| stagnation notices | 0 | 3 | 9 |
 
-The `inner` field itself is clean, but reviewers cross-confirmed a NEW systemic leak:
-**the model writes private reasoning into assistant plain text, which T1 broadcasts as speech**
-(e.g. 林瑶 i=139 "不急着对陈默说" heard by 陈默; 陈默 i=402 "我一个字不碰"; 林瑶 i=319 quoting tool
-meta-reasoning). Filed as **ticket 56** — lane running now (`eaeb4ef0`).
+### 11-reviewer verdict on the latest morning
 
-Other new tickets filed from this run: **57** extras speak-only therefore narrate unperformed
-physical actions / invisible exits · **58** world primer leaks unvisited locations' interiors ·
-**59** update_memory ergonomics (24 of 52 errors — the largest class) · **60** location-prose props
-not under the completeness contract (扫描仪/专用柜/纸笔).
+Verdicts: 林瑶/陈默/宿管阿姨/班长/唐小岚/下棋大爷 = **健康**（私密推理不再被广播、对白未被压塌）。
+Remaining reports are **provider-driven or world-modelling P2s**, not semantic regressions:
+- provider 429s / retry-deadline at the end (esp. 辅导员, the decision-maker) truncated the climax;
+- "手机" is a narrative object but not holdable, so `give 手机` fails while `text` works → the model
+  narrates around it (手机失踪 became a plot thread);
+- 305备用钥匙/查寝表 etc. promised in room prose without being modelled (ticket 60 class, new cases);
+- 陈默妈 fabricated "大巴不通" and later denied her own message (memory self-consistency, model-side).
+- **False P1 corrected**: reviewers read `private_state.memories == []` as "writes dropped"; the KB in the
+  checkpoint has all 38 of 唐小岚's rows. Filed as ticket 68 (trace field misleads reviewers).
 
-### Lane queue (one writer at a time)
+### Tickets filed this session: 38–68 (31 total). Fixed: 38–66 (29). Open: 67 (wall deadline starved by
+the in-flight wait loop), 68 (trace `private_state` misleading). Both are small.
 
-56 content-channel leak (running) → 57 extras → 58 primer → 59 update_memory → 60 location props.
-After those: re-run d1-am and compare against the table above; if healthy, chain to d1-pm from
-`checkpoints/d1-am.json` and continue toward a full day.
+### Next steps
+1. Fix 67 + 68, then decide on the remaining P2s (provider flakiness is environmental; 手机/钥匙 modelling is seed work).
+2. Continue the day: `d1-pm` from `checkpoints/d1-am.json`, then chain through day 1 and beyond
+   (`scripts/half_day_flow.sh` does half-day segments with the anchor gate between them).
+3. Hand the day to the user for manual inspection.
 
-### Traps learned the hard way
-
-- The litellm proxy gets restarted externally and quota resets shift model availability: probe
-  before launching (`zai/glm-5.3-flash` works now; `volcengine/*` hits a 5-hour quota; workers use
-  `deepseek/deepseek-flash`; reviewers `deepseek/deepseek-v4-pro`).
-- `runs/*.checkpoint.json` is NOT the run artifact — a progress probe must exclude `*.checkpoint.json`
-  and `*.seed-checkpoint.json` (`/tmp/probe.py <stem>` does).
-- Environment-dependent gates: v3 and v4 suites need `OPENAI_MODEL` set.
+### Traps (unchanged and new)
+- Story model route: `zai/glm-5.3-flash`; workers `deepseek/deepseek-flash`; reviewers `deepseek/deepseek-v4-pro`.
+  `volcengine/*` hits a 5-hour quota; the proxy gets restarted externally.
+- Two-hour wall deadline is currently **exceeded** in practice (ticket 67) because the in-flight wait loop
+  starves the outer check — so budget for ~3h wall per morning, or resume as we did.
+- v3 and v4 suites need `OPENAI_MODEL` set. Probe with `/tmp/probe.py <stem>` (exclude `*.checkpoint.json`).
+- When briefing a reviewer/worker, verify the artifact evidence yourself first: one of my briefs mis-attributed
+  four leaks to the `speak` channel when `world_events` showed no `to` field on those speech events.
