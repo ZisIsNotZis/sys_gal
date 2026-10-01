@@ -185,7 +185,10 @@ I62 concepts' desc carried state/conclusions to a wide known_to (ticket 62) ... 
      test_reaching_the_ledger_yields_the_borrow_state,
      test_holding_the_notice_yields_the_unfinished_arrow,
      test_plot_owners_keep_the_concepts_they_need,
-     test_wide_known_to_with_a_state_desc_warns_and_narrowing_silences_it)
+     test_wide_known_to_with_a_state_desc_warns_and_narrowing_silences_it,
+     test_twin_concepts_do_not_leak_their_conclusions,
+     test_narrowed_pump_knowers_keep_a_source,
+     test_narrowing_keeps_the_names_its_gossip_needs)
     d1-am artifacts: 食堂大妈's #knowledge block (real-20260930T160727) carried
     the verbatim concept line "[器材室]: 借出两台抽水泵的地方，登记人签名潦草。
     2013 年那晚的借出时间在纸质台账和导出件上对不上。" although she never read
@@ -202,10 +205,16 @@ I62 concepts' desc carried state/conclusions to a wide known_to (ticket 62) ... 
     runtime default (the seed lint's structural scope for an unmarked
     item/document is now "nobody", not "everyone"). A non-blocking seed lint
     warns when a desc still carries a state/conclusion word while `known_to`
-    lists ≥5 actors. Residual, deliberately NOT fixed in this lane: the
-    characters' own memory rows and the other concepts (primary-school,
-    flood-route-2013, audit-case) still state conclusions; only the three
-    flagged concepts are in scope.
+    lists ≥5 actors. Tie-out (same lane, ticket 62 收尾): the twin concepts
+    with the identical mechanical defect were collected too — `pumps` sent
+    "纸质台账记 22:05，导出件记 23:30" to [陈默, 林瑶, 下棋大爷, 食堂大妈], and
+    `primary-school` asserted the 21:40 call conclusion to the same four. Their
+    descs are now identity only and `pumps` narrows to [陈默, 林瑶, 下棋大爷]
+    (present / must read); 食堂大妈 keeps her 器材室/小学 public-memory names so
+    the gossip is not orphaned. Residual, deliberately NOT fixed in this lane:
+    the characters' own memory rows, the `history.visible_to` channel, and the
+    other conclusions still in a desc (flood-route-2013, access-project);
+    `audit-case` is the intended puzzle and is untouched.
 I59 update_memory key friction was the run's largest error class (ticket 59) ... test_scheduled_key_label_and_bare_weekday_are_accepted,
                                                                test_fused_always_label_is_accepted,
                                                                test_compound_key_error_names_the_closest_existing_row,
@@ -3959,6 +3968,69 @@ class ConceptStateLeakGates(unittest.TestCase):
             _edit_manifest(root, narrow)
             self.assertEqual(lint.concept_state_warnings(root), [],
                              "a narrow known_to is not a shared conclusion")
+
+    # Twin concepts (ticket 62 收尾): same mechanical defect as equipment-room.
+    # The pumps desc handed the archive-internal timestamps to 食堂大妈; the
+    # primary-school desc asserted the 21:40 call conclusion, both to actors who
+    # were neither present nor had read anything.
+    TWIN_LEAKED = (
+        "纸质台账记 22:05，导出件记 23:30",  # pumps: the discrepancy conclusion
+        "第一通电话就是从那儿打出来的",        # primary-school: the call conclusion
+    )
+
+    def test_twin_concepts_do_not_leak_their_conclusions(self):
+        # Red before the fix: 食堂大妈's KB carried both clauses (pumps,
+        # primary-school) though she was not at the scene and read nothing.
+        pack = load_story_pack()
+        for actor in self.UNMET:
+            delivered = "\n".join(str(row["desc"]) for row in pack.kb[actor])
+            for phrase in self.TWIN_LEAKED:
+                self.assertNotIn(phrase, delivered,
+                                 f"{actor} never reached the source (I62)")
+        from harness.world_loader import world_primer
+        primer = world_primer(pack)
+        for phrase in self.TWIN_LEAKED:
+            self.assertNotIn(phrase, primer)
+
+    def test_narrowed_pump_knowers_keep_a_source(self):
+        # Red before the fix: 食堂大妈 held a 两台抽水泵 row. Only those who
+        # were present (下棋大爷) or must read the record (陈默/林瑶) keep it;
+        # the conclusion is still obtainable from the two documents.
+        pack = load_story_pack()
+        keys = {actor: {key for row in rows for key in row["keys"]}
+                for actor, rows in pack.kb.items()}
+        for actor in ("陈默", "林瑶", "下棋大爷"):
+            self.assertIn("两台抽水泵", keys[actor])
+        self.assertNotIn("两台抽水泵", keys["食堂大妈"],
+                         "she was not present and never read the files")
+        world = pack.build_world()
+        world.actors["宿管阿姨"].location = "校史档案室"
+        for document, clause in (("2013年台风台账", "22:05"),
+                                 ("2013年外借记录导出件", "23:30")):
+            world.submit(Intention("宿管阿姨", "read", {"item": document},
+                                   world.version))
+            world.advance()
+            world.advance()
+            read = next(e for e in world.event_log if e.kind == "document_read"
+                        and e.payload.get("document") == document)
+            self.assertIn(clause, read.payload["content"])
+
+    def test_narrowing_keeps_the_names_its_gossip_needs(self):
+        # The chain is intact: 食堂大妈 loses the archive-internal pumps row
+        # but keeps her public-memory names, so the 器材室/小学 gossip is not
+        # orphaned; audit-case stays the puzzle it was (谜面语义不变).
+        pack = load_story_pack()
+        keys = {actor: {key for row in rows for key in row["keys"]}
+                for actor, rows in pack.kb.items()}
+        self.assertIn("器材室", keys["食堂大妈"])
+        self.assertIn("小学", keys["食堂大妈"])
+        audit = next(c for c in pack.manifest["concepts"] if c["id"] == "audit-case")
+        self.assertIn("对得上对不上", audit["desc"])
+        self.assertEqual(audit["puzzle"]["reveal"], "学生会审计包")
+        delivered = "\n".join(str(row["desc"]) for row in pack.kb["辅导员"])
+        for clause in audit["puzzle"]["answer"]:
+            self.assertNotIn(clause, delivered,
+                             "the audit answer stays in the readable pack only")
 
 
 class Ticket59UpdateMemoryGates(unittest.TestCase):
