@@ -283,17 +283,20 @@ class V4ProtocolTests(unittest.TestCase):
         return AsyncEngine(world, agents, states, Trace("v4-test", "v4proto"), **kw)
 
     def test_chain_executes_in_order_and_accumulates_time(self):
-        # T1: plain text becomes speech; tool calls execute in order.
+        # Ticket 64: a plain-content reply is private (never speech); the
+        # tool chain still executes in order and accumulates time.
         world = _world()
         agent = FakeV4Agent([
             [{"name": "move", "arguments": {"target": "far"}}],
         ], spoken="我先走一步。")
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
         engine.run(stop_at=START + timedelta(seconds=400), max_turns=30)
-        speeches = [e for e in world.event_log if e.kind == "speech" and e.actor == "a"]
-        self.assertEqual(len(speeches), 1)
-        self.assertEqual(speeches[0].payload.get("text"), "我先走一步。")
+        self.assertEqual([e for e in world.event_log
+                          if e.kind == "speech" and e.actor == "a"], [],
+                         "正文不得广播为 speech")
         self.assertEqual(world.actors["a"].location, "far")
+        turn = next(t for t in engine.trace.agent_turns if t["actor"] == "a")
+        self.assertEqual(turn["content_private"], "我先走一步。")
 
     def test_more_than_eight_calls_truncate_with_error(self):
         world = _world()
@@ -331,20 +334,20 @@ class V4ProtocolTests(unittest.TestCase):
                  and e.actor == "a" and e.payload.get("action") == "wait"]
         self.assertTrue(waits, "no-world-action chain must idle one tick")
 
-    def test_plain_text_output_becomes_speech(self):
-        # docs §4 (T1): the model's plain text output is spoken aloud to
-        # everyone present, committed before the tool chain.
+    def test_plain_text_output_is_private_not_speech(self):
+        # Ticket 64 (flips the old T1 ruling): the model's plain text output is
+        # its private thought and is never spoken; speech requires speak.
         world = _world()
         agent = FakeV4Agent([
             [{"name": "wait", "arguments": {"duration_seconds": 60}}],
         ], spoken="大家好，准备出门。")
         engine = self._engine(world, {"a": agent, "b": FakeV4Agent([])})
         engine.run(stop_at=START + timedelta(seconds=300), max_turns=30)
-        speeches = [e for e in world.event_log
-                    if e.kind == "speech" and e.actor == "a"
-                    and e.payload.get("text") == "大家好，准备出门。"]
-        self.assertGreaterEqual(len(speeches), 1)
-        self.assertEqual(speeches[0].payload.get("text"), "大家好，准备出门。")
+        self.assertEqual([e for e in world.event_log if e.kind == "speech"], [],
+                         "正文不得出现在任何 speech 事件里")
+        turn = next(t for t in engine.trace.agent_turns if t["actor"] == "a")
+        self.assertEqual(turn["content_private"], "大家好，准备出门。")
+        self.assertFalse(turn["content_suspect_dialogue"])
 
     def test_kb_seed_renders_knowledge_and_update_memory_queues_errors(self):
         world = _world()

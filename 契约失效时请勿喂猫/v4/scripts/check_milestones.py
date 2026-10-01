@@ -24,7 +24,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from harness.npc_agent import looks_like_private_reasoning  # noqa: E402
+from harness.npc_agent import (looks_like_private_reasoning,  # noqa: E402
+                               looks_like_self_narration)
 
 DAY_DATES = {
     1: "2026-03-16", 2: "2026-03-17", 3: "2026-03-18", 4: "2026-03-19",
@@ -1171,13 +1172,45 @@ def unregistered_object_claims(world_events, day: int, *, registry=None):
 
 
 def withheld_private_turns(turns, day: int):
-    """Ticket 56 (review only): turns whose plain text the engine withheld as
-    private reasoning instead of broadcasting it as speech (the trace records
-    it on the private turn as `withheld_private`/`withheld_text`)."""
+    """Ticket 56 (review only): turns whose speak/text `text` argument was
+    withheld as protocol/tool meta-reasoning (the trace records it on the
+    private turn as `withheld_private`/`withheld_text`)."""
     date = DAY_DATES[day]
     return [t for t in turns
             if t.get("withheld_private")
             and str((t.get("perception") or {}).get("time", "")).startswith(date)]
+
+
+def unspoken_content_turns(turns, day: int):
+    """Ticket 64 (review only): turns whose plain body was the actor's private
+    thought and was never spoken (the trace records it as `content_private`);
+    returns (all, those that read like speech — quoted dialogue / 2nd person)."""
+    date = DAY_DATES[day]
+    day_turns = [t for t in turns
+                 if str((t.get("perception") or {}).get("time", "")).startswith(date)]
+    unspoken = [t for t in day_turns if str(t.get("content_private") or "").strip()]
+    suspect = [t for t in unspoken if t.get("content_suspect_dialogue")]
+    return unspoken, suspect
+
+
+def self_narration_speeches(world_events, day: int):
+    """Ticket 64 (review only): delivered speak/text lines whose wording the
+    coarse self-narration screen matches. Read-only telemetry — the line went
+    out; the screen deliberately overlaps genuine spoken planning, so a hit is
+    a prompt to look, never a leak."""
+    hits = []
+    for event in _day_events(world_events, day):
+        if event.get("kind") not in {"speech", "message_delivered"}:
+            continue
+        for txt in _texts(event):
+            token = looks_like_self_narration(txt)
+            if not token:
+                continue
+            hits.append({"time": str(event.get("time") or ""),
+                         "actor": str(event.get("actor") or ""),
+                         "token": token, "text": txt.strip()})
+            break
+    return hits
 
 
 def broadcast_private_speeches(world_events, day: int):
@@ -1257,14 +1290,18 @@ def health_report(data, day: int):
     unread_claims = read_claims_without_a_read(data.get("world_events", []), day)
     unregistered_objects = unregistered_object_claims(
         data.get("world_events", []), day, registry=registry)
-    # Ticket 56: private reasoning written into the assistant's plain text
-    # (which T1 would broadcast). The first number is what the guard withheld
-    # this run; the second is the same predicate applied to the day's speech
-    # events — private content the artifact still broadcast. Review only.
-    private_withheld = withheld_private_turns(turns, day)
+    # Ticket 64: plain content is the actor's private thought — count the
+    # turns whose body was never spoken (and how many read like speech, which
+    # triggers the one transitional self-correction). Ticket 56's speak/text
+    # argument guard stays a second line, printed apart. Then a read-only
+    # coarse screen of the delivered speak/text lines for self-narration
+    # phrasing. Review only.
+    unspoken, unspoken_suspect = unspoken_content_turns(turns, day)
+    arg_withheld = withheld_private_turns(turns, day)
+    self_narration = self_narration_speeches(data.get("world_events", []), day)
     private_broadcast = broadcast_private_speeches(data.get("world_events", []), day)
-    private_reading = (f"{len(private_withheld)}（仍被广播的私密正文 "
-                       f"{len(private_broadcast)}")
+    private_reading = (f"{len(unspoken)}（疑似对白 {len(unspoken_suspect)}；"
+                       f"仍被广播的私密正文 {len(private_broadcast)}")
     if private_broadcast:
         private_reading += "；" + "；".join(
             f"{h['time'][11:16]} {h['actor']}" for h in private_broadcast[:3])
@@ -1336,7 +1373,11 @@ def health_report(data, day: int):
             "提供商HTTP错误": len(http), "标记泄漏条数": leak,
             "inner填充率": inner_rate,
             "疑似心声混进speech": inner_in_speech,
-            "正文被判为私密而未广播": private_reading,
+            "正文未说出口（含疑似对白）": private_reading,
+            "speak/text 协议正文被拦下": len(arg_withheld),
+            "speak/text 疑似自我旁白（只读）": _reading(
+                self_narration,
+                lambda h: f"{h['time'][11:16]} {h['actor']}「{h['token']}」"),
             "亲读（AUTO/主动）": f"{len(auto_reads)}/{len(day_reads) - len(auto_reads)}",
             "首次看见登记": len(observed_events),
             "断言读过但无document_read": _reading(

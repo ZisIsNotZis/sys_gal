@@ -411,12 +411,9 @@ E55 checkpoint KeyError while the extra answers (ticket 55) . test_checkpoint_du
     leaving a zombie.
 T56 private reasoning in the assistant正文 was broadcast (ticket 56) . test_private_reasoning_is_flagged_with_a_marker,
                                                                test_genuine_speech_is_never_flagged,
-                                                               test_private_line_is_withheld_and_never_submitted,
-                                                               test_withheld_text_lands_in_the_private_turn_record,
-                                                               test_genuine_line_still_broadcasts,
+                                                               test_private_line_is_never_broadcast,
+                                                               test_body_lands_in_the_private_turn_record,
                                                                test_self_correction_note_states_the_rule,
-                                                               test_prompt_names_the_inner_channel_and_stays_verbatim,
-                                                               test_checker_counts_withheld_and_still_broadcast_private,
                                                                test_protocol_marker_scope_excludes_concealment,
                                                                test_protocol_text_in_speak_is_never_broadcast,
                                                                test_protocol_text_in_text_is_never_sent,
@@ -443,6 +440,33 @@ T56 private reasoning in the assistant正文 was broadcast (ticket 56) . test_pr
     record, self-correction and count; the concealment/plan markers stay
     plain-content-only (a person may say "我不能让他们知道" aloud). A lone
     "格式" never triggers — only the 格式错 pairing does.
+T64 plain正文 was the speech channel: 169/265 speeches were narrated (ticket 64)
+                                                               test_real_broadcast_bodies_are_never_speech,
+                                                               test_body_is_recorded_privately_with_the_suspect_flag,
+                                                               test_plan_body_without_address_gets_no_self_correction,
+                                                               test_body_is_private_even_alongside_a_speak_call,
+                                                               test_speak_call_still_speaks,
+                                                               test_text_call_still_sends,
+                                                               test_coarse_self_narration_screen_reads_but_never_blocks,
+                                                               test_transitional_note_states_the_rule,
+                                                               test_prompt_states_body_is_private_and_stays_verbatim,
+                                                               test_checker_reports_unspoken_body_and_coarse_screen
+    d1-am artifact (real-20261001T121425+0800-223688-090345540): 265 speech
+    events, 96 from explicit speak/text calls and 169 from plain content via
+    the old T1 ruling. The 169 were largely narration/plans that nobody should
+    have heard — 陈默 07:59 "…登记本被拿走的事她可能知道。当面问，比发短信快。"
+    (heard=['林瑶']), 陈默 08:06 "我必须先认账…", and 辅导员 12:09's private
+    judgement, which 唐小岚 12:11 then acted on (cross-actor pollution). Ticket
+    56's narrow guard missed all of them (it matched protocol words + explicit
+    concealment pledges, not ordinary planning). Fix: flip the default — plain
+    content is the actor's PRIVATE thought (recorded as `content_private`,
+    never broadcast); only `speak`/`text` calls speak. A turn whose only speech
+    attempt is a body that reads like addressed speech (quoted dialogue or a
+    second-person address) gets ONE transitional self-correction. Ticket 56's
+    protocol guard stays as the `text`-argument second line; a coarse
+    self-narration screen on delivered speak/text lines is read-only telemetry
+    (never gates, never blocks) so a future run can show whether the model
+    starts dictating plans into `speak`.
 E57 extras could only speak, so they narrated physical acts as done  (ticket 57)
                                                                test_the_kernel_already_offers_move_to_an_extra,
                                                                test_a_declared_departure_is_a_real_visible_move,
@@ -3721,12 +3745,15 @@ class _OneLineProvider:
 
 
 class Ticket56PrivateContentGates(unittest.TestCase):
-    """Ticket 56 (real-20261001T065553, five independent reviewers).
+    """Ticket 56 (real-20261001T065553, five independent reviewers), retained
+    after ticket 64 flipped the default.
 
-    The `inner` field was clean, but private reasoning written into the
-    assistant's plain text was broadcast as speech by the T1 ruling. These
-    gates pin the high-precision withholding guard, its private record and
-    self-correction, and that genuine lines are untouched."""
+    Ticket 56 found private reasoning written into the assistant's plain text
+    being broadcast by the old T1 ruling. Ticket 64 removed that channel
+    (the body is the actor's private thought; only `speak`/`text` speak), so
+    these gates now pin the still-load-bearing parts: the high-precision
+    predicate, and that a plain body is never broadcast. The speak/text-
+    argument guard is pinned in Ticket56ProtocolArgumentGates."""
 
     START = datetime.fromisoformat("2026-03-16T09:00:00+08:00")
 
@@ -3773,77 +3800,264 @@ class Ticket56PrivateContentGates(unittest.TestCase):
         # ordinary "这事不急着说" stays spoken.
         self.assertIsNone(looks_like_private_reasoning("这事不急着说，回头再讲。"))
 
-    def test_private_line_is_withheld_and_never_submitted(self):
-        """A private line must not become a `speak` event, even though the
-        session would otherwise have handed it to T1 as plain text."""
+    def test_private_line_is_never_broadcast(self):
+        """A plain body never becomes a `speak` event."""
         world, _trace, _agent = self._engine(_T56_PRIVATE_LINES[0])
         self.assertEqual(self._speeches(world), [],
                          "私密正文不得广播为 speech")
 
-    def test_withheld_text_lands_in_the_private_turn_record(self):
-        """The withheld line is kept on that actor's private turn and the
-        actor is shown one self-correction so the next turn can self-fix."""
-        world, trace, agent = self._engine(_T56_PRIVATE_LINES[1])
-        withheld = [t for t in trace.agent_turns
-                    if t["actor"] == "陈默" and t.get("withheld_private")]
-        self.assertTrue(withheld, "私密正文没有记入角色私密记录")
-        self.assertIn("不急着对陈默说", str(withheld[0].get("withheld_text")))
-        messages = agent.session_snapshot()["messages"]
-        self.assertTrue(
-            any(m.get("role") == "user" and "不是你说出口的话" in str(m.get("content"))
-                for m in messages),
-            "缺失自纠提示（模型看不到自己错在哪）")
-
-    def test_genuine_line_still_broadcasts(self):
-        """The guard must not swallow real speech."""
-        world, trace, _agent = self._engine("档案室这边我来盯着，你先去忙。")
-        self.assertTrue(any("档案室这边我来盯着" in line for line in self._speeches(world)),
-                        "真台词被护栏吞掉了")
-        self.assertFalse(any(t.get("withheld_private") for t in trace.agent_turns))
+    def test_body_lands_in_the_private_turn_record(self):
+        """The plain body is kept on that actor's private turn (never
+        broadcast), so the trace can still explain what the actor was thinking."""
+        world, trace, _agent = self._engine(_T56_PRIVATE_LINES[1])
+        recorded = [t for t in trace.agent_turns
+                    if t["actor"] == "陈默" and t.get("content_private")]
+        self.assertTrue(recorded, "正文没有记入角色私密记录")
+        self.assertIn("不急着对陈默说", str(recorded[0].get("content_private")))
+        self.assertEqual(self._speeches(world), [])
 
     def test_self_correction_note_states_the_rule(self):
         from harness.natural_agent import PRIVATE_CONTENT_NOTE
-        self.assertIn("那属于心里话，不是你说出口的话", PRIVATE_CONTENT_NOTE)
-        self.assertIn("世界没有把它当台词", PRIVATE_CONTENT_NOTE)
+        self.assertIn("不是你说出口的话", PRIVATE_CONTENT_NOTE)
+        self.assertIn("格式错误", PRIVATE_CONTENT_NOTE)
         self.assertIn("inner", PRIVATE_CONTENT_NOTE)
 
-    def test_prompt_names_the_inner_channel_and_stays_verbatim(self):
-        """(1) §1 says the body is only spoken words and plans/judgements/
-        asides/protocol talk go in `inner`; runtime prompt == doc §1 and §4
+
+# Ticket 64 red fixtures: the exact plain-content bodies that T1 broadcast in
+# real-20261001T121425 (every matching world_events speech payload had no `to`,
+# so it came from the body, not a speak call). After the flip none may become a
+# speech event. The first four are the ticket's narration/plan examples; 5 and 6
+# are the cross-actor-pollution examples (陈默 heard=['林瑶']).
+_T64_PRIVATE_BODY_LINES = [
+    "台账的话还在耳边：它要我说出它是什么、责任人是谁、期限。先把手里这张泛黄的通知书从头到尾看一遍"
+    "——之前只扫过眼，签名和那条没画完的洪水路线旁注都还没细读。",
+    "先别急着开口——台账要的是\"答上三件事里的门道\"，答错没有第二次。我把和这本台账有关的往事都翻出来，"
+    "看自己到底记得多少。",
+    "到岗第一件事是签到，但台账在三问——先把台账本子本身翻开细读，2013年那页有反复翻动的折痕，"
+    "答案多半藏在里面。",
+    "七点过了，店里还没人。我把磨豆机豆仓补满，把裂纹马克杯收进吧台底下那格，别让客人碰着割手"
+    "——然后擦好台面，等着开门后头一批客人进来。",
+    "林瑶进来了。她常在这儿值班——3月14日下午那班签到本上只写了\"值班学生\"没写名字，而且登记本被拿走的事"
+    "她可能知道。当面问，比发短信快。",
+    "林瑶反过来问我三个问题——其中抽屉那个，我必须先认账：今早我压根没开过左手抽屉，\"登记本不在\""
+    "只是我上次值班留下的印象。先把实话说了，再去核实。",
+]
+
+# Ticket 64 green fixtures: real speak/text call texts from the same run that
+# the coarse self-narration screen hits (they are genuine spoken planning, and
+# the screen is read-only — the point is they still go out).
+_T64_COARSE_SCREEN_LINES = [
+    ("陈默妈", "行，下周末回，妈不催你。就是昨晚电话没人接，我这后半宿都没睡踏实——你值班再困，早饭也得吃。"
+              "你说的档案室那摊事，是学校派你的还是你自己揽的？别什么都往自己肩上扛。相亲的事我去跟李阿姨说，"
+              "你安心念书。家里都好，别惦记我，我吃得比你强。到家前一晚给妈发个信，我好上街买菜。"),
+    ("辅导员", "林瑶那头还没动静，你先按四样把说明初稿拟着，别干等。我出去一趟：唐小岚捡的那份草稿就在半坡"
+              "咖啡馆，她那个号我手机里没有，短信回不了——我干脆走一趟当面看稿，来回二十分钟，误不了你交包。"
+              "林瑶回信儿了先记着，我回来你一并告诉我。说明初稿拟完，念一遍给自己听，四样缺哪样补哪样。"),
+    ("班长", "辅导员，补一句陈默托我捎的：3/15 上午您要是排过人去档案室叫陈默帮忙、或者托谁带过话，麻烦把时间"
+             "和人名写下来给我——他 08:03 签到后被人叫走，之后一截记忆整段空白，叫走他的那位就是最后一个见过"
+             "借阅登记本的人，两下能对上就省大事。您指的路我收到了，现在就翻抽屉、文件柜和公告栏底下压的过期"
+             "通知，翻着 3/4 的签收底或排班公告当场喊您。对了，唐小岚 14:15 那趟是直接来学生会办公室给林瑶过目"
+             "十分钟，不去咖啡馆——您在店里要还是看不成稿子，就别干等，直接回来碰头。"),
+]
+
+
+class _V4FixedProvider:
+    """A v4 provider returning one fixed assistant message every turn."""
+
+    def __init__(self, content: str = "", calls: list[tuple[str, dict]] | None = None):
+        self.content = content
+        self.calls = list(calls or [])
+
+    def chat_with_tools(self, messages, tools):
+        tool_calls = []
+        for index, (name, args) in enumerate(self.calls):
+            tool_calls.append({"id": f"c{index}", "type": "function",
+                               "function": {"name": name,
+                                            "arguments": json.dumps(args, ensure_ascii=False)}})
+        return {"role": "assistant", "content": self.content, "tool_calls": tool_calls}
+
+
+def _t64_engine(content: str = "", calls: list[tuple[str, dict]] | None = None):
+    """A v4 engine whose 陈默 always answers with `content` plus `calls`."""
+    from harness.character_loader import CharacterSeed
+    from harness.natural_agent import make_persistent_agent_v4
+    start = datetime.fromisoformat("2026-03-16T09:00:00+08:00")
+    world = World(start=start,
+                  actors=[ActorState("陈默", "档案室"), ActorState("班长", "档案室")],
+                  locations=[LocationState("档案室")], routes={})
+    provider = _V4FixedProvider(content, calls)
+    seed = CharacterSeed(actor_id="陈默", identity="", private_seed="")
+
+    def quiet(state, perception, affordances):
+        return Intention(state.actor_id, "wait",
+                         {"duration_seconds": 60}, perception["world_version"])
+
+    agents = {"陈默": make_persistent_agent_v4(seed, provider), "班长": quiet}
+    states = {actor: PrivateState(actor) for actor in world.actors}
+    trace = Trace("v4-test", "ticket64-content-private")
+    engine = AsyncEngine(world, agents, states, trace, None,
+                         decision_timeout=5, max_wall_seconds=30)
+    engine.run(stop_at=start + timedelta(minutes=2), max_turns=40)
+    return world, trace, agents["陈默"]
+
+
+def _t64_turn(trace, actor="陈默"):
+    return next(t for t in trace.agent_turns if t["actor"] == actor)
+
+
+class Ticket64ContentIsPrivateGates(unittest.TestCase):
+    """Ticket 64 (real-20261001T121425+0800-223688-090345540).
+
+    265 speech events: 96 from explicit speak/text calls, 169 from plain
+    content that the old T1 ruling broadcast — mostly narration and plans
+    (陈默 07:59 heard=['林瑶']; 辅导员's private judgement reached 唐小岚).
+    The default is flipped: the body is the actor's private thought, and
+    speech is only what a speak/text call says."""
+
+    def test_real_broadcast_bodies_are_never_speech(self):
+        """(a) Today-red: every real narration body that used to become a
+        speech event now produces none."""
+        for line in _T64_PRIVATE_BODY_LINES:
+            world, _trace, _agent = _t64_engine(content=line)
+            self.assertEqual(
+                [e for e in world.event_log if e.kind == "speech"], [],
+                f"正文仍被广播：{line[:30]}")
+
+    def test_body_is_recorded_privately_with_the_suspect_flag(self):
+        """The body is kept on the private turn; a body that reads like
+        addressed speech (2nd person) is flagged and earns one self-correction."""
+        line = "哎，姑娘，你这正要上楼吧？"
+        world, trace, agent = _t64_engine(content=line)
+        turn = _t64_turn(trace)
+        self.assertEqual(turn["content_private"], line)
+        self.assertTrue(turn["content_suspect_dialogue"])
+        self.assertEqual([e for e in world.event_log if e.kind == "speech"], [])
+        from harness.natural_agent import UNSPOKEN_CONTENT_NOTE
+        messages = agent.session_snapshot()["messages"]
+        self.assertTrue(any(m.get("role") == "user" and m.get("content") == UNSPOKEN_CONTENT_NOTE
+                            for m in messages),
+                        "疑似对白正文没有收到过渡自纠")
+
+    def test_plan_body_without_address_gets_no_self_correction(self):
+        """High-precision pin: a plan/narration body with no quoted dialogue
+        and no second-person address stays silent — no note, no noise."""
+        line = _T64_PRIVATE_BODY_LINES[3]
+        world, trace, agent = _t64_engine(content=line)
+        turn = _t64_turn(trace)
+        self.assertEqual(turn["content_private"], line)
+        self.assertFalse(turn["content_suspect_dialogue"])
+        from harness.natural_agent import UNSPOKEN_CONTENT_NOTE
+        messages = agent.session_snapshot()["messages"]
+        self.assertFalse(any(m.get("role") == "user" and m.get("content") == UNSPOKEN_CONTENT_NOTE
+                             for m in messages),
+                         "普通旁白不该触发自纠（避免噪音）")
+
+    def test_body_is_private_even_alongside_a_speak_call(self):
+        """A turn that also used speak does not get the content correction
+        (it did speak); its body is still private."""
+        spoken = "档案室这边我来盯着，你先去忙。"
+        world, trace, agent = _t64_engine(
+            content="心里盘算着怎么开口。",
+            calls=[("speak", {"to": ["班长"], "text": spoken, "volume": "normal",
+                               "inner": "跟他交代一下"})])
+        turn = _t64_turn(trace)
+        self.assertEqual(turn["content_private"], "心里盘算着怎么开口。")
+        self.assertEqual([e.payload["text"] for e in world.event_log
+                          if e.kind == "speech"], [spoken])
+        from harness.natural_agent import UNSPOKEN_CONTENT_NOTE
+        messages = agent.session_snapshot()["messages"]
+        self.assertFalse(any(m.get("role") == "user" and m.get("content") == UNSPOKEN_CONTENT_NOTE
+                             for m in messages))
+
+    def test_speak_call_still_speaks(self):
+        """(b) The speak tool is the channel that still works."""
+        spoken = "大爷，您慢走。"
+        world, _trace, _agent = _t64_engine(
+            calls=[("speak", {"to": ["班长"], "text": spoken, "volume": "normal",
+                               "inner": "打招呼"})])
+        speeches = [str(e.payload["text"]) for e in world.event_log if e.kind == "speech"]
+        self.assertEqual(speeches, [spoken])
+
+    def test_text_call_still_sends(self):
+        """(b) A text call still delivers a private message."""
+        body = "妈，早。昨晚值班睡得沉，电话没接住。"
+        world, _trace, _agent = _t64_engine(
+            calls=[("text", {"target": "班长", "text": body, "inner": "回一条"})])
+        sent = [e for e in world.event_log if e.kind == "message_sent"]
+        self.assertEqual([e.payload["target"] for e in sent], ["班长"])
+        delivered = next(e for e in world.event_log if e.kind == "message_delivered")
+        self.assertEqual(delivered.payload["text"], body)
+
+    def test_coarse_self_narration_screen_reads_but_never_blocks(self):
+        """Ticket 64 metric: the coarse self-narration screen hits real spoken
+        planning (read-only telemetry), and those lines still go out. The
+        retained speak/text protocol guard must never flag them (zero false
+        positives on real lines from the same run)."""
+        from harness.npc_agent import (looks_like_protocol_reasoning,
+                                       looks_like_self_narration)
+        for actor, line in _T64_COARSE_SCREEN_LINES:
+            self.assertIsNotNone(looks_like_self_narration(line), actor)
+            self.assertIsNone(looks_like_protocol_reasoning(line), actor)
+        actor, line = _T64_COARSE_SCREEN_LINES[1]
+        world, _trace, _agent = _t64_engine(
+            calls=[("speak", {"to": ["班长"], "text": line, "volume": "normal",
+                               "inner": "交代出门的事"})])
+        self.assertIn(line, [str(e.payload["text"]) for e in world.event_log
+                             if e.kind == "speech"],
+                      "粗筛命中不得拦截真台词")
+
+    def test_transitional_note_states_the_rule(self):
+        from harness.natural_agent import UNSPOKEN_CONTENT_NOTE
+        self.assertIn("这段没有说出口", UNSPOKEN_CONTENT_NOTE)
+        self.assertIn("speak", UNSPOKEN_CONTENT_NOTE)
+        self.assertIn("text", UNSPOKEN_CONTENT_NOTE)
+
+    def test_prompt_states_body_is_private_and_stays_verbatim(self):
+        """(2) §1 says the body is the actor's private thought, has no listener,
+        and speech goes through speak/text; runtime prompt == doc §1, and §4
         agrees, so the contract cannot drift."""
         from harness.natural_agent import SYSTEM_PROMPT_V4
         doc = (Path(__file__).parents[2] / "docs" / "V4-AGENT-INTERFACE.md").read_text(
             encoding="utf-8")
-        self.assertIn("正文只写你说出口的话", SYSTEM_PROMPT_V4)
-        self.assertIn("对协议的说明一律写进工具调用的 inner", SYSTEM_PROMPT_V4)
+        self.assertIn("是你心里的想法", SYSTEM_PROMPT_V4)
+        self.assertIn("要说话就用 speak 工具", SYSTEM_PROMPT_V4)
+        self.assertIn("私聊用 text", SYSTEM_PROMPT_V4)
         self.assertIn(SYSTEM_PROMPT_V4, doc,
                       "§1 的 system prompt 必须与运行时逐字一致")
         section4 = doc.split("## 4.", 1)[1].split("## 5.", 1)[0]
-        self.assertIn("inner", section4,
-                      "§4 必须与 §1 一样写明私密内容走 inner")
+        self.assertIn("不渲染为任何 speech 事件", section4,
+                      "§4 必须写明正文不广播")
 
-    def test_checker_counts_withheld_and_still_broadcast_private(self):
-        """(3) The system-health block reports how many turns were withheld
-        as private reasoning AND how many broadcast speeches still match the
-        predicate (a pre-fix artifact's leak evidence). Review only."""
+    def test_checker_reports_unspoken_body_and_coarse_screen(self):
+        """(5) The system-health block counts (i) bodies never spoken — with
+        the suspected-dialogue subset — and (ii) the read-only coarse screen,
+        apart from (iii) the retained speak/text protocol guard. Review only."""
         module = _checker_module()
         leaked = _speech_artifact(
-            [(9, 5, "林瑶", "记忆调用格式错了——指令词得单独占一格。")])["world_events"]
+            [(9, 5, "辅导员", "林瑶那头还没动静，你先按四样把说明初稿拟着，别干等。")])["world_events"]
         data = {
             "agent_turns": [
-                {"actor": "陈默", "role": "mc", "withheld_private": True,
-                 "withheld_text": "我一个字不碰",
+                {"actor": "陈默", "role": "mc",
+                 "content_private": "她可能知道。当面问，比发短信快。",
+                 "content_suspect_dialogue": False,
                  "perception": {"time": "2026-03-16T09:00:00+08:00"}},
                 {"actor": "班长", "role": "mc",
+                 "content_private": "哎，姑娘，你这正要上楼吧？",
+                 "content_suspect_dialogue": True,
                  "perception": {"time": "2026-03-16T09:01:00+08:00"}},
+                {"actor": "宿管阿姨", "role": "npc", "withheld_private": True,
+                 "withheld_text": "inner 该在字段里",
+                 "perception": {"time": "2026-03-16T09:02:00+08:00"}},
             ],
             "world_events": leaked,
             "sessions": {},
         }
         report = module.health_report(data, 1)
-        reading = report["正文被判为私密而未广播"]
-        self.assertIn("1（", reading)
-        self.assertIn("仍被广播的私密正文 1", reading)
+        self.assertEqual(report["正文未说出口（含疑似对白）"],
+                         "2（疑似对白 1；仍被广播的私密正文 0）")
+        self.assertEqual(report["speak/text 协议正文被拦下"], 1)
+        self.assertIn("1（", report["speak/text 疑似自我旁白（只读）"])
+        self.assertIn("别干等", report["speak/text 疑似自我旁白（只读）"])
 
 
 # Ticket 56 extension red fixtures: protocol/tool meta-reasoning placed in a

@@ -63,6 +63,8 @@ class Trace:
                      version_before: int | None = None, version_after: int | None = None,
                      event_ids: list[int] | None = None,
                      role: str = "mc",
+                     content_private: str | None = None,
+                     content_suspect_dialogue: bool = False,
                      withheld_private: bool = False,
                      withheld_text: str | None = None,
                      memory_rejections: list[str] | None = None) -> None:
@@ -75,8 +77,13 @@ class Trace:
             },
             # 心声：the actor's private monologue; never part of world events.
             "inner": getattr(intention, "inner", None), "private": True,
-            # Ticket 56: the plain text this turn that was withheld as private
-            # reasoning and therefore never broadcast; private like `inner`.
+            # Ticket 64: the turn's plain body (the actor's private thought —
+            # never broadcast; speak/text calls are the only speech channel)
+            # and whether it read like speech (quoted dialogue / 2nd person).
+            "content_private": content_private,
+            "content_suspect_dialogue": content_suspect_dialogue,
+            # Ticket 56: a speak/text `text` argument withheld as protocol/tool
+            # meta-reasoning and therefore never delivered; private like `inner`.
             "withheld_private": withheld_private, "withheld_text": withheld_text,
             # V4-CAST §1: mc | npc | extra — analysis marker, never shown to MCs.
             "role": role,

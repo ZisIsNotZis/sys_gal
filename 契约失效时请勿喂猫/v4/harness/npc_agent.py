@@ -453,9 +453,11 @@ def looks_like_protocol_envelope(text: str) -> bool:
     return bool(_PROTOCOL_ENVELOPE_KEY.search(str(text)))
 
 
-# Ticket 56: the model writes private reasoning — protocol/tool meta-talk,
-# plans, asides, explicit concealment — into the assistant's plain text,
-# which T1 would broadcast as `speak`. The marker set is deliberately
+# Ticket 56: the model wrote private reasoning — protocol/tool meta-talk,
+# plans, asides, explicit concealment — into the assistant's plain text, which
+# the old T1 ruling broadcast as `speak`. Ticket 64 retired that channel (the
+# body is private now), but these markers still guard the `text` ARGUMENT of
+# speak/text (see looks_like_protocol_reasoning). The marker set is deliberately
 # HIGH-PRECISION: every token below is something a person never says aloud in
 # this world, so a single hit is enough to withhold the line. "（把热美式推过
 # 吧台）给，趁烫。" and "我先走了。" must keep broadcasting.
@@ -504,6 +506,49 @@ def looks_like_private_reasoning(text: str) -> str | None:
     if marker is not None:
         return marker
     match = _PRIVATE_CONCEALMENT_PLEDGE.search(str(text).strip())
+    return match.group(0) if match is not None else None
+
+
+# Ticket 64: a plain-content reply is the actor's private thought and is never
+# broadcast. Only a reply that reads like it was meant to be heard — it carries
+# quoted dialogue or a second-person address — earns the one transitional
+# self-correction, so the condition stays narrow. The address form is limited
+# to the second-person pronouns plus quoted-speech marks: honorific vocatives
+# (大爷/瑶姐) are deliberately excluded — in real narration they are usually a
+# third-person reference (下棋大爷's own asides reached 27/170 bodies that way),
+# so including them would turn the correction into noise.
+_UNSPOKEN_QUOTED_DIALOGUE = re.compile(r"[\u201c\u201d\u300c\u300d\u300e\u300f]")
+_UNSPOKEN_SECOND_PERSON = re.compile(r"你|您")
+
+
+def looks_like_unspoken_dialogue(text: str) -> bool:
+    """Whether a private plain-content body reads like spoken words.
+
+    Ticket 64: the high-precision trigger for the one transitional
+    self-correction that fires when a turn wrote only body text (no
+    ``speak``/``text`` call) but the text looks addressed to someone. High
+    precision only: quoted dialogue marks or a second-person pronoun."""
+    stripped = str(text).strip()
+    if not stripped:
+        return False
+    return bool(_UNSPOKEN_QUOTED_DIALOGUE.search(stripped)
+                or _UNSPOKEN_SECOND_PERSON.search(stripped))
+
+
+# Ticket 64: a coarse, read-only screen for self-narration / plan phrasing in a
+# delivered ``speak``/``text`` line. It NEVER blocks anything (no harness guard
+# uses it) — the checker counts hits and keeps samples so a future run can show
+# whether the model started dictating its plans into the only speech channel.
+# The wording deliberately overlaps genuine spoken planning (辅导员 really says
+# "别干等。我出去一趟…" to 班长), so a hit is a prompt to look, never a leak.
+_SELF_NARRATION_TOKENS = re.compile(
+    r"原地等|站着等|不催|我催|别干等|不干等|干耗|我出去一趟|先记下|先把这些|斟酌")
+
+
+def looks_like_self_narration(text: str) -> str | None:
+    """Return the coarse self-narration token a delivered line matches, else
+    None. Read-only telemetry (ticket 64); no engine path consumes it."""
+    match = _SELF_NARRATION_TOKENS.search(str(text).strip())
     return match.group(0) if match is not None else None
 
 

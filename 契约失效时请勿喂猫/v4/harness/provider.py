@@ -440,9 +440,9 @@ class OpenAICompatible:
             return None
         if not isinstance(message, dict):
             return None
-        # T1 文本即说话 (docs §4): a reply with text and no tool_calls is a
-        # VALID decision — the words are spoken, the turn idles. Only an
-        # unusable response shape (no content AND no calls) retries.
+        # Docs §4 / ticket 64: a reply with text and no tool_calls is a VALID
+        # decision — the text is the actor's private thought, the turn idles.
+        # Only an unusable response shape (no content AND no calls) retries.
         calls = message.get("tool_calls")
         if not isinstance(calls, list) or not calls:
             if str(message.get("content") or "").strip():

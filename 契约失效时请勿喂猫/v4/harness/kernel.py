@@ -712,10 +712,11 @@ class World:
             raise ActionRejected(f"unknown action '{intention.kind}'; "
                                  "see your tool list for the current actions")
         if intention.kind == "speak" and "volume" not in intention.args:
-            # Engine-constructed normal speech (T1 文本即说话): the model's
-            # plain text output arrives without tool-schema decoration. The
-            # listener set is computed at commit; no whisper fields needed.
-            # A `to` the model wrote anyway is preserved (normal, addressed).
+            # A bare-kernel caller (no engine turn context) may submit a speak
+            # without the tool-schema decoration; default it to normal volume.
+            # The listener set is computed at commit. Ticket 64: the engine's
+            # actors speak only through speak/text calls, so this fallback is
+            # not the content path.
             injected = {"text": intention.args.get("text", ""), "volume": "normal"}
             if intention.args.get("to"):
                 injected["to"] = list(intention.args["to"])
