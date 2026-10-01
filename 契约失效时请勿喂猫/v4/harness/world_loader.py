@@ -354,15 +354,20 @@ def _expand_entity_rows(kb: dict[str, list[dict[str, Any]]],
                         descriptions: dict[str, DescriptionCatalog]
                         ) -> dict[str, list[dict[str, Any]]]:
     """World item/document/location descriptions auto-expand into per-actor
-    KB rows keyed by the entity name (V4-AGENT-INTERFACE §6). Gating:
-    known_to-limited entities expand only for those actors; unmarked ones
-    expand for everyone (the public visible layer). Manual rows win.
+    KB rows keyed by the entity name (V4-AGENT-INTERFACE §6).
 
-    Ticket 58: a *location* expands only its public brief. Interior detail
-    (how the shelves are arranged, which page is creased) is not common
-    knowledge — it is delivered on arrival by the ticket-49 objective
-    description, or by a note / a read. Item and document rows are
-    unchanged: their known_to is the seed's own visibility declaration."""
+    Gating (tickets 58/61): a *location*'s public identity is world-level —
+    it reaches every aware actor unless a `known_to` list narrows it. An
+    *item* or *document*, by contrast, expands only to the actors named in its
+    `known_to`: a placed object with no `known_to` is NOT world-public (the
+    old "no known_to = everyone" default handed every actor the creased-page
+    detail of a document they never saw). An actor who reaches or holds such
+    an object receives its objective description through the ticket-49
+    `observed` / `[所见]` path instead. Manual rows win.
+
+    Ticket 58: a *location* expands only its public brief — interior detail
+    (how the shelves are arranged) reaches an actor on arrival, not in every
+    KB."""
     entity_rows: list[tuple[str, str, list[str] | None]] = []
     for kind in ("items", "documents", "locations"):
         for row in fields[kind]:
@@ -370,9 +375,15 @@ def _expand_entity_rows(kb: dict[str, list[dict[str, Any]]],
             markdown = descriptions[kind].get(entity_id, "")
             if not markdown:
                 continue
+            known_to = row.get("known_to")
+            # Ticket 61: an item/document is public only when the seed says so
+            # (`known_to`). An absent or empty list means nobody holds it as a
+            # knowledge row; whoever needs it must see or read it (ticket 49).
+            if kind != "locations" and not known_to:
+                continue
             description = (_location_brief(markdown) if kind == "locations"
                            else _plain_description(markdown))
-            entity_rows.append((entity_id, description, row.get("known_to")))
+            entity_rows.append((entity_id, description, known_to))
     remote_actors = {str(r["id"]) for r in fields["actors"] if r.get("remote")}
     for actor, rows in kb.items():
         present = {frozenset(str(k) for k in r["keys"]) for r in rows}

@@ -163,6 +163,22 @@ I58 unvisited locations' interiors reached every actor ......... test_location_c
     document still expands its full description to every actor — the 折痕 clause
     itself came from `documents/2013年台风台账.md` (no `known_to` in the seed),
     which needs a product decision about document visibility, not a location fix.
+I61 unmarked placed documents were world-public (ticket 61) ..... test_document_contracts
+    d1-am artifact (real-20261001T065553), the half of I58 this ticket closes:
+    宿管阿姨 (turn 292, 11:25) reasoned "档案室2013年台风台账那页折痕翻得厉害"
+    without ever leaving the 女生宿舍 值班台 — the 折痕 clause came verbatim
+    from `world/documents/2013年台风台账.md`. `_expand_entity_rows` treated a
+    placed item/document with no `known_to` as the public visible layer and
+    auto-expanded its FULL body into every actor's KB (宿管阿姨/食堂大妈/
+    辅导员/班长 all carried the 台账 line and 陈默's 撤离通知书 line). Fix
+    (ticket 61): an item/document is world-public only when the seed says so
+    (`known_to`); an unmarked placed one expands to nobody, and whoever needs
+    it receives its objective description through the ticket-49 observed /
+    `[所见]` path (the archive arrival, or holding it). Locations are
+    unchanged — their public brief stays world-level (ticket 58). A
+    non-blocking seed lint flags a placed document whose body asserts a
+    concrete state (折痕/缺页/涂改/缺角…) while `known_to` is empty, so the
+    author confirms the state is not meant to be common knowledge.
 I46 recipient checks judged the live world, not the decision snapshot . test_one_bad_recipient_does_not_void_the_rest_of_the_batch,
                                                                test_a_name_seen_in_the_perception_is_always_resolvable,
                                                                test_every_recipient_offered_in_a_rejection_can_be_reached,
@@ -3534,6 +3550,29 @@ class Ticket56ProtocolArgumentGates(unittest.TestCase):
         self.assertEqual(speech.payload["text"], line)
         self.assertTrue(agents["陈默"].delivered[0]["ok"])
         self.assertFalse(any(t.get("withheld_private") for t in engine.trace.agent_turns))
+
+
+class DocumentWorldPublicGuardTests(unittest.TestCase):
+    """I61: the 折痕 clause of `documents/2013年台风台账.md` must not sit in an
+    actor's KB unless the seed put that actor in `known_to` or the actor has
+    really seen/read the thing (ticket 49)."""
+
+    LEDGER_STATE = "2013 年那一页有反复翻动的折痕"
+
+    def test_unmarked_document_state_is_not_world_public(self):
+        pack = load_story_pack()
+        for actor in ("宿管阿姨", "食堂大妈", "辅导员", "班长"):
+            delivered = "\n".join(str(row["desc"]) for row in pack.kb[actor])
+            self.assertNotIn(self.LEDGER_STATE, delivered,
+                             f"{actor} never reached the archive (I61)")
+
+    def test_seeing_the_ledger_registers_it_as_an_objective_memory(self):
+        world = load_story_pack().build_world()
+        world.actors["宿管阿姨"].location = "校史档案室"
+        packet = world.poll("宿管阿姨")
+        self.assertIn(self.LEDGER_STATE, packet["descriptions"]["2013年台风台账"])
+        self.assertIn(self.LEDGER_STATE,
+                      world.actors["宿管阿姨"].observed["2013年台风台账"]["objective"])
 
 
 if __name__ == "__main__":

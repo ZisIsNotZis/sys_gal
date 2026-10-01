@@ -460,6 +460,56 @@ def _location_brief_findings(pack, root: Path) -> list[str]:
     return findings
 
 
+# Ticket 61: physical-state words that, carried into every actor's KB, leak
+# who handled a document and when. A placed document whose body asserts one of
+# these while its `known_to` is empty is the 宿管阿姨/折痕 pattern.
+_DOCUMENT_STATE_WORDS: tuple[str, ...] = (
+    "折痕", "缺页", "缺角", "涂改", "破损", "磨损", "水渍", "霉斑", "虫蛀", "撕破",
+)
+
+
+def placed_entity_ids(pack) -> set[str]:
+    """Item/document ids that exist in the opening world: placed at a location
+    or held in an actor's inventory (ticket 61). A scheduled-only entity is not
+    yet placed."""
+    placed = {str(row["id"]) for row in (*pack.items, *pack.documents)
+              if row.get("location") is not None}
+    placed.update(str(item) for row in pack.actors
+                  for item in row.get("inventory", ()))
+    return placed
+
+
+def document_state_warnings(world_root: str | Path) -> list[str]:
+    """Ticket 61 (non-blocking): a placed document that asserts a concrete
+    physical state but names no `known_to`.
+
+    Before ticket 61 an unmarked placed document expanded its full body into
+    every actor's KB — which is literally how 宿管阿姨 cited the 台账's 折痕
+    without ever entering the archive. Now the default is the opposite: nobody
+    holds it as a knowledge row, and only an actor who reaches or reads it can
+    cite that state. That silence is easy to author by accident, so surface it
+    for a human to confirm; add `known_to` when the state really is common
+    knowledge. Returns warning lines for the non-blocking channel (never a
+    finding that fails the lint).
+    """
+    pack = load_world_pack(Path(world_root))
+    placed = placed_entity_ids(pack)
+    warnings: list[str] = []
+    for row in pack.documents:
+        entity = str(row["id"])
+        if entity not in placed or row.get("known_to"):
+            continue
+        text = pack.descriptions["documents"].get(entity, "")
+        hit = next((word for word in _DOCUMENT_STATE_WORDS if word in text), None)
+        if hit is None:
+            continue
+        warnings.append(
+            f"documents/{entity}.md: 正文提到具体状态 {hit!r}，而 known_to 为空 — "
+            "没有显式列出的知情者（旧缺省「没写 known_to = 全公开」，修复后只对到过/读到"
+            "的人可见）；确认是否有意：若确实众所周知，就显式写 known_to，否则可以不管。")
+    return warnings
+
+
 def _inline_content_findings(pack) -> list[str]:
     """Ticket 47 / K47d: inline manifest `content`/`desc` is a name carrier.
 
@@ -587,6 +637,10 @@ def main() -> int:
         warnings = collision_warnings(args.world)
     except ValueError:
         warnings = []
+    try:
+        warnings.extend(document_state_warnings(args.world))
+    except ValueError:
+        pass
     for note in warnings:
         print(f"warning: {note}")
     if args.verbose:
