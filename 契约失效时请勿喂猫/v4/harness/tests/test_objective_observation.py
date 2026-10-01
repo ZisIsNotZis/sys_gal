@@ -358,7 +358,9 @@ class ObservationDedupTests(_WorldMixin, unittest.TestCase):
         # Real seed fixture: 晚归登记本 (known_to 宿管阿姨/林瑶室友) lies in
         # 女生宿舍. 陈默 has no row for it but physically sees it, so the
         # [所见] line is the only delivery of its description — the ticket's
-        # unique value. The public location row still suppresses its own echo.
+        # unique value. Ticket 58: the public location row carries only the
+        # brief, so the place's full interior description is likewise delivered
+        # as its own [所见 女生宿舍] line on arrival — never as a default KB row.
         pack = load_world_pack(ROOT / "world")
         world = pack.build_world()
         self.assertEqual(world.item_locations.get("晚归登记本"), "女生宿舍")
@@ -372,8 +374,8 @@ class ObservationDedupTests(_WorldMixin, unittest.TestCase):
                             for line in lines))
         self.assertFalse(any(str(line).startswith("[晚归登记本]")
                              for line in lines))
-        self.assertFalse(any(str(line).startswith("[所见 女生宿舍]")
-                             for line in lines))
+        self.assertTrue(any(str(line).startswith("[所见 女生宿舍]")
+                            for line in lines))
 
 
 class ObservedRecallTests(_WorldMixin, unittest.TestCase):

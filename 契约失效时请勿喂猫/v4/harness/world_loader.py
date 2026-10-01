@@ -334,6 +334,21 @@ def _plain_description(markdown: str) -> str:
     return strip_refs(("\n".join(body).split("\n\n")[0] or markdown.strip()).strip())
 
 
+def _location_brief(markdown: str) -> str:
+    """Ticket 58: a location's *public* brief — what it is called, where it
+    is, and roughly what it is for. This is the only part every aware actor
+    carries as a KB row; the blank-line-separated later paragraphs are the
+    interior detail, which reaches an actor only through a real source (the
+    ticket-49 arrival description, a note, or reading). The convention is
+    enforced by scripts/seed_lint.py."""
+    lines = [line.strip() for line in markdown.strip().splitlines()]
+    body = [line for line in lines if not line.startswith("#")]
+    paragraphs = [p.strip() for p in "\n".join(body).split("\n\n") if p.strip()]
+    if not paragraphs:
+        return strip_refs(markdown.strip())
+    return strip_refs(paragraphs[0])
+
+
 def _expand_entity_rows(kb: dict[str, list[dict[str, Any]]],
                         fields: dict[str, Any],
                         descriptions: dict[str, DescriptionCatalog]
@@ -341,7 +356,13 @@ def _expand_entity_rows(kb: dict[str, list[dict[str, Any]]],
     """World item/document/location descriptions auto-expand into per-actor
     KB rows keyed by the entity name (V4-AGENT-INTERFACE §6). Gating:
     known_to-limited entities expand only for those actors; unmarked ones
-    expand for everyone (the public visible layer). Manual rows win."""
+    expand for everyone (the public visible layer). Manual rows win.
+
+    Ticket 58: a *location* expands only its public brief. Interior detail
+    (how the shelves are arranged, which page is creased) is not common
+    knowledge — it is delivered on arrival by the ticket-49 objective
+    description, or by a note / a read. Item and document rows are
+    unchanged: their known_to is the seed's own visibility declaration."""
     entity_rows: list[tuple[str, str, list[str] | None]] = []
     for kind in ("items", "documents", "locations"):
         for row in fields[kind]:
@@ -349,8 +370,9 @@ def _expand_entity_rows(kb: dict[str, list[dict[str, Any]]],
             markdown = descriptions[kind].get(entity_id, "")
             if not markdown:
                 continue
-            entity_rows.append((entity_id, _plain_description(markdown),
-                                row.get("known_to")))
+            description = (_location_brief(markdown) if kind == "locations"
+                           else _plain_description(markdown))
+            entity_rows.append((entity_id, description, row.get("known_to")))
     remote_actors = {str(r["id"]) for r in fields["actors"] if r.get("remote")}
     for actor, rows in kb.items():
         present = {frozenset(str(k) for k in r["keys"]) for r in rows}
@@ -989,9 +1011,9 @@ def world_primer(pack: WorldPack) -> str:
             continue  # private/off-map place: known only via its own KB row
         place = str(row["id"])
         catalog = pack.descriptions["locations"].get(place, "")
-        first = next((ln.strip() for ln in catalog.splitlines()
-                      if ln.strip() and not ln.strip().startswith("#")), "")
-        lines.append(f"- {place}：{first}")
+        # Ticket 58: the primer is world-level (every actor's system prompt),
+        # so it carries only the public brief, never the interior detail.
+        lines.append(f"- {place}：{_location_brief(catalog)}")
     lines.append("【走路】")
     seen_pairs: set[frozenset[str]] = set()
     for row in pack.routes:

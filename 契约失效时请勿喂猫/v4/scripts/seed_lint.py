@@ -289,6 +289,7 @@ def lint(world_root: str | Path) -> list[str]:
     findings.extend(_guard_findings(pack))
     findings.extend(_prop_findings(pack, root))
     findings.extend(_inline_content_findings(pack))
+    findings.extend(_location_brief_findings(pack, root))
 
     # ---------- ③ dead registry entries (informational) ----------
     for note in dead_aliases(root):
@@ -424,6 +425,38 @@ def _prop_findings(pack, root: Path) -> list[str]:
     for concept in pack.concepts:
         for owner, memory in concept["memory"].items():
             scan(f"concept {concept['id']} memory[{owner}]", str(memory))
+    return findings
+
+
+def _location_brief_findings(pack, root: Path) -> list[str]:
+    """Ticket 58: a location body must separate a public brief from interior
+    detail.
+
+    The KB row every aware actor gets carries only the first paragraph of a
+    location ``.md`` (its public identity/purpose line); the blank-line-
+    separated paragraphs after it are the interior detail, which reaches an
+    actor only through a real source (the ticket-49 arrival description, a
+    note, or reading). A body written as one undivided paragraph hands every
+    actor the interior detail with no source, so the lint refuses it and says
+    how to split.
+    """
+    findings: list[str] = []
+    location_ids = {str(row["id"]) for row in pack.locations}
+    for path in sorted(root.glob("locations/*.md")):
+        entity = path.stem
+        if entity not in location_ids:
+            continue
+        text = path.read_text(encoding="utf-8")
+        lines = [line.strip() for line in text.strip().splitlines()]
+        body = [line for line in lines if not line.startswith("#")]
+        paragraphs = [p.strip() for p in "\n".join(body).split("\n\n") if p.strip()]
+        if len(paragraphs) >= 2:
+            continue
+        findings.append(
+            f"{path.relative_to(root)}: 只有一段描述，无法区分可公开的地点身份与内部细节 — "
+            "把第一段写成谁都能知道的身份/用途（叫什么、在哪、大致做什么），"
+            "内部细节（柜子怎么码、哪页有折痕）另起一段、空行分隔；"
+            "内部细节只在到达时经客观描述下发，不再进入每个角色的 KB")
     return findings
 
 

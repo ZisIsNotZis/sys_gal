@@ -869,7 +869,7 @@ class SceneObjectContractTests(unittest.TestCase):
         for category in ("locations", "items", "documents"):
             (root / category).mkdir()
         (root / "locations" / "room.md").write_text(
-            f"# room\n\n{location_prose}\n", encoding="utf-8")
+            f"# room\n\n{location_prose}\n\n墙角立着一个旧柜子。\n", encoding="utf-8")
         items = []
         if item:
             (root / "items" / f"{item}.md").write_text(
@@ -1033,10 +1033,10 @@ class Issue39ReadableItemTests(unittest.TestCase):
         root = Path(directory)
         for category in ("locations", "items", "documents"):
             (root / category).mkdir(parents=True)
-        (root / "locations" / "room.md").write_text("# room\n\n一间屋子。\n",
-                                                    encoding="utf-8")
-        (root / "locations" / "vault.md").write_text("# vault\n\n一间库房。\n",
-                                                     encoding="utf-8")
+        (root / "locations" / "room.md").write_text(
+            "# room\n\n一间屋子。\n\n墙角立着一个旧柜子。\n", encoding="utf-8")
+        (root / "locations" / "vault.md").write_text(
+            "# vault\n\n一间库房。\n\n靠墙一排铁架子。\n", encoding="utf-8")
         (root / "items" / "签到本.md").write_text("# 签到本\n\n一本签到簿。\n",
                                                   encoding="utf-8")
         (root / "documents" / "移交存根.md").write_text(

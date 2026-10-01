@@ -142,6 +142,27 @@ I49 objective description was a one-shot snapshot ................ test_objectiv
     records the objective text once, per entity, on first sight (emitting a
     private `observed` event); a `read` of a seen thing returns that text;
     and staying in view for `reading_seconds` auto-produces a `document_read`.
+I58 unvisited locations' interiors reached every actor ......... test_location_contracts
+    (test_unvisited_actors_are_not_told_the_archive_interior,
+     test_location_identity_is_available_to_every_actor,
+     test_arriving_at_the_archive_delivers_its_interior,
+     test_expanded_location_rows_carry_the_brief_not_the_interior,
+     test_one_paragraph_location_fails_seed_lint_and_splitting_turns_green)
+    d1-am artifact (real-20261001T065553), two independent reviewers:
+    宿管阿姨 (turn 292, 11:25) wrote "档案室2013年台风台账那页折痕翻得厉害"
+    though she never left the 女生宿舍 值班台 all day; 食堂大妈 (turn 388,
+    12:44) told 陈默 "铁皮柜按年份码着呢" though she never entered the
+    archive. Root cause: `world_loader._expand_entity_rows` auto-expanded every
+    location's FULL body into each actor's KB, and `world_primer` used the
+    body's first line, so interior layout reached actors with no source. Fix
+    (ticket 58): a location `.md` separates a public brief (first paragraph)
+    from interior detail (later paragraphs); the KB and primer carry only the
+    brief, the interior is delivered on arrival by the ticket-49 objective
+    description, and seed_lint refuses a one-paragraph body with remediation
+    text. Residual, deliberately NOT fixed in this lane: an unmarked placed
+    document still expands its full description to every actor — the 折痕 clause
+    itself came from `documents/2013年台风台账.md` (no `known_to` in the seed),
+    which needs a product decision about document visibility, not a location fix.
 I46 recipient checks judged the live world, not the decision snapshot . test_one_bad_recipient_does_not_void_the_rest_of_the_batch,
                                                                test_a_name_seen_in_the_perception_is_always_resolvable,
                                                                test_every_recipient_offered_in_a_rejection_can_be_reached,
