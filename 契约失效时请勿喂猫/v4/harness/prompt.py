@@ -73,6 +73,14 @@ def render_world_message(perception: Mapping[str, Any], affordances: Sequence[Ma
         lines.append("# events")
         lines.extend(event_lines)
 
+    # Ticket 66: a message from someone the actor has not recorded. The world
+    # never edits the address book for the actor; it hands back the executable
+    # way to close the gap so a reply is possible.
+    for sender in perception.get("unrecorded_senders", []) or []:
+        name = str(sender)
+        lines.append(f"（{name} 还不在你的通讯录里——要回信，先用 update_memory 记下他："
+                     f"keys=[\"!contact\", \"{name}\"]、op=\"open\"，再 text {name}。）")
+
     knowledge = list(knowledge_lines or [])
     if knowledge_lines is None:
         # 旧协议兼容：场景/条目描述即知识块。

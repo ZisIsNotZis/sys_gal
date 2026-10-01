@@ -572,6 +572,23 @@ I65 the canteen/shop modeled no item, so serving was narrated (ticket 65)
     detail (ticket 60 wording) that there is no rope there; and the checker adds
     a review-only count of a same-day hand-over assertion with no corresponding
     `item_given` ("端好" as narration). The metric reads only, never blocks.
+I66 contact/route dead ends: 李阿姨 unreachable, contacts asymmetric, 305宿舍 missing
+                                                               test_unreachable_names_get_a_story_executable_alternative,
+                                                               test_a_one_way_address_book_is_flagged_and_hinted,
+                                                               test_a_room_number_is_reachable_or_explained
+    real-20261001T121425+0800-223688-090345540: 陈默妈 left three routes to
+    李阿姨 all dead — `knock 李阿姨家` and `text 李阿姨` (unknown name) and
+    `move 老家属院` ("没有可用的路", no alternative, no reason), so her
+    storyline goal "给李阿姨带话" could never complete and nothing corrected
+    her. 宿管阿姨 messaged 下棋大爷 fine, but her reply came back `unknown name
+    '下棋大爷'` because the address book is one-way (下棋大爷's contacts hold
+    her; hers hold only 林瑶/陈默) — the borrowed-rope thread dead-ended. 林瑶
+    室友 `move 305宿舍` → "不是一个你知道的地方" for her own room. Fix: the seed
+    declares each unreachable name's reason + executable alternative
+    (`unreachable_targets`) and the kernel appends it to the text/move/knock
+    rejection; a received-but-unrecorded sender is surfaced to the recipient
+    (with the `update_memory` call to close the gap) and seed lint lists one-way
+    address books; 305宿舍's rejection names the building it lives in.
 """
 
 import json
@@ -3336,6 +3353,93 @@ class Ticket65CanteenServeGates(unittest.TestCase):
             world.submit(Intention("下棋大爷", "take", {"item": "尼龙绳"},
                                    world.version))
         self.assertIn("这里没有「尼龙绳」可拿", str(caught.exception))
+
+
+def _seed_lint_module():
+    """Load scripts/seed_lint.py as a module (same importlib pattern the
+    other seed-lint gates use)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "seed_lint_ticket66", Path(__file__).parents[2] / "scripts" / "seed_lint.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class Ticket66DeadEndGates(unittest.TestCase):
+    """I66 (ticket 66, real-20261001T121425+0800-223688-090345540).
+
+    陈默妈's 李阿姨 goal dead-ended on all three routes (`knock 李阿姨家`,
+    `text 李阿姨` as unknown name, `move 老家属院` as "没有可用的路" with no
+    alternative and no reason), so "给李阿姨带话" could never complete and
+    nothing corrected her. 宿管阿姨 could message 下棋大爷 but her reply came
+    back `unknown name '下棋大爷'` — the address book is one-way, so the
+    borrowed-rope thread died. 林瑶室友 `move 305宿舍` got "不是一个你知道的
+    地方" for her own room.
+
+    The reachability contract: a named target a role treats as a place or
+    contact must be reachable, contactable, or explicitly unavailable with an
+    executable alternative."""
+
+    def test_unreachable_names_get_a_story_executable_alternative(self):
+        """(a) 李阿姨/李阿姨家/老家属院 are neither reachable nor contactable;
+        each rejection must name the world fact and hand back an executable
+        next step, never leaving all three routes dead."""
+        world = load_story_pack().build_world()
+        cases = [
+            ("text", {"target": "李阿姨", "text": "李姐，帮你带句话"},
+             ("邻居", "托人")),
+            ("knock", {"target": "李阿姨家"},
+             ("门牌", "那边的人", "走不过去")),
+            ("move", {"target": "老家属院"},
+             ("电话", "走不过去", "那边的人")),
+        ]
+        for kind, args, needles in cases:
+            with self.assertRaises(ActionRejected) as caught:
+                world.submit(Intention("陈默妈", kind, dict(args), world.version))
+            message = str(caught.exception)
+            self.assertIn(args["target"], message)
+            self.assertTrue(
+                any(needle in message for needle in needles),
+                f"{kind} {args['target']} gave no executable alternative: {message}")
+
+    def test_a_one_way_address_book_is_flagged_and_hinted(self):
+        """(b) 下棋大爷 can message 宿管阿姨; she cannot reply because her
+        address book lacks him. The gap is visible before a run (lint) and at
+        run time (received-but-unrecorded sender), with the executable way to
+        close it — never a silent drop."""
+        from harness.prompt import render_world_message
+        lint = _seed_lint_module()
+        warnings = lint.contact_symmetry_warnings(_world_root())
+        self.assertTrue(any("宿管阿姨" in w and "下棋大爷" in w for w in warnings),
+                        warnings)
+
+        world = load_story_pack().build_world()
+        world.submit(Intention("下棋大爷", "text",
+                               {"target": "宿管阿姨", "text": "阿姨，借根粗尼龙绳。"},
+                               world.version))
+        world.advance()
+        perception = world.poll("宿管阿姨")
+        self.assertIn("下棋大爷", perception.get("unrecorded_senders", []))
+        rendered = render_world_message(perception)
+        self.assertIn("下棋大爷", rendered)
+        self.assertIn("update_memory", rendered)
+        self.assertIn("!contact", rendered)
+
+    def test_a_room_number_is_reachable_or_explained(self):
+        """(c) 林瑶室友's `move 305宿舍` said only "不是一个你知道的地方". The
+        rejection must name the building the room lives in and say why it is
+        not a separate place, instead of a bare unknown-place rejection."""
+        world = load_story_pack().build_world()
+        with self.assertRaises(ActionRejected) as caught:
+            world.submit(Intention("林瑶室友", "move", {"target": "305宿舍"},
+                                   world.version))
+        message = str(caught.exception)
+        self.assertIn("305", message)
+        self.assertIn("女生宿舍", message)
+        self.assertTrue(any(needle in message for needle in ("房间", "寝室", "不单独建模")),
+                        message)
 
 
 def _checker_module():

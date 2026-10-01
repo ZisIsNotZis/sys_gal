@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterator, Mapping
@@ -97,9 +97,13 @@ class WorldPack:
     concepts: tuple[dict[str, Any], ...]
     contacts: dict[str, list[dict[str, Any]]]
     history: tuple[dict[str, Any], ...]
+    # Ticket 66: named targets a role treats as a place/contact but the world
+    # can neither reach nor message; each carries {reason, hint}. The kernel
+    # appends them to a rejection so no such name dead-ends all three routes.
+    unreachable_targets: dict[str, dict[str, str]] = field(default_factory=dict)
     # canonical name -> aliases, for every actor/location/item/document/concept.
     # flashback uses it to resolve "老街坊" to its registered concept.
-    lexicon: dict[str, tuple[str, ...]]
+    lexicon: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
     def build_world(self) -> World:
         locations = [LocationState(
@@ -168,6 +172,7 @@ class WorldPack:
             private_knowledge=self.manifest.get("private_knowledge", {}),
             longest_wait_seconds=_as_int(self.manifest.get("engine", {}).get("idle_wait_seconds", 3600),
                                          "engine.idle_wait_seconds"),
+            unreachable_targets=self.unreachable_targets,
         )
         engine_cfg = self.manifest.get("engine", {})
         world.state_refresh_rounds = _as_int(engine_cfg.get("state_refresh_rounds", 20),
@@ -248,10 +253,12 @@ def load_world_pack(root: str | Path) -> WorldPack:
     kb = _expand_concept_rows(kb, concepts, entity_ids)
     contacts = _validate_contacts(manifest.get("contacts"), actors=actor_ids)
     kb = _expand_contact_rows(kb, contacts)
+    unreachable = _validate_unreachable_targets(manifest.get("unreachable_targets"))
     lexicon = _build_lexicon(fields, concepts)
     return WorldPack(root, manifest, descriptions, history=tuple(history),
                      **fields, system=dict(manifest.get("system", {})), kb=kb,
-                     concepts=concepts, lexicon=lexicon, contacts=contacts)
+                     concepts=concepts, lexicon=lexicon, contacts=contacts,
+                     unreachable_targets=unreachable)
 
 
 import re as _re
@@ -435,6 +442,35 @@ def _validate_contacts(contacts: Any, *, actors: set[str]) -> dict[str, list[dic
             normalized.append({"of": of,
                                "as": [a.strip() for a in as_list if a.strip()]})
         result[str(actor_id)] = normalized
+    return result
+
+
+def _validate_unreachable_targets(raw: Any) -> dict[str, dict[str, str]]:
+    """Ticket 66: named targets that are neither reachable nor contactable.
+
+    A role treats them as a place/contact (an off-campus neighbour, a
+    door-plate, a room inside a modelled building), but the world models
+    neither a location nor a person for them. Each entry must give the
+    objective `reason` and an executable `hint` (who to ask / where to go /
+    which verb) — the kernel appends both to the rejection so the actor is
+    never left with three dead routes."""
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError("unreachable_targets: must be a mapping of name to {reason, hint}")
+    result: dict[str, dict[str, str]] = {}
+    for name, entry in raw.items():
+        label = str(name).strip()
+        if not label:
+            raise ValueError("unreachable_targets: empty name")
+        if not isinstance(entry, dict):
+            raise ValueError(f"unreachable_targets[{label}]: must be a mapping")
+        reason = str(entry.get("reason", "")).strip()
+        hint = str(entry.get("hint", "")).strip()
+        if not reason or not hint:
+            raise ValueError(
+                f"unreachable_targets[{label}]: needs both 'reason' and 'hint'")
+        result[label] = {"reason": reason, "hint": hint}
     return result
 
 

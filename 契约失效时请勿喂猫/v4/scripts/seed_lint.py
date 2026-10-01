@@ -698,6 +698,33 @@ def collision_warnings(world_root: str | Path) -> list[str]:
     return warnings
 
 
+def contact_symmetry_warnings(world_root: str | Path) -> list[str]:
+    """Ticket 66: advisory one-way address books (never block).
+
+    If A can message B, B's address book should carry A, or the one-way must
+    be intended. The kernel lets B reply only to a contact (or a co-located
+    person), so an unrecorded sender leaves B able to receive but unable to
+    answer the artifact's 宿管阿姨/下棋大爷 exchange. This lists each A→B
+    without B→A so the author can fix the seed or say why it is one-way;
+    remote actors (no campus presence/comms) are exempt.
+    """
+    try:
+        pack = load_world_pack(Path(world_root))
+    except ValueError:
+        return []
+    pairs = {(str(actor), str(row["of"]))
+             for actor, rows in pack.contacts.items() for row in rows}
+    remote = {str(row["id"]) for row in pack.actors if row.get("remote")}
+    one_way = sorted((a, b) for a, b in pairs
+                     if (b, a) not in pairs and a not in remote and b not in remote)
+    if not one_way:
+        return []
+    listed = "、".join(f"{a}→{b}" for a, b in one_way)
+    return [f"contact asymmetry (ticket 66): {listed}"
+            "（A 能给 B 发消息而 B 的通讯录里没有 A；若非有意单向，补一条 contact "
+            "或在 B 的行里说明为何单向）"]
+
+
 def sources_md(root: Path) -> list[tuple[str, str]]:
     return [(str(path.relative_to(root)), path.read_text(encoding="utf-8"))
             for pattern in _PROSE_GLOBS
@@ -757,6 +784,10 @@ def main() -> int:
         pass
     try:
         warnings.extend(concept_state_warnings(args.world))
+    except ValueError:
+        pass
+    try:
+        warnings.extend(contact_symmetry_warnings(args.world))
     except ValueError:
         pass
     for note in warnings:

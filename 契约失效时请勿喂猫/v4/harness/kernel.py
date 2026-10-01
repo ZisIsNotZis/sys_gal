@@ -246,7 +246,8 @@ class World:
                  entity_access: Mapping[str, Iterable[str]] | None = None,
                  public_knowledge: Mapping[str, str] | None = None,
                  private_knowledge: Mapping[str, Mapping[str, str]] | None = None,
-                 longest_wait_seconds: int = 3600) -> None:
+                 longest_wait_seconds: int = 3600,
+                 unreachable_targets: Mapping[str, Mapping[str, Any]] | None = None) -> None:
         actor_list = list(actors)
         self.now = start
         self.version = 0
@@ -265,6 +266,12 @@ class World:
         self.entity_access = {str(k): set(v) for k, v in (entity_access or {}).items()}
         self.public_knowledge = dict(public_knowledge or {})
         self.private_knowledge = {str(k): dict(v) for k, v in (private_knowledge or {}).items()}
+        # Ticket 66: seed-declared names a role treats as a place/contact but
+        # the world can neither reach nor message (an off-campus neighbour, a
+        # door-plate, a room inside a modelled building). Each carries a reason
+        # and an executable alternative the rejection appends.
+        self.unreachable_targets = {str(k): dict(v)
+                                    for k, v in (unreachable_targets or {}).items()}
         self.event_log: list[Event] = []
         self._queue: list[_Scheduled] = []
         self._cancelled: set[int] = set()
@@ -454,6 +461,8 @@ class World:
             self.state_refresh_rounds = source.state_refresh_rounds
             self.description_refresh_rounds = source.description_refresh_rounds
             self.private_knowledge = {key: dict(value) for key, value in source.private_knowledge.items()}
+            self.unreachable_targets = {key: dict(value)
+                                        for key, value in getattr(source, "unreachable_targets", {}).items()}
         except CheckpointError:
             raise
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
@@ -1023,6 +1032,14 @@ class World:
         self._cursor[actor_id] = len(self.event_log)
         inbox = list(a.inbox)
         a.inbox.clear()
+        # Ticket 66: a message can arrive from someone the recipient has not
+        # recorded — the address book is private and asymmetric by design. The
+        # recipient may only reply to a known contact, so surface the gap (and
+        # the executable way to close it) instead of silently dropping the
+        # reply. The knowledge itself is never rewritten here.
+        unrecorded = sorted({str(item.get("from")) for item in inbox
+                             if item.get("from")
+                             and str(item["from"]) not in a.known_contacts})
         # Change-driven observation (V4-DESIGN §5.7): full observation on
         # first arrival, on explicit request, and every N rounds spent at the
         # same place. Descriptions ride their own much-slower M counter and
@@ -1050,7 +1067,8 @@ class World:
                   "busy_until": a.busy_until.isoformat() if a.busy_until else None,
                   "nearby_actors": sorted(x.id for x in self.actors.values() if x.id != actor_id and x.location == a.location),
                   "nearby_items": sorted(i for i, loc in self.item_locations.items() if loc == a.location),
-                  "inbox": inbox, "events": [self._public(e, observer=actor_id) for e in visible],
+                  "inbox": inbox, "unrecorded_senders": unrecorded,
+                  "events": [self._public(e, observer=actor_id) for e in visible],
                   "knowledge": self._knowledge(a) if full_state else {}}
         if full_desc:
             result["descriptions"] = {
@@ -1315,6 +1333,9 @@ class World:
                 known = target in self.locations
                 message = (f"「{target}」不是一个你知道的地方。" if not known
                            else f"你从{a.location}到不了「{target}」。")
+                hint = self._unreachable_note(target)
+                if hint:
+                    message += hint
                 raise ActionRejected(
                     message,
                     alternatives=[f"move to {n}" for n in reachable],
@@ -1364,8 +1385,11 @@ class World:
             target = str(x.get("target"))
             if target not in self.locations:
                 reachable = self._reachable(a)
+                hint = self._unreachable_note(target)
                 raise ActionRejected(
-                    f"「{target}」不是一个你知道的地方。从{a.location}可以到："
+                    f"「{target}」不是一个你知道的地方。"
+                    + (f"{hint} " if hint else "")
+                    + f"从{a.location}可以到："
                     f"{', '.join(reachable) or '没有'}。",
                     alternatives=[f"move to {n}" for n in reachable],
                     context={"target": target})
@@ -1381,8 +1405,12 @@ class World:
             found = self._route_path(a.location, target)
             if found is None:
                 reachable = self._reachable(a)
+                message = f"从{a.location}走到「{target}」没有可用的路。"
+                hint = self._unreachable_note(target)
+                if hint:
+                    message += hint
                 raise ActionRejected(
-                    f"从{a.location}走到「{target}」没有可用的路。",
+                    message,
                     alternatives=[f"move to {n}" for n in reachable],
                     context={"from": a.location, "target": target})
             return timedelta(seconds=sum(found[1]))
@@ -1878,7 +1906,11 @@ class World:
                     # number that denotes nobody it can reach — the answer
                     # must preserve the recipient intent.
                     context["unknown_recipient"] = True
-                raise ActionRejected(str(note), context=context)
+                message = str(note)
+                hint = self._unreachable_note(query)
+                if hint:
+                    message = f"{message} {hint}"
+                raise ActionRejected(message, context=context)
             if resolved != query:
                 args[key] = resolved
                 changed = True
@@ -2066,6 +2098,44 @@ class World:
 
     def _reachable(self, actor: ActorState) -> list[str]:
         return sorted(target for (source, target) in self.routes if source == actor.location)
+
+    def _unreachable_note(self, name: Any) -> str | None:
+        """Ticket 66 — the seed's authored alternative for an unreachable name.
+
+        A name a role treats as a target/contact may be neither a reachable
+        location nor an addressable person (李阿姨 is an off-campus neighbour,
+        李阿姨家 a door-plate, 305宿舍 a room inside a modelled building). The
+        seed declares each with a reason and an executable alternative (who to
+        ask / where to go / which verb); the rejection appends both so the
+        three routes never all dead-end. Matching is the KB's normalization,
+        so a shorter query ("305") still finds its entry."""
+        from .kb import normalize
+        text = normalize(name)
+        if not text or not self.unreachable_targets:
+            return None
+        normalized = {key: normalize(key) for key in self.unreachable_targets}
+        exact = [key for key, needle in normalized.items() if needle == text]
+        if exact:
+            match = exact[0]
+        else:
+            # A query may extend the name ("老家属院地下室") — take the most
+            # specific key it contains; or the query may be a prefix ("305")
+            # — take the least over-reaching key containing it. Nesting like
+            # 李阿姨/李阿姨家 never mis-resolves because exact wins first.
+            contained = [(len(needle), key) for key, needle in normalized.items()
+                         if needle and needle in text]
+            if contained:
+                match = max(contained)[1]
+            else:
+                covering = [(len(needle), key) for key, needle in normalized.items()
+                            if needle and text in needle]
+                if not covering:
+                    return None
+                match = min(covering)[1]
+        entry = self.unreachable_targets[match]
+        reason = str(entry.get("reason", "")).strip()
+        hint = str(entry.get("hint", "")).strip()
+        return " ".join(part for part in (reason, hint) if part) or None
 
     def _reachable_open(self, actor: ActorState) -> list[str]:
         return sorted(target for (source, target) in self.routes
