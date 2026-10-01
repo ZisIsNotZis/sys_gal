@@ -439,6 +439,7 @@ class AsyncEngine:
             await asyncio.gather(*tasks, *self._extra_tasks.values(),
                                  return_exceptions=True)
         if self.checkpoint is not None:
+            self._publish_all_knowledge()
             self.checkpoint()
         return self.stop_reason or "stopped"
 
@@ -542,6 +543,12 @@ class AsyncEngine:
             "reason": reason,
             "world_now": self.world.now.isoformat(),
             "wall_elapsed_seconds": round(wall_now - self._wall_started, 1),
+            # Ticket 67: show the wall budget and how far past it the stop
+            # landed, so a starved/overrun backstop is visible after the fact.
+            "max_wall_seconds": self.max_wall_seconds,
+            "wall_overrun_seconds": (
+                round(wall_now - self._wall_started - self.max_wall_seconds, 1)
+                if self.max_wall_seconds is not None else None),
             "seconds_since_progress": round(wall_now - self._last_progress_wall, 1),
             "last_progress_world": self._last_progress_world.isoformat(),
             "inflight": inflight,
@@ -557,23 +564,34 @@ class AsyncEngine:
 
     # ------------------------------------------------------------ scheduler
 
+    def _stop_check(self, stop_at: datetime | None) -> str | None:
+        """The stop conditions that must fire on time (ticket 67).
+
+        Evaluated at the top of every scheduler pass AND inside the freeze-
+        wait loop below: the inner wait used to run to its own release bound
+        before the outer checks ran again, so an in-flight decision that kept
+        the same oldest wake starved the wall-clock/max_turns/stop_at
+        backstops. Returns the reason to finish with, or None.
+        """
+        if self.max_wall_seconds is not None and \
+                time.monotonic() - self._wall_started > self.max_wall_seconds:
+            return "wall_clock_deadline_reached"
+        if self._stall_exceeded():
+            # Ticket 53: consecutive no-progress wall time, not the sum of
+            # every freeze. A healthy but slow run keeps stepping and
+            # never reaches this backstop.
+            return "stall_no_progress"
+        if self._turns >= self.max_turns:
+            return "max_turns_reached"
+        if stop_at is not None and self.world.now >= stop_at:
+            return "stop_at_reached"
+        return None
+
     async def _scheduler_loop(self, stop_at: datetime | None) -> None:
         while self.stop_reason is None:
-            if self.max_wall_seconds is not None and \
-                    time.monotonic() - self._wall_started > self.max_wall_seconds:
-                self._finish("wall_clock_deadline_reached")
-                break
-            if self._stall_exceeded():
-                # Ticket 53: consecutive no-progress wall time, not the sum of
-                # every freeze. A healthy but slow run keeps stepping and
-                # never reaches this backstop.
-                self._finish("stall_no_progress")
-                break
-            if self._turns >= self.max_turns:
-                self._finish("max_turns_reached")
-                break
-            if stop_at is not None and self.world.now >= stop_at:
-                self._finish("stop_at_reached")
+            reason = self._stop_check(stop_at)
+            if reason is not None:
+                self._finish(reason)
                 break
             self._cast_scan()
             self._reminder_scan()
@@ -616,8 +634,13 @@ class AsyncEngine:
                 # race and keeps the stall backstop timely.
                 target = min(self._active_inflight().values())
                 while self.stop_reason is None:
-                    if self._stall_exceeded():
-                        self._finish("stall_no_progress")
+                    # Ticket 67: re-check EVERY stop condition here, not just
+                    # the stall backstop — the wall-clock deadline is a safety
+                    # property and this loop can hold until the release bound
+                    # (freeze_tolerance) while `min()` stays put.
+                    reason = self._stop_check(stop_at)
+                    if reason is not None:
+                        self._finish(reason)
                         break
                     if self._release_stale_inflight():
                         break
@@ -671,10 +694,15 @@ class AsyncEngine:
 
     async def _await_activity(self) -> None:
         """Block until some actor state changes (bounded poll against lost
-        wakeups)."""
+        wakeups). Capped by the wall budget (ticket 67) so a 1 s poll cannot
+        push the stop past the deadline by its whole timeout."""
         self._scheduler_wake.clear()
+        timeout = 1.0
+        wall_left = self._wall_remaining()
+        if wall_left is not None:
+            timeout = max(0.05, min(1.0, wall_left))
         try:
-            await asyncio.wait_for(self._scheduler_wake.wait(), timeout=1.0)
+            await asyncio.wait_for(self._scheduler_wake.wait(), timeout=timeout)
         except asyncio.TimeoutError:
             pass
 
@@ -700,12 +728,24 @@ class AsyncEngine:
     def _stall_exceeded(self) -> bool:
         return time.monotonic() - self._last_progress_wall > self.stall_threshold_seconds
 
+    def _wall_remaining(self) -> float | None:
+        """Seconds left before the wall-clock deadline, or None when unbounded
+        (ticket 67: every scheduler wait caps itself by this so the deadline
+        is honored on time instead of at the next poll boundary)."""
+        if self.max_wall_seconds is None:
+            return None
+        return self.max_wall_seconds - (time.monotonic() - self._wall_started)
+
     def _freeze_poll(self) -> float:
-        """Bound the freeze-wait poll so the release rule and the stall
-        backstop stay timely even when their bounds are short (tests) instead
-        of the 2 s default."""
+        """Bound the freeze-wait poll so the release rule, the stall backstop,
+        and the wall-clock deadline stay timely even when their bounds are
+        short (tests) instead of the 2 s default."""
         remaining = self.stall_threshold_seconds - (time.monotonic() - self._last_progress_wall)
-        return max(0.05, min(2.0, remaining, self.freeze_tolerance))
+        bounds = [2.0, remaining, self.freeze_tolerance]
+        wall_left = self._wall_remaining()
+        if wall_left is not None:
+            bounds.append(wall_left)
+        return max(0.05, min(bounds))
 
     def _clear_inflight(self, actor_id: str) -> None:
         self._inflight.pop(actor_id, None)
@@ -836,6 +876,9 @@ class AsyncEngine:
                 self._npc_pending.setdefault(event.actor, "你的上一个动作有了结果")
         self._rep_scan = len(self.world.event_log)
         if self.checkpoint is not None:
+            # Ticket 68: each saved artifact/checkpoint carries the current
+            # engine KB, so the memory store is never only in the checkpoint.
+            self._publish_all_knowledge()
             self.checkpoint()
 
     def _notify_ready(self) -> None:
@@ -1728,6 +1771,8 @@ class AsyncEngine:
         monitor_result = "submitted" if world_actions else ("rejected" if calls else "none")
         self._repetition.note_turn(actor_id, recorded, monitor_result,
                                    location=a.location)
+        # Ticket 68: publish + count the actor's real notebook for this turn.
+        knowledge_rows = self._publish_knowledge(actor_id)
         self.trace.record_agent(state=self.states[actor_id], perception=perception,
                                 affordances=affordances, intention=recorded,
                                 result=result, error="; ".join(failures) or None,
@@ -1738,7 +1783,10 @@ class AsyncEngine:
                                 content_suspect_dialogue=content_suspect_dialogue,
                                 withheld_private=withheld_private,
                                 withheld_text=withheld_text,
-                                memory_rejections=memory_rejections)
+                                memory_rejections=memory_rejections,
+                                memory_store=("engine-kb" if knowledge_rows is not None
+                                              else None),
+                                knowledge_rows=knowledge_rows)
         # Ticket 56: after the tool results (ordering) show the actor its own
         # withheld speak/text line so the next decision does not repeat it.
         if withheld_private:
@@ -1764,6 +1812,26 @@ class AsyncEngine:
         if snapshot is not None and snapshot() is not None:
             self.trace.record_session(actor_id, snapshot())
         self._scheduler_wake.set()
+
+    def _publish_knowledge(self, actor_id: str) -> int | None:
+        """Ticket 68: mirror the actor's engine KB into the trace.
+
+        v4 memory lives in `runner.kb` (V4-AGENT-INTERFACE §6), not in
+        `PrivateState.memories`; publishing the real notebook keeps the saved
+        artifact self-consistent and lets a checker compare KB rows with the
+        legacy (always-empty) `private_state.memories`. Returns the row count,
+        or None when this actor has no notebook (extras, legacy runs)."""
+        kb = self._kb.get(actor_id)
+        if kb is None:
+            return None
+        snap = kb.snapshot()
+        if self.trace is not None:
+            self.trace.record_knowledge(actor_id, snap)
+        return len(snap["rows"])
+
+    def _publish_all_knowledge(self) -> None:
+        for actor_id in self._kb:
+            self._publish_knowledge(actor_id)
 
     def _all_failed(self) -> bool:
         live = [self._failures.get(actor, 0) for actor in self._persistent_actors()]

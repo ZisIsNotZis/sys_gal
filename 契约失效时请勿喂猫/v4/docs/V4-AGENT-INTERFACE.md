@@ -208,6 +208,15 @@ extra 的输出解析与 MC/NPC **同一套信封解析**（`adapter.parse_decis
 - 无 id、无 person/location/item/concept/memory 匹配类型：一行可带多个 key（如 `["陈默", "常客"]`），任一命中即回放。同一角色内两个行不得共用同一 key 集（key 集即身份）。
 - **身份行（M2）**：每角色必须恰有一行其 key 含自己的名字，desc 以第一人称"我，"开头；引擎拒绝 close 这一行。
 
+### 6.1 记忆事实存放位置（ticket 68）
+
+**一个角色的记忆事实只有一处：引擎侧 KB（`runner.kb[actor].rows`）。** `update_memory` / `recall` / `flashback` / 种子行 / `!always` / `!at=` 全部读写这份 KB，会话（`sessions`）与 `PrivateState` 都不保存记忆内容。
+
+- **`PrivateState.memories` 是遗留 v3 字段，v4 不写、恒为空。** trace 每个角色轮次里的 `private_state.memories: []` **不代表丢写**——`update_memory` 把行写进 KB。若某轮有 memory 工具调用而 KB 行数变化，查 trace 的 `knowledge` 段（下条）而非这个空列表。
+- **trace 带真实记事本**：轨迹工件多一个顶层 `knowledge` 段（`{actor: ActorKB.snapshot()}`，即 `rows`/`overflow`/`pending_recall`），每个 run 的最新 KB 随每次检查点与收尾写入；检查点里的 `runner.kb` 是同一份数据的持久化副本。
+- **每个 v4 轮次都标注存放处**：该轮 `private_state` 除遗留字段外还带 `memory_store: "engine-kb"` 与 `knowledge_rows: N`（无 KB 的角色/旧路径不带这两个键）——`memories: []` 与 `knowledge_rows: 38` 并列出现时，空的是遗留字段，不是丢写。
+- **检查器读数**：`scripts/check_milestones.py` 的系统健康块打印“记忆存放（engine KB / 遗留 memories）”，并列 KB 行数与 `private_state.memories` 合计（review-only，不设闸）。
+
 manifest 的 `kb:` 段示例：
 
 ```yaml

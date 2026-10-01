@@ -36,6 +36,12 @@ class Trace:
         # list never changes mid-run). Recorded so a later view renders what
         # the model saw instead of whatever the current code declares.
         self.tools: list[str] = []
+        # Ticket 68: v4 keeps each actor's memory in the engine KB
+        # (`runner.kb[actor].rows`), never in `PrivateState.memories`. The
+        # trace carries the real notebook per actor so the saved artifact is
+        # self-verifiable; a reviewer never has to open the checkpoint to
+        # check an `update_memory` write.
+        self.knowledge: dict[str, dict[str, Any]] = {}
 
     def record_tools(self, names: list[str]) -> None:
         self.tools = list(names)
@@ -57,6 +63,14 @@ class Trace:
         # remains independently inspectable without exposing hidden CoT.
         self.sessions[actor] = deepcopy(snapshot)
 
+    def record_knowledge(self, actor: str, snapshot: dict[str, Any]) -> None:
+        """Ticket 68: keep the actor's latest engine-KB snapshot in the trace.
+
+        This is the real memory store (V4-AGENT-INTERFACE §6); the per-turn
+        `private_state.memories` field is the legacy v3 slot and stays empty
+        by design."""
+        self.knowledge[actor] = deepcopy(snapshot)
+
     def record_agent(self, *, state: PrivateState, perception: dict[str, Any],
                      affordances: list[dict[str, Any]], intention: Intention | None,
                      result: str, error: str | None = None,
@@ -67,10 +81,19 @@ class Trace:
                      content_suspect_dialogue: bool = False,
                      withheld_private: bool = False,
                      withheld_text: str | None = None,
-                     memory_rejections: list[str] | None = None) -> None:
+                     memory_rejections: list[str] | None = None,
+                     memory_store: str | None = None,
+                     knowledge_rows: int | None = None) -> None:
+        # Ticket 68: annotate WHERE this actor's memory actually lives, right
+        # next to the always-empty legacy `memories` slot, so a reviewer never
+        # reads the empty list as a silently dropped `update_memory` write.
+        private_state = state.snapshot()
+        if memory_store is not None:
+            private_state["memory_store"] = memory_store
+            private_state["knowledge_rows"] = knowledge_rows
         self.agent_turns.append({
             "actor": state.actor_id, "perception": deepcopy(perception),
-            "private_state": state.snapshot(), "affordances": deepcopy(affordances),
+            "private_state": private_state, "affordances": deepcopy(affordances),
             "intention": None if intention is None else {
                 "actor": intention.actor, "kind": intention.kind,
                 "args": deepcopy(dict(intention.args)), "expected_version": intention.expected_version,
@@ -148,6 +171,8 @@ class Trace:
                 "system_turns": self.system_turns, "gm_turns": self.gm_turns,
                 "sessions": self.sessions, "outcome": self.outcome,
                 "tools": list(self.tools),
+                # Ticket 68: the real per-actor memory store (engine KB).
+                "knowledge": self.knowledge,
         "world_events": list(world.replayable_log()),
                 "replay": {"event_count": len(world.event_log), "contiguous": [e.id for e in world.event_log] == list(range(1, len(world.event_log) + 1)),
                            "world_versions_contiguous": [e.world_version for e in world.event_log] == list(range(1, len(world.event_log) + 1)),
@@ -174,6 +199,9 @@ class Trace:
         self.sessions = deepcopy(snapshot.get("sessions", {}))
         self.outcome = deepcopy(snapshot.get("outcome"))
         self.tools = list(snapshot.get("tools", []))
+        # Ticket 68: carry an earlier artifact's KB forward; the live engine
+        # republishes each actor's restored notebook on its next turn.
+        self.knowledge = deepcopy(snapshot.get("knowledge", {}))
 
     def checkpoint_snapshot(self, world: World, runner: Any) -> dict[str, Any]:
         """v4-checkpoint-2 (ticket 25): everything needed to reproduce —

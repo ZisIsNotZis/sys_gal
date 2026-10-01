@@ -589,6 +589,32 @@ I66 contact/route dead ends: 李阿姨 unreachable, contacts asymmetric, 305宿�
     rejection; a received-but-unrecorded sender is surfaced to the recipient
     (with the `update_memory` call to close the gap) and seed lint lists one-way
     address books; 305宿舍's rejection names the building it lives in.
+I67 wall clock starved by the in-flight freeze wait (ticket 67)
+                                                               test_wall_deadline_fires_while_the_inflight_wait_never_releases,
+                                                               test_max_turns_is_not_starved_by_the_same_inner_wait
+    real-20261001T163024+0800-629102-384711601: the wall-clock/stall/max_turns/
+    stop_at checks ran once per OUTER scheduler pass, while an in-flight
+    decision kept the loop inside `while ... min(active)==target` until the
+    ticket-53 release bound (`freeze_tolerance`). A never-resolving oldest
+    wake therefore delayed the 2h safety stop (that run ended 12s late; the
+    starvation window is the whole release bound). Fix: `_stop_check` runs
+    inside the inner wait loop too, `_freeze_poll`/`_await_activity` cap their
+    timeout by the remaining wall budget, and the stop diagnostic reports
+    `max_wall_seconds`/`wall_overrun_seconds`.
+I68 `private_state.memories` is a legacy v3 slot, not the v4 memory store
+                                                               test_written_memory_row_is_visible_in_the_trace_notebook,
+                                                               test_turn_annotates_the_real_store_next_to_the_legacy_field,
+                                                               test_saved_artifact_carries_the_knowledge_section,
+                                                               test_health_report_reads_kb_rows_apart_from_the_legacy_field
+    real-20261001T163024+0800-629102-384711601: multiple reviewers read the
+    always-empty `private_state.memories` as "update_memory 报成功但静默丢写"
+    (a false P1). v4 memory lives in the engine KB (`runner.kb[actor].rows`, 38
+    rows for 唐小岚) and `update_memory` returned `submitted` with
+    `memory_rejections: []`. Fix: the trace carries the real notebook as a
+    `knowledge` section and every v4 turn's private_state names the store
+    (`memory_store: engine-kb`, `knowledge_rows: N`) right beside the legacy
+    empty list; docs state where memory lives; the checker adds a review-only
+    KB-rows vs legacy-memories reading.
 """
 
 import json
@@ -4706,6 +4732,174 @@ class Ticket59UpdateMemoryGates(unittest.TestCase):
         report = module.health_report(
             {"agent_turns": turns, "sessions": {}, "world_events": []}, 1)
         self.assertEqual(report["update_memory 失败行数"], 1)
+
+
+class _NeverReturningAgent:
+    """A decision that never returns until the test opens its gate.
+
+    Ticket 67's failing shape: the actor's wake stays the oldest in `_inflight`
+    forever, so `min()` never moves and nothing drives the scheduler out of its
+    inner freeze-wait loop on its own."""
+
+    def __init__(self, gate):
+        self.gate = gate
+        self.calls = 0
+
+    def __call__(self, state, perception, affordances):
+        self.calls += 1
+        self.gate.wait()
+        return Intention(state.actor_id, "wait",
+                         {"duration_seconds": 60}, perception["world_version"])
+
+
+def _freeze_branch_world():
+    """A world whose queued event lies beyond the freeze bound.
+
+    `next_event > horizon_bound` is what routes the scheduler into the inner
+    freeze-wait branch; without a future event the outer pass keeps rotating.
+    Two co-located actors both block, so the bound's `min()` is stable."""
+    world = _stall_world()
+    world.schedule_reminder("a", _STALL_START + timedelta(seconds=600),
+                            "rid-67", "稍后的提醒", "later")
+    return world
+
+
+class Ticket67WallDeadlineGates(unittest.TestCase):
+    """Ticket 67 (real-20261001T163024): the wall-clock backstop was starved.
+
+    The wall/stall/max_turns/stop_at checks ran once per OUTER scheduler pass;
+    while `_inflight` held a stable oldest wake the code sat in the inner
+    freeze-wait loop until the ticket-53 release bound, so a never-resolving
+    decision pushed the stop past its budget. `_stop_check` now runs inside the
+    inner loop and every wait caps itself by the remaining wall budget."""
+
+    def _engine(self, world, agents, **kw):
+        states = {actor: PrivateState(actor) for actor in world.actors}
+        trace = Trace("v4-test", "historical-gate-ticket-67")
+        return AsyncEngine(world, agents, states, trace, None, **kw), trace
+
+    def test_wall_deadline_fires_while_the_inflight_wait_never_releases(self):
+        gate = threading.Event()
+        world = _freeze_branch_world()
+        agents = {"a": _NeverReturningAgent(gate), "b": _NeverReturningAgent(gate)}
+        engine, trace = self._engine(world, agents, decision_timeout=30.0,
+                                     freeze_tolerance_seconds=2.0,
+                                     stall_threshold_seconds=60.0,
+                                     max_wall_seconds=0.5)
+        started = time.monotonic()
+        try:
+            reason = engine.run(stop_at=_STALL_START + timedelta(seconds=1200),
+                                max_turns=2000)
+        finally:
+            gate.set()
+        elapsed = time.monotonic() - started
+        self.assertEqual(reason, "wall_clock_deadline_reached")
+        self.assertLess(elapsed, 1.5,
+                        "墙钟到点后被'等在飞决策'的内层循环饿死（修复前 ≥2s）")
+        diagnostic = _stop_diagnostic(trace)
+        self.assertIsNotNone(diagnostic, "结束诊断没有写进 trace")
+        self.assertEqual(diagnostic["max_wall_seconds"], 0.5)
+        self.assertLessEqual(diagnostic["wall_overrun_seconds"], 0.5,
+                             "因墙钟停止时必须报出实际超出时长")
+        self.assertIn("a", [row["actor"] for row in diagnostic["inflight"]])
+
+    def test_max_turns_is_not_starved_by_the_same_inner_wait(self):
+        # Guard, not a pre-fix red: in this construction the turn budget is
+        # already reached by the time the outer pass runs, so `max_turns` is
+        # caught either way. The point is the shared `_stop_check` also covers
+        # it inside the freeze wait (same fix as the wall deadline above).
+        gate = threading.Event()
+        world = _freeze_branch_world()
+        agents = {"a": _NeverReturningAgent(gate), "b": _NeverReturningAgent(gate)}
+        engine, trace = self._engine(world, agents, decision_timeout=30.0,
+                                     freeze_tolerance_seconds=2.0,
+                                     stall_threshold_seconds=60.0)
+        started = time.monotonic()
+        try:
+            reason = engine.run(stop_at=_STALL_START + timedelta(seconds=1200),
+                                max_turns=1)
+        finally:
+            gate.set()
+        self.assertEqual(reason, "max_turns_reached")
+        self.assertLess(time.monotonic() - started, 1.5,
+                        "max_turns 同样被内层等待饿死")
+
+
+class Ticket68MemoryStoreGates(unittest.TestCase):
+    """Ticket 68 (real-20261001T163024): the trace's `private_state.memories`
+    is the legacy v3 slot and stays empty by design; v4 memory lives in the
+    engine KB (38 rows for 唐小岚 in that run). A reviewer read the empty field
+    as a silently dropped `update_memory` write and filed a false P1. The trace
+    now carries the real notebook (`knowledge`) and each v4 turn names the store
+    (`memory_store` / `knowledge_rows`) so the saved artifact is
+    self-consistent and a write is verifiable inside the trace."""
+
+    def _engine_with_notebook(self):
+        world = World(start=_STALL_START,
+                      actors=[ActorState("陈默", "校史档案室")],
+                      locations=[LocationState("校史档案室")], routes={})
+        engine, agents = _chain_engine(world)
+        from harness.kb import ActorKB
+        engine._kb["陈默"] = ActorKB("陈默", [{"keys": ["陈默"], "desc": "我"}],
+                                     world.now)
+        return engine, agents, world
+
+    def _write(self, engine, world):
+        engine._execute_chain(
+            "陈默",
+            [{"name": "update_memory",
+              "arguments": {"inner": "记一笔", "rows": [
+                  {"keys": ["!always", "校报草稿"], "op": "open",
+                   "desc": "把草稿原件收好。"}]},
+              "tool_call_id": "mem-68"}],
+            {"time": world.now.isoformat(), "nearby_actors": [], "events": []},
+            world.affordances("陈默"), world.version)
+
+    def test_written_memory_row_is_visible_in_the_trace_notebook(self):
+        engine, agents, world = self._engine_with_notebook()
+        self._write(engine, world)
+        self.assertTrue(agents["陈默"].delivered[-1]["ok"], "写入未成功")
+        rows = engine.trace.knowledge["陈默"]["rows"]
+        self.assertIn("校报草稿", {k for r in rows for k in r["keys"]},
+                      "update_memory 写入的行必须能在轨迹里查到")
+
+    def test_turn_annotates_the_real_store_next_to_the_legacy_field(self):
+        engine, agents, world = self._engine_with_notebook()
+        self._write(engine, world)
+        ps = engine.trace.agent_turns[-1]["private_state"]
+        self.assertEqual(ps["memories"], [], "遗留字段按设计为空")
+        self.assertEqual(ps["memory_store"], "engine-kb",
+                         "复盘可见字段必须指明记忆真身所在")
+        self.assertEqual(ps["knowledge_rows"], 2)
+
+    def test_saved_artifact_carries_the_knowledge_section(self):
+        engine, agents, world = self._engine_with_notebook()
+        self._write(engine, world)
+        snap = engine.trace.snapshot(world)
+        self.assertIn("knowledge", snap, "轨迹快照必须带 KB 段")
+        self.assertIn("校报草稿",
+                      {k for r in snap["knowledge"]["陈默"]["rows"] for k in r["keys"]})
+
+    def test_health_report_reads_kb_rows_apart_from_the_legacy_field(self):
+        module = _checker_module()
+        report = module.health_report(
+            {"agent_turns": [
+                {"perception": {"time": "2026-03-16T07:04:00+08:00"},
+                 "private_state": {"memories": [], "memory_store": "engine-kb",
+                                   "knowledge_rows": 38}}],
+             "sessions": {}, "world_events": [],
+             "knowledge": {"唐小岚": {"rows": [{"keys": ["唐小岚"]}] * 38}}}, 1)
+        reading = report["记忆存放（engine KB / 遗留 memories）"]
+        self.assertIn("engine-kb", reading)
+        self.assertIn("唐小岚:38", reading)
+        self.assertIn("遗留", reading)
+        legacy = module.health_report(
+            {"agent_turns": [
+                {"perception": {"time": "2026-03-16T07:04:00+08:00"},
+                 "private_state": {"memories": []}}],
+             "sessions": {}, "world_events": []}, 1)
+        self.assertIn("旧工件", legacy["记忆存放（engine KB / 遗留 memories）"],
+                      "旧工件必须显式说明而非猜")
 
 
 if __name__ == "__main__":

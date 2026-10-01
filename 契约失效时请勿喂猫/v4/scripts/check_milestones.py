@@ -1317,6 +1317,28 @@ def health_report(data, day: int):
     if not any("memory_rejections" in t for t in turns):
         memory_rejected = sum(1 for t in turns
                               if "update_memory" in str(t.get("error") or ""))
+    # Ticket 68: where memory actually lives. v4 stores each actor's notebook
+    # in the engine KB (the trace `knowledge` section, V4-AGENT-INTERFACE §6),
+    # never in `private_state.memories`; that field is the legacy v3 slot and
+    # is empty by design. Print both readings so an empty legacy field is never
+    # read as a dropped `update_memory` write. Old artifacts carry no
+    # `knowledge` — say so instead of guessing. Review only, never a gate.
+    knowledge = data.get("knowledge") or {}
+    kb_rows = {str(actor): len((snap or {}).get("rows") or [])
+               for actor, snap in knowledge.items()}
+    legacy_rows = sum(len((t.get("private_state") or {}).get("memories") or [])
+                      for t in turns)
+    labelled = sum(1 for t in turns
+                   if (t.get("private_state") or {}).get("memory_store"))
+    if knowledge:
+        memory_reading = (f"engine-kb {len(kb_rows)} 人 {sum(kb_rows.values())} 行（"
+                          + "，".join(f"{a}:{n}" for a, n in sorted(kb_rows.items()))
+                          + f"）；private_state.memories 合计 {legacy_rows}（遗留字段，"
+                          f"v4 不写）；memory_store 已标注 {labelled}/{len(turns)} 轮")
+    else:
+        memory_reading = (f"轨迹未含 knowledge 段（旧工件）；private_state.memories "
+                          f"合计 {legacy_rows}（遗留字段，空≠丢写）；memory_store "
+                          f"已标注 {labelled}/{len(turns)} 轮")
     # Ticket 38: the private inner channel must be reachable, and private
     # deliberation must not leak into broadcast speech. Conservative, manual
     # heuristics — printed for review, never a gate.
@@ -1432,6 +1454,7 @@ def health_report(data, day: int):
         fewest = f"{fewest_count}（{fewest_actor}）"
     return {"当日在册轮次": len(turns), "错误轮次": len(errs),
             "update_memory 失败行数": memory_rejected,
+            "记忆存放（engine KB / 遗留 memories）": memory_reading,
             "提供商HTTP错误": len(http), "标记泄漏条数": leak,
             "inner填充率": inner_rate,
             "疑似心声混进speech": inner_in_speech,

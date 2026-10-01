@@ -65,7 +65,8 @@ SSOT：引擎时序语义、并发架构、冻结/唤醒/中断机制、失败�
 - **调度器不被单个任务钉死（ticket 53）**。`_scheduler_loop` 的冻结点等待不再无条件盯住 `min(_inflight)`：只要最老的在飞决定已等过 `freeze_tolerance`（默认 `min(decision_timeout, 120s)`，`V4_FREEZE_TOLERANCE_SECONDS`；`DEFAULT_FREEZE_TOLERANCE_SECONDS=120`），就把它的 wake 从视界里释放（记 `inflight_released`）——世界只有欠着一段前进，延误的意图仍按当前钟提交（§2.3 禁止回填），**不是**取消"等最慢思考者"：容忍依旧存在、连续且有界。
 - **两处超时有界（ticket 53）**。`decision_timeout = provider.worst_case_seconds() + 小额余量`（real_run：`V4_DECISION_MARGIN_SECONDS`，默认 60s；旧写法 `×8+5` 曾得到 ~72 min，比它该先于的 stall 预算还长）；`_actor_loop` 的 `await hung`（等一个已超时调用收尾）由 `hung_tolerance`（`V4_HUNG_TIMEOUT_SECONDS`，real_run 默认 60s）封顶，超界即放弃：丢掉该调用、把 v4 会话恢复成决定前的快照（避免两个写者共用一条转录），该角色**仍能参加后续回合**，不永久退出。
 - **provider 单次调用的总预算 vs socket 超时（ticket 54）**。`urlopen(timeout=…)` 是 **socket 级**超时（只约束单次连接/单次 recv 的静默），**不是整次请求的上界**；预算检查只在每次 attempt 顶部做时，服务端持续滴流或 hold 住连接就能让一次调用永久挂住（这正是 2026-10-01 的 11:32 冻结：辅导员那一路在 11:13/11:16 已两次 `retry deadline exhausted`，随后一次请求再没返回）。现在每次调用有一个**墙钟总预算** `_call_budget_seconds()`：有 `max_duration`（`V3_PROVIDER_MAX_DURATION`，默认 600s）就取它，否则取重试策略的结构性最坏情况（`(retries+1)×timeout + 退避和`）；每次 attempt 的 socket 超时取 `min(timeout, 剩余预算)`，响应体按 recv 分块读取并在块间复查 deadline（`read1`，见 `_read_response_body`），超界即关闭连接并以既有可重试语义报错（`retryable=True`、`retry_exhausted=True`、`attempts=N`），文案给出“第 N 次尝试、已用 X 秒/总预算 Y 秒…response never finished”以区分“上游慢”与“上游挂死”。可重试错误照旧退避重试，正常响应路径不变；`worst_case_seconds()` 数值不变（= 总预算 + 最后一次 socket 静默，仍是 `decision_timeout` 的真实上界）。
-- **结束诊断（ticket 53）**。任何停机路径（`stall_no_progress` / `wall_clock_deadline_reached` / 超时 / 放弃 / 全体失败 …）在 `_finish` 里写一条 `engine_stop_diagnostic` 到 trace（并同步 `flush` 打日志），包含：在飞角色及其起始模拟时刻与已等墙钟秒、额外角色在飞、最近进展时刻与已停秒数、停顿定义字符串、命中的阈值、三处超时。单次超时/放弃也各写 `decision_abandoned` / `hung_decision_abandoned`。
+- **结束诊断（ticket 53）**。任何停机路径（`stall_no_progress` / `wall_clock_deadline_reached` / 超时 / 放弃 / 全体失败 …）在 `_finish` 里写一条 `engine_stop_diagnostic` 到 trace（并同步 `flush` 打日志），包含：在飞角色及其起始模拟时刻与已等墙钟秒、额外角色在飞、最近进展时刻与已停秒数、停顿定义字符串、命中的阈值、三处超时。单次超时/放弃也各写 `decision_abandoned` / `hung_decision_abandoned`。ticket 67 起还带 `max_wall_seconds` 与 `wall_overrun_seconds`（已用墙钟 - 预算，正数即实际超出时长）。
+- **墙钟不可被内层等待饿死（ticket 67）**。所有停机条件（墙钟 / stall / `max_turns` / `stop_at`）收进 `Engine._stop_check()`，**既在 `_scheduler_loop` 每轮顶部调、也在冻结点内层等待循环里每轮调**：旧写法只在顶层检查，内层循环盯 `min(active)` 直到 ticket-53 释放界（`freeze_tolerance`）才返回，一个永不返回的最老在飞决定会把 2h 安全上限推迟整个释放界（实测 real-20261001T163024 晚 12s 停）。此外 `_freeze_poll()` 与 `_await_activity()` 的等待都再受**剩余墙钟预算**封顶，保证到点必停。
 
 ## 7. 检查点、日志与确定性
 
@@ -73,6 +74,7 @@ SSOT：引擎时序语义、并发架构、冻结/唤醒/中断机制、失败�
 - 恢复 = 快照 + journal 尾部重放 + 重挂计时器。KB 与 last_shown 状态引擎侧保存；会话转录与 compaction 边界亦入检查点——恢复不得重放已计 last_shown 的行（防首跑洪泛）。
 - extra 的对话期可变状态随检查点往返：冻结的 system 前缀、场景游标 `context_cursor`、待答问题 `pending_question`、待听语音 `pending_heard_speech`、到场/活跃时刻。半天分段续跑（d1-am → d1-pm）恢复后，场上活着的 extra 必须接着答它未答的问题；旧格式行（缺这些键）按 `fragment`/`knowledge_notes`/地点/名字重建前缀并给安全缺省，绝不因缺键 KeyError（ticket 50）。
 - trace 改为：每角色时间线 + 全局 journal——比回合快照更强的 happens-before 分析材料。
+- **记忆事实只有一处：引擎侧 KB（ticket 68）**。`runner.kb[actor].rows` 是唯一的记忆存储（`update_memory`/`recall`/`flashback`/种子行/`!always`/`!at=` 都读写它，随检查点里的 `runner.kb` 往返）。`PrivateState.memories` 是遗留 v3 字段，v4 不写、恒为空，**不代表丢写**（曾有 reviewer 据它误判 P1）。为免歧义：trace 顶层带 `knowledge`（每个角色最新 `ActorKB.snapshot()`，随每次检查点与收尾写入），每个 v4 轮次的 `private_state` 另带 `memory_store: "engine-kb"` 与 `knowledge_rows: N`；`scripts/check_milestones.py` 的系统健康块并列打印 KB 行数与遗留 `memories` 合计（review-only）。
 - 确定性种子与历史失败闸门（v3 pre-run gate 惯例）必须在新排序下全绿后才许大跑。
 
 ### 7.1 客观观测与停留即读（ticket 49，2026-09-30 裁定）
