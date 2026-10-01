@@ -19,7 +19,10 @@ Besides the name registry gate, this enforces the ticket-47 knowledge
 contract: a puzzle entry never carries its answer in the delivered desc, a
 guardrail row is reachable by the plot words its owner hears, a persona only
 names props the world can produce, and inline manifest content is a name
-carrier. Homonym collisions are printed as non-blocking `warning:` lines.
+carrier. Ticket 60 extends that prop contract to a location's interior detail:
+a concrete prop named there must resolve to a registered entity/concept or be
+written as unusable in the same sentence. Homonym collisions are printed as
+non-blocking `warning:` lines.
 """
 
 from __future__ import annotations
@@ -32,7 +35,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from harness.world_loader import (  # noqa: E402
-    _CONCRETE_PROP_WORDS, load_world_pack, ref_names)
+    _CONCRETE_PROP_WORDS, load_world_pack, ref_names, strip_refs)
 from harness.kb import normalize  # noqa: E402
 
 # Surname table for 姓+身份 patterns (李阿姨, 方老师, 郑大爷, ...).
@@ -74,6 +77,29 @@ _PERSONA_PROP_WORDS: tuple[str, ...] = _CONCRETE_PROP_WORDS + (
 # starts 小/老, ends with a known role title, or ends with a kinship suffix.
 _ROLE_NAMES: tuple[str, ...] = tuple(part for part in _ROLES.split("|") if part)
 _KINSHIP_TAILS = "爸妈哥姐弟妹儿女"
+
+# Ticket 60: a location's interior detail (the paragraphs after the public
+# brief, ticket 58) names the room's own equipment. The d1-am artifact
+# (real-20261001T065553) walked into three props that lived only in that prose:
+# 陈默 `read 扫描仪` / `read 扫描仪日志` four times in the archive, 林瑶室友
+# `read 校史专用柜` / `read 专用柜登记本` in the library, and 辅导员 tried
+# `take 桌上的白纸和笔` / `take 纸笔` in the archive. Every attempt is a
+# wasted turn, and the room reads as broken. The vocabulary is the ticket-47
+# controlled prop list plus the two names the artifact reached for; a bare
+# 柜/柜子 is deliberately absent — the engine already tells actors that a
+# cabinet is not something to open, and flagging every 铁皮柜/抽屉 would drown
+# the gate (the same reasoning as K47c's 表格).
+_LOCATION_PROP_WORDS: tuple[str, ...] = _PERSONA_PROP_WORDS + ("扫描仪", "专用柜")
+
+# The ticket's own wording for "this prop is not usable here". The prop and one
+# of these markers must sit in the same sentence (。！？；/newline/—— boundary),
+# so that "不在本房间 / 坏了 / 管理员收着" reads as a statement about that prop;
+# comma scope is deliberately NOT used, because natural Chinese splits a prop
+# from its state across commas ("扫描仪的待机灯常绿，但机器坏了").
+_UNUSABLE_PROP_RE = re.compile(
+    r"不在|没有|没放|没收|坏了|坏着|送修|报修|停用|用不了|不能用|打不开|开不了|"
+    r"锁|钥匙|收着|收在|不能碰|不许|禁止|不对外")
+_PROP_SENTENCE_SPLIT = re.compile(r"[。！？；\n]|——")
 
 # Authored prose the lint scans; generated runs/traces are excluded.
 _PROSE_GLOBS = ("characters/*.md", "items/*.md", "documents/*.md",
@@ -290,6 +316,7 @@ def lint(world_root: str | Path) -> list[str]:
     findings.extend(_prop_findings(pack, root))
     findings.extend(_inline_content_findings(pack))
     findings.extend(_location_brief_findings(pack, root))
+    findings.extend(_location_prop_findings(pack, root))
 
     # ---------- ③ dead registry entries (informational) ----------
     for note in dead_aliases(root):
@@ -457,6 +484,41 @@ def _location_brief_findings(pack, root: Path) -> list[str]:
             "把第一段写成谁都能知道的身份/用途（叫什么、在哪、大致做什么），"
             "内部细节（柜子怎么码、哪页有折痕）另起一段、空行分隔；"
             "内部细节只在到达时经客观描述下发，不再进入每个角色的 KB")
+    return findings
+
+
+def _location_prop_findings(pack, root: Path) -> list[str]:
+    """Ticket 60 / K60: a location interior may not promise a prop the world
+    cannot produce.
+
+    The first paragraph of a location ``.md`` is its public brief; the
+    paragraphs after it are the interior detail an actor receives on arrival
+    (ticket 58), so a concrete prop named there is a promise that actor will
+    act on. Each such prop must resolve to a registered entity or concept, or
+    the same sentence must say it cannot be used here.
+    """
+    declared = _declared(pack)
+    pattern = re.compile("|".join(re.escape(word) for word in
+                                   sorted(set(_LOCATION_PROP_WORDS),
+                                          key=len, reverse=True)))
+    findings: list[str] = []
+    for path in sorted(root.glob("locations/*.md")):
+        text = strip_refs(path.read_text(encoding="utf-8"))
+        lines = [line.strip() for line in text.strip().splitlines()]
+        body = [line for line in lines if not line.startswith("#")]
+        paragraphs = [p.strip() for p in "\n".join(body).split("\n\n") if p.strip()]
+        for paragraph in paragraphs[1:]:
+            for sentence in _PROP_SENTENCE_SPLIT.split(paragraph):
+                if _UNUSABLE_PROP_RE.search(sentence):
+                    continue
+                for token in sorted(set(pattern.findall(sentence))):
+                    if _resolves(token, declared):
+                        continue
+                    findings.append(
+                        f"{path.relative_to(root)}: 内部细节里的道具 {token!r} 没解析到注册实体/概念，"
+                        "句子也没写明它用不了 — 注册它（items:/documents: 里给 location；可读给 "
+                        "content，不可读给 readable: false + readable_reason），或在同一句里写明"
+                        "「不在本房间 / 坏了 / 管理员收着」这类不可操作表述")
     return findings
 
 

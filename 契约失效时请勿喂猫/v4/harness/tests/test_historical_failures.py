@@ -430,6 +430,34 @@ E57 extras could only speak, so they narrated physical acts as done  (ticket 57)
     carries the entity descriptions so a quantity is grounded (一份, not
     一摞). Moving away keeps the existing partner_gone/idle recycle path,
     whose event is visible to the room.
+K60 location prose promised props the world could not produce (ticket 60)
+                                                              test_shipped_seed_declares_the_scanner_and_cabinet_unusable,
+                                                              test_an_asserted_interior_prop_without_a_registration_fails_seed_lint,
+                                                              test_registering_a_promised_interior_prop_turns_the_same_prose_green,
+                                                              test_unregistered_interior_props_still_offer_a_real_next_call,
+                                                              test_the_registered_pen_and_paper_stay_in_the_student_union_office
+    d1-am artifact (real-20261001T065553): 陈默 read 扫描仪 / 扫描仪日志 four
+    times inside 43 minutes in 校史档案室, 林瑶室友 read 校史专用柜 /
+    专用柜登记本 in 图书馆, and 辅导员 tried `take 桌上的白纸和笔` / `take
+    纸笔` in the archive. All three names lived only in the room's prose
+    (world/locations/校史档案室.md, world/locations/图书馆.md) plus the archive
+    extra's knowledge note "扫描仪用法"; no entity backed them, so the world
+    answered "这里没有这件东西" and the room read as broken. Ticket 47's lint
+    covered character cards (K47c) and inline manifest content (K47d), never a
+    location body. Fix: (1) seed_lint scans the interior detail (the
+    paragraphs after the ticket-58 public brief) for a controlled prop
+    vocabulary (the ticket-47 props plus 扫描仪/专用柜) and requires each hit to
+    resolve to a registered entity/concept or to sit in a sentence that says
+    it cannot be used here (不在本房间/坏了/管理员收着); (2) the seed states the
+    truth — the scanner is out for repair ("平时扫描仪的待机灯常绿，这几天机器
+    送修了"), the library cabinet is locked with its key at the 借阅处's
+    student 馆员, and the archive has no spare pen and paper while naming where
+    the registered 可用纸笔 lives — so 可用纸笔 stays in 学生会办公室 only
+    ("不要两边都放"); (3) the archive extra's knowledge note no longer
+    advertises 扫描仪用法. Residual, deliberately NOT fixed in this lane: a
+    `read` of an invented name in a room with nothing readable (图书馆) has no
+    executable alternative to offer; the room's own arrival detail names the
+    lock and its key-holder instead.
 """
 
 import json
@@ -2801,6 +2829,200 @@ class SeedKnowledgeContractGates(unittest.TestCase):
         self.assertIn("陈默", joined)
         self.assertEqual(module.lint(self._source()), [],
                          "a homonym warning must not gate the seed")
+
+
+def _seed_lint_module():
+    """Load scripts/seed_lint.py as a module (same importlib pattern the
+    ticket-47 seed-contract gates use)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "seed_lint_ticket60", Path(__file__).parents[2] / "scripts" / "seed_lint.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _world_root() -> Path:
+    return Path(__file__).parents[2] / "world"
+
+
+def _copy_world(directory) -> Path:
+    import shutil
+    root = Path(directory) / "world"
+    shutil.copytree(_world_root(), root)
+    return root
+
+
+def _rewrite(root: Path, relative: str, mutate) -> None:
+    path = root / relative
+    path.write_text(mutate(path.read_text(encoding="utf-8")), encoding="utf-8")
+
+
+def _edit_manifest(root: Path, mutate) -> None:
+    import yaml
+    path = root / "manifest.yml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    mutate(data)
+    path.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False),
+                    encoding="utf-8")
+
+
+class SeedLocationPropGates(unittest.TestCase):
+    """Ticket 60 (d1-am artifact real-20261001T065553): three props lived only
+    in a room's prose. 陈默 read 扫描仪 / 扫描仪日志 four times inside 43
+    minutes in 校史档案室, 林瑶室友 read 校史专用柜 / 专用柜登记本 in 图书馆,
+    and 辅导员 tried `take 桌上的白纸和笔` / `take 纸笔` in the archive. No
+    entity backed any of them, so the world answered "这里没有这件东西" and the
+    room read as broken. Ticket 47's lint covered character cards (K47c) and
+    inline manifest content (K47d), never a location body.
+
+    The gates prove the red/green pair for both legal dispositions: assert a
+    prop as usable without registering it -> red; register it -> green; write
+    the truth into the sentence (the shipped fix) -> green.
+    """
+
+    ARCHIVE = "locations/校史档案室.md"
+    LIBRARY = "locations/图书馆.md"
+    # The shipped wording keeps the archived scanner in the room's detail and
+    # declares it out for repair (ticket 58's own tests locate the archive
+    # interior by the first clause, so that clause stays verbatim).
+    ARCHIVE_SHIPPED = "平时扫描仪的待机灯常绿，这几天机器送修了"
+    ARCHIVE_ASSERTS_USABLE = "扫描仪的待机灯常绿"
+    LIBRARY_SHIPPED = ("校史相关材料锁在一楼角落的一只专用柜里，"
+                       "柜门钥匙在借阅处的学生馆员手上，学生自己打不开——")
+    LIBRARY_ASSERTS_USABLE = "校史相关材料在一楼角落的专用柜，查阅要登记——"
+
+    def test_shipped_seed_declares_the_scanner_and_cabinet_unusable(self):
+        """Both traps are fixed by wording, not by a fake registration: the
+        seed stays green and says why the prop cannot be used here."""
+        lint = _seed_lint_module()
+        self.assertEqual(lint.lint(_world_root()), [])
+        archive = (_world_root() / self.ARCHIVE).read_text(encoding="utf-8")
+        library = (_world_root() / self.LIBRARY).read_text(encoding="utf-8")
+        self.assertIn(self.ARCHIVE_SHIPPED, archive)
+        self.assertIn("没有备用的纸笔", archive)
+        self.assertIn(self.LIBRARY_SHIPPED, library)
+        self.assertIn("打不开", library)
+
+    def test_an_asserted_interior_prop_without_a_registration_fails_seed_lint(self):
+        """K60 red -> green (ticket 60 §3): the room asserting a working scanner
+        and a reachable library cabinet is a pre-run block; the shipped "cannot
+        be used" wording is the legal fix with no entity registered."""
+        lint = _seed_lint_module()
+        with TemporaryDirectory() as directory:
+            root = _copy_world(directory)
+            _rewrite(root, self.ARCHIVE, lambda text: text.replace(
+                self.ARCHIVE_SHIPPED, self.ARCHIVE_ASSERTS_USABLE))
+            _rewrite(root, self.LIBRARY, lambda text: text.replace(
+                self.LIBRARY_SHIPPED, self.LIBRARY_ASSERTS_USABLE))
+            findings = lint.lint(root)
+            self.assertTrue(any("扫描仪" in f for f in findings), findings)
+            self.assertTrue(any("专用柜" in f for f in findings), findings)
+            self.assertTrue(any("不可操作表述" in f for f in findings), findings)
+            # 改写为不可操作 -> 绿（无需注册）
+            _rewrite(root, self.ARCHIVE,
+                     lambda text: text.replace(self.ARCHIVE_ASSERTS_USABLE,
+                                               self.ARCHIVE_SHIPPED))
+            _rewrite(root, self.LIBRARY,
+                     lambda text: text.replace(self.LIBRARY_ASSERTS_USABLE,
+                                               self.LIBRARY_SHIPPED))
+            self.assertEqual(lint.lint(root), [])
+
+    def test_registering_a_promised_interior_prop_turns_the_same_prose_green(self):
+        """The other legal disposition (ticket 60 §2): keep the room asserting a
+        working scanner, register it as a placed, non-readable item and mark the
+        name in the prose — the same sentence now passes."""
+        lint = _seed_lint_module()
+        with TemporaryDirectory() as directory:
+            root = _copy_world(directory)
+            _rewrite(root, self.ARCHIVE,
+                     lambda text: text.replace(self.ARCHIVE_SHIPPED,
+                                               "[[扫描仪]]的待机灯常绿"))
+            (root / "items" / "扫描仪.md").write_text(
+                "# 扫描仪\n\n档案室那台平板机器，把纸质件扫成图像；机身上没有可读的正文。\n",
+                encoding="utf-8")
+            known_to = ["陈默", "林瑶", "唐小岚", "宿管阿姨", "食堂大妈",
+                        "辅导员", "班长", "林瑶室友", "下棋大爷"]
+
+            def register(data):
+                data["items"].append({
+                    "id": "扫描仪", "location": "校史档案室", "known_to": known_to,
+                    "readable": False,
+                    "readable_reason": "一台平板扫描仪，机身上没有可读的正文。",
+                })
+
+            _edit_manifest(root, register)
+            self.assertEqual(lint.lint(root), [])
+
+    def test_unregistered_interior_props_still_offer_a_real_next_call(self):
+        """Ticket 60 negative case: the actor's attempt must get the truth plus
+        an executable alternative, never a dead end. The archive keeps readable
+        material (so its offered calls really run), and the room detail the
+        actor already received names where the pen and paper actually are."""
+        from harness.kernel import Intention
+        world = load_story_pack().build_world()
+
+        counselor = world.actors["辅导员"]
+        counselor.location = "校史档案室"
+        detail = world.poll("辅导员")["descriptions"]["校史档案室"]
+        self.assertIn("送修", detail)
+        self.assertIn("纸笔", detail)
+        self.assertIn("学生会办公室", detail)
+        with self.assertRaises(ActionRejected) as caught:
+            world.submit(Intention("辅导员", "take", {"item": "纸笔"},
+                                   world.version))
+        message = str(caught.exception)
+        self.assertIn("这里没有「纸笔」可拿", message)
+        self.assertIn("签到本", message)          # what really is here
+        self.assertTrue(caught.exception.alternatives)
+        first = str(caught.exception.alternatives[0])
+        self.assertTrue(first.startswith("take "))
+        taken = first[len("take "):]
+        world.submit(Intention("辅导员", "take", {"item": taken},
+                               world.version))
+        world.advance()
+        self.assertIn(taken, counselor.inventory)
+
+        reader = world.actors["陈默"]
+        reader.location = "校史档案室"
+        with self.assertRaises(ActionRejected) as caught:
+            world.submit(Intention("陈默", "read", {"item": "扫描仪"},
+                                   world.version))
+        readable_now = caught.exception.context.get("readable_now") or []
+        self.assertTrue(readable_now, str(caught.exception))
+        self.assertTrue(caught.exception.alternatives)
+        target = str(readable_now[0])
+        world.submit(Intention("陈默", "read", {"item": target}, world.version))
+        world.advance()
+        self.assertIn(target, [event.payload.get("document")
+                               for event in world.event_log
+                               if event.kind == "document_read"])
+
+        roommate = world.actors["林瑶室友"]
+        roommate.location = "图书馆"
+        library_detail = world.poll("林瑶室友")["descriptions"]["图书馆"]
+        self.assertIn("钥匙", library_detail)
+        self.assertIn("打不开", library_detail)
+        for invented in ("校史专用柜", "专用柜登记本"):
+            with self.assertRaises(ActionRejected) as caught:
+                world.submit(Intention("林瑶室友", "read", {"item": invented},
+                                       world.version))
+            self.assertIn(f"这里没有「{invented}」", str(caught.exception))
+
+    def test_the_registered_pen_and_paper_stay_in_the_student_union_office(self):
+        """"不要两边都放": the archive states it has no spare paper, and the one
+        registered 可用纸笔 stays where the 08:20 notice and the 场地申请表
+        flow need it."""
+        from harness.world_loader import load_world_pack
+        pack = load_world_pack(_world_root())
+        rows = {str(row["id"]): row for row in pack.items}
+        self.assertEqual(rows["可用纸笔"]["location"], "学生会办公室")
+        world = pack.build_world()
+        self.assertEqual(world.item_locations.get("可用纸笔"), "学生会办公室")
+        self.assertNotIn("纸笔", world.item_locations)   # no second copy anywhere
+        archive = (_world_root() / self.ARCHIVE).read_text(encoding="utf-8")
+        self.assertEqual(archive.count("纸笔"), 1)
 
 
 def _checker_module():
