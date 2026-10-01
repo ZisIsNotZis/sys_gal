@@ -315,5 +315,60 @@ class NpcSleepHealthMetricTests(unittest.TestCase):
         self.assertEqual(report["回合最少NPC"], "0")
 
 
+class HandoverClaimHealthMetricTests(unittest.TestCase):
+    """Ticket 65: the system-health block reports a review-only count of a
+    same-day hand-over assertion with no corresponding `item_given` event.
+    Printed for review, never gating the exit code."""
+
+    @staticmethod
+    def _item_given(i, hour, minute, item, giver, receiver):
+        return {"id": i, "time": _dt(hour, minute), "kind": "item_given",
+                "actor": giver,
+                "payload": {"item": item, "from": giver, "to": receiver},
+                "visible_to": [giver, receiver], "world_version": i}
+
+    def test_a_real_handover_the_same_day_suppresses_the_reading(self):
+        """The exact line from real-20261001T121425 where 食堂大妈 said "豆浆
+        包子趁烫，端好" with no item event behind it — counted — and the same
+        line with a real `item_given` that day — not counted."""
+        module = _load_module()
+        claim = _speech(1, 9, 34, "食堂大妈",
+                        "来——你的，豆浆包子趁烫，端好。刷卡啊小伙子。", ["陈默"])
+        hits = module.delivery_claims_without_a_handover([claim], 1)
+        self.assertTrue(hits, "食堂大妈的端好没有对应 item_given，却未报出")
+        self.assertEqual(hits[0]["actor"], "食堂大妈")
+        self.assertEqual(hits[0]["phrase"], "端好")
+
+        given = self._item_given(2, 9, 33, "一份餐食", "食堂大妈", "陈默")
+        self.assertEqual(
+            module.delivery_claims_without_a_handover([claim, given], 1), [],
+            "当天真的递过东西时不得误报")
+
+    def test_ordinary_completeness_and_conditional_phrases_do_not_fire(self):
+        """Conservative by construction: "四样齐了", "三方到齐了" and a
+        second-person conditional "你拿到了" must never count as a hand-over."""
+        module = _load_module()
+        benign = [
+            _speech(1, 11, 4, "辅导员", "草稿可以定，四样齐了，签名落日期。", ["唐小岚"]),
+            _speech(2, 12, 27, "班长", "三方到齐了。先答陈默那句要紧的。", ["陈默"]),
+            _speech(3, 12, 38, "辅导员", "你拿到了，咱们一页一页看；你拿不出来就照实说。", ["唐小岚"]),
+        ]
+        self.assertEqual(module.delivery_claims_without_a_handover(benign, 1), [])
+
+    def test_report_carries_the_handover_reading(self):
+        module = _load_module()
+        data = {
+            "agent_turns": [],
+            "world_events": [_speech(
+                1, 11, 40, "食堂大妈",
+                "闺女！你的齐了——荤菜给你挑的带脆骨那块。端好了找个座儿。",
+                ["林瑶"])],
+            "sessions": {},
+        }
+        report = module.health_report(data, 1)
+        self.assertIn("1（", report["断言交付/取得但无item_given"])
+        self.assertIn("食堂大妈", report["断言交付/取得但无item_given"])
+
+
 if __name__ == "__main__":
     unittest.main()

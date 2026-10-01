@@ -1171,6 +1171,62 @@ def unregistered_object_claims(world_events, day: int, *, registry=None):
     return hits
 
 
+# Ticket 65: the canteen/shop hand-over. The reference run
+# (real-20261001T121425+0800-223688-090345540) holds zero `item_given` events
+# in its whole log while 食堂大妈 said "豆浆包子趁烫，端好" — the room modeled no
+# item, so the serving counter had nothing to hand over. A same-day speech that
+# asserts a hand-over while the speaker took part in no `item_given` that day is
+# that 假成功. The phrase list is deliberately narrow: the imperative hand-over
+# markers (端好/拿好/接好/端稳/拿稳/拿走吧), a possessive "你的…齐了" (not the ordinary
+# "四样齐了"/"三方到齐了"), first-person receipt ("我…拿到了"), and a clause-final
+# "给你" (never "给你挑/给你添"). Review only; a single real hand-over that day
+# suppresses the speaker entirely.
+_DELIVER_CLAIM_RE = re.compile(
+    r"端好|拿好|接好|端稳|拿稳|拿走吧|"
+    r"[你您]们的?[^。；！？\n]{0,4}齐了|"
+    r"[我俺](?:已经)?拿到了|"
+    r"给你(?=[了。！？，、；\s]|$)")
+
+
+def delivery_claims_without_a_handover(world_events, day: int):
+    """Ticket 65 metric (review only): a same-day ``speech`` asserts it
+    handed something over (or received it) while the day's log holds no
+    ``item_given`` event the speaker took part in (as giver or recipient).
+
+    Coarse by design: the phrase list is a small controlled set and one real
+    hand-over that day suppresses the reading for that speaker. Returns one
+    dict per claim: {time, actor, phrase, text}."""
+    involved: set[str] = set()
+    for event in _day_events(world_events, day):
+        if event.get("kind") != "item_given":
+            continue
+        payload = event.get("payload") or {}
+        for key in ("from", "to"):
+            value = payload.get(key)
+            if value:
+                involved.add(str(value))
+        if event.get("actor"):
+            involved.add(str(event["actor"]))
+    hits = []
+    for event in _day_events(world_events, day):
+        if event.get("kind") != "speech":
+            continue
+        actor = str(event.get("actor") or "")
+        if actor in involved:
+            continue
+        for txt in _texts(event):
+            match = _DELIVER_CLAIM_RE.search(txt)
+            if not match:
+                continue
+            sentence = next((part.strip() for part in re.split(r"[。；！？\n]", txt)
+                             if match.group(0) in part), match.group(0))
+            hits.append({"time": str(event.get("time") or ""),
+                         "actor": actor, "phrase": match.group(0),
+                         "text": sentence})
+            break
+    return hits
+
+
 def withheld_private_turns(turns, day: int):
     """Ticket 56 (review only): turns whose speak/text `text` argument was
     withheld as protocol/tool meta-reasoning (the trace records it on the
@@ -1290,6 +1346,12 @@ def health_report(data, day: int):
     unread_claims = read_claims_without_a_read(data.get("world_events", []), day)
     unregistered_objects = unregistered_object_claims(
         data.get("world_events", []), day, registry=registry)
+    # Ticket 65: the canteen/shop hand-over. A same-day speech asserting a
+    # hand-over with no `item_given` event behind it is the 假成功 the reference
+    # run showed (食堂大妈's "豆浆包子趁烫，端好" while the whole log holds zero
+    # item_given). Review only; never a gate.
+    delivery_claims = delivery_claims_without_a_handover(
+        data.get("world_events", []), day)
     # Ticket 64: plain content is the actor's private thought — count the
     # turns whose body was never spoken (and how many read like speech, which
     # triggers the one transitional self-correction). Ticket 56's speak/text
@@ -1386,6 +1448,9 @@ def health_report(data, day: int):
             "未注册具名物件断言": _reading(
                 unregistered_objects,
                 lambda h: f"{h['time'][11:16]} {h['actor']}「{h['object']}」"),
+            "断言交付/取得但无item_given": _reading(
+                delivery_claims,
+                lambda h: f"{h['time'][11:16]} {h['actor']}「{h['phrase']}」"),
             "停滞提示次数": len(stagnation_turns),
             "最长连续wait": f"{worst[1]}（{worst[0]}）" if worst[0] else "0",
             "NPC最长沉寂（相邻回合间隔）": silence,

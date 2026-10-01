@@ -552,6 +552,26 @@ I63 same-kind failures and the serve/verb gap (ticket 63) ..... test_same_kind_r
     `read` of an unregistered, unreadable thing falls back to the real actions
     available here (take what is present / speak to someone here / move to a
     reachable open place) so the answer always has an executable step.
+I65 the canteen/shop modeled no item, so serving was narrated (ticket 65)
+                                                               test_the_canteen_can_hand_a_meal_to_someone_present,
+                                                               test_the_shop_backs_its_brief_with_takeable_goods,
+                                                               test_rope_is_declared_unavailable_where_it_was_reached_for,
+                                                               test_a_real_handover_the_same_day_suppresses_the_reading,
+                                                               test_ordinary_completeness_and_conditional_phrases_do_not_fire,
+                                                               test_report_carries_the_handover_reading
+    real-20261001T121425+0800-223688-090345540: 食堂大妈 failed seven
+    take/give attempts for food and rope (`take 一碗豆浆、一个菜包、一个豆沙包`,
+    `take 荤菜、素菜、米饭、一碗汤`), then said "豆浆包子趁烫，端好" with zero
+    events behind it — the whole log holds no `item_given`. 小卖部 likewise
+    promised 零食/饮料/关东煮 in its brief, and rope (下棋大爷's stone-table coil,
+    宿管阿姨's corner toolbox) was a category the world never modeled, so the
+    model promised it and dead-ended on every take. Fix: the canteen has a real
+    take/give-able 一份餐食 and the shop a minimal stock, both placed so a service
+    hand-over is an `item_given` event (ticket 63's at-hand `give` has a real
+    object); the two rooms where rope was reached for state in their interior
+    detail (ticket 60 wording) that there is no rope there; and the checker adds
+    a review-only count of a same-day hand-over assertion with no corresponding
+    `item_given` ("端好" as narration). The metric reads only, never blocks.
 """
 
 import json
@@ -3255,6 +3275,67 @@ class SeedLocationPropGates(unittest.TestCase):
         self.assertNotIn("纸笔", world.item_locations)   # no second copy anywhere
         archive = (_world_root() / self.ARCHIVE).read_text(encoding="utf-8")
         self.assertEqual(archive.count("纸笔"), 1)
+
+
+class Ticket65CanteenServeGates(unittest.TestCase):
+    """Ticket 65 (real-20261001T121425+0800-223688-090345540).
+
+    食堂大妈 failed seven take/give attempts for food and rope (`take 一碗豆浆、
+    一个菜包、一个豆沙包`, `take 荤菜、素菜、米饭、一碗汤`), then said "豆浆
+    包子趁烫，端好" with nothing behind it. The canteen (and the shop) modeled
+    no item at all, so the serving counter had nothing to hand over. The same
+    run's rope thread is the other half: 下棋大爷 claimed a coil of nylon rope
+    on his stone table and 宿管阿姨 "found" one in the corner toolbox — a
+    category left deliberately unmodeled, so the room's own detail must say it
+    is not available instead of the world promising it and dead-ending.
+
+    The seed backs the two counter-locations with a minimal real item and
+    states the rope's unavailability where it was reached for."""
+
+    CANTEEN_ITEM = "一份餐食"
+    ZHONGTING = "locations/中庭.md"
+    DORM = "locations/女生宿舍.md"
+
+    def test_the_canteen_can_hand_a_meal_to_someone_present(self):
+        """(a) Today-red: the counter has a give-able meal, so the server's
+        hand-over is an `item_given` event, never narration."""
+        world = load_story_pack().build_world()
+        world.actors["陈默"].location = "食堂"
+        world.submit(Intention("食堂大妈", "give",
+                               {"target": "陈默", "item": self.CANTEEN_ITEM},
+                               world.version))
+        world.advance()
+        given = [e for e in world.event_log if e.kind == "item_given"]
+        self.assertEqual([e.payload["item"] for e in given], [self.CANTEEN_ITEM])
+        self.assertIn(self.CANTEEN_ITEM, world.actors["陈默"].inventory)
+
+    def test_the_shop_backs_its_brief_with_takeable_goods(self):
+        """The shop's brief names 零食/饮料/关东煮; the seed backs it with a
+        minimal take-able stock instead of leaving the promise unmodeled."""
+        from harness.world_loader import load_world_pack
+        pack = load_world_pack(_world_root())
+        rows = {str(row["id"]): row for row in pack.items}
+        at_shop = [item for item, row in rows.items()
+                   if row.get("location") == "小卖部"]
+        self.assertTrue(at_shop, "小卖部正文承诺了货品，却没有一件可拿的物品")
+        world = pack.build_world()
+        for item in at_shop:
+            self.assertEqual(world.item_locations.get(item), "小卖部")
+
+    def test_rope_is_declared_unavailable_where_it_was_reached_for(self):
+        """(b) The rope is deliberately not an item; the two rooms where it was
+        reached for say so in their own interior detail (ticket 60 wording), so
+        the model reads "there is none here" instead of being promised one and
+        dead-ending. A take of it still answers truthfully about what is here."""
+        zhongting = (_world_root() / self.ZHONGTING).read_text(encoding="utf-8")
+        dorm = (_world_root() / self.DORM).read_text(encoding="utf-8")
+        self.assertIn("没有绳子", zhongting)
+        self.assertIn("没有绳子", dorm)
+        world = load_story_pack().build_world()
+        with self.assertRaises(ActionRejected) as caught:
+            world.submit(Intention("下棋大爷", "take", {"item": "尼龙绳"},
+                                   world.version))
+        self.assertIn("这里没有「尼龙绳」可拿", str(caught.exception))
 
 
 def _checker_module():

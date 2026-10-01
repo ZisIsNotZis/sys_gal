@@ -426,6 +426,30 @@ items:
     3 月 12 日 12:00–16:00 纪风，16:00 交给值班干事；
     3 月 13 日 18:00–21:30 值班干事；3 月 14 日 12:00–18:00 纪风；
     3 月 15 日 18:00–21:30 值班干事。正式排班以公告为准，这条只是现场随手记录。
+# ticket 65：食堂/小卖部是“以经手物品为核心”的地点。对照跑里食堂大妈七次
+# take/give 食物与绳子全部失败，随后说“豆浆包子趁烫，端好”而无任何事件——世界
+# 连一件可交付的东西都没建模。补最小实物，让服务岗的“上菜/递物”落地成
+# item_given（ticket 63 的“就地 give”现在有了真实对象）。
+- id: 一份餐食
+  location: 食堂
+  known_to: [食堂大妈, 陈默, 林瑶, 下棋大爷]
+  readable: false
+  readable_reason: 一份打好的饭，没有可读的正文。
+- id: 一瓶饮料
+  location: 小卖部
+  known_to: [食堂大妈, 陈默, 林瑶, 下棋大爷]
+  readable: false
+  readable_reason: 一瓶饮料，没有可读的正文。
+- id: 一包零食
+  location: 小卖部
+  known_to: [食堂大妈, 陈默, 林瑶, 下棋大爷]
+  readable: false
+  readable_reason: 一包零食，没有可读的正文。
+- id: 一碗关东煮
+  location: 小卖部
+  known_to: [食堂大妈, 陈默, 林瑶, 下棋大爷]
+  readable: false
+  readable_reason: 一碗关东煮，没有可读的正文。
 documents:
 - id: 2013年邻里撤离通知书
   title: 2013年邻里撤离通知书
