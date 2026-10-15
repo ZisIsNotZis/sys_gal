@@ -1,3 +1,6 @@
+> **历史归档（HISTORICAL ARCHIVE）。** v3 已被 v4 取代，只有 v4 是当前活动线。
+> 本文档保留用于溯源，不作为现行要求。当前概览见 `../README.md`，计划见 `../ROADMAP.md`。
+
 # 《契约失效时请勿喂猫》v3
 
 v3 is an emergent romance-component story simulation. It is not yet a galgame and does not project a novel while running.

@@ -1,6 +1,6 @@
 # 43 — 反重复机制在链路径上完全空转（且 wait 被排除）
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

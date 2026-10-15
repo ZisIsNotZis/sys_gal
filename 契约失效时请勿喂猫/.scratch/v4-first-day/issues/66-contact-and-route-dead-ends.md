@@ -1,6 +1,6 @@
 # 66 — 联系人与路线死路：李阿姨不可达、老周通讯录不对称、305宿舍不存在
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

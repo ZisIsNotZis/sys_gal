@@ -1,6 +1,6 @@
 # 68 — 轨迹里的 `private_state.memories` 恒为空，误导复盘者判"记忆写入丢失"
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

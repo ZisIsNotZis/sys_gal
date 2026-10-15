@@ -1,6 +1,6 @@
 # 50 — extra 的检查点状态不完整：续跑时有活 extra 会 KeyError
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

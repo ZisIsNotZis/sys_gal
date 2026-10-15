@@ -1,6 +1,6 @@
 # 47 — 种子：谜底随知识注入泄露、克制守则检索不到、角色招牌道具与记忆物件未落地
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

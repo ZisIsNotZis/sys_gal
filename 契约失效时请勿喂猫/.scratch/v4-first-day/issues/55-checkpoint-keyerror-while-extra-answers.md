@@ -1,6 +1,6 @@
 # 55 — 检查点撞上"extra 正在回答"就 KeyError：`pending_question` 被 pop 掉而序列化用直接下标
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

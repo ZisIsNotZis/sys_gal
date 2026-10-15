@@ -1,6 +1,6 @@
 # 60 — 地点正文里的具体道具不在完整性契约内（扫描仪/专用柜）
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

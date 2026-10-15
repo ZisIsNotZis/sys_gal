@@ -1,6 +1,6 @@
 # 44 — 字条：作者与收件人同处一室时静默失效
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

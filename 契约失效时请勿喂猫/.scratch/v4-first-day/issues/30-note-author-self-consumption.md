@@ -1,6 +1,6 @@
 # 30 — 作者返场误读并销毁自己的留给未知者的字条
 
-Status: ready-for-human
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

@@ -1,6 +1,6 @@
 # 67 — 墙钟上限被"等在飞决策"的内层循环饿死：运行超过 2h 仍未停
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

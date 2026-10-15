@@ -1,6 +1,6 @@
 # 46 — 感知快照与提交时校验不一致：同一回合说"在场"却判"不在场"，一个坏收件人作废整句
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

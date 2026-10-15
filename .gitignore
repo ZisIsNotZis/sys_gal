@@ -18,3 +18,7 @@ worktrees/
 .env.*
 !.env.example
 *.log
+
+# Keep the interrupted, unreviewed d1-pm checkpoint local; issue 69 tracks its analysis.
+/契约失效时请勿喂猫/v4/checkpoints/d1-pm.json
+/契约失效时请勿喂猫/v4/logs/drive-boot.txt

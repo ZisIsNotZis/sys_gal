@@ -1,6 +1,6 @@
 # 27 — GPT-6 Luna 首个半天检查点轨迹审阅
 
-Status: ready-for-agent
+Status: done
 Need-review: yes
 Need-test-cases: yes
 

@@ -5,8 +5,7 @@
 唐小岚至少传递一条跨无关配对的秘密、零无内容读取循环。
 
 设计真理：`v4/docs/V4-ENGINE.md`（引擎时序/并发 SSOT）+ `v4/docs/V4-DESIGN.md`
-（产品与物理）+ `v4/docs/V4-AGENT-INTERFACE.md`（接口与常数）+
-`v4/docs/V4-GOSSIP-CHARACTER.md`（角色）。
+（产品与物理）+ `v4/docs/V4-AGENT-INTERFACE.md`（接口与常数）+ `v4/docs/V4-CAST.md`（演员分层与 NPC 班底）。
 语言：内容层全中文，协议层（动作名/参数/id）保持 ASCII；中文文本里直接用
 中文名（陈默），不写"陈默 (Chen Mo)"式并列。
 

@@ -1,6 +1,6 @@
 # 62 — `concepts` 的 desc 夹带状态/事实，且 known_to 覆盖面过大
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

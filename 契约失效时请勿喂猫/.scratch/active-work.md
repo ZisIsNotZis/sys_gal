@@ -1,57 +1,41 @@
-# Active work — 契约失效时请勿喂猫 (v4 harness)
+# Active work — 《契约失效时请勿喂猫》v4
 
-Last updated: 2026-10-01 03:30 +0800
+Last updated: 2026-10-13 +0800
 
-## Where we are (2026-10-01 20:2x)
+## Where we are
 
-### The fixed harness completed a full d1-am (two segments, resume exercised)
+- **计划**：`../ROADMAP.md`（项目里程碑 M0–M4 与工作包）。当前在 **M1（第 1 天
+  端到端验收）进行中**：d1-am 已过门并归档；d1-pm 未过门、最新一次重跑被中断。
+- **活动线**：仅 v4。v1/v2/v3 已归档（各自 README 加 HISTORICAL 横幅）。
+- **追踪器**：本目录（`契约失效时请勿喂猫/.scratch/`）。索引与状态对账见
+  `README.md`。三个 feature 目录：`v4-first-day`（D1 建设/缺陷）、
+  `v3-harness-followups`（v3 遗留，归档）、`v4-memorial-notice-grounding`（并入 M2）。
+- **文档 SSOT**：项目 `README.md` + 根 `CONTEXT.md` + v4 `docs/`；地图见项目 README。
 
-`runs/resumed-20261001T185442+0800-848182-951549918.json` — reached `stop_at_reached` at 12:59.
-The run hit the 2h wall deadline at sim 11:22 (`runs/real-20261001T163024+0800-629102-384711601.json`),
-then `harness.resume_run` continued it from the checkpoint to the endpoint — the resume path works.
-Anchor check: **all three d1-am anchors PASS**. Checkpoint copied to `checkpoints/d1-am.json`.
+## 当前证据（2026-10-13 复跑）
 
-### Before → after (all three are full 07:00–12:59 mornings)
+- v4 回归 `Ran 571 tests ... OK (skipped=1)`；`scripts/seed_lint.py` → OK。
+- d1-am 三锚点 PASS（`check_milestones.py --half d1-am`）。
+- d1-pm 门禁 FAIL 6 项（`../v4/logs/gate-d1-pm.txt`）：
+  辅导员介入、三份个人说明、老周托话、妈妈承诺、审计催办转达、林瑶自查审计包。
+- 2026-10-06 d1-pm 重跑 `real-20261006T102015…` 被中断：`outcome=null`，
+  最后世界事件 18:34，未复盘。
 
-| metric | baseline (09-30) | +lanes 38–55 | +lanes 56–66 (this) |
-|---|---|---|---|
-| error turns | 72/317 = 23% | 41/390 = 10.5% | 97/746 = 13% |
-| `inner` fill | 0/317 | 388/390 | 716/746 (96%) |
-| private reasoning broadcast | 77 (suspected) | 4 | **1** |
-| content kept private (new) | — | — | 660 (26 flagged possibly-dialogue) |
-| dialogue from `speak/text` | — | 96 | healthy per 11 reviewers |
-| 签到本/晚归本 read failures | 24+ | 0 | 0 |
-| read-claims w/o document_read | 4 | 1 | 2 |
-| unregistered prop claims | 48 | 20 | 13 |
-| NPC longest dormancy | 3h50m | 0h45m | 3h43m (下棋大爷, one actor) |
-| stagnation notices | 0 | 3 | 9 |
+## 当前未完成工作（对应 ROADMAP）
 
-### 11-reviewer verdict on the latest morning
+- **M1.1** 复盘 10-06 半成品 run（issue 69）。
+- **M1.2/M1.3** 6 个 FAIL 锚点根因与修复（issue 70）。
+- **M1.4** d1-pm 重跑至 22:00 过门。
+- 真实未修缺陷：issue 51（同步路径 `runner.py` 与 AsyncEngine 漂移）、
+  issue 52（`move` 提交即广播 leave、`location` 完成才更新）。
+- 工作区未提交残留（属用户）：`v4/checkpoints/d1-am.json` 改动、
+  `v4/checkpoints/d1-pm.json`、`v4/logs/`、`v4/scripts/drive_arc.sh`、
+  `v4/scripts/half_day_flow.sh` 改动。
 
-Verdicts: 林瑶/陈默/宿管阿姨/班长/唐小岚/下棋大爷 = **健康**（私密推理不再被广播、对白未被压塌）。
-Remaining reports are **provider-driven or world-modelling P2s**, not semantic regressions:
-- provider 429s / retry-deadline at the end (esp. 辅导员, the decision-maker) truncated the climax;
-- "手机" is a narrative object but not holdable, so `give 手机` fails while `text` works → the model
-  narrates around it (手机失踪 became a plot thread);
-- 305备用钥匙/查寝表 etc. promised in room prose without being modelled (ticket 60 class, new cases);
-- 陈默妈 fabricated "大巴不通" and later denied her own message (memory self-consistency, model-side).
-- **False P1 corrected**: reviewers read `private_state.memories == []` as "writes dropped"; the KB in the
-  checkpoint has all 38 of 唐小岚's rows. Filed as ticket 68 (trace field misleads reviewers).
+## Traps
 
-### Tickets filed this session: 38–68 (31 total). Fixed: 38–66 (29). Open: 67 (wall deadline starved by
-the in-flight wait loop), 68 (trace `private_state` misleading). Both are small.
-
-### Next steps
-1. Fix 67 + 68, then decide on the remaining P2s (provider flakiness is environmental; 手机/钥匙 modelling is seed work).
-2. Continue the day: `d1-pm` from `checkpoints/d1-am.json`, then chain through day 1 and beyond
-   (`scripts/half_day_flow.sh` does half-day segments with the anchor gate between them).
-3. Hand the day to the user for manual inspection.
-
-### Traps (unchanged and new)
-- Story model route: `zai/glm-5.3-flash`; workers `deepseek/deepseek-flash`; reviewers `deepseek/deepseek-v4-pro`.
-  `volcengine/*` hits a 5-hour quota; the proxy gets restarted externally.
-- Two-hour wall deadline is currently **exceeded** in practice (ticket 67) because the in-flight wait loop
-  starves the outer check — so budget for ~3h wall per morning, or resume as we did.
-- v3 and v4 suites need `OPENAI_MODEL` set. Probe with `/tmp/probe.py <stem>` (exclude `*.checkpoint.json`).
-- When briefing a reviewer/worker, verify the artifact evidence yourself first: one of my briefs mis-attributed
-  four leaks to the `speak` channel when `world_events` showed no `to` field on those speech events.
+- 故事模型线路：默认 `github_copilot/gpt-6-luna`（Responses，`V3_PROVIDER_API=responses`）；
+  备用 `zai/glm-4.7-flash`（chat）。需要本地 LiteLLM 代理（`localhost:4000`）。
+- 墙钟上限曾被在飞等待饿死（ticket 67，已修）；仍按 ~3h/半天预算。
+- v3/v4 套件需要 `OPENAI_MODEL` 已设置。
+- 复盘前先自己核对工件证据：曾有 brief 把泄漏错记到 `speak` 通道。

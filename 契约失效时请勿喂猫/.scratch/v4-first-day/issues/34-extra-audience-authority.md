@@ -1,6 +1,6 @@
 # 34 — 路人简报绕过封闭地点的声音投递屏障
 
-Status: claimed
+Status: done
 Need-review: yes
 Need-test-cases: yes
 Blocked by: 32-extra-empty-question-rebrief.md

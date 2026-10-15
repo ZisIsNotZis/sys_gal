@@ -1,6 +1,6 @@
 # 56 — 私密推理走 assistant 正文被当台词广播（T1「文本即说话」的破口）
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

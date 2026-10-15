@@ -1,6 +1,6 @@
 # 51 — 同步路径 `runner.py` 与 AsyncEngine 的 CAST 行为不一致（唤醒/重复监测等）
 
-Status: needs-triage
+Status: ready-for-agent
 Need-review: no
 Need-test-cases: yes
 

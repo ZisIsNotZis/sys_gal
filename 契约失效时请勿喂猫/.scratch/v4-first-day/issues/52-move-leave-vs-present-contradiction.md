@@ -1,6 +1,6 @@
 # 52 — 移动表示：`leave` 已广播而 `location` 未更新，观察者看到"已离开的人仍在场"
 
-Status: needs-triage
+Status: ready-for-agent
 Need-review: no
 Need-test-cases: yes
 

@@ -143,9 +143,12 @@ The configured `github_copilot/gpt-6-luna` LiteLLM route is Responses-only: nati
   join/accompany）：**未排期**——不在 v4 首版；若首验日显示社交深度不足再启用。
 - Seeded co-presence events (storm blackout, crowded cafe on
   rainy hours) pull people into the same rooms.
-- A gossip character is the information diffusion pump; draft at
-  V4-GOSSIP-CHARACTER.md. Others are not helpful assistants: they trade,
-  deflect, or refuse, and getting caught lying becomes news itself.
+- A gossip character is the information diffusion pump. The 2026-09-04 draft of a
+  standalone gossip pump was superseded by the v4 cast (three MCs + seven NPCs);
+  its English barista draft is archived at `archive/V4-GOSSIP-CHARACTER.md`. The
+  v4 authority for cast and NPC roles is `V4-CAST.md` §5. Characters are not
+  helpful assistants: they trade, deflect, or refuse, and getting caught lying
+  becomes news itself.
 
 ## 5. Carried-over interaction design (from the 2-day run review)
 
@@ -174,12 +177,13 @@ The configured `github_copilot/gpt-6-luna` LiteLLM route is Responses-only: nati
 
 ## 6. First validation run
 
-One simulated day, tick = 1 minute, the gossip character plus at least two
-existing characters, day-1 audit events only. Pass bar: each character has at
-least two co-located conversations, the gossip character trades at least one
-secret across an unrelated pair, and no character enters a no-content read
+One simulated day, tick = 1 minute, the three v4 MCs (唐小岚/陈默/林瑶), day-1
+audit events only. Pass bar (originally: gossip character plus two others): each
+character has at least two co-located conversations, at least one secret is
+traded across an unrelated pair, and no character enters a no-content read
 loop. If the day is achievable, tune content before touching clock
-granularity or the realtime knob (V4-ENGINE §5).
+granularity or the realtime knob (V4-ENGINE §5). The as-built version of this
+slice is tracked in `../../ROADMAP.md` M1.
 
 ## 7. 两层演员制与世界加厚
 

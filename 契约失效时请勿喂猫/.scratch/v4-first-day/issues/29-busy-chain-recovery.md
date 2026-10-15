@@ -1,6 +1,6 @@
 # 29 — 忙碌链与 continue_action 恢复语义
 
-Status: ready-for-human
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 Blocked by: 27-d1am-gpt6-trajectory-review.md（发现来源）

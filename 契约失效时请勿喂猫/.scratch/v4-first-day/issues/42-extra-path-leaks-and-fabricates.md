@@ -1,6 +1,6 @@
 # 42 — extra 通道四处破损：原始 JSON+inner 当台词、虚构道具、未发生的动作、没有自己的名字
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

@@ -1,6 +1,6 @@
 # 59 — update_memory 的键语义摩擦：24 次/上午，是当前最大错误类
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

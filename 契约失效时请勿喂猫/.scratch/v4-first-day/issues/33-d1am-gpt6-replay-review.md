@@ -1,6 +1,6 @@
 # 33 — 修复后首个半天复跑：阻断缺陷与逐人审阅综合
 
-Status: ready-for-agent
+Status: done
 Need-review: yes
 Need-test-cases: yes
 Blocked by: 30-note-author-self-consumption.md, 31-unsafe-tool-error-repair.md, 32-extra-empty-question-rebrief.md

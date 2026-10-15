@@ -1,6 +1,6 @@
 # 32 — 临时路人被重新唤醒时空问题重置成初次搭话
 
-Status: ready-for-human
+Status: fixed
 Need-review: yes
 Need-test-cases: complete
 

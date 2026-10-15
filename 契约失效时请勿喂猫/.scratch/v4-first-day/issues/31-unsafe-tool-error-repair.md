@@ -1,6 +1,6 @@
 # 31 — 工具报错的“合法示例”把私密消息改发给错误的人
 
-Status: ready-for-human
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

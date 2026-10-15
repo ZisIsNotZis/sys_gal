@@ -1,6 +1,6 @@
 # 57 — extra 只能说不能动：把未发生的物理动作说出口，离开也不可见
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

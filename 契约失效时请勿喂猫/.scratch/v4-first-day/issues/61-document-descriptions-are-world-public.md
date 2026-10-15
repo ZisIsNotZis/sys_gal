@@ -1,6 +1,6 @@
 # 61 — 未标 known_to 的已放置文档，其完整描述展开进所有角色的 KB
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

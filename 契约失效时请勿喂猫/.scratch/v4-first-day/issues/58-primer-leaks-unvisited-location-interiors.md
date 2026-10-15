@@ -1,6 +1,6 @@
 # 58 — 世界 primer 把未去过地点的内部细节发给所有人
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

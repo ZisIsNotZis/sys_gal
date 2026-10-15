@@ -1,6 +1,6 @@
 # 54 — provider 单次请求没有真正的墙钟上界：服务端滴流/keep-alive 可绕过超时与重试预算
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

@@ -1,6 +1,6 @@
 # 65 — 食堂/小卖部没有任何可拿物品：服务岗动作无法落地，模型用言语补成"假成功"
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

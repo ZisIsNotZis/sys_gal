@@ -1,6 +1,6 @@
 # 63 — 同种动作连续失败不触发停滞提示；"上菜/递物"没有动词
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

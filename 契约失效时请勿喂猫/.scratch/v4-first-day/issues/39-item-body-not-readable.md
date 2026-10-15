@@ -1,6 +1,6 @@
 # 39 — `world/items/` 有正文的物件运行时不可读，且报错说谎、建议不可执行
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

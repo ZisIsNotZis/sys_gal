@@ -1,6 +1,6 @@
 # 49 — 客观描述与记忆涌现：看见即得描述，"读"不再是手工杂务
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

@@ -1,6 +1,6 @@
 # 53 — 单个挂死的决策会钉死整个运行；stall 预算是累积等待而非连续无进展
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

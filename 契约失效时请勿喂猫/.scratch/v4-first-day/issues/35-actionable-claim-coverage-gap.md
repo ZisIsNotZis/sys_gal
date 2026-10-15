@@ -1,6 +1,6 @@
 # 35 — 客观种子通知声称存在的办事物件仍未进入世界状态
 
-Status: ready-for-agent
+Status: done
 Need-review: yes
 Need-test-cases: yes
 

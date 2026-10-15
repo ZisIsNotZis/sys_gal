@@ -4,12 +4,11 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 export OPENAI_BASE_URL=http://localhost:4000/v1
-# 故事模型线路（用户 2026-09-30 裁定：只用 litellm 提供的 zai/ 线路，不用 volcengine）。
-# 中途经历：zai-coding/glm-5.3-flash 曾可用，代理重启后该组消失；zai/glm-5.3-flash 已可用
-# （余额已恢复），原生工具调用与 inner 字段均实测正常。Copilot 配额恢复后可切回
-# github_copilot/gpt-6-luna（需 V3_PROVIDER_API=responses）。
-export OPENAI_MODEL=zai/glm-5.3-flash
-export V3_PROVIDER_API=chat
+# 故事模型线路（用户 2026-10-05 裁定）：换回 Copilot 的 gpt-6-luna——月度额度已恢复，且它是本项目
+# 最初的故事模型。它走 Responses 通道。
+# 备用线路：Copilot 再耗尽时可退到 zai/glm-4.7-flash（V3_PROVIDER_API=chat）。
+export OPENAI_MODEL=github_copilot/gpt-6-luna
+export V3_PROVIDER_API=responses
 export OPENAI_API_KEY="${LITELLM_API_KEY:?set LITELLM_API_KEY to the litellm master key}"
 export V3_PROVIDER_TIMEOUT=120 V3_PROVIDER_RETRIES=4
 export V3_PROVIDER_MAX_RETRIES=4 V3_PROVIDER_MAX_DURATION=420

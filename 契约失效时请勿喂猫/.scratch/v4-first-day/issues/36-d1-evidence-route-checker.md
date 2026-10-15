@@ -1,6 +1,6 @@
 # 36 — D1 差异锚点把合法转述路线误判成失败
 
-Status: ready-for-agent
+Status: done
 Need-review: yes
 Need-test-cases: yes
 

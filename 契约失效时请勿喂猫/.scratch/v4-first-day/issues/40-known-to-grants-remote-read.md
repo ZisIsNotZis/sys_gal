@@ -1,6 +1,6 @@
 # 40 — `known_to` 被当作可用性授权：harness 会建议角色远程读没接触过的东西
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

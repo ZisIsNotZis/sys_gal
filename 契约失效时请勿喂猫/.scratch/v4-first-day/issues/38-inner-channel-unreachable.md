@@ -1,6 +1,6 @@
 # 38 — 私有心声通道（inner）在任何传输下都不可达：内心独白被当作台词广播
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

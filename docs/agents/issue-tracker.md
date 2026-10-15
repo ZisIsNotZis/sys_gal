@@ -2,6 +2,10 @@
 
 Issues and specs for this repo live in `.scratch/`.
 
+For this repository the primary tracker is **project-local**:
+`契约失效时请勿喂猫/.scratch/`. Its `README.md` is the tracker index and status
+vocabulary; the plan is `契约失效时请勿喂猫/ROADMAP.md`.
+
 ## Conventions
 
 - One feature per directory: `.scratch/<feature-slug>/`

@@ -1,3 +1,6 @@
+> **历史归档（HISTORICAL ARCHIVE）。** v1 已被后续版本取代，只有 v4 是当前活动线。
+> 本文档保留用于溯源，不作为现行要求。当前概览见 `../README.md`，计划见 `../ROADMAP.md`。
+
 # 《契约失效时请勿喂猫》
 
 **English working title:** *When the Contract Fails, Do Not Feed the Cat*

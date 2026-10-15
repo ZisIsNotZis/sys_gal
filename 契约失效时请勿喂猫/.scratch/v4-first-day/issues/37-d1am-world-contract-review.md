@@ -1,6 +1,6 @@
 # 37 — 世界契约版首个半天：逐人审阅与重大缺陷停止点
 
-Status: ready-for-agent
+Status: done
 Need-review: yes
 Need-test-cases: yes
 Blocked by: 35-actionable-claim-coverage-gap.md, 36-d1-evidence-route-checker.md

@@ -1,6 +1,6 @@
 # 45 — NPC 休止：待答的提问与到期提醒都叫不醒人
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

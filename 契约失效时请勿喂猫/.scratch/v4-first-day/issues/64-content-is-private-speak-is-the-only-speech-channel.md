@@ -1,6 +1,6 @@
 # 64 — 翻转默认值：正文=私下想法，`speak`/`text` 才是说话的唯一通道
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 

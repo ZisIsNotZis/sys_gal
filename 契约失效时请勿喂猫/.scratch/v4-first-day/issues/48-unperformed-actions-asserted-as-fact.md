@@ -1,6 +1,6 @@
 # 48 — 没做的动作、没读的内容被叙述成已核实事实，并扩散成他人的记忆
 
-Status: ready-for-agent
+Status: fixed
 Need-review: yes
 Need-test-cases: yes
 
