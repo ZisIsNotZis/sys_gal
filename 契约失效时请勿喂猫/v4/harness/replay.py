@@ -6,7 +6,7 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Any, Mapping
 
-from .kernel import Event, LocationState, World, apply_world_effects
+from .kernel import ActorState, Event, LocationState, World, apply_world_effects
 from .trace import verify_event_log
 
 
@@ -38,9 +38,35 @@ def _apply_consequence(world: World, event: Event) -> None:
         # Discrete movement: the last enter defines where the actor stands
         # (also correct for interrupted/abandoned multi-hop moves).
         world.actors[event.actor].location = str(event.payload["location"])
+    elif event.kind in {"extra_arrived", "extra_removed"}:
+        # E84: a conversation-scoped stranger is a real actor between its
+        # arrival and its departure, so replay must rebuild its span — a
+        # despawned extra's take is a real take (the item left its location),
+        # and the departure is what puts it back down.
+        name = str(event.actor)
+        if event.kind == "extra_arrived":
+            world.actors[name] = ActorState(name, str(event.payload["location"]),
+                                            role="extra")
+            world._cursor[name] = len(world.event_log)
+        else:
+            world.actors.pop(name, None)
+            world._cursor.pop(name, None)
+    elif event.kind == "item_dropped":
+        # E84: an item an extra was carrying comes back to the
+        # extra's last location instead of vanishing with it.
+        item = str(event.payload["item"])
+        holder = world.actors.get(str(event.actor))
+        if holder is not None:
+            holder.inventory.discard(item)
+        world.item_locations[item] = str(event.payload["location"])
     elif event.kind == "action_completed" and event.actor:
         payload = event.payload
-        actor = world.actors[event.actor]
+        # E84: mirror the kernel's completion-time guard — an event whose
+        # actor is already gone (a despawned extra, two takes of one item) stands
+        # as a fact and mutates nothing, instead of crashing the rebuild.
+        actor = world.actors.get(event.actor)
+        if actor is None:
+            return
         kind = payload.get("action")
         if kind == "move":
             actor.location = str(payload["target"])
@@ -48,6 +74,11 @@ def _apply_consequence(world: World, event: Event) -> None:
             item = str(payload["item"]); actor.inventory.add(item); world.item_locations.pop(item, None)
         elif kind == "drop":
             item = str(payload["item"]); actor.inventory.discard(item); world.item_locations[item] = actor.location
+        elif kind == "place" and str(payload["item"]) in world.persistent_notes:
+            # 票 101（E105）：放下一张字条 = 它又变成“留在这里的纸”。
+            note = world.persistent_notes[str(payload["item"])]
+            actor.inventory.discard(str(payload["item"]))
+            note["location"] = actor.location
         elif kind == "open":
             from .kernel import _set_location_open
             _set_location_open(world, actor.location, True)
@@ -57,8 +88,15 @@ def _apply_consequence(world: World, event: Event) -> None:
         elif kind == "give":
             item = str(payload["item"])
             target = world.actors[str(payload["target"])]
-            actor.inventory.discard(item)
-            target.inventory.add(item)
+            note = world.persistent_notes.get(item)
+            if note is not None:
+                # 票 101（E105）：递字条与递物品同一条持有关系（背包），位置随之更新。
+                actor.inventory.discard(item)
+                target.inventory.add(item)
+                note["location"] = target.location
+            else:
+                actor.inventory.discard(item)
+                target.inventory.add(item)
     elif event.kind == "message_delivered":
         target = world.actors[str(event.payload["target"])]
         target.inbox.append({"from": event.actor, "text": str(event.payload["text"]),
@@ -66,11 +104,32 @@ def _apply_consequence(world: World, event: Event) -> None:
     elif event.kind == "note_left" and event.actor:
         # Notes remain in the room until a single enterer receives and burns
         # them; replay applies the recorded note_read events in event order.
-        location_id = str((event.payload or {}).get("location")
+        # Ticket 88: a persistent note is the other kind — it is rebuilt under
+        # the id the event carries and never burns; the read events that follow
+        # therefore do not remove it.
+        payload = event.payload or {}
+        location_id = str(payload.get("location")
                           or world.actors[event.actor].location)
-        world.locations[location_id].notes.append(
-            {"author": event.actor, "text": str((event.payload or {}).get("text", "")),
-             "left_at": event.time.isoformat()})
+        if payload.get("persist"):
+            note_id = str(payload["note"])
+            world.persistent_notes[note_id] = {
+                "id": note_id, "author": event.actor, "location": location_id,
+                "text": str(payload.get("text", "")),
+                "left_at": event.time.isoformat()}
+            sheet = str(payload.get("on") or "")
+            if sheet and sheet not in world.document_defs:
+                # 票 101（E105b）：这张纸被写成了这份文稿——它不再是一张空白纸，
+                # 文稿在作者手上（与 `_complete` 的 leave_note 分支一致）。
+                writer = world.actors.get(str(event.actor))
+                for actor in world.actors.values():
+                    actor.inventory.discard(sheet)
+                world.item_locations.pop(sheet, None)
+                if writer is not None:
+                    writer.inventory.add(note_id)
+        else:
+            world.locations[location_id].notes.append(
+                {"author": event.actor, "text": str(payload.get("text", "")),
+                 "left_at": event.time.isoformat()})
     elif event.kind == "note_read":
         location = world.locations[str(event.payload["location"])]
         for index, note in enumerate(location.notes):
@@ -80,6 +139,12 @@ def _apply_consequence(world: World, event: Event) -> None:
                     and (left_at is None or note.get("left_at") == left_at)):
                 location.notes.pop(index)
                 break
+    elif event.kind == "item_trashed":
+        # Ticket 88: a destroyed persistent note must not survive a replay. A
+        # trashed ordinary item is not rebuilt here — that gap predates this
+        # change and is out of its scope.
+        item = str((event.payload or {}).get("item") or "")
+        world.persistent_notes.pop(item, None)
     elif event.kind == "world_event":
         # Seeded world events may carry objective effects; replay them so the
         # reconstructed world matches the authoritative run.

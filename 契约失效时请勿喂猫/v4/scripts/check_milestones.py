@@ -3,12 +3,19 @@
 
 Usage:
     python3 scripts/check_milestones.py runs/<artifact>.json --day N
+    python3 scripts/check_milestones.py runs/<artifact>.json --half dN-am|dN-pm
 
 Evaluates day N's story milestones for a trajectory artifact as pure
 functions over its world_events / agent_turns / sessions — no LLM calls.
 Prints PASS/FAIL per check with one-line evidence; exit 0 iff all STORY
 checks pass. System-health checks are printed and must be reviewed, but
 do not gate the exit code.
+
+`--day N` applies the route network: anchors must hold plus at least one
+route. `--half dN-am|dN-pm` is a checkpoint gate over that half only — it
+gates on anchors and (when the day has routes) at least one route's
+requires, while `flavor` items are printed and marked 纹理（不裁决） and
+never move the exit code (ticket 105).
 
 Milestone definitions live in MILESTONES below (data per day), mirrored in
 docs/V4-STORY-MILESTONES.md. Day dates: day 1 = 2026-03-16 (Mon) …
@@ -185,13 +192,197 @@ def _d1_counselor_intervention(ev, turns, sess):
     return ok, evd
 
 
+# 三份个人说明锚点（ticket 108，2026-10-18 两处收紧见同票 Comments）：以交付物
+# 为证，不看话看物。
+# 旧口径只数 speech/message 里出现“情况说明”四个字的角色：真实交付（把便条
+# 留在辅导员办公室、把便条 give 给辅导员、在收件文书上签名）一律不算，而口头
+# 提到四个字就算——既会假阳性（光说不交）也会假阴性（交了没说）。
+# 新口径三种证据，任一即可，按角色去重（角色 = ticket 107 的门禁候选四人，
+# 即“经手过审计材料的人”）：
+#   a 文稿——该角色 leave_note 产生、正文读作“说明材料”的纸，且留在收件地点
+#     （辅导员办公室），或已 give 给收件人（辅导员）；
+#   b 签字——该角色对收件文书（个人情况说明程序／收件表）做的
+#     document_annotated；
+#   c 发言提及降为辅助——只进证据行、只在前两类之一成立时记录，本身不计数。
+# 三类门槛压住误纳（2026-10-18 裁定，见 D1_STATEMENT_WORDS 与
+# D1_STATEMENT_PUBLISH）：① 只认“说明材料”自身名称，裸“说明”会把《学生会审计
+# 包核对说明》吸进来；② 只认 16:45 程序发布之后的交付物——要交什么由程序
+# 定义，发布前的稿不是它要求的交付；③ 文稿类还要求**写作时间**也在 16:45
+# 之后（`note_left` 自身的时间）：12:38 写的旧稿 19:41 再交一遍是重交，不是
+# 按程序提交（ticket 109 §E8）。
+# 仍要求 ≥3 个不同角色；不足时证据行点名缺谁、以哪种证据缺。
+D1_STATEMENT_ROSTER = ("陈默", "林瑶", "林瑶室友", "班长")
+D1_STATEMENT_RECIPIENT = "辅导员"
+D1_STATEMENT_INTAKE_PLACE = "辅导员办公室"
+# 程序发布时刻（manifest 的 statement_request）：它发出并贴出《个人情况说明
+# 程序》，定义要交的是什么，所以早于它的稿、交件、签字都不算这份交付。
+D1_STATEMENT_PUBLISH = "16:45:00"
+# 长的在前：命中时就近取最具体的那个词做标签。只认说明材料自身的名称，裸
+# “说明”不兜底——它会把核对记录、值班记录这类同名文档一起吸进来。
+D1_STATEMENT_WORDS = ("个人情况说明", "情况说明", "书面说明")
+# 收件文书：文书本身即交件面，签名/批注＝交件。面核记录、签到本不算。
+D1_STATEMENT_DOCUMENTS = ("个人情况说明", "收件表", "收件登记", "收件簿", "说明登记")
+
+
+def _d1_statement_word(text: str) -> str:
+    return next((w for w in D1_STATEMENT_WORDS if w in text), "")
+
+
+def _d1_after_publish(time_str: str, since: str = D1_STATEMENT_PUBLISH) -> bool:
+    """事件时点是否已到/过程序发布时刻。since="" 保留全部时点（证据行用）。"""
+    return str(time_str)[11:19] >= since
+
+
+def _d1_note_index(ev) -> dict[str, dict[str, str]]:
+    """{便条编号: 作者/落点/正文词/写作时刻}，索引全量事件。
+
+    便条可能写在前一天或当天早些时候、之后才交出，所以索引不能只看当天：
+    `time` 是 `note_left` 自身的时刻，即这份稿的**写作时间**。"""
+    notes = {}
+    for e in ev:
+        if e.get("kind") != "note_left":
+            continue
+        pay = e.get("payload") or {}
+        notes[str(pay.get("note") or f"@{e.get('id')}")] = {
+            "actor": str(e.get("actor") or ""),
+            "place": str(pay.get("location") or ""),
+            "word": _d1_statement_word(str(pay.get("text") or "")),
+            "time": str(e.get("time", "")),
+        }
+    return notes
+
+
+def _d1_written_after_publish(note: dict[str, str]) -> bool:
+    """这份稿的写作时间（`note_left` 自身的时刻）是否已到程序发布时刻。"""
+    return _d1_after_publish(note["time"])
+
+
+def _d1_note_handover(ev, notes):
+    """当天 `item_given` 里“本人把自己的说明稿交给辅导员”的那些：(note, 事件)。
+
+    文稿与重交两个判据共用同一组命中，差别只在写作时间。"""
+    for e in _day_events(ev, 1):
+        if e.get("kind") != "item_given":
+            continue
+        pay = e.get("payload") or {}
+        note = notes.get(str(pay.get("item") or ""))
+        if not note or not note["word"]:
+            continue
+        giver = str(pay.get("from") or e.get("actor") or "")
+        if giver != note["actor"] or str(pay.get("to") or "") != D1_STATEMENT_RECIPIENT:
+            continue
+        yield note, e
+
+
+def _d1_statement_deliveries(ev,
+                             since: str = D1_STATEMENT_PUBLISH,
+                             ) -> dict[str, dict[str, str]]:
+    """{角色: {文稿|交付|签字: 该类的首个证据}}。
+
+    文稿与交付只看当天事件（交付当天发生才算）；字条索引取全量事件，
+    以便识别写在前一天、当日才交出的稿。`since` 是证据时点的下界：默认只收
+    程序发布之后的交付物，传 "" 收全部时点（只用于证据行说明“发布前有过但
+    不计入”）。
+
+    交付类另看**写作时间**：稿写于 16:45 之前、只在发布后交出，是重交旧稿，
+    任何视图都不计入（见 `_d1_statement_redeliveries`）。"""
+    events = _day_events(ev, 1)
+    notes = _d1_note_index(ev)
+    left_today = {str((e.get("payload") or {}).get("note") or f"@{e.get('id')}")
+                  for e in events if e.get("kind") == "note_left"}
+    found: dict[str, dict[str, str]] = {}
+
+    def _add(actor, kind, evd):
+        if actor:
+            found.setdefault(actor, {}).setdefault(kind, evd)
+
+    for note_id, note in notes.items():
+        # 文稿类的时点就是写作时点（`note_left` 只有这一个时刻），所以同一个
+        # 门槛一并压住“发布前写的稿”。
+        if (note_id in left_today and note["word"]
+                and note["place"] == D1_STATEMENT_INTAKE_PLACE
+                and _d1_after_publish(note["time"], since)):
+            _add(note["actor"], "文稿",
+                 f"{note['time'][11:16]} 留在{D1_STATEMENT_INTAKE_PLACE}"
+                 f"《{note['word']}》")
+    for note, e in _d1_note_handover(ev, notes):
+        if not _d1_after_publish(str(e.get("time", "")), since):
+            continue
+        # 交出在发布后、稿却是发布前写的：重交旧稿，不算这份交付。发布前的
+        # 交件仍留给 `since=""` 那一遍，供证据行说明“发布前有过”。
+        if (_d1_after_publish(str(e.get("time", "")))
+                and not _d1_written_after_publish(note)):
+            continue
+        _add(note["actor"], "交付",
+             f"{str(e.get('time', ''))[11:16]} 交给{D1_STATEMENT_RECIPIENT}")
+    for e in events:
+        if e.get("kind") != "document_annotated":
+            continue
+        if not _d1_after_publish(str(e.get("time", "")), since):
+            continue
+        doc = str((e.get("payload") or {}).get("document") or "")
+        if any(w in doc for w in D1_STATEMENT_DOCUMENTS):
+            _add(str(e.get("actor") or ""), "签字",
+                 f"{str(e.get('time', ''))[11:16]} 在《{doc}》签字/批注")
+    return found
+
+
+def _d1_statement_redeliveries(ev) -> dict[str, str]:
+    """{角色: 一句“旧稿重交，不计”}。
+
+    程序发布之后才交出、但稿本身写于发布之前的（`note_left` 12:38、
+    `item_given` 19:41 是真实工件里的形态）：交出的是旧稿，不是按程序写的
+    这份说明。它既不计入，也不该在证据行里被说成“发布前有过交付”——交出
+    明明在发布之后，所以单独列一类。"""
+    found: dict[str, str] = {}
+    for note, e in _d1_note_handover(ev, _d1_note_index(ev)):
+        given = str(e.get("time", ""))
+        if not _d1_after_publish(given) or _d1_written_after_publish(note):
+            continue
+        found.setdefault(note["actor"], (
+            f"旧稿重交，不计：{note['time'][11:16]} 写的《{note['word']}》"
+            f"{given[11:16]} 交给{D1_STATEMENT_RECIPIENT}"))
+    return found
+
+
 def _d1_three_statements(ev, turns, sess):
-    lines = [(t, a, x) for t, a, x in _day_texts(ev, 1)
-             if a in ("陈默", "林瑶", "林瑶室友", "班长")
-             and "情况说明" in x]
-    actors = _distinct_actors(lines)
-    ok = len(actors) >= 3
-    evd = f"提交说明的角色：{'、'.join(actors) or '无'}"
+    found = _d1_statement_deliveries(ev)
+    # 放宽时点重收一遍：只用来在证据行里点出“发布前有过交付物、但不计入”。
+    early = _d1_statement_deliveries(ev, since="")
+    stale = _d1_statement_redeliveries(ev)
+    spoken = {a for _, a, x in _day_texts(ev, 1)
+              if a in D1_STATEMENT_ROSTER and "情况说明" in x}
+    submitted = [a for a in D1_STATEMENT_ROSTER if a in found]
+    missing = [a for a in D1_STATEMENT_ROSTER if a not in found]
+    ok = len(submitted) >= 3
+    window = f"{D1_STATEMENT_PUBLISH[:5]} 程序发布后的交付物"
+    shown = "、".join(
+        f"{a}（{'；'.join(f'{k} {found[a][k]}'
+                         for k in ('文稿', '交付', '签字') if k in found[a])}"
+        f"{'＋发言' if a in spoken else ''}）" for a in submitted) or "无"
+
+    def _gap(a):
+        reasons = []
+        if a in early:
+            had = "；".join(f"{k} {early[a][k]}"
+                           for k in ('文稿', '交付', '签字') if k in early[a])
+            reasons.append(f"{D1_STATEMENT_PUBLISH[:5]} 前有{had}，不计入")
+        if a in stale:
+            reasons.append(stale[a])
+        if reasons:
+            return f"{a}（{'；'.join(reasons)}）"
+        if a in spoken:
+            return f"{a}（仅发言提及，无文稿/交付/签字）"
+        return f"{a}（无任何交付物）"
+
+    gaps = "、".join(_gap(a) for a in missing)
+    if ok:
+        evd = f"{len(submitted)} 份/{len(D1_STATEMENT_ROSTER)} 个候选角色（{window}）：{shown}"
+        if gaps:
+            evd += f"；未交：{gaps}"
+    else:
+        evd = (f"只有 {len(submitted)} 人（还差 {3 - len(submitted)} 人，{window}）："
+               f"{shown}；未交：{gaps}")
     return ok, evd
 
 
@@ -844,7 +1035,7 @@ MILESTONES = {
         _mk_check("d1-登记缺失知晓", "登记本/值班表缺失被 ≥3 角色知晓", _d1_register_missing_known, half="am"),
         _mk_check("d1-台账差异记录", "两名主角各获台账差异（亲读互证 或 当面传达并被承认待核），22:05/23:30 由已读者说出", _d1_discrepancy_recorded, half="am"),
         _mk_check("d1-辅导员介入", "辅导员 ≥5 条发言并出现程序纪律语句", _d1_counselor_intervention, half="pm"),
-        _mk_check("d1-三份个人说明", "≥3 角色提交个人情况说明", _d1_three_statements, half="pm"),
+        _mk_check("d1-三份个人说明", "≥3 角色以交付物为证提交个人情况说明（文稿/交付/签字）", _d1_three_statements, half="pm"),
         _mk_check("d1-字条留痕程序", "临时字条被读取且编号被提及", _d1_note_procedure, half="pm"),
         _mk_check("d1-现场互证", "陈默与林瑶相互核证 + 边界/留痕表述（现场互证路线）", _d1_mutual_verification, half="pm"),
         _mk_check("d1-恋爱并肩", "陈默与林瑶当面双向对话（恋爱轴 day-1 节拍）", _d1_romance_presence, half="am"),
@@ -1007,6 +1198,101 @@ ROUTES = {
 }
 # d1-妈妈线：复用 d2-妈妈打听结果（可跨日达成）——锚点在线程闭环。
 ROUTES[1]["anchors"][4] = "d2-妈妈打听结果"
+
+# 半天门（--half）的分类标注（ticket 105）：只有锚点与路线阻断，纹理不裁决。
+GATE_CATEGORY_TAGS = {
+    "anchor": "门禁·锚点",
+    "route": "门禁·路线",
+    "flavor": "纹理（不裁决）",
+    "unclassified": "门禁·未归类",
+}
+
+
+def half_check_category(day: int, check_id: str) -> str:
+    """一个检查项在该日路线网里的角色——决定它是否阻断半天门。
+
+    flavor 是路线纹理，只记录不裁决；该日没有路线网定义时返回
+    unclassified，半天门退回旧语义（全部检查项阻断）。"""
+    net = ROUTES.get(day)
+    if net is None:
+        return "unclassified"
+    if check_id in (net.get("flavor") or ()):
+        return "flavor"
+    if check_id in (net.get("anchors") or ()):
+        return "anchor"
+    if check_id in {r for route in net.get("routes") or ()
+                    for r in route["requires"]}:
+        return "route"
+    # 既不是锚点、也不是路线 requires 或纹理的新增项：按阻断处理，
+    # 以免新加的检查项因为没归类而悄悄丢掉门禁。
+    return "unclassified"
+
+
+def half_gate_verdict(day: int, results: dict[str, bool]) -> dict:
+    """半天检查点门的判定数据（ticket 105）。
+
+    ``results`` 是本半天各检查项的通过情况。判定与 ``--day`` 的路线网同构：
+    锚点必须达成，且（该日有路线时）至少一条路线的 requires 在本半天全部
+    达成；某条路线的 requires 落在另一个半天时记"待后续"，不阻断。
+    flavor 只出现在 ``flavor_failures`` 里，永远不进 ``blocking``。
+    该日无路线网定义时全部检查项阻断（旧语义）。"""
+    net = ROUTES.get(day)
+    categories = {cid: half_check_category(day, cid) for cid in results}
+    flavor_checked = [cid for cid, kind in categories.items() if kind == "flavor"]
+    flavor_failures = [cid for cid in flavor_checked if not results[cid]]
+    blocking = [cid for cid, ok in results.items()
+                if not ok and categories[cid] not in ("flavor", "route")]
+    anchor_failures = [cid for cid, kind in categories.items()
+                       if kind == "anchor" and not results[cid]]
+    crossday = ([a for a in net.get("anchors") or ()
+                 if a not in {c["id"] for c in MILESTONES[day]}] if net else [])
+    routes = []
+    for route in (net.get("routes") if net else None) or ():
+        in_half = [r for r in route["requires"] if r in results]
+        pending = [r for r in route["requires"] if r not in results]
+        missing = [r for r in in_half if not results[r]]
+        routes.append({"name": route["name"], "in_half": in_half,
+                       "missing": missing, "pending": pending,
+                       "satisfied": bool(in_half) and not missing and not pending})
+    judged = [r for r in routes if not r["pending"]]
+    route_failed = bool(judged) and not any(r["satisfied"] for r in judged)
+    if route_failed:
+        blocking.append("路线网（无有效路线）")
+    return {"has_net": net is not None, "blocking": blocking,
+            "anchor_failures": anchor_failures,
+            "flavor_checked": flavor_checked, "flavor_failures": flavor_failures,
+            "crossday": crossday, "routes": routes, "routes_judged": len(judged)}
+
+
+def _print_half_gate(verdict: dict, half: str) -> None:
+    """打印半天门判定：锚点/路线阻断，纹理只列不裁决。"""
+    print(f"\n== 半天门判定（{half}）：锚点与路线阻断，纹理（flavor）不裁决 ==")
+    if not verdict["has_net"]:
+        print("  该日无路线网定义（ROUTES 缺项）：退回旧语义，本半天全部检查项阻断")
+        return
+    print("  锚点：" + ("全部达成" if not verdict["anchor_failures"]
+                      else "未达成 " + "、".join(verdict["anchor_failures"])))
+    if not verdict["routes"]:
+        print("  路线：该日无分歧路线（按锚点判定）")
+    for route in verdict["routes"]:
+        if route["satisfied"]:
+            state = "成立"
+        elif route["pending"]:
+            state = ("待后续（本半天只有 " + "、".join(route["in_half"]) + "）"
+                     if route["in_half"] else "待后续（requires 在另一个半天）")
+            if route["missing"]:
+                state += "；本半天缺 " + "、".join(route["missing"])
+        else:
+            state = "未成立（缺 " + "、".join(route["missing"]) + "）"
+        print(f"  路线[{route['name']}]：{state}")
+    if verdict["routes"] and not verdict["routes_judged"]:
+        print("  本半天没有可完整判定的路线：路线条件不阻断")
+    if verdict["crossday"]:
+        print("  待后续（跨日锚点，本检查点不裁决）：" + "、".join(verdict["crossday"]))
+    flavor = [cid + ("（未达成）" if cid in verdict["flavor_failures"] else "")
+              for cid in verdict["flavor_checked"]]
+    print("  纹理（不裁决）：" + ("、".join(flavor) if flavor else "无"))
+
 
 REVIEWS = {
     1: {"am": ["恋爱温度：档案室并肩与字条程序中两人一致的谨慎——默契还是回避？",
@@ -1509,14 +1795,19 @@ def main() -> int:
     checks = [c for c in MILESTONES[args.day] if half is None or c["half"] == half]
     label = f"第 {args.day} 天 {'上午' if half == 'am' else '下午' if half else ''}（{DAY_DATES[args.day]}）"
     print(f"== {label}故事里程碑 ==")
-    failed = []
+    # --half 下每项标注它在路线网里的角色（只影响打印，判定在半天门里）。
+    tags = ({c["id"]: GATE_CATEGORY_TAGS[half_check_category(args.day, c["id"])]
+             for c in checks} if half and args.day in ROUTES else {})
+    failed, results = [], {}
     for c in checks:
         try:
             ok, evd = c["fn"](ev, turns, sess)
         except Exception as exc:  # a broken check must not kill the report
             ok, evd = False, f"检查器异常：{type(exc).__name__}: {exc}"
-        print(f"  [{'PASS' if ok else 'FAIL'}] {c['id']} — {c['desc']}\n"
-              f"          {evd}")
+        results[c["id"]] = ok
+        print(f"  [{'PASS' if ok else 'FAIL'}] {c['id']} — {c['desc']}"
+              + (f" ｜ {tags[c['id']]}" if c["id"] in tags else "")
+              + f"\n          {evd}")
         if not ok:
             failed.append(c["id"])
 
@@ -1531,8 +1822,9 @@ def main() -> int:
     for k, v in health_report(data, args.day).items():
         print(f"  {k}: {v}")
 
-    # ---- 路线网判定（--day 模式；--half 是检查点门，不套用路线网）----
+    # ---- 路线网判定（--day）／半天门判定（--half）----
     network_note = ""
+    flavor_note = ""
     if half is None:
         net = ROUTES.get(args.day)
         if net:
@@ -1581,11 +1873,18 @@ def main() -> int:
             else:
                 valid = "、".join(n for n, ok, _ in route_ok if ok)
                 network_note = f"有效路线：{valid}"
+    else:
+        verdict = half_gate_verdict(args.day, results)
+        _print_half_gate(verdict, args.half)
+        failed = verdict["blocking"]
+        if verdict["flavor_failures"]:
+            flavor_note = "纹理未达成，不裁决：" + "、".join(verdict["flavor_failures"])
 
     if network_note:
         print(f"\n结果：{network_note}")
         return 0 if "有效路线" in network_note else 1
-    print(f"\n结果：{'全部通过' if not failed else '未通过：' + '、'.join(failed)}")
+    text = "全部通过" if not failed else "未通过：" + "、".join(failed)
+    print(f"\n结果：{text}" + (f"（{flavor_note}）" if flavor_note else ""))
     return 0 if not failed else 1
 
 

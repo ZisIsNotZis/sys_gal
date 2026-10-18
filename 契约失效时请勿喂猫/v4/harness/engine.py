@@ -49,7 +49,7 @@ from .npc_agent import (build_extra_briefing, build_extra_scene,
                         looks_like_protocol_reasoning,
                         looks_like_unspoken_dialogue,
                         restore_extra_prompt, sample_extra)
-from .prompt import render_world_message, _event_sentence, _clean_description
+from .prompt import render_world_message, director_block, _event_sentence, _clean_description
 from .kb import CONTACT_KEY
 from .repetition import RepetitionMonitor
 
@@ -88,10 +88,14 @@ _VERB_GAP_DIAL = (
     "当成打算记下来用 update_memory——那是计划，不是已经发生的事。"
 )
 _VERB_GAP_SIGN = (
-    "【签字 / 批注 / 盖章 / 落款 / 补个签名】这个世界没有签字、批注、盖章这个动作：你无法在任何"
-    "文书上留下签名或批注，别人也不能“回头补个签字”。要让一件事成立或备案，只能做世界真的有的"
-    "动作：当面把内容说清楚（speak）、把材料交给对方并让他自己看（give + read），或按你确实认识"
-    "的收件人发短信（text）。你自己的承诺和打算用 update_memory 记下——但那是你还没做的事。"
+    "【签字 / 批注 / 盖章 / 落款 / 补个签名】这个世界没有单独的签字、盖章动作，也没有“回头"
+    "补个签字”这种事后生效的仪式：你写下的只是你写的一行字。要在手边一份文书上补写（在"
+    "表格里填自己那一栏、写一句核对结果），用 leave_note 加 on=<文书正式名>："
+    "{\"name\": \"leave_note\", \"arguments\": {\"text\": \"<你写的内容>\", \"on\": "
+    "\"<文书正式名>\"}}——文字作为一条批注追加进那份文书，别人写的条目不会被覆盖，同"
+    "地点的人只看见你写了这一笔，内容要 read 那份文书才看得到；文书必须在你所在的地点或"
+    "你手上。要让一件事成立，仍然只能靠当面说清（speak）和把材料交到对方手上（give + "
+    "read）；你自己的承诺用 update_memory 记下——那是你还没做的事。"
 )
 _VERB_GAP_VERIFY = (
     "【核验 / 当面核 / 亲眼确认 / 对一下真伪】这个世界没有独立的“核验”动作；“核实过”必须由你真"
@@ -357,6 +361,11 @@ class AsyncEngine:
         # keyed by the action_started event id the completion will carry.
         self._pending_spawns: dict[int, dict[str, Any]] = {}
         self._failures: dict[str, int] = {actor: 0 for actor in world.actors}
+        # E111（票 109 §附）：调度器回合计数，只在 `_take_turn` 自增——所以它数的是
+        # persistent actor（mc/npc），extra 的 `_extra_loop` 不计。停机诊断的
+        # `engine.turns` 与 `max_turns` 用它；剧情层面的总回合数看
+        # `Trace.agent_turns`（含 extra 与 `result: none` 的诊断行），两者之差就是
+        # extra 回合数（V4-ENGINE §7）。
         self._turns = 0
         self._rejection_sequence = 0
         self._operational_facts: dict[str, list[dict[str, Any]]] = {actor: [] for actor in world.actors}
@@ -389,6 +398,10 @@ class AsyncEngine:
         # haystack (V4-AGENT-INTERFACE §3): what you just read is what you are
         # thinking about.
         self._last_tool_text: dict[str, str] = {}
+        # 票 91（E93）：连续空回合计数（只有正文、零工具调用）。世界时间照旧走
+        # 一拍（§4 的发呆），这里只让下一回合的输入知道“上一回合什么都没发生”，
+        # 并让 trace 能看出这是第几次连着空转。
+        self._empty_streak: dict[str, int] = {}
         self._recall_lines: dict[str, list[str]] = {}
         self._flashback_pool: dict[str, list[tuple[datetime, str, frozenset[str]]]] = {}
         self._pending_notices: dict[str, list[str]] = {}
@@ -867,6 +880,13 @@ class AsyncEngine:
             if (event.kind == "world_event" and event.payload.get("event") == "world_stops"
                     and (self._stops_latch_floor is None or event.time > self._stops_latch_floor)):
                 self._world_stops_seen = True
+            if (self.system is not None and self.system.settle_on is not None
+                    and event.kind == "world_event"
+                    and event.payload.get("event") == self.system.settle_on):
+                # 票 93（用户裁定）：台账的结案由**种子排程的结算节拍**驱动，不是首次答对。
+                # 引擎只负责把“它到了”转给 Ledger（报酬仍走既有 `system_reward_granted`
+                # 私有路径、只投给受约束角色）；节拍本身只是一次到点，不叙事、不泄情。
+                self.system.settle(self.world, event)
             # An NPC whose (non-wait) action completed gets a follow-up turn
             # within the same wake (V4-CAST §1: 1~N actions per wake); a
             # finished wait is the NPC saying "nothing to do" — it sleeps.
@@ -917,8 +937,18 @@ class AsyncEngine:
 
     def _wake_waiters(self) -> None:
         """Deliver the wake class: an ambient social event ends a light wait
-        early so conversations can round-trip in M ticks (V4-ENGINE §3/§4)."""
+        early so conversations can round-trip in M ticks (V4-ENGINE §3/§4).
+
+        票 101（E106）：睡眠（`wait` + `sleep: true`）不能因为睡得很长而跨过一场点了名
+        的排程事件。点名叫他就是叫他醒来；没点名的公共广播（天气、日界）不叫醒睡着的人。"""
         for event in self.world.event_log[self._wake_scan:]:
+            if event.kind == "world_event":
+                targets = event.payload.get("target") or ()
+                if isinstance(targets, str):
+                    targets = [targets]
+                for actor_id in targets:
+                    self.world.wake_sleeper(str(actor_id))
+                continue
             if event.kind not in WAKE_EVENT_KINDS or event.actor is None:
                 continue
             source = self.world.actors.get(event.actor)
@@ -1003,9 +1033,14 @@ class AsyncEngine:
         if v4:
             knowledge_lines = self._knowledge_lines(actor_id, perception, affordances)
             self._sync_contacts(actor_id)
-            director = (self.director_brief(actor_id)
-                        if self.director_brief and self._role(actor_id) == "npc" and npc_reason
-                        else None)
+            # 票 85：NPC 唤醒一定带 `[director]` 块——提示层约束（说话不改变世界、
+            # 不得断言未见的世界变化）是它的固定开头，种子写的本场目标只接在后面。
+            # 没有本场目标的 NPC 以前连块都没有，于是"承诺要用 give 兑现"这类约束
+            # 完全取决于种子有没有给该角色写 beat_goal。
+            director = None
+            if self._role(actor_id) == "npc" and npc_reason:
+                brief = self.director_brief(actor_id) if self.director_brief else None
+                director = director_block(brief)
             text = render_world_message(perception, affordances, observer=actor_id,
                                         knowledge_lines=knowledge_lines, director=director)
             decide_task = loop.create_task(_run_blocking(
@@ -1199,6 +1234,20 @@ class AsyncEngine:
                 ordered.append(line)
         return ordered[:8]
 
+    def _system_address_hint(self, actor_id: str, attempted: str) -> str:
+        """票 91：受约束角色把一个不是人的名字当成收件人时，把台账的真实写法交回。
+
+        窗口 3 的 09:02：陈默 `speak(to=["2013年台风台账"])` 被当未知收件人拒掉，
+        而台账本来就在世界内可搭话——只是它的名字是种子给的 `system.name`。这条
+        提示只给受约束角色（`answers_to`），未受约束者的回执一字不改。"""
+        system = self.system
+        if system is None:
+            return ""
+        if not system.answers_to(actor_id) or system.addressable(actor_id, attempted):
+            return ""
+        return (f" {system.name}是世界内的对话者：直接点名它说话——to=[\"{system.name}\"]，"
+                "text 写你要问的那句话；它只答自己案卷里记着的条目。")
+
     def _action_rejection_text(self, actor_id: str, exc: ActionRejected, name: str,
                                args: Mapping[str, Any],
                                seen_here: Iterable[str] | None = None) -> str:
@@ -1225,6 +1274,9 @@ class AsyncEngine:
             if context.get("name_resolution"):
                 message += " Confirm the intended person's exact formal name or a registered personal nickname."
                 attempted = str(context.get("target") or context.get("query") or "").strip()
+                hint = self._system_address_hint(actor_id, attempted)
+                if hint:
+                    message += hint
                 if attempted and context.get("unknown_recipient"):
                     # Ticket 48: the actor addressed someone by their own KB
                     # nickname/number and it denotes nobody reachable. Keep
@@ -1337,7 +1389,7 @@ class AsyncEngine:
         if name == "text":
             return "短信已发出；一个 tick 后送达。"
         if name == "read":
-            document = world.document_defs.get(str(args.get("item")), {})
+            document = world.readable_body(str(args.get("item"))) or {}
             content = str(document.get("content", ""))
             annotations = document.get("annotations") or []
             if annotations:
@@ -1345,7 +1397,12 @@ class AsyncEngine:
                 content = f"{content}\n（记录上还有：{notes}）" if content else notes
             return content or "（这份记录没有可读的正文。）"
         if name == "leave_note":
-            return self._leave_note_yield(world, actor_id)
+            note_id = next((str(event.payload.get("note")) for event in events
+                            if (event.payload or {}).get("note")), "")
+            return self._leave_note_yield(world, actor_id,
+                                          persist=bool(args.get("persist")),
+                                          note_id=note_id,
+                                          on=str(args.get("on") or ""))
         if name == "trash":
             return "已销毁。"
         if name == "place":
@@ -1373,7 +1430,9 @@ class AsyncEngine:
         return (" 没送到：" + "、".join(unsent)
                 + "。同句其他收件人的话已照常送到。")
 
-    def _leave_note_yield(self, world: World, actor_id: str) -> str:
+    def _leave_note_yield(self, world: World, actor_id: str, *,
+                          persist: bool = False, note_id: str = "",
+                          on: str = "") -> str:
         """Ticket 44: the receipt must state the note's real audience.
 
         A note's semantics (user ruling 2026-09-22) are: the first non-author
@@ -1385,10 +1444,40 @@ class AsyncEngine:
         (d1-am: 林瑶 left 陈默 a 借条 at 09:51 while he was present, and no
         non-author ever entered the archive again). The receipt therefore also
         names whoever is here and offers the reachable path — `give` — instead
-        of letting a note stand in for a face-to-face handover."""
+        of letting a note stand in for a face-to-face handover.
+
+        Ticket 88: `persist: true` is the other kind of record. It is not a
+        burn-on-read room message but an addressable document-style note: the
+        receipt names its id and the `read` call that opens it again, so "hand
+        it in at the desk" is expressible without a new action.
+
+        票 95（E98）：`on` 是写在既有文书上的那一栏——一条追加的批注，不是字条。
+        """
         actor = world.actors[actor_id]
         present = sorted(other.id for other in world.actors.values()
                          if other.id != actor_id and other.location == actor.location)
+        if on:
+            definition = world.document_defs.get(on, {})
+            title = str(definition.get("title", on))
+            receipt = (f"你已经把这段话写进《{title}》——作为一条批注追加进去，"
+                       "别人已经写下的条目不会被覆盖。"
+                       f"要连别人的批注一起再看一遍，用 "
+                       f"{World._tool_call_json('read', {'item': on})}。")
+            if present:
+                receipt += (f" 现在同在{actor.location}的还有：{'、'.join(present)}——"
+                            "他们看见你在上面写了字，但不会自动看到你写的正文。")
+            return receipt
+        if persist:
+            receipt = (f"书面记录已留在{actor.location}"
+                       + (f"（编号 {note_id}）" if note_id else "") +
+                       "。它不会消失，也不会被谁读走：留在这里的人和之后来到这里的人都能"
+                       "读到全文，可以读多次。"
+                       + (f"读到全文用 {World._tool_call_json('read', {'item': note_id})}。"
+                          if note_id else ""))
+            if present:
+                receipt += (f" 现在同在{actor.location}的还有：{'、'.join(present)}——"
+                            "他们也读得到这份记录。要当面把东西交到某人手上仍然用 give。")
+            return receipt
         receipt = ("字条已留下。它只对未来的进入者生效：此刻在场的任何人都看不到你写的内容；"
                    "只有你之后第一位进入这里的非作者会私下读到全文，读完即焚。"
                    "你自己返场不算读者——不会读到它，也不会烧掉它。")
@@ -1575,6 +1664,34 @@ class AsyncEngine:
                     continue
                 if not isinstance(args.get("volume"), str):
                     args.setdefault("volume", "normal")
+                # 票 91（E92）——台账是世界内对话者，不是工具（V4-AGENT-INTERFACE §5）。
+                # 受约束角色在一次 speak 里点名它 = 向它提问：话不进公开 speech，走既有的
+                # fact table 应答通道，答案以既有 `system_answer` 私有事件只投递给这个人。
+                # 不新增动作种类；未受约束的角色不路由（内核照旧判未知收件人），所以它
+                # 不会对别人应声。
+                if self.system is not None:
+                    addressed = [str(entry) for entry in (args.get("to") or ())]
+                    if any(self.system.addressable(actor_id, entry) for entry in addressed):
+                        busy = a.busy_until
+                        if busy is not None and busy > world.now:
+                            active = str((a.current_action or {}).get(
+                                "payload", {}).get("action", "action"))
+                            fail(call, (f"not executed: current {active} completes at "
+                                        f"{busy.isoformat()}；一个回合只应有一个耗时动作，"
+                                        "把这句话留到下一回合再说。"))
+                            continue
+                        reply, _events = self.system.converse(world, actor_id,
+                                                             args.get("text"))
+                        unheard = [entry for entry in addressed
+                                   if not self.system.addressable(actor_id, entry)]
+                        if unheard:
+                            # 不静默丢收件人：话确实只对台账说了，这一回合同场的人
+                            # 没听到，回执把这件事说清楚并给出重发音的写法。
+                            reply += (f"（这些话只对{self.system.name}说了，同场的人没有听到——"
+                                      f"要对他们说，另发一次 speak：to={unheard}。）")
+                        results.append({"tool_call_id": call.get("tool_call_id"),
+                                        "ok": True, "text": reply})
+                        continue
             try:
                 submitted = world.submit(Intention(actor_id, name, args, world.version),
                                          seen_here=seen_here)
@@ -1593,12 +1710,24 @@ class AsyncEngine:
                     # the 7:35->7:40 slip. A call that lands while its actor
                     # is still mid-action is rejected with teaching (busy);
                     # under contention chains degrade to one action per turn.
+                    #
+                    # 票 106（E109）：还 clamp 到世界事件边界（`next_event_time`）。
+                    # 一个回合内的时钟推进本来只能越过自己的动作，但它也是唯一
+                    # 能越过“别人还在等的那一拍”的地方：D1 18:35 林瑶 `wait
+                    # 28800 sleep:true`，`limit` 被 stop horizon 夹到 22:00，一次
+                    # `advance` 就把 18:40–22:00 的六条夜间排程、三条
+                    # `private_wake`、四条 `reminder_due` 全记进日志而不派一个
+                    # 回合，随后 `_stop_check` 直接停表。停在下一个排程作业上，
+                    # 调度器就按自己那一拍把回合交出去（V4-ENGINE §3.1 唤醒不变式）。
                     limit = a.busy_until
                     if self._stop_horizon is not None:
                         limit = min(limit, self._stop_horizon)
                     horizon = self._horizon_bound()
                     if horizon is not None:
                         limit = min(limit, horizon)
+                    next_job = world.next_event_time()
+                    if next_job is not None:
+                        limit = min(limit, next_job)
                     if limit > world.now:
                         world.advance(until=limit)
                 if a.busy_until and self._stop_horizon is not None and a.busy_until > self._stop_horizon:
@@ -1754,6 +1883,27 @@ class AsyncEngine:
             str(r.get("text", "")) for r in results if r.get("text"))
         self._remember_lines(actor_id, perception)
         result = "submitted" if (world_actions or calls) else "none"
+        if not calls:
+            # E86 / E87 (报 81 §2/§3): a turn that carried no tool call produced no world
+            # action, and the only effect was the 1-tick 发呆 wait below. It used
+            # to be a silent `result: none` row (林瑶 12:51 in
+            # real-20261018T012247: `inner=None`, zero calls) — a reader saw a
+            # blank turn and no reason for it. Record the reason instead of
+            # inventing a behaviour: `prose_only` = the actor wrote a private
+            # body (a thought or a promise) and submitted nothing, `no_output` =
+            # the model returned nothing at all. Words are never actions; this
+            # diagnostic is what makes that visible (E87).
+            body = (content_private or "").strip()
+            self._empty_streak[actor_id] = self._empty_streak.get(actor_id, 0) + 1
+            self.trace.record_system(
+                {"kind": "empty_turn"},
+                {"actor": actor_id, "turn_id": perception.get("_turn_id"),
+                 "role": self._role(actor_id),
+                 "reason": "prose_only" if body else "no_output",
+                 "private_chars": len(body),
+                 "streak": self._empty_streak[actor_id]})
+        else:
+            self._empty_streak[actor_id] = 0
         recorded = (Intention(actor_id, str(calls[0].get("name", "unknown")),
                               {"calls": [{"name": c.get("name"),
                                            "args": c.get("arguments") or {}}
@@ -1802,6 +1952,17 @@ class AsyncEngine:
                            "note_unspoken_content", None)
             if callable(note):
                 note()
+        # 票 91（E93）：上一回合只有想法、零调用。ticket 64 的自纪纠正只在正文看起来
+        # 是在对人说话时发；陈默 08:42–09:04 的九连空写的是一份“已答好”的答案（无引号、
+        # 无第二人称），所以一次提醒也没收到。这里补的是另一种情形：不管写了什么，
+        # 只要一个工具都没调，就告诉下一回合“那段想法没有改变世界”。有界：一次只一条，
+        # 且与上两条自纪纠正不叠加。
+        if not calls and not withheld_private and not (
+                content_private and content_suspect_dialogue and not intended_speech):
+            note = getattr(getattr(self.agents[actor_id], "session_obj", None),
+                           "note_no_action", None)
+            if callable(note):
+                note(self._empty_streak.get(actor_id, 1))
         consume = getattr(self.agents[actor_id], "consume_compaction", None)
         if consume is not None and consume():
             if actor_id in self._kb:
@@ -2138,6 +2299,39 @@ class AsyncEngine:
                 self._wake_times.append(now)
                 self._cold_woken[location] = now
 
+    def _extra_is_idle(self, name: str, info: dict[str, Any]) -> bool:
+        """Whether this extra's silence means it may be despawned as idle.
+
+        票 99（E104）：沉默不等于站着不动。窗口 5 15:19 的
+        `extra_removed reason: idle` 打在张学长正被唐小岚带着赶路的时候——
+        `last_active` 记的是它上一次开口/动手的时刻，被携带的整段路它一句话
+        没说，于是刚走出小卖部就被当成“闲”回收，唐小岚 15:28 独自到夜市、
+        15:33 独自到后街糕点铺。判据因此把两种在场的状态排除在外：
+        它正被一次 `move` 携带着赶路（自己也在这段路上，或它是别人 `with`
+        里的同行者），或它还有一笔没结的对话（未答的问题、已听到还没回的话、
+        供给方还在写的那一句）。被携带者要离开仍走既有“途中可脱离”的路：
+        他自己开始走另一段 move，`_follows_escort` 便不再带他；到了地方
+        站定后 idle 照常计时——回收永远不是他离开的出口。
+        """
+        actor = self.world.actors.get(name)
+        if actor is None:
+            return False
+        if (str(info.get("pending_question") or "").strip()
+                or info.get("pending_heard_speech") or name in self._extra_inflight):
+            return False
+        now = self.world.now
+        if actor.busy_until and actor.busy_until > now:
+            payload = (actor.current_action or {}).get("payload", {})
+            if payload.get("action") == "move":
+                return False
+        for other_id, other in self.world.actors.items():
+            if other_id == name or not other.busy_until or other.busy_until <= now:
+                continue
+            payload = (other.current_action or {}).get("payload", {})
+            if payload.get("action") == "move" and name in tuple(payload.get("with") or ()):
+                return False
+        return (now - info["last_active"]).total_seconds() > self.extra_idle_seconds
+
     def _handle_extras(self) -> None:
         new_events = self.world.event_log[self._extras_scan:]
         self._extras_scan = len(self.world.event_log)
@@ -2147,7 +2341,7 @@ class AsyncEngine:
             partner = info["partner"]
             alive = (partner in self.world.actors
                      and self.world.actors[partner].location == self.world.actors[name].location)
-            idle = (self.world.now - info["last_active"]).total_seconds() > self.extra_idle_seconds
+            idle = self._extra_is_idle(name, info)
             if not alive or idle:
                 self._despawn(name, "idle" if idle else "partner_gone")
         # Ticket 22: a passer-by spawns when the utterance LANDS (the speak's
@@ -2159,7 +2353,8 @@ class AsyncEngine:
         for cause, ask in list(self._pending_spawns.items()):
             if cause in done:
                 del self._pending_spawns[cause]
-                self._spawn_extra(ask["asker"], ask["question"], loop)
+                self._spawn_extra(ask["asker"], ask["question"], loop,
+                                  alias=ask.get("alias"))
             elif (now - ask["parked"]).total_seconds() > 5 * 60:
                 del self._pending_spawns[cause]   # interrupted utterance
         for event in new_events:
@@ -2191,31 +2386,50 @@ class AsyncEngine:
                     # Legacy event, or the completion is in this very batch
                     # (the asker's own chain advance): the utterance has
                     # landed — spawn now, not in a later pass.
-                    self._spawn_extra(asker, str(event.payload.get("question", "")), loop)
+                    self._spawn_extra(asker, str(event.payload.get("question", "")), loop,
+                                      alias=str(event.payload.get("alias") or "") or None)
                     continue
                 self._pending_spawns[event.cause] = {
                     "asker": asker,
                     "question": str(event.payload.get("question", "")),
+                    "alias": str(event.payload.get("alias") or "") or None,
                     "parked": self.world.now}
 
-    def _spawn_extra(self, asker: str, question: str, loop: asyncio.AbstractEventLoop) -> None:
+    def _spawn_extra(self, asker: str, question: str, loop: asyncio.AbstractEventLoop,
+                     alias: str | None = None) -> None:
         """Create the conversation-scoped stranger and start its answer loop.
         Called at the ask's completion tick, so extra_arrived carries the
-        same timestamp as the moment the question was heard."""
+        same timestamp as the moment the question was heard.
+
+        Ticket 88: when the asker named a pool alias (e.g. 唐小岚 asking for
+        老板娘), that pool entry is used instead of a random sample, and the
+        alias becomes the character's name so the person who shows up is the
+        one who was named. Without an alias the sampling is unchanged.
+        """
         if (self.extra_call is None or asker not in self.world.actors
                 or any(x["partner"] == asker for x in self._extras.values())):
             return
         location = self.world.actors[asker].location
-        entry = sample_extra(self.world.locations[location].extras or
-                             [{"fragment": "一个路过的同学", "rarity": "common",
-                               "knowledge_notes": ""}])
-        name = generate_stranger_name()
-        while name in self.world.actors:
+        named = self.world.pool_entry_for_alias(location, alias) if alias else None
+        entry = (dict(named) if named is not None else
+                 sample_extra(self.world.locations[location].extras or
+                              [{"fragment": "一个路过的同学", "rarity": "common",
+                                "knowledge_notes": ""}]))
+        fragment = str(entry.get("fragment", "路人"))
+        if alias and alias not in self.world.actors:
+            # The alias is the name everyone at this place would use for this
+            # character; the extra's own description then contains it too.
+            name = alias
+        else:
             name = generate_stranger_name()
+            while name in self.world.actors:
+                name = generate_stranger_name()
+            if alias:
+                fragment = f"{fragment}（人称「{alias}」）"
         arrival_index = len(self.world.event_log)
         self.world.add_extra(name, location)
         scene_start = arrival_index + 1
-        self._extras[name] = {"fragment": str(entry.get("fragment", "路人")),
+        self._extras[name] = {"fragment": fragment,
                               "knowledge_notes": str(entry.get("knowledge_notes", "")),
                               "partner": asker, "last_active": self.world.now,
                               "rarity": str(entry.get("rarity", "common")),
@@ -2224,7 +2438,7 @@ class AsyncEngine:
                               "pending_question": question,
                               "pending_heard_speech": False,
                               "system_prompt": build_extra_system_prompt(
-                                  str(entry.get("fragment", "路人")),
+                                  fragment,
                                   str(entry.get("knowledge_notes", "")), location,
                                   name=name)}
         self._wake_events[name] = asyncio.Event()
@@ -2409,6 +2623,26 @@ class AsyncEngine:
             result, error = "rejected", str(exc)
         except Exception as exc:
             result, error = "agent_error", f"{type(exc).__name__}: {exc}"
+        # Ticket 88 (report 86 §2): a zero-action extra turn used to leave a
+        # blank line in the trace. The MC/NPC path records `empty_turn` for
+        # exactly this state; the extra path skipped it, so 09:33 林大爷 and
+        # 14:13 陈师傅 read as silence with no reason. This records the reason;
+        # the world is untouched and the actor is not penalized.
+        if needs_response and not intention_calls and result == "none":
+            self.trace.record_system(
+                {"kind": "empty_turn"},
+                {"actor": name, "role": "extra", "reason": "no_output",
+                 "private_chars": 0})
+        elif not needs_response:
+            # 票 101（E107）：这一回合根本没请求模型——extra 被唤醒（例如 Resume 时
+            # `_extra_loop(name, "")` 的第一次唤醒）但既没有待答的问题、也没有新听到的话。
+            # 窗口 6 18:00 胡大叔的 `result: none` / `calls: []` / `inner: null` 就是这一种，
+            # 而旧路径只在 needs_response 为真时记 `empty_turn`，于是它是 trace 里的一行空白。
+            # 只加诊断：这一回合没有消耗模型、也没有改变世界。
+            self.trace.record_system(
+                {"kind": "empty_turn"},
+                {"actor": name, "role": "extra", "reason": "no_request",
+                 "private_chars": 0})
         # Trace.record_agent requires a real Intention (it reads .actor/.kind/
         # .args); a bare dict made every extra turn die after submitting its
         # speech, so no extra turn was ever recorded (ticket-21). The lifted
@@ -2470,6 +2704,7 @@ class AsyncEngine:
                 "kb": {actor: kb.snapshot() for actor, kb in self._kb.items()},
                 "recall_lines": {k: list(v) for k, v in self._recall_lines.items()},
                 "last_tool_text": dict(self._last_tool_text),
+                "empty_streak": dict(self._empty_streak),
                 "flashback_pool": {actor: [[t.isoformat(), line, sorted(entities)]
                                             for (t, line, entities) in pool]
                                     for actor, pool in self._flashback_pool.items()},
@@ -2522,6 +2757,8 @@ class AsyncEngine:
                         for name, x in state.get("extras", {}).items()}
         self._recall_lines = {k: list(v) for k, v in state.get("recall_lines", {}).items()}
         self._last_tool_text = {k: str(v) for k, v in state.get("last_tool_text", {}).items()}
+        self._empty_streak = {k: _as_int(v, f"empty_streak[{k}]")
+                              for k, v in (state.get("empty_streak") or {}).items()}
         self._flashback_pool = {
             actor: [(_dt.fromisoformat(row[0]), row[1], frozenset(row[2]))
                     for row in pool]

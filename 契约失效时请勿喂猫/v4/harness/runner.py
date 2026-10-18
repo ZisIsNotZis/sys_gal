@@ -267,7 +267,13 @@ class Runner:
                             if self.system is None:
                                 raise ActionRejected("no bound System")
                             before = len(self.world.event_log)
-                            event = self.system.ask(self.world, intention.actor, str(intention.args.get("question")))
+                            try:
+                                event = self.system.ask(self.world, intention.actor, str(intention.args.get("question")))
+                            except ActionRejected:
+                                # 票 95（E95）：拒绝也会提交一条私有审计事件；
+                                # 它同样属于这个回合，不能被异常路径丢掉。
+                                event_ids.extend(e.id for e in self.world.event_log[before:])
+                                raise
                             event_ids.extend(e.id for e in self.world.event_log[before:])
                             self.trace.record_system(dict(intention.args), {"event_id": event.id, "kind": event.kind})
                         else:
@@ -637,7 +643,9 @@ class Runner:
         if result in {"agent_error", "decision_timeout", "engine_error"}:
             return f"你的这个念头没能落地：{error}.{note_warning}"
         events = [self.world.event_log[i - 1] for i in event_ids if 0 < i <= len(self.world.event_log)]
-        system_events = [event for event in events if event.kind.startswith("system_")]
+        # 票 95（E95）：`system_dialogue` 是对话审计，不是给角色的口信。
+        system_events = [event for event in events
+                         if event.kind.startswith("system_") and event.kind != "system_dialogue"]
         if system_events:
             name = str(self.system.name) if self.system else "台账"
             messages = []

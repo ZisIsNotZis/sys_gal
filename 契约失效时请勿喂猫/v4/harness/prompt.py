@@ -37,13 +37,37 @@ def _clean_description(description: str) -> str:
     return body.strip()
 
 
+# 票 85（报 81 §3 的提示层移交）：NPC 唤醒时的两条约束。它们不是种子数据——
+# 报告 §P2 的两处失效都发生在同一角色同一段简报下：七次"我马上给你打"没有一次
+# `give`（话语被当成交付），以及"长柄勺找不着"（断言了世界从未发生的物件移动，
+# 而 `例汤` 的描写原文是"桶边搭着一把长柄勺"）。因此它们是 `[director]` 块的固定
+# 开头，种子写的本场目标接在后面。
+NPC_WAKE_RULES = (
+    "【说话不改变世界】\n"
+    "- 只有工具调用能改变世界：说「我给你」「我去拿」「我马上给你打」什么都不会发生。"
+    "要交付就真的用 give 把东西递到在场的某人手上，要取物用 take，要放下用 place；"
+    "做不到就直说做不到。\n"
+    "- 不许断言或否认世界状态的改变（「勺子没了」「已经登记好了」「东西被挪走了」），"
+    "除非你亲眼看到那条事件；这条消息里你感知到的事实，就是此刻的事实。\n"
+)
+
+
+def director_block(brief: str | None = None) -> str:
+    """NPC 唤醒时的 `[director]` 块：`NPC_WAKE_RULES` 在前，本场简报接在其后。
+
+    简报可以缺（种子没给该角色写本场目标），约束不能缺：它是提示层的，不是种子侧的。
+    """
+    text = str(brief or "").strip()
+    return NPC_WAKE_RULES + ("\n" + text if text else "")
+
+
 def render_world_message(perception: Mapping[str, Any], affordances: Sequence[Mapping[str, Any]] | None = None,
                          *, observer: str | None = None,
                          knowledge_lines: list[str] | None = None,
                          director: str | None = None) -> str:
     """V4-AGENT-INTERFACE §3：表头恒在，#events/#knowledge 空块省略，
-    #actions 恒在；director 非 None 时置顶 [director] 块（NPC 简报）。
-    observer 缺省取 perception["observer"]（旧调用方兼容）。"""
+    #actions 恒在；director 非 None 时置顶 [director] 块（NPC 简报，由
+    `director_block()` 组装）。observer 缺省取 perception["observer"]（旧调用方兼容）。"""
     who = str(observer if observer is not None else perception.get("observer", ""))
     lines: list[str] = []
     if director is not None:
@@ -60,6 +84,14 @@ def render_world_message(perception: Mapping[str, Any], affordances: Sequence[Ma
     nearby = sorted(str(x) for x in perception.get("nearby_items", []))
     if nearby:
         lines.append("附近：" + "、".join(nearby))
+    # Ticket 88: a persistent note is an addressable record lying here. Its
+    # content is not perception — it is read with `read <id>`.
+    notes = list(perception.get("notes_here") or ())
+    if notes:
+        lines.append("字条：" + "、".join(
+            f"{str(note.get('id'))}（{note.get('author')} 于 "
+            f"{_clock(str(note.get('left_at')))} 留，读全文用 read）"
+            for note in notes))
     action_state = _action_state_sentence(perception.get("action_state"))
     if action_state:
         lines.append(action_state)
@@ -214,12 +246,17 @@ def _event_sentence(event: Mapping[str, Any], location: str = "",
         return f"{payload.get('from')} 把 {payload.get('item')} 交给 {payload.get('to')}"
     if kind == "document_read":
         return f"{who} 读了 {payload.get('document')}"
+    if kind == "document_annotated":
+        # 票 95（E98）：同地点的人只看见“谁在文书上写了字”，正文要自己 read。
+        return f"{who} 在 {payload.get('document')} 上留下批注"
     if kind == "note_left":
+        if payload.get("persist"):
+            note_id = payload.get("note")
+            return (f"{who} 留下一份留得住的文稿（{note_id}）" if note_id
+                    else f"{who} 留下一份留得住的文稿")
         return f"{who} 留下一张字条（内容仅对下一位进入者可见，阅后即焚）"
     if kind == "item_trashed":
         return f"{who} 销毁了 {payload.get('item')}"
-        return f"{who} 在 {payload.get('document')} 上留下批注"
-        return f"{who} 比对 {payload.get('first')} 与 {payload.get('second')}"
     if kind == "knock":
         return f"{who} 敲了 {payload.get('target')} 的门"
     if kind == "interaction":
@@ -251,6 +288,10 @@ def _event_sentence(event: Mapping[str, Any], location: str = "",
     if kind == "world_event":
         notice = payload.get("notice")
         return str(notice) if notice else f"发生了一件事：{payload.get('event', '事件')}。"
+    if kind == "item_dropped":
+        # E84（报 81 §5）：extra 被回收时，它手里的东西落回最后所在地点。这是
+        # 客观事实，同地的人看得见——否则物品虽然回到了世上，却没人知道它回来了。
+        return f"{who} 离开时，{payload.get('item')} 留在了{payload.get('location') or location or '这里'}"
     if kind == "extra_arrived":
         return f"{who} 出现了"
     if kind == "extra_removed":
@@ -260,11 +301,14 @@ def _event_sentence(event: Mapping[str, Any], location: str = "",
         if str(payload.get("reason") or "") == "idle":
             return f"{who} 走开了，刚才的交谈就此中断"
         return f"{who} 走了"
+    if kind == "system_dialogue":
+        # 票 95（E95）：对话审计事件只供日志与复核，不是角色能“听见”的一句话。
+        return None
     if kind and kind.startswith("system_"):
         return _system_sentence(kind, payload)
     # move 的 started/completed（enter/leave 已承载）、wait/sleep 完成、
     # 私有簿记（message_sent/interrupt_requested/wait_woken/private_wake/
-    # time_advanced）与未知 kind：一律不渲染。
+    # private_wake_failed/time_advanced）与未知 kind：一律不渲染。
     return None
 
 
@@ -311,7 +355,9 @@ def _system_sentence(kind: str, payload: Mapping[str, Any]) -> str:
     if kind == "system_case_accepted":
         terms = "、".join(str(t) for t in payload.get("terms", []))
         return (f"{name}的声音在你耳边响起：案子接下了。它要你答上三件事里的门道——{terms}。"
-                f"答对了，{name}给你一样东西：{payload.get('reward_offer')}。")
+                f"答对了，{name}给你一样东西：{payload.get('reward_offer')}。"
+                f"要问它，就当面对着「{name}」说话（speak 的 to 写它的名字）；"
+                "它只答自己案卷里记着的条目，答不了就告诉你不知道。")
     if kind == "system_answer":
         return f"{name}在你脑子里缓缓开口：「{payload.get('answer')}」。"
     if kind == "system_reward_granted":
@@ -344,7 +390,8 @@ def build_prompt(*, identity: str, private_seed: str, state: PrivateState,
         "只输出一个 JSON 对象，先想后动，inner 永远在最前："
         '{"inner":"你的第一人称心声，几句话","type":"动作名","args":{...},"updates":{...}}。'
         "type 必须是上面列出的动作之一；参数名照抄供给列表：take/place/give/read "
-        "用 item；compare 用 first 和 second；move 用 target；send_message 和 "
+        "用 item；compare 用 first 和 second；move 用 target（要带同在此地的人一起走，另加 "
+        "with=[名字]）；send_message 和 "
         "give 用 target；wait 用 duration_seconds。speak 可带 volume（whisper 时必须带 "
         "to=[在场的听众]）。updates 只放你私人的 goals/beliefs/memories/interpretations/"
         "private_notes，没有就省略。无法成形的意图，就用自然语言描述（不要 JSON）。",

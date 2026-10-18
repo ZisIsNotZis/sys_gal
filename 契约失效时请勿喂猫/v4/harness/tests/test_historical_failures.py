@@ -70,6 +70,474 @@ E50 extra checkpoint state incomplete (ticket 50) .............. test_extra_chec
     stage died with a KeyError and lost the pending question and replay
     cursor. The archived d1-am artifact carries a live extra (韩大叔), so the
     next half-day resume (d1-am -> d1-pm) would have hit it.
+E71 py3.14 unpicklable itertools.count breaks deepcopy (ticket 71) ... test_world_deepcopy_survives_and_event_ids_stay_unique,
+                                                               test_deepcopy_keeps_shown_seq_allocating
+    machine Python moved to 3.14.8 (suite was green on 2026-10-13):
+    copy.deepcopy(World/ActorKB) raised `TypeError: cannot pickle
+    'itertools.count' object`, taking out every replay/checkpoint path
+    (replay_world, launch trace, kb restore). Fix: kernel.Count replaces
+    itertools.count (monotonic, picklable); the serialized
+    next_sequence/next_event_id/shown_seq schema is unchanged and the
+    archived checkpoints/d1-am.json loads as before.
+E72a add_document placement is not delivery (ticket 72) ............ test_audit_slip_delivery_requires_a_scheduled_relay
+    审计催办单 was placed at 学生会办公室 with no target while 陈默
+    sat at 校史档案室 — d1-审计催办转达 counted 0 relays with lint green
+    (report §5.3). A seed document an anchor depends on must carry a
+    scheduled relay: target names the responsible actor, notice carries
+    the slip and the duty.
+E72b read passed, speech occasion missing (ticket 72) .............. test_speech_anchor_requires_a_scheduled_occasion
+    林瑶 read the audit pack 12 times; pm speech needles counted 0 — no
+    scene opened the substance to speech (report §6.3). An anchor that
+    scores 说 must schedule an open co-presence occasion
+    (audit_pack_review 16:20, broadcast at 学生会办公室).
+E73 extra answer races the idle despawn (ticket 73) ............... test_extra_turns_are_recorded_and_conversational
+    2026-10-16 live red (module solo + full discover): the stub answer
+    sat queued on the shared daemon pool while world time outran it; the
+    60s idle despawn then cancelled the extra mid-answer (probe:
+    赵阿姨 extra_removed 'idle' 07:03, stub_calls=0) — 1 extra turn,
+    "1 != 2". Fix is test-side: warm the pool before run and pin
+    extra_idle_seconds above the scenario span. Product-side finding
+    (clock pin ignores _extra_inflight on the normal advance path) is
+    registered in ticket 73 for a separate engine ticket.
+    2026-10-18 (ticket 104): the pool warm-up left the gate a coin flip
+    under load — in a populated pack world the scheduler keeps stepping the
+    clock on the rest of the cast's one-tick wait completions while the
+    extra's provider call is in flight, so the same scenario measured
+    arrival 07:01 or 07:02 and an answer 0, 60 or 120s late, and sometimes
+    the run ended before the second answer landed ("1 != 2"). Fix is the
+    fixture, not the engine: 陈默 stands alone in the world, its idle wait is
+    a LEGAL one (wait 3600 exceeded this seed's 900s cap, so the rejection
+    repair substituted a one-tick wait — one more event in the window), the
+    follow-up ask is issued only after the reply was heard, and the stub
+    answers only once 陈默 has parked (a barrier on world state). The
+    deliberation window then owes no event at all, so the clock pin is the
+    only thing that can hold the tick and the assertion is exact: answer
+    tick == arrival tick (was ≤1 tick). Mutation-proven: removing
+    `_extra_inflight` from `_quiescent()` or fast-forwarding two ticks under
+    the deliberating extra both red the gate.
+E75 take race: second same-item completion crashed the clock (ticket 75) .. test_take_race_second_completion_does_not_crash_the_clock
+    2026-10-16 d1-pm live red (run real-20261016T192137, world 16:07):
+    林瑶室发 and 李学姐 both queued take 可用纸笔 at 16:06 while the item
+    was present, so both submits passed validation; the 16:07
+    completions fired back to back — the first deleted item_locations,
+    the second raised KeyError and killed the run. Completion-time
+    guard: a take whose item is already gone stands as an event and
+    mutates nothing (mirror of the despawned-extra defensive returns).
+    Ticket 98 (E102) tightened the invariant: the second SUBMIT is now
+    rejected ("X is taking it right now"), so the crash path is only
+    reachable from a restored old checkpoint — the guard stays, and the
+    gate feeds it a completion directly.
+E76 公告栏死循环：登记为文书，read 已经够 (ticket 77) .. test_notice_board_needs_only_a_document_row,
+                                                               test_world_pack
+                                                               PrimitiveSufficiencyTests.test_a_notice_board_is_a_document_and_read_already_covers_it
+    d1 全天工件 (real-20261016T210724 + pm 续跑): error turns #329/355/362/
+    363/500/994 and ~10 more were `read 教学楼正门内侧公告栏` → "这里没有
+    这样一件能读的文书"; five people spent 10:49–13:35 delegating the same
+    unperformable errand, then asked two passers-by. Gap was seed-side: the
+    board was named as an information channel in notices but never registered
+    as an entity with a body. Encoding: a `documents:` row (+ Markdown
+    description, `reading_seconds`, default auto_read) — `read` therefore
+    offers it, produces `document_read`, and stay-read covers the rest. No
+    look/examine verb was added.
+E77 库存/陈设不可查验：物品描述已经在知觉里 (ticket 77) . test_fixture_stock_needs_only_an_item_description,
+                                                               test_world_pack
+                                                               PrimitiveSufficiencyTests.test_stock_and_fixtures_are_item_descriptions_in_perception
+    唐小岚 hunted the kettle in her own café (16:26–16:51, 19:34–19:55) and
+    asked customers ("我就在这家店当班，刚才没认出来"); 班长/陈默/吴阿姨 held a
+    20-minute stalemate over 关东煮 stock (19:34–19:52); 食堂菜牌 13:22–13:38.
+    Perception already delivers the objective description of every item here
+    (`_visible_descriptions` + ticket 49's `observed` row), so a fixture or a
+    stall's stock is an `items:` row whose prose states the quantity, and a
+    menu/price list is a `documents:` row (E76). No look verb was added.
+E78 12345 借电话死胡同：缺的是世界内出口 (ticket 77) ..... test_the_hotline_loop_needs_a_world_exit_not_a_verb,
+                                                               test_world_pack
+                                                               PrimitiveSufficiencyTests.test_the_night_dead_end_is_a_missing_route_not_a_missing_verb
+    21:30–22:00: 下棋大爷 had nowhere legal to spend the night; 班长 and 陈默
+    tried 12345, the engine had no call action, and the half hour became a
+    "borrow a phone" loop (店员 and extras: 不归我管) while the clock reached
+    22:00 undecided. Root cause is a seed gap — no reachable place that serves
+    the need — so one route plus the place's own description turns the loop
+    into an ordinary `move`. Residual, recorded not implemented: a literal
+    call to a non-person endpoint is not expressible today; the minimal
+    generalisation would widen `text`'s target class to registered non-person
+    endpoints (kernel text branch + `_resolve_person`), never a `call` verb.
+E77b 值班干事缺席：宿主是既有 actor + 可读的现场留痕 ..... test_world_pack
+                                                               PrimitiveSufficiencyTests.test_a_duty_clerk_is_an_existing_actor_and_absence_leaves_a_record
+    d1-pm: 16:20 面核 was a targetless broadcast, the scene had no host and
+    nothing to perceive, and 林瑶 (away 16:13–16:55) could only say "I missed
+    it". Encoding without a spawn primitive: the host is an ordinary `actors:`
+    row (V4-CAST §1 NPC tier) woken by the existing scheduled `target` row,
+    and the occasion leaves a document via the existing `add_document`
+    effect, which a late arriver perceives and reads.
+E79 scheduled notice asserts an acting person no actor can host (ticket 78)
+                                                              SeedContractGateTests.test_g1_an_acting_role_noun_needs_a_real_actor,
+                                                              test_g1_quoted_speech_and_absence_forms_are_not_agents,
+                                                              test_the_gates_bite_on_the_shipped_pack
+    d1-pm (manifest.yml:830, `audit_pack_review`): the 16:20 broadcast says
+    "学生会办公室的值班干事按规程把学生会审计包当场摊开逐项核对" while no actor
+    is that clerk — 林瑶 left at 16:13, passed the office at 16:24/16:34/16:45
+    with nothing to perceive, and said at 16:56 "我错过了16:20的面核". Same
+    family: 管理员 W 返岗/核对移交清单/签字 (admin_return, admin_handover,
+    files_closed, admin_resolution, ledger_found), 老板娘 in coop_thread, 阿姨 in
+    quest_washer, and the 1130 line of 值班簿 content where 值班干事 holds a
+    shift. Fix: the four-gate lint (G1) requires an acting role noun in a
+    scheduled notice to be a real `actors:` row (ticket 77b's encoding: host =
+    existing NPC actor, no spawn primitive) or to be rewritten as a visible
+    absence; registering it as a concept or declaring a location extra does not
+    count, because a concept has no hands and an extra is a lazily invited
+    stranger with no presence guarantee, inventory or trace.
+E80 bare role noun neither registered nor declared generic (ticket 78)  SeedContractGateTests.test_g2_a_bare_role_noun_needs_registration_or_a_generic_declaration,
+                                                              test_the_gates_bite_on_the_shipped_pack
+    值班干事 (面核通知、值班簿/场地申请表正文、林瑶的 12:30 常驻行)、老板娘
+    (小卖部与关东煮的正文、唐小岚的 15:00 带话行)、店员、值班学生、管理员、
+    负责人、老师、编辑/记者、学生馆员、阿姨、大爷…— these nouns were readable
+    but unnameable: the name contract only checks names that are registered, so a
+    role noun nobody registered slipped through both ways. Fix: G2 requires each
+    bare role noun in authored prose to be a registered name (marked [[ ]]) or to
+    be declared generic in that row's `role_prose:`. The declaration lives on the
+    owned row (scheduled/concept/kb/actors/items/documents/locations) so it never
+    reaches the model as text.
+E81 registered place or item with no reachable path (ticket 78) .. SeedContractGateTests.test_g3_every_location_needs_a_route_from_an_mc_start,
+                                                              test_g3_a_prose_destination_must_be_a_location_not_a_place_concept,
+                                                              test_g3_an_item_needs_a_path_or_a_completeness_declaration,
+                                                              test_the_gates_bite_on_the_shipped_pack
+    唐小岚 carried a standing task "交接班前去后街糕点铺帮老板娘带话" for
+    12:21–19:54; 后街糕点铺 was registered only as a `kind: place` concept — no
+    location, no route, and no actor could give directions, so `move` answered
+    "不是一个你知道的地方" for six hours. Same family: 红色哨子 and 蓝色兔子雨伞
+    sit at 老家属院, a `remote: true` location no one can walk to, with no
+    acquisition path and no completeness declaration. Fix: G3 requires every
+    location to be walk-reachable from each MC start (remote locations excepted
+    by explicit declaration), every item/document to have a reachable place, a
+    reachable carrier or a `completeness: expectation/belief/missing`, and every
+    prose destination ("去/回 X") to be a registered location rather than a bare
+    place concept.
+E82 prose-announced interaction without an existing affordance class (ticket 78)
+                                                              SeedContractGateTests.test_g4_a_read_mention_needs_a_document,
+                                                              test_g4_an_examine_mention_needs_an_item,
+                                                              test_g4_a_call_mention_needs_a_person_to_reach,
+                                                              test_the_gates_bite_on_the_shipped_pack
+    Three loops the d1-pm reviewers found (§2.4): 公告栏 read 10:49–13:35 by
+    everyone who could be delegated ("这里没有这样一件能读的文书", 10+ error
+    turns); 热水壶/关东煮库存/食堂菜牌 asked of strangers for minutes at a time
+    (16:26–16:51, 19:34–19:52, 13:22–13:38); and 12345/借电话 21:30–22:00, a
+    hotline the世界 cannot even express. Fix: G4 requires a prose-mentioned
+    interaction to land on an existing target class — read wants a document
+    (kernel `_available_readables`), a seen/taken thing wants an `items:` row
+    (description through perception/observed), a contacted person wants an
+    `actors:` row or a KB contact row — and reports the missing category with its
+    remedy. 12345 is not in the seed today: the seed-side instance is "重大事项
+    须电话报备" (校史档案室 rule + 档案室管理员 desc) which names no reachable
+    person, and the hotline itself was invented by the model because the world
+    had no line to answer.
+E83 a fixed fixture could be picked up and carried off (ticket 80, 票 79 §8 ⑤)
+                                                              SeedContractGateTests.test_a_fixed_fixture_cannot_be_taken_and_stays_put
+    票 78 G4 按票 77 的编码把 货架/冰柜/柜台/关东煮/例汤/热水壶 登记成 `items:`，
+    好让在场的人知觉到它们；但 `take` 对任何 item 都成立，于是模型可以把一台
+    冰柜拿走、也可以就地递给别人（give 的就地分支）或扔掉（trash）——陈设离开
+    原处之后，房间描写与库存描写就都不成立。修法是一处最小泛化而不是新原语：
+    `items:` 增加可选布尔 `takeable`（缺省 true），false 表示固定陈设，take 结构化
+    拒绝并给出 `fixed_reason`（缺省“这是固定陈设”），give/trash 走同一条判定；
+    物品位置、检查点与 replay 一字未改——变的只是“拒绝”这一判定。
+E84 extra 被回收时把身上的东西一起带走了 (ticket 83, 报 81 §5) ...
+                                                              ExtraDespawnItemInvariantGates
+    real-20261018T012247, 窗口 07:00→14:00: 12:52 extra 陈阿姨 在半坡咖啡馆
+    `take 校报草稿` 成功，13:07 按 idle 回收——草稿随她离开世界，item_locations
+    里没有它、没有一条说明它去了哪的事件，唐小岚 13:17 回到咖啡馆时只剩裂纹
+    马克杯（那是她 !always 的目标物）。修法：`World.remove_extra` 在提交
+    extra_removed 之前，把背包里的每件物品按既有 place 语义落回它最后所在地点，
+    一件一条可见的 `item_dropped`；于是"任何物品在任何时刻要么在某人手里、要么
+    在某个地点"在每个日志前缀上都成立，replay 重建同一结果（此前 replay 遇到
+    extra 的 take 直接 KeyError：extra_arrived/extra_removed 从未被重放）。
+E85 写记录的动作用了、却读起来不像能写记录 (ticket 83, 报 81 §1/§3 报告) ...
+                                                              WriteRecordAffordanceGates
+    林瑶 08:34 真的用 `leave_note` 写了 400 字事实记录（turn 93，note_left 落地），
+    08:53 起却说"不把口头说明或留字条当成完成"，13:13 手里握着 `可用纸笔` 写下
+    "纸笔在我手上，但没有可用工具把个人事实记录实际写入纸面"。诊断：动作本身
+    在工具表与 affordances 里，且**不依赖任何持有物**（kernel 只看 text），
+    缺的是说法——它只被描述成"给之后进入者留一张会烧掉的字条"。修法不改语义：
+    工具说明与 affordance 提示都先把它说成"写记录/留字条"，并明说纸笔不是前提。
+E86 一个没有调用的回合在 trace 里是空白行 (ticket 83, 报 81 §2) ...
+                                                              TurnWithoutActionGates
+    real-20261018T012247 的 12:51 林瑶（mc）回合：result=none、inner=None、零调用，
+    世界只往前走一拍；同一 run 另有 5 个 NPC 空回合。审阅者只看到一条没有原因的
+    空白行。修法不改模型行为：`_execute_chain` 对零调用的回合记一条 system_turn
+    `empty_turn`，reason=`prose_only`（写了话但没提交意图）或 `no_output`（什么都
+    没返回），带 actor/turn_id/role/private_chars。
+E87 话语不是动作：七次"我马上给你打"零交付 (ticket 83, 报 81 §3) ...
+                                                              TurnWithoutActionGates
+                                                              (test_a_spoken_promise_is_recorded_as_speech_not_as_an_action,
+                                                               test_a_turn_that_speaks_is_not_an_empty_turn)
+    12:44–12:58 食堂大妈七次承诺打饭、零次 give/place；同一 run 11:48–11:59 她还
+    用"长柄勺找不着"解释盛不了汤，而 item 描写里长柄勺就在桶边。裁定：引擎侧
+    无需改——七次承诺都是真的 `speak` 调用，世界照实记了七句话、零交付（她要的
+    `一份餐食` 就在食堂，`give` 一直在她的工具表里），缺的是 NPC 导演简报的约束
+    （不得断言世界状态的改变、承诺交付要真的调用 give）。看守测试钉住这条区分：
+    只有 speak 的回合没有 item_given、也**不**被记成空回合；真的 give 才产生
+    item_given。
+E88 承诺、断言与"写记录"三件事没有写进各自角色的提示 (ticket 85, 报 81 §3)
+                                                              PromptDeliveryConsistencyGates
+                                                              (test_an_npc_wake_briefing_binds_delivery_to_tools,
+                                                               test_an_extra_prompt_binds_delivery_to_tools,
+                                                               test_mc_tool_notes_say_words_are_not_delivery)
+    E87 的裁定把缺口交给提示层，但提示层当时只有"不得叙述没做过的动作"这一句：
+    NPC 唤醒收到的 `[director]` 块只有本场目标，一句
+    "说话不改变世界/承诺要用 give 兑现/不得断言未见的世界变化"都没有；extra 的
+    固定 prompt 同样没有"话不改变世界"与"不得否认世界状态"；MC 只有工具说明，
+    而 `give`/`take` 的说明读起来像是纯物理描述（"递给在场的某人"），
+    `leave_note` 也没有把"书面记录"这层说清。三类角色各自的提示因此都把
+    "说"当成了"做"。修法只在提示层：`prompt.NPC_WAKE_RULES`（NPC 唤醒块固定
+    开头）、`build_extra_system_prompt` 的"你能做的事"、`action_schema` 的工具说明
+    各加相应一条，引擎语义、世界、种子一字未改。
+E89 书面稿只能留给下一位进入者、读后即焚 (ticket 88, 报 86 §1) ..... PersistentNoteGates
+    (test_a_persistent_note_can_be_read_twice_with_the_same_text,
+     test_a_default_note_still_burns_after_its_first_reader,
+     test_replay_rebuilds_the_same_persistent_note_id,
+     test_a_checkpoint_keeps_the_note_and_never_reuses_its_id,
+     test_an_old_checkpoint_without_notes_still_loads,
+     test_the_archived_d1_am_checkpoint_still_loads)
+    窗口 2（real-20261018T023423）12:11–15:02：21 次 `item_given` 全是纸笔在三人
+    之间往返、0 次成稿；96 个回合（9.9%）在讨论"留条能不能算稿"（12:47/13:18/
+    13:19/14:55）。根因不是缺动作而是语义：`leave_note` 的投递是"给之后第一位
+    非作者、阅后即焚"，按定义交不到在场的收件人、也读不了第二遍。修法是一处
+    泛化：`leave_note` 增加可选 `persist`（缺省 false，旧语义一字节不改）；persist
+    时便条成为可寻址实体 `note-<作者>-<序号>`（留在原地点、进知觉的「字条」行与
+    read 的可用目标、可重复读、可 trash），`note_left` 事件带 id 与 text 所以
+    replay 重建同一 id；"交付"= 把它留在目标地点，不新增动作。检查点只增
+    `persistent_notes` / `next_note_serial` 两个可缺省键（旧检查点照常加载）。
+E90 零动作的 extra 回合没有记录 (ticket 88, 报 86 §2) .............. ExtraEmptyTurnGates
+    (test_a_zero_action_extra_turn_is_recorded_with_its_reason,
+     test_an_answering_extra_turn_is_not_an_empty_turn)
+    窗口 2 的 system_turns 有 6 条 `empty_turn`（MC/NPC），但 trace 里 `result: none`
+    的回合有 8 条：09:33 林大爷、14:13 陈师傅 零调用、inner 为空却没有任何记录。
+    E86 的 `empty_turn` 只记在 `_execute_chain` 的 MC/NPC 链路径上，extra 走
+    `_extra_turn` 就漏了。修法只加诊断：extra 真正被问了却没有返回任何调用时记一条
+    `empty_turn`（role=extra、reason=no_output），世界不变、不惩罚角色。
+E91 点名的路人被随机姓名替换 (ticket 88, 报 86 §3/§6) ............ ExtraPoolAliasGates
+    (test_naming_a_pool_alias_spawns_that_entry_under_that_name,
+     test_an_unnamed_ask_still_samples_the_pool)
+    后街糕点铺的池条目是"后街糕点铺的老板娘"，但 `_spawn_extra` 用
+    `generate_stranger_name()` 取名：13:14 生成李师傅、15:09 生成王学长，唐小岚
+    两次到场都在问"李师傅或店里负责人现在在吗"，要找的"老板娘"从未出现（15:12
+    只能靠"反正有人听见了"结案）。修法是一处泛化：池条目可声明 `aliases:`；
+    `speak(to=["老板娘"])` 与 `to=["陌生人"]` 走同一条搭话通道（`stranger_asked`
+    多一个 `alias`），引擎优先取该条目并让别名成为它的名字；未点名时仍随机取样，
+    生命周期机制（idle despawn / E84 落物）不变。
+E92 台账在对话里够不着它 (ticket 91, 报 90 §1) ................. LedgerDialogueGates
+    (test_the_bound_character_gets_a_fact_table_answer_by_naming_the_ledger,
+     test_a_question_outside_the_fact_table_gets_the_ledger_s_dont_know,
+     test_a_used_up_ledger_stops_answering_instead_of_answering_again,
+     test_the_query_limit_itself_closes_the_ledger,
+     test_an_unbound_character_naming_the_ledger_is_not_answered_by_it,
+     test_a_misnamed_attempt_gets_the_ledger_s_real_address_back)
+    窗口 3（real-20261018T033115）09:02：陈默 `speak(to=["2013年台风台账"])`
+    被内核判成"未知收件人"；`World.ACTIONS` 里没有 `ask`、`Ledger.affordances()`
+    按工单 14 返回 `[]`、v4 工具面无 `system_query`，而文档 §5 写着"它是世界内
+    对话者……所有交互走对话"。全段 `system_answer` 0 次、`system_reward_granted`
+    0 次，案件的三个条款一次都没被答上。修法不新增动作：`speak` 的收件人解析
+    扩展到已接受案件的 System 对话者（受约束角色点名种子 `system.name`），走既有
+    fact table 应答，答案以既有 `system_answer` 私有事件只投递给它；答不了说
+    不知道、超限/结案即闭口、未受约束的角色不被应声。裁定"钉住的文书"用既有的
+    `takeable: false`（见 test_world_pack PlaceBoundDocumentTests）。
+E93 连续空回合的后果没人告诉角色 (ticket 91, 报 90 §2) ........... ConsecutiveEmptyTurnGates
+                                                               NoActionNoticeTextGates
+    窗口 3 的 08:42–09:04：陈默九个回合只有正文、零工具调用（`intention: null`、
+    `content_private` 81–142 字、provider 故障 0——不是引擎重试），每拍世界只多了
+    一条 §4 的 60 秒发呆 `wait`，时钟每拍前进约两分钟；`empty_turn` 记了，但那一拍
+    的后果从没回到他的输入里，于是他在正文里把台账三条款答了五遍。修法两处、都不
+    改时钟：`empty_turn` 多一个连续计数 `streak`（进检查点、有调用即清零），零调用
+    的回合把一条"那段想法没有改变世界"的反馈（带连续次数）追加到下一回合输入，
+    一拍一条、不叠加、不代填动作。
+E94 结案时机：首次命中就结案让 `limit` 不可达 (ticket 93, 票 91 §4-2 裁定) ... LedgerClosureGates
+    (`test_two_hits_in_a_row_each_produce_an_answer_and_the_case_stays_open`,
+     `test_after_the_limit_the_ledger_silences_without_closing_the_case`,
+     `test_the_seeded_settlement_beat_closes_the_case`,
+     `test_a_world_beat_that_is_not_the_settlement_keeps_the_case_open`,
+     `test_the_real_seed_schedules_the_settlement_and_it_closes_the_case`)
+    `Ledger.query` 一命中就把 `status` 置成 `completed` 并发 `system_reward_granted`，
+    于是 `query_limit > 1` 的种子实际只答一次（第二问走 `closed` 而不是 `limit`），
+    而 `V4-AGENT-INTERFACE` §5 写的是“查询次数硬上限”、`V4-STORY-MILESTONES` 把结算
+    排到 d7/d12。用户裁定：**结案由种子排程的结算事件驱动**（既有 `system_reward_granted`
+    私有路径），首次命中只给答案。修法：`query` 命中不再改 `status`、不再发报酬；
+    `Ledger.settle` 在种子那条 `settle_on` 节拍（本种子 3/22 15:00 `ledger_settlement`）
+    到达时结案并发报酬（幂等）；引擎在 `_after_advance` 只认这一条节拍名，其它世界
+    事件不结案；`world_loader` 在加载时校验 `settle_on` 点得到一条真排程（点错即
+    “永不结案”，所以大声失败）。`status` 终态从 `completed` 改为 `closed`，旧语义下
+    依赖“命中即结算”的两支测试（`test_kernel`、`test_runner`）按新语义重写。
+E95 台账事实表要逐字猜问句，拒绝零痕迹 (ticket 95, 报 94 §1) ... LedgerFactMatchingGates
+    (`test_a_natural_question_hits_by_keywords`,
+     `test_a_question_with_no_keyword_gets_dont_know_and_a_private_audit`,
+     `test_a_tie_between_two_entries_gets_dont_know`,
+     `test_every_dialogue_leaves_one_private_audit_with_the_answer_event_id`,
+     `test_an_entry_without_keywords_still_answers_its_own_question`,
+     `test_the_real_seed_answers_five_natural_questions_with_plain_text`)
+    窗口 4：陈默 5 次点名台账全部 submitted，`system_answer` 仍 0——`facts.get(question.strip())`
+    要求逐字命中三条原始问句，而他从没见过它们；拒绝在世界日志里 0 痕迹。修法：条目可声明
+    `keywords`（缺省回落到条目问句）；问句归一化（NFKC + kb.normalize）后按命中关键词数打分，
+    唯一最高分即答，并列/零分答“不知道”，**不调模型**；每次对话（含拒绝）提交一条只给提问者的
+    `system_dialogue` 私有事件（`question/matched/outcome/answer_event_id?`），仍不产生公开 speech。
+E96 没有“带某人一起走”的原语 (ticket 95, 报 94 §4) ........... EscortMoveGates
+    (`test_two_people_arrive_together_with_one_synchronised_sequence`,
+     `test_a_companion_locked_in_an_uninterruptable_action_rejects_the_move`,
+     `test_replay_after_an_escort_keeps_everyone_in_the_same_place`,
+     `test_a_companion_who_is_not_here_is_rejected`)
+    窗口 4：305 族 219 条发言 / 17 个角色 / 6h51m，165 条“我不能实际扶/陪/带”。世界没有“扶着
+    某人一起走”的动作，305 也不是地点，17 个角色的拒绝全都对。修法：`move` 可选
+    `with=[同在此地的人]`——校验同处一地/未被不可打断动作锁住/自己不在走另一段，共同按发起者
+    路线逐跳移动（每位被携带者自己的 leave/enter，同步时刻、连续 version），被携带者保留感知与
+    自主（不替他行动，途中可脱离）；replay 靠 enter 重建。
+E97 无 target 的 world_event 全场广播 (ticket 95, 报 94 §2) ... WorldEventScopeGates
+    (`test_a_location_scopes_the_audience_instead_of_broadcasting`,
+     `test_a_location_scoped_event_still_reaches_its_explicit_target`,
+     `test_replay_preserves_the_scoped_audience`)
+    窗口 4：16:00/16:20/16:45 三条排程事件无 target → `_visibility` 返回全场，连正文广播 12–14 人；
+    陈默在档案室 16:02 就引用 16:05 才定向给他的原话。修法：payload 可选 `location`——有它时
+    可见集 = 该地点在场者 +（若有）target；只有 target 时不变；都没有仍是既有全局广播。
+    `world_loader` 校验 location 是已知地点。
+E98 工具面没有“在文书上写” (ticket 95, 报 94 §3) ............. DocumentAnnotationGates
+    (`test_signature_is_an_appended_annotation_that_others_can_read`,
+     `test_a_second_writer_appends_without_overwriting`,
+     `test_replay_rebuilds_the_annotations`,
+     `test_writing_on_a_document_that_is_not_here_is_rejected`)
+    窗口 4：`面核记录` 要求“谁到场核对谁填自己那一栏”，但工具面没有 annotate（`document_annotated`
+    与 `annotations` 早已存在却无入口），班长只能另贴字条，0 人签。修法：`leave_note` 可选
+    `on=<文书 id>`——文字作为一条批注追加进该文书（同地或手上、可读；与 persist 互斥），产生
+    既有 `document_annotated`（同地点可见），正文仍只属于读过它的人（`_public` 对非作者剥掉），
+    不覆盖他人条目；签字/批注的 verb-gap 教学改为指向 `leave_note on=`。
+E99 手边物品不在 give 候选里 (ticket 95, 报 94 §C) ........... GiveAtHandAffordanceGates
+    (`test_an_item_at_my_location_is_a_visible_give_candidate`)
+    窗口 4：食堂大妈全天 give 0 次，11:00“窗口要有人守”只成为一句招呼，两份饭自取（午饭上台
+    48 分钟后才被拿）。引擎早已支持就地取再递（ticket 63），缺的只是可见性。修法：`affordances()`
+    的 give 候选 = 背包 ∪ 当前地点可拿物品（排除固定陈设）；拒绝回执的可行调用清单同样包含。
+E100 可选参数的空字符串被当成“已提供” (ticket 98, 报 97 §E1) ... BlankNoteOnGates
+    (`test_a_blank_on_writes_an_ordinary_persistent_note`,
+     `test_a_whitespace_only_on_is_the_same_as_no_on`,
+     `test_a_real_document_still_takes_the_annotation_path`)
+    窗口 5（08:06–17:19，run real-20261018T062031）：全天 106 条拒绝（陈默 60、林瑶 23、
+    林瑶室友 8……）都是 `leave_note {text, persist: true, on: ""}`——校验用
+    `if on is not None` 判“同时声明”，空串于是把“留一份新文稿”自己判成冲突，而陈默
+    从 11:25 起逢人就说“我三次尝试留书面说明都没有成功”。语义：`on` 只有非空字符串
+    才进批注分支，空串/纯空白等于没提供（提交入口一次性剔除，payload/事件/replay 只看一种写法）。
+E101 `move with: [""]` 被当成“有同行者” (ticket 98, 报 97 §E2) ... BlankCompanionGates
+    (`test_an_empty_companion_entry_means_walking_alone`,
+     `test_an_empty_with_list_means_walking_alone`,
+     `test_a_real_companion_still_comes_along`,
+     `test_a_placeholder_companion_name_teaches_walking_alone`)
+    窗口 5：76 条“move 的 with 里有一个空名字”，相邻形态还有 `["_self"]`/`["陈默(you)"]`/
+    `["唐小岚"]`（自己）——模型在找“一个人走”的表达法，而接口只有“不写 with”，拒绝回执
+    实测 7 连未纠正（唐小岚 08:29–08:59），于是她 13:04 对外说出“移动需要明确同行者”。
+    修法：空项/纯空白项先过滤、重复项去重，过滤后为空 = 独自走（`with` 整个键去掉）；
+    schema 允许空数组；拒绝回执与工具说明明写“一个人走就只写 target”。
+E102 同一件东西被两个人同时 take 都算成功 (ticket 98, 报 97 §E3) ... SingleInstanceTakeGates
+    (`test_the_second_taker_is_rejected_while_the_first_is_still_taking`,
+     `test_an_item_never_has_two_holders`,
+     `test_a_late_take_names_where_the_item_actually_is`,
+     `test_an_abandoned_take_releases_the_item`)
+    窗口 5 17:57（run real-20261018T062031，事件 #4707–#4719）：陈默与辅导员各自
+    `take 一份晚饭`，两条 `action_started`/`action_completed` 全部成立，只有先完成的那位
+    背包里真的有它；辅导员 17:59 还对外说“谢谢，我们都拿了晚饭”。不变量：一件东西在任一
+    时刻只有一个持有者或一个地点——`take`（以及 `give` 的就地递出，同一族：
+    两个人各递一次同一份饭，两个收件人背包里都会有一份）从提交到完成独占这一件，
+    第二次拿给出“正被 X 拿在手里”的结构化拒绝；拿完之后的 take 说出它现在在谁
+    手上/在哪里。
+E103 陌生人嘴里有还没送到的便条正文 (ticket 98, 报 97 §E4) ... ExtraScenePrivacyGates
+    (`test_a_stranger_never_receives_a_note_that_is_not_his`,
+     `test_a_public_prop_still_grounds_its_own_description`,
+     `test_the_owner_still_sees_her_own_note`)
+    窗口 5 15:04–15:06：唐小岚读过 `代话便条` 后向“陌生人”求同行，当场生成的 `张学长` 把
+    便条原文当“老板娘留的话”说了出来，送达被提前兑付一次。诊断（该回合 perception 实录）：
+    extra 没有拿到提问者的 KB/记忆，泄漏通道是场景事实块——`scene_perception` 把同地每件
+    东西的 `entity_descriptions` 全文发给它，而这份便条的客观描述就是正文（种子已声明
+    `known_to: [唐小岚]`）。修法：被 `known_to` 限定给别人的东西，extra 看得见它在场，
+    但不拿到描述正文；公开物件（`校报草稿`）照旧给描述，“一份”这类数量断言仍有根据。
+E104 同行途中的 extra 被当成“闲”回收 (ticket 99, 报 98 §5.3) ... EscortIdleGates
+    (`test_a_carried_extra_rides_out_the_idle_threshold`,
+     `test_a_silent_extra_with_no_walk_is_still_reclaimed`,
+     `test_the_idle_clock_is_held_by_an_unanswered_conversation`,
+     `test_a_carried_extra_leaves_by_walking_to_its_own_target`)
+    窗口 5 15:15–15:33（run real-20261018T062031）：张学长 15:06 应下“愿意陪你去”，
+    15:08 随唐小岚 `move 后街糕点铺 with 张学长` 出发，15:15 两人同到小卖部，15:19 它
+    在下一跳（780s）途中得到 `extra_removed reason: idle`。成因：idle 判据只看
+    `last_active`（上一次开口/动手的时刻），把“没人跟它说话”当成“它站在原地”——
+    被携带的整段路上它没有动作事件，也不该有。修法：`AsyncEngine._extra_is_idle`
+    把两种在场状态排除在 idle 之外：它正被一次 `move` 携带着赶路（自己也在这段路上，
+    或它是别人 `with` 里的同行者），或它还有一笔没结的对话（未答的问题、已听到还没回
+    的话、供给方还在写的那一句）。被携带者要离开仍走既有“途中可脱离”的路：他自己
+    开始走另一段 move，`_follows_escort` 便不再带他；到了地方站定后 idle 照常计时。
+E105 便条能写能读、递不出去 (ticket 101, 报 100 W6-E1) ...... NoteDeliveryGates
+    (`test_a_written_sheet_is_a_note_that_can_be_handed_over_and_read`,
+     `test_a_persistent_note_left_on_the_table_can_also_be_handed_over`,
+     `test_a_rejected_note_handover_never_offers_an_unrelated_document`,
+     `test_replay_rebuilds_the_handed_over_note_and_the_used_sheet`,
+     `test_the_sheet_route_is_offered_and_a_non_paper_is_refused`)
+    窗口 6 18:44–21:30（run real-20261018T073833）：陈默写了署名说明，18:48
+    `give note-陈默-1` 给辅导员被拒（“你没有拿着…可行调用：give 2013年邻里撤离通知书”）；
+    19:07 `leave_note on:"空白纸"` 被拒（`on` 只认 `document_defs`）。主角 D1 的核心目标
+    （自己写好、签名、亲手交给辅导员）因此**结构上不可达**。修法：`give` 的目标物 =
+    物品 ∪ 已存在的便条 id（便条本来就在世界上，递它就是递纸；持有关系沿用背包，
+    事件仍是 `item_given`，replay 同 id 同手）；`leave_note on=<纸张>` 把那张纸写成
+    一份带编号、可读、可递的文稿（纸被用掉），与 `on=<文书>` 的批注路径按目标类型分派；
+    拒绝只说便条在谁手上/哪里，不再拿无关文书当替代。
+E106 睡觉没有表达法，夜段 43% 回合是 wait 900 (ticket 101, 报 100 W6-E3) ... SleepWaitGates
+    (`test_eight_hours_of_sleep_is_accepted_and_advances_the_clock`,
+     `test_a_sleeping_actor_is_woken_before_its_hour_is_up`,
+     `test_a_named_scheduled_event_wakes_a_sleeper_and_a_broadcast_does_not`,
+     `test_replay_and_checkpoint_keep_the_sleep`)
+    窗口 6 夜间 7 次 `wait 34200–48960`（≈9.5–13.6 小时，“睡到明早”）被 900 秒上限拒收，
+    模型只能 15 分钟一觉熬到天亮，19:14–21:24 有 2h10m 结构空转。修法：`wait` 增加
+    可选 `sleep: true`（不新增动作种类，§2 早已裁定 sleep 并入 wait），单次上限 12 小时，
+    `sleeping` 字段起睡置真、完成/被叫醒/被打断清零；同地社交事件照旧经 `wake_waiter`
+    打断，另加 `World.wake_sleeper`：`target` 点名他的排程事件也能叫醒，未点名的全场
+    广播不叫醒。
+E107 extra 的“没被问”回合仍然静默 (ticket 101, 报 100 W6-E4) ... ExtraNoRequestTurnGates
+    (`test_a_wake_without_a_question_records_the_reason_instead_of_a_blank_line`)
+    窗口 6 18:00 胡大叔 `result: none`、`calls: []`、`inner: null`、role extra，
+    夜间 `system_turns` 与本段回合的交集为空。E90 只盖住“被问了但没输出”：这一拍是
+    从检查点续跑时 restored extra 的第一拍（无待答问题、无新听到的话，`needs_response`
+    为假 → 模型根本没被请求）。修法只加诊断：这一种也记 `empty_turn`（`reason:
+    no_request`），于是“没被问”与“被问了没输出”在 trace 上可分辨；世界不变。
+E108 引擎机制进入对白 (ticket 101, 报 100 W6-E2) ...... NoMechanismInSpeechGates
+    (`test_the_mc_tool_surface_carries_the_rule`,
+     `test_the_npc_and_extra_prompts_do_not_carry_it`)
+    窗口 6 19:12 陈默对在场三人说“刚才的留字只生成了下一位进入者才看得到的字条”——
+    机制上正确，因此才证明它是从 hint/回执推出来的引擎知识，而不是任何世界内的感知。
+    修法：`action_schema.NO_MECHANISM_IN_SPEECH`（“不要向他人描述引擎机制…只说你做了什么、
+    谁看见了什么”）只加在 MC 的工具说明（`leave_note`）上；NPC 与路人的提示一字未加
+    （NPC 共用同一份工具表，但它们的提示另有自己的演技规则）。
+E109 长睡一回合把整个夜吞掉：唤醒成了日志里的死信 (ticket 106, D1 报 103 D1-E1) ... WakeReachabilityGates
+    (`test_a_private_wake_still_reaches_an_awake_actor_while_another_sleeps`,
+     `test_a_named_scheduled_event_wakes_a_sleeper_on_the_chain_path`)
+    D1 `real-20261018T085705`：18:35 林瑶 `wait 28800 sleep:true` 之后 18:40–22:00
+    共 205 分钟零回合，六条夜间排程、三条 `private_wake`、四条 `reminder_due`
+    全落在世界日志里，22:00 时醒着且空闲的人感知游标停在 18:36。成因不是唤醒
+    路径，而是链内那次时钟推进：`_execute_chain` 的 `advance` 只夹 stop horizon
+    与决策视界，`limit` 落到 stop_at，一次 `advance` 把整段夜间记进日志而不派
+    回合，`_stop_check` 随即停表。修法：回合内推进再夹到 `World.next_event_time()`
+    （时钟只由调度器走）；不新增世界状态、不强制叫醒任何人。`SleepWaitGates③`
+    为何没拦住：它用旧 callable agent（`_submit` 路径），而真实回合走
+    `_execute_chain` —— 本类用 `session_obj` stub 补上这一段。
+E110 `private_wake` 对睡着的人是死信 (ticket 109 D1-2-E5) ... PrivateWakeDeliveryGates
+    (`test_a_private_wake_wakes_a_sleeping_mc_and_lands_a_turn`,
+     `test_a_private_wake_for_an_absent_target_records_the_reason`)
+    D1 工件 real-20261018T100115：21:36 给林瑶、21:40 给陈默的两条 `private_wake`
+    落在两人的 `wait sleep:true` 期间（林瑶 21:06→07:16、陈默 21:10→07:10），
+    `World.advance` 只把这个 kind `_commit` 进日志（可见性 {本人}），唤醒只在
+    引擎的 `_wake_waiters` 里为 `world_event` 走——两人的最后一个回合停在
+    21:05 / 21:09，心跳成了一封没人读的死信。修法：`World.advance` 的
+    `private_wake` 分支改走 `_fire_private_wake`——先提交 `private_wake`，再
+    `wake_sleeper`（E106 同一条路径，留下可见的 `wait_woken`）；目标已不在世界
+    里则记一条 `private_wake_failed {reason: actor_not_present}`，可见性不含任何
+    活人。副作用：空闲心跳现在会打断长睡，`mc_idle_heartbeat` 是调节旋钮。
+E111 `engine.turns` 与 `trace.agent_turns` 差 241 (ticket 109 §附) ... V4-ENGINE §7
+    计数口径裁定（无独立门）
+    (`test_extra_turns_are_recorded_and_conversational` 的两条计数断言)
+    D1 工件 real-20261018T100115：`engine.turns=1479`、`trace.agent_turns=1720`，
+    差 241 = 29 名 extra 的 `_extra_loop` 回合（上一轮 868 - 793 = 75 同理）。
+    不是漏记也不是丢回合：`Engine._turns` 只数 persistent actor 的 `_take_turn`
+    （mc+npc），`max_turns` 与停机诊断用它；`Trace.agent_turns` 记下每个 agent
+    回合（含 extra 与 `result: none` 的诊断行），报告与轨迹复核用它。各自含义与
+    用途写进 V4-ENGINE §7，断言钉在既有的 extra 门里（persistent 回合在轨迹里
+    恰好一行；两数之差 = extra 回合数）。
 I38 private inner channel unreachable — 0/1356 turns (3 runs) ... test_inner_channel_is_reachable_on_the_wire_and_native_path,
                                                                test_legacy_envelope_inner_still_works,
                                                                test_missing_inner_native_call_is_rejected_with_a_self_correcting_example,
@@ -626,11 +1094,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from harness.agent_state import PrivateState
-from harness.engine import TICK_SECONDS, AsyncEngine
+from harness.engine import TICK_SECONDS, AsyncEngine, _call_pool
 from harness.kernel import ActionRejected, ActorState, Intention, LocationState, World
 from harness.runner import AgentFn, Runner
 from harness.seed import load_story_pack
-from harness.system import Ledger
+from harness.system import DIALOGUE_REPLIES, Ledger
 from harness.trace import Trace, verify_event_log
 from harness.replay import replay_world
 
@@ -837,6 +1305,106 @@ class HistoricalFailureGates(unittest.TestCase):
                   for effect in row.get("effects", []) if effect.get("op") == "open_location"}
         self.assertEqual(opened, set(closed),
                          "every closed location must have a scheduled opening effect")
+
+    def test_audit_slip_delivery_requires_a_scheduled_relay(self):
+        """E72a / ticket 72 (report §5.3): add_document placement is not
+        delivery. 审计催办单 landed at 学生会办公室 (audit_deadline, no
+        target) while 陈默's registered post was 校史档案室 and nothing
+        scheduled him there — the d1-审计催办转达 anchor counted 0 relays
+        with lint green. Invariant: a seed document an anchor depends on
+        must have a later scheduled relay whose target names the
+        responsible actor and whose notice carries both the slip and the
+        duty (转告辅导员). Deleting the 16:05 audit_relay_task, or its
+        target, must go red here."""
+        pack = load_story_pack()
+        placed_at = None
+        for row in pack.scheduled:
+            if row.get("time") is None:
+                continue
+            if any(effect.get("op") == "add_document"
+                   and effect.get("id") == "审计催办单"
+                   for effect in row.get("effects", [])):
+                placed_at = datetime.fromisoformat(str(row["time"]))
+        self.assertIsNotNone(placed_at, "审计催办单 must be placed by the seed")
+        relays = []
+        for row in pack.scheduled:
+            if row.get("time") is None:
+                continue
+            when = datetime.fromisoformat(str(row["time"]))
+            if when <= placed_at:
+                continue
+            targets = row.get("target")
+            targets = [targets] if isinstance(targets, str) else list(targets or [])
+            notice = str(row.get("notice", ""))
+            if ("陈默" in targets and "审计催办单" in notice
+                    and "辅导员" in notice):
+                relays.append(row)
+        self.assertTrue(
+            relays,
+            "审计催办单 has no scheduled relay to 陈默 "
+            "(target + notice with slip and duty) — placement alone is not delivery")
+
+    def test_speech_anchor_requires_a_scheduled_occasion(self):
+        """E72b / ticket 72 (report §6.3): a passing read path is not a
+        speech occasion. 林瑶 read the audit pack 12 times while the pm
+        gate's speech needles counted 0 — no D1 scene ever opened the
+        substance to a speakable, co-present exchange. Shape for seed
+        authors: an anchor scoring 说 must schedule an occasion; here
+        audit_pack_review (16:20, open broadcast at 学生会办公室, any
+        bystander may pick it up). Deleting that occasion — or narrowing
+        it with a target so 林瑶 can no longer hear it — must go red."""
+        pack = load_story_pack()
+        window = (datetime.fromisoformat("2026-03-16T13:00:00+08:00"),
+                  datetime.fromisoformat("2026-03-16T22:00:00+08:00"))
+        occasions = []
+        for row in pack.scheduled:
+            if row.get("time") is None:
+                continue
+            when = datetime.fromisoformat(str(row["time"]))
+            if window[0] <= when <= window[1] and "审计包" in str(row.get("notice", "")):
+                occasions.append(row)
+        self.assertTrue(occasions,
+                        "audit substance has no pm speech occasion in the seed")
+        self.assertTrue(all(not row.get("target") for row in occasions),
+                        "the audit occasion must stay open (no target narrowing)")
+
+    def test_take_race_second_completion_does_not_crash_the_clock(self):
+        """E75 / ticket 75 (2026-10-16 d1-pm run real-20261016T192137 live
+        red) + E102 / ticket 98 (window 5 17:57, run real-20261018T062031).
+
+        Original red: two actors legitimately queued ``take 可用纸笔`` in the
+        same tick — both standing at 学生会办公室 while the item was present,
+        so both submits passed validation; the first completion deleted the
+        item and the second raised KeyError, killing the run at 16:07. The
+        guard then was "a completion whose item is already gone stands as an
+        event and mutates nothing".
+
+        Ticket 98 收紧了这个不变量：**第二次提交不再被接受**（`take` 从提交到
+        完成独占这一件，第二次拿会被告知它在谁手里）——回执说成功、世界没变
+        正是窗口 5 辅导员“我们都拿了晚饭”的成因。完成期的防御分支保留不动，
+        因为它仍是恢复旧检查点（那里可能真的排着两条 take）时的唯一防线；
+        这里直接喂给它第二次完成，钉住“不崩钟、也不改世界”。
+        """
+        start = datetime.fromisoformat("2026-01-01T00:00:00+00:00")
+        w = World(start=start,
+                  actors=[ActorState("a", "room"), ActorState("b", "room")],
+                  locations=[LocationState("room")])
+        w.item_locations["纸笔"] = "room"
+        w.submit(Intention("a", "take", {"item": "纸笔"}, w.version))
+        with self.assertRaises(ActionRejected):
+            w.submit(Intention("b", "take", {"item": "纸笔"}, w.version))
+        w.advance()
+        self.assertIn("纸笔", w.actors["a"].inventory)
+        self.assertNotIn("纸笔", w.actors["b"].inventory,
+                         "the second taker finds the spot empty")
+        self.assertNotIn("纸笔", w.item_locations)
+        w._complete("b", {"action": "take", "item": "纸笔"})   # 旧检查点的排队完成
+        self.assertNotIn("纸笔", w.actors["b"].inventory,
+                         "第二次完成只作为事件成立，世界不变的防御仍成立")
+        completes = [e for e in w.event_log
+                     if e.kind == "action_completed"
+                     and str((e.payload or {}).get("action")) == "take"]
+        self.assertEqual(len(completes), 1, "只有一次 take 真的发生")
 
     def test_uncovered_concrete_prop_claim_blocks_the_seed(self):
         """Issue 35 / P10: an objective "X 在 Y" claim whose prop is not a
@@ -1074,18 +1642,77 @@ class HistoricalFailureGates(unittest.TestCase):
         extra answered every scheduler pass.
         E3 — extras answer in prose (no tool call); extra_tool_calls dropped
         content-only replies, so live-run extras never spoke at all (T1
-        文本即说话 must apply to extras too)."""
+        文本即说话 must apply to extras too).
+
+        Ticket 104 — determinism. The tick assertions below were a coin flip
+        under load (full discover: 07:02 arrivals, answers two ticks late, 0/1
+        extra turns; timelines in ticket 104). The cause is the fixture, not
+        the engine: the engine bounds world progress by in-flight decisions,
+        so while an extra's provider call is in flight any queued event lets
+        the scheduler step the clock — and a populated world keeps feeding it
+        those events (each MC/NPC keeps completing one-tick waits and waking on
+        ambient speech). Three fixture rules remove that coupling:
+        1. one character on stage — the pack's other actors move the clock on
+           their own;
+        2. the idle wait is legal and longer than the scenario — this seed caps
+           a wait at longest_wait_seconds, and `wait 3600` is rejected with the
+           engine's rejection repair substituting a one-tick wait, i.e. one
+           more event inside the window;
+        3. the follow-up ask is issued only after the answer was heard, and the
+           stub answers only once 陈默 has parked (a barrier on world state,
+           not a sleep) — so the extra's deliberation window owes no event at
+           all, which is exactly the state the ticket-22 pin must freeze.
+        The gate then measures the engine's contract instead of the thread
+        pool's mood: a late answer or a clock running under a deliberating
+        extra shows up as world ticks, and those ticks are now fixed."""
+        pack = load_story_pack()
+        world = pack.build_world()
+        # Ticket 104 rule 1: one character on stage. Co-present MCs/NPCs
+        # re-decide on every ambient wake and each of their one-tick wait
+        # completions is a queued event the scheduler may spend while the extra
+        # is thinking; the ticks the answer lands on would then depend on
+        # thread scheduling instead of on the engine.
+        for other in [name for name in world.actors if name != "陈默"]:
+            del world.actors[other]
+        # Ticket 104 rule 2: a LEGAL idle wait (this seed caps a wait at
+        # longest_wait_seconds) that also outlives the 07:00-07:06 scenario.
+        idle_seconds = int(world.longest_wait_seconds)
+        self.assertGreater(idle_seconds, 6 * TICK_SECONDS)
+        answer_line = "我知道那笔记录的事。"
+
         class ProseExtra:
+            """The stranger's provider: a `speak` tool call for the opening
+            question, then prose (T1 文本即说话) for the follow-up.
+
+            Ticket 104 rule 3: the first answer is released only after 陈默 has
+            parked in its idle wait — a barrier on world state, so the answer's
+            tick is decided by the clock rather than by which thread got the
+            GIL first."""
+
             def __init__(self):
                 self.calls = 0
+                self.mc_parked = False
+
+            def _await_mc_parked(self, timeout: float = 15.0) -> bool:
+                deadline = time.monotonic() + timeout
+                while time.monotonic() < deadline:
+                    action = (world.actors["陈默"].current_action or {}).get(
+                        "payload", {}).get("action")
+                    if action == "wait":
+                        return True
+                    time.sleep(0.001)
+                return False
 
             def chat_with_tools(self, messages, tools):
                 self.calls += 1
                 if self.calls == 1:
+                    self.mc_parked = self._await_mc_parked()
                     return {"role": "assistant", "content": "", "tool_calls": [
                         {"id": "c1", "type": "function",
                          "function": {"name": "speak",
-                                      "arguments": '{"text":"我知道那笔记录的事。"}'}}]}
+                                      "arguments": json.dumps(
+                                          {"text": answer_line},
+                                          ensure_ascii=False)}}]}
                 # Later turns: inline decision JSON instead of a tool call —
                 # the shape that used to leak verbatim into the world speech.
                 return {"role": "assistant",
@@ -1095,42 +1722,64 @@ class HistoricalFailureGates(unittest.TestCase):
                                               ensure_ascii=False),
                         "tool_calls": []}
 
-        pack = load_story_pack()
-        world = pack.build_world()
         trace = Trace("v4-test", "historical-gate-extra-turns")
         asked = set()
+
+        def heard_answer(perception) -> bool:
+            return any(str(event.get("payload", {}).get("text", "")) == answer_line
+                       for event in perception.get("events", ()))
 
         def agent(state, perception, affordances):
             # Ticket 22: ask is merged into speak — to=["陌生人"] asks the
             # room's passers-by; auto-wait is engine-side, so this test's
             # intentions carry it implicitly.
-            if state.actor_id == "陈默" and state.actor_id not in asked:
-                asked.add(state.actor_id)
+            if not asked:
+                asked.add("ask")
                 return Intention(state.actor_id, "speak",
                                  {"text": "请问台账的事？", "volume": "normal",
                                   "to": ["陌生人"]},
                                  perception["world_version"])
             # One follow-up to the same stranger (routed to the existing
-            # partner extra), then wait forever.
-            if state.actor_id == "陈默" and len(asked) == 1:
-                asked.add(state.actor_id + "-2")
+            # partner extra), asked only once the reply has been heard: asking
+            # straight away would queue its completion inside the extra's
+            # deliberation window and hand the scheduler a tick to spend.
+            if "follow-up" not in asked and heard_answer(perception):
+                asked.add("follow-up")
                 return Intention(state.actor_id, "speak",
                                  {"text": "那签字的人是谁？", "volume": "normal",
                                   "to": ["陌生人"]},
                                  perception["world_version"])
             return Intention(state.actor_id, "wait",
-                             {"duration_seconds": 3600},
+                             {"duration_seconds": idle_seconds},
                              perception["world_version"])
 
-        non_extra = [a for a in world.actors if world.actors[a].role != "extra"]
-        agents = {a: agent for a in non_extra}
-        states = {a: PrivateState(a) for a in non_extra}
+        agents = {actor: agent for actor in world.actors}
+        states = {actor: PrivateState(actor) for actor in world.actors}
         stub = ProseExtra()
+        # E73 (2026-10-16 live red, module solo and full discover): the
+        # extra's provider call rides the shared daemon pool, and a cold or
+        # GIL-starved pool let the scheduler outrun the first answer; the
+        # 60s idle despawn then cancelled the queued call mid-flight (probe:
+        # 赵阿姨 extra_removed 'idle' at 07:03, stub_calls=0, 0 extra turns).
+        # Warm the pool up front and pin the idle window above the scenario so
+        # an in-flight answer can neither be cancelled nor counted idle.
+        _call_pool().submit(lambda: None).result(timeout=5)
         engine = AsyncEngine(world, agents, states, trace, None,
                              extra_call=stub, decision_timeout=10,
-                             max_wall_seconds=60, extra_idle_seconds=60)
+                             max_wall_seconds=60, extra_idle_seconds=3600)
         stop = datetime.fromisoformat("2026-03-16T07:06:00+08:00")
         reason = engine.run(stop_at=stop, max_turns=300)
+        arrived = [e for e in world.event_log if e.kind == "extra_arrived"]
+        # The barrier's premise, stated instead of its symptom: a world that
+        # moved while the stranger was still deliberating leaves no answer tick
+        # to read — that is the ticket-22 failure itself (the clock ran under a
+        # deliberating extra), so name the evidence rather than the follow-on.
+        self.assertTrue(stub.mc_parked,
+                        "陈默 never parked in its idle wait: the world moved on "
+                        f"while the stranger deliberated (world now "
+                        f"{world.now.strftime('%H:%M')}, arrivals "
+                        f"{[e.time.strftime('%H:%M') for e in arrived]}, "
+                        f"provider calls {stub.calls})")
         self.assertEqual(reason, "stop_at_reached")
 
         # E1: the extra's turns are recorded with role="extra" — exactly one
@@ -1140,15 +1789,33 @@ class HistoricalFailureGates(unittest.TestCase):
         self.assertTrue(all(t["result"] == "submitted" for t in extra_turns))
         self.assertEqual(len({t["actor"] for t in extra_turns}), 1)
 
+        # E111（票 109 §附）：engine.turns 与 trace.agent_turns 是两个度量，
+        # 不是丢回合——`Engine._turns`（停机诊断的 engine.turns、max_turns 的
+        # 计数）只数 persistent actor 的 `_take_turn`，轨迹却记下每个 agent
+        # 回合（含 extra 的 `_extra_loop` 与 `result: none` 的诊断行）。所以
+        # persistent 回合在轨迹里恰好一行，两数之差恒等于 extra 回合数
+        # （D1 2026-03-16：1720 - 1479 = 241 = 29 名 extra 的回合）。
+        persistent_turns = [turn for turn in trace.agent_turns
+                            if turn.get("role") != "extra"]
+        diagnosis = next(row["result"] for row in trace.system_turns
+                         if row["request"].get("kind") == "engine_stop_diagnostic")
+        self.assertEqual(diagnosis["turns"], len(persistent_turns),
+                         "停机诊断的 engine.turns 就是 persistent 回合计，每个在轨迹里恰好一行（E111）")
+        self.assertEqual(len(trace.agent_turns) - diagnosis["turns"], len(extra_turns),
+                         "两套计数之差就是 extra 回合数（E111）")
+
         # Ticket 22 timing: the passer-by spawns when the utterance LANDS
         # (the speak's completion tick, one minute after the ask), and its
-        # answer lands within the pinned 1-tick window — never minutes late.
-        arrived = [e for e in world.event_log if e.kind == "extra_arrived"]
+        # answer lands on that same tick — the clock is pinned under the
+        # deliberating extra. The arrival tick is fixed by the scenario (ask at
+        # 07:00, completion 07:01) and the deliberation window owes no other
+        # event (ticket 104), so both are exact: a minute of slip is a clock
+        # that ran away under the extra, not a slow provider.
         self.assertEqual(len(arrived), 1)
         self.assertEqual(arrived[0].time.strftime("%H:%M"), "07:01")
         first_answer = next(e for e in world.event_log if e.kind == "speech"
-                            and "那笔记录" in str(e.payload.get("text", "")))
-        self.assertLessEqual((first_answer.time - arrived[0].time).total_seconds(), 60)
+                            and answer_line in str(e.payload.get("text", "")))
+        self.assertEqual(first_answer.time, arrived[0].time)
 
         # The replies became real speech events; the follow-up answer must be
         # the parsed speak text, NOT the raw decision JSON.
@@ -3575,13 +4242,14 @@ class Ticket48NarratedFactGates(unittest.TestCase):
     def test_verb_gap_teaching_names_the_real_action(self):
         """(1) A verb the world does not model gets explicit unavailable
         feedback that names the real action: 打电话 -> text; 签字/批注 ->
-        update_memory; 开柜/取件 -> take."""
+        leave_note on=<文书>（票 95 E98 起签字只是写进既有文书的一栏）;
+        开柜/取件 -> take."""
         world = self._phone_scene()
         engine, agents = _chain_engine(world)
         cases = [("call", {"target": "陈默妈", "text": "喂"}, '"name": "text"'),
                  ("phone", {"number": "1395731xxxx"}, '"name": "text"'),
-                 ("sign", {"item": "移交存根"}, "update_memory"),
-                 ("annotate", {"item": "2013年台风台账"}, "update_memory"),
+                 ("sign", {"item": "移交存根"}, "leave_note"),
+                 ("annotate", {"item": "2013年台风台账"}, "leave_note"),
                  ("verify", {"item": "移交存根"}, "read"),
                  ("open", {"item": "晚归登记本"}, "take")]
         for verb, args, needle in cases:
@@ -4902,5 +5570,3024 @@ class Ticket68MemoryStoreGates(unittest.TestCase):
                       "旧工件必须显式说明而非猜")
 
 
+
+
+class PrimitiveSufficiencyAuditTests(unittest.TestCase):
+    """Ticket 77 — E76/E77/E78：三个死循环族，零引擎改动。
+
+    方法：取**真实世界包**构建世界，只补审计建议的那一条种子声明（测试内叠加，
+    不入种子），证明死循环的出口已经可执行。若将来有人删掉"读=文书"、"知觉=物品
+    描述"或路由 affordance，这三条会红；若有人提议加 look/call/spawn 原语，请先
+    说明这里为什么不成立。
+    """
+
+    def test_notice_board_needs_only_a_document_row(self):
+        """E76 / ticket 77 — 公告栏死循环（d1 10:49–13:35 主循环，16:12–16:58 复染）。
+
+        活体证据 `real-20261016T210724….json` 与 pm 续跑：错误轮 #329/355/362/
+        363/500/994 等十余次都是 `read 教学楼正门内侧公告栏` → "这里没有这样一件
+        能读的文书"；五个人互相委派了同一件无法执行的差事两小时，还去问了两位
+        路人 extra。审计结论：引擎不缺"看"的原语，缺的是把公告栏登记成文书。
+        补一条 `documents:` 声明（带 reading_seconds，可停留即读）后，同一个 `read`
+        立刻覆盖它：affordances 出现 read，读后产生 document_read，旁观者只看见
+        "他在读"、看不到正文。
+        """
+        world = load_story_pack().build_world()
+        board = "教学楼公告栏"
+        world.actors["陈默"].location = "教学楼"
+        world.document_defs[board] = {
+            "title": board, "reading_seconds": 30, "auto_read": True,
+            "content": "玻璃罩下压着三张纸：《台风纪念活动通知》招志愿者整理老照片；"
+                       "一张课程表；一张过期的停电通知。"}
+        world.item_locations[board] = "教学楼"
+        self.assertIn({"kind": "read", "item": board}, world.affordances("陈默"),
+                      "read is the verb the loop already had — the board was unregistered")
+        world.submit(Intention("陈默", "read", {"item": board}, world.version))
+        world.advance()
+        read = [e for e in world.event_log if e.kind == "document_read"]
+        self.assertEqual(len(read), 1)
+        self.assertIn("老照片", read[0].payload["content"])
+        self.assertEqual(read[0].visible_to, frozenset({"陈默"}),
+                         "the room sees the act, the text stays with the reader")
+
+    def test_fixture_stock_needs_only_an_item_description(self):
+        """E77 / ticket 77 — 库存/陈设不可查验（热水壶 16:26–16:51 与 19:34–19:55、
+        关东煮库存 19:34–19:52、食堂菜牌 13:22–13:38）。
+
+        活体证据：唐小岚在自己当班的咖啡馆里找不到热水壶，只能向客人打听，16:40
+        自嘲"我就在这家店当班，刚才没认出来"；班长/陈默/吴阿姨为"关东煮还剩什么"
+        僵持近二十分钟（report §1.4/§2.4）。审计结论：引擎的知觉已经把**在场物品
+        的客观描述**投给在场者（`_visible_descriptions` + ticket 49 的 observed
+        记忆行），所以摊位库存和陈设只需要一条 `items:` 声明（正文写清数量），
+        不需要 examine 原语；需要"读"的（菜牌、价目表）按 E76 登记成文书。
+        """
+        world = load_story_pack().build_world()
+        pot = "关东煮锅"
+        world.actors["唐小岚"].location = "半坡咖啡馆"
+        world.entity_descriptions[pot] = ("# 关东煮锅\n\n格子锅里还剩六串：萝卜两份、"
+                                          "豆腐四份，汤正开着。")
+        world.item_locations[pot] = "半坡咖啡馆"
+        perceived = world.poll("唐小岚")
+        self.assertIn(pot, perceived["descriptions"], "在场即见，问人之前世界已经给了答案")
+        self.assertIn("萝卜两份", perceived["descriptions"][pot])
+        self.assertIn("萝卜两份",
+                      world.actors["唐小岚"].observed[pot]["objective"],
+                      "首次看见即落成记忆行（ticket 49），不依赖当回合")
+        with self.assertRaises(ActionRejected) as caught:
+            world.submit(Intention("唐小岚", "read", {"item": pot}, world.version))
+        self.assertIn("实物", caught.exception.message,
+                      "it is a prop, not a document — and the refusal says so")
+        self.assertTrue(caught.exception.alternatives,
+                        "a prop still leaves an executable next step")
+
+    def test_the_hotline_loop_needs_a_world_exit_not_a_verb(self):
+        """E78 / ticket 77 — 12345 借电话死胡同（21:30–22:00）。
+
+        活体证据：下棋大爷找不到能合法过夜的地方；班长与陈默想拨 12345，但引擎
+        没有打电话的动作，最后半小时成了"借电话"循环（向店员、向 extra 借，全是
+        "不归我管"），世界钟在任务未决时走到 22:00（report §1.5/§2.4）。审计结论：
+        死胡同的根因是种子里缺一个**世界内出口**（可达的地点 + 说明它用途的地方
+        正文/通知），不是缺 call 原语；`text` 对非人地址的拒绝已经给出可执行替代。
+        残留（记录、不实现）：字面意义上"打给非人端点"今天确实不可表达，最小泛化
+        是把 `text` 的目标类从 actor 扩到已注册非人端点，而不是新增 call 动作。
+        """
+        from harness.kernel import LocationState
+        world = load_story_pack().build_world()
+        world.actors["下棋大爷"].location = "半坡咖啡馆"
+        night = "通宵值班室"
+        self.assertIs(world._route_path("半坡咖啡馆", night), None,
+                      "the shipped map has no such place yet — that is the gap")
+        world.locations[night] = LocationState(night)
+        world.routes[("半坡咖啡馆", night)] = 300
+        world.routes[(night, "半坡咖啡馆")] = 300
+        world.entity_descriptions[night] = ("# 通宵值班室\n\n门一直开着，"
+                                            "值班台后能登记夜里无处可去的人。")
+        self.assertIn({"kind": "move", "target": night},
+                      world.affordances("下棋大爷"),
+                      "one seeded exit turns the loop into an ordinary walk")
+        with self.assertRaises(ActionRejected) as caught:
+            world.submit(Intention("下棋大爷", "text", {"target": "12345",
+                                                        "text": "夜里哪儿能待？"},
+                                   world.version))
+        self.assertIn("12345", caught.exception.message)
+        self.assertIn("recipient_candidates", caught.exception.context,
+                      "even the unsupported address is refused with real people named")
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+# --- Ticket 78: 种子契约四门（G1–G4）的最小世界包夹具 ------------------------
+#
+# 四门都读一个完整的 world pack，所以夹具必须是一个能被 load_world_pack 接受的
+# 最小世界：一个地点、一个演员、一条 kb 身份行、每个实体一份 .md。测试只增删
+# 声明，不改引擎——门红了就说明声明缺了，绿了就说明声明在了。
+
+_GATE_CLOCK = {"start": "2026-03-16T07:00:00+08:00",
+               "stop": "2026-03-16T09:00:00+08:00"}
+
+
+def _gate_world(directory, *, locations=None, actors=None, items=None,
+                documents=None, routes=None, scheduled=None, concepts=None,
+                bodies=None) -> Path:
+    """最小世界包：默认一个屋子、一个演员甲、空的一切。"""
+    import yaml
+    root = Path(directory) / "world"
+    locations = locations if locations is not None else [{"id": "屋子"}]
+    actors = actors if actors is not None else [{"id": "甲", "location": "屋子"}]
+    items = items or []
+    documents = documents or []
+    bodies = bodies or {}
+    manifest = {
+        "schema_version": 1,
+        "clock": dict(_GATE_CLOCK),
+        "locations": locations,
+        "actors": actors,
+        "items": items,
+        "documents": documents,
+        "routes": routes or [],
+        "barriers": [],
+        "scheduled": scheduled or [],
+        "kb": {str(row["id"]): [{"keys": [str(row["id"])], "desc": f"我，{row['id']}。"}]
+               for row in actors},
+    }
+    if concepts:
+        manifest["concepts"] = concepts
+    for category in ("locations", "characters", "items", "documents"):
+        (root / category).mkdir(parents=True, exist_ok=True)
+    for row in locations:
+        place = str(row["id"])
+        body = bodies.get(place, f"# {place}\n\n一间屋子。\n")
+        (root / "locations" / f"{place}.md").write_text(body, encoding="utf-8")
+    for row in actors:
+        (root / "characters" / f"{row['id']}.md").write_text(
+            f"# {row['id']}\n\n一个在这里的人。\n", encoding="utf-8")
+    for row in documents:
+        entity = str(row["id"])
+        body = bodies.get(entity, f"# {entity}\n\n一张纸。\n")
+        (root / "documents" / f"{entity}.md").write_text(body, encoding="utf-8")
+    for row in items:
+        entity = str(row["id"])
+        body = bodies.get(entity, f"# {entity}\n\n一件东西。\n")
+        (root / "items" / f"{entity}.md").write_text(body, encoding="utf-8")
+    (root / "manifest.yml").write_text(
+        yaml.safe_dump(manifest, allow_unicode=True, sort_keys=False),
+        encoding="utf-8")
+    return root
+
+
+def _gate_module():
+    """按本文件既有习惯以 importlib 载入 scripts/seed_lint.py。"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "seed_lint_ticket78", Path(__file__).parents[2] / "scripts" / "seed_lint.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _gate_findings(lint, name, root):
+    """跑四门里的一门：pack 从这里载入，root 用来给违规定位到行。"""
+    from harness.world_loader import load_world_pack
+    pack = load_world_pack(root)
+    gate = getattr(lint, name)
+    if name == "reachability_findings":
+        return gate(pack, root)
+    return gate(pack, root)
+
+
+class SeedContractGateTests(unittest.TestCase):
+    """Ticket 78: 四道种子契约门。每一门在最小夹具上先红后绿：
+
+    红 = 声明缺了，门指出行与修法；绿 = 按修法补上声明，同一段正文通过。
+    四门只认既有概念类别（actors / locations / items / documents / concepts /
+    kb 联系人），不引入新原语——与票 77 的“原语充分性”一致：
+    公告栏是 documents 行、关东煮锅是 items 行、值班干事是 actors 行。
+    """
+
+    def test_g1_an_acting_role_noun_needs_a_real_actor(self):
+        """G1 红：排程广播里“值班干事把话说明白了”没有任何演员能兑现。
+
+        d1-pm 的 16:20 面核就是这一族：通知里有一个摊开审计包的人，世界里没有
+        这个人，晚到的人也无从感知“面核正在进行”。"""
+        lint = _gate_module()
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory, scheduled=[{
+                "event": "refusal",
+                "time": "2026-03-16T07:30:00+08:00",
+                "notice": "值班干事把话说明白了：本周的申请一律不受理。"}])
+            findings = lint.schedule_agent_findings(lint.load_world_pack(root), root)
+            self.assertEqual(len(findings), 1, findings)
+            self.assertIn("值班干事", findings[0])
+            self.assertIn("actors:", findings[0], "修法必须指到既有类别")
+            self.assertIn("缺席", findings[0], "第二条修法是可观测缺席写法")
+        # 绿①：把主语换成既有演员。
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory, scheduled=[{
+                "event": "refusal",
+                "time": "2026-03-16T07:30:00+08:00",
+                "notice": "[[甲]]把话说明白了：本周的申请一律不受理。"}])
+            self.assertEqual(lint.schedule_agent_findings(lint.load_world_pack(root), root), [])
+        # 绿②：改成可观测缺席写法，不声称有人在场执行。
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory, scheduled=[{
+                "event": "refusal",
+                "time": "2026-03-16T07:30:00+08:00",
+                "notice": "值班干事今天不在，受理窗口关着，没有收件渠道。"}])
+            self.assertEqual(lint.schedule_agent_findings(lint.load_world_pack(root), root), [])
+
+    def test_g1_quoted_speech_and_absence_forms_are_not_agents(self):
+        """G1 的两处歧义边界：引号里是某个角色说的话（转述），缺席写法说的是
+        这个人不在——两者都不是“世界要让人来做这件事”。"""
+        lint = _gate_module()
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory, scheduled=[{
+                "event": "gossip",
+                "time": "2026-03-16T07:30:00+08:00",
+                "notice": "[[甲]]转述隔壁的话：'李阿姨给儿子相了个姑娘。'"}])
+            self.assertEqual(lint.schedule_agent_findings(lint.load_world_pack(root), root), [])
+
+    def test_g2_a_bare_role_noun_needs_registration_or_a_generic_declaration(self):
+        """G2 红：正文里的“值班干事”既没注册，也没声明是泛称。
+
+        d1-pm 里同一个词出现在面核通知、值班簿、场地申请表与唐小岚的常驻行：
+        谁读到它都没有可解析的东西，谁写它都不需要解释这个人是谁。"""
+        lint = _gate_module()
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory, scheduled=[{
+                "event": "refusal",
+                "time": "2026-03-16T07:30:00+08:00",
+                "notice": "值班干事把话说明白了：本周的申请一律不受理。"}])
+            findings = lint.role_prose_findings(lint.load_world_pack(root), root)
+            self.assertEqual(len(findings), 1, findings)
+            self.assertIn("值班干事", findings[0])
+            self.assertIn("role_prose", findings[0], "第二条修法是显式泛称声明")
+        # 绿①：声明这一行的角色词是泛称集合。
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory, scheduled=[{
+                "event": "refusal",
+                "time": "2026-03-16T07:30:00+08:00",
+                "role_prose": ["值班干事"],
+                "notice": "值班干事把话说明白了：本周的申请一律不受理。"}])
+            self.assertEqual(lint.role_prose_findings(lint.load_world_pack(root), root), [])
+        # 绿②：注册成泛称概念（kind: generic 不给任何人发知识行）。
+        with TemporaryDirectory() as directory:
+            root = _gate_world(
+                directory,
+                scheduled=[{"event": "refusal",
+                            "time": "2026-03-16T07:30:00+08:00",
+                            "notice": "[[值班干事]]把话说明白了：申请一律不受理。"}],
+                concepts=[{"id": "duty-clerk", "name": "值班干事", "kind": "generic"}])
+            self.assertEqual(lint.role_prose_findings(lint.load_world_pack(root), root), [])
+
+    def test_g3_every_location_needs_a_route_from_an_mc_start(self):
+        """G3 红：注册了一个没有任何路由的地点——角色 move 过去只会被拒绝，
+        常驻任务因此永远完不成（后街糕点铺的 6 小时带话死任务）。"""
+        lint = _gate_module()
+        places = [{"id": "屋子"}, {"id": "铺子"}]
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory, locations=places)
+            findings = lint.reachability_findings(lint.load_world_pack(root), root)
+            self.assertTrue(any("铺子" in finding for finding in findings), findings)
+            self.assertIn("routes:", findings[0], "修法必须指到既有声明")
+        # 绿：双向加一条路由。
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory, locations=places, routes=[
+                {"from": "屋子", "to": "铺子", "duration_seconds": 300},
+                {"from": "铺子", "to": "屋子", "duration_seconds": 300}])
+            self.assertEqual(lint.reachability_findings(lint.load_world_pack(root), root), [])
+        # 绿：远程地点（只通电话/消息）是种子显式声明的走不到。
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory, locations=[
+                {"id": "屋子"}, {"id": "老家", "remote": True, "primer": False}])
+            self.assertEqual(lint.reachability_findings(lint.load_world_pack(root), root), [])
+
+    def test_g3_a_prose_destination_must_be_a_location_not_a_place_concept(self):
+        """G3 第二臂：种子派角色去一个只有 kind: place 概念的地方。"""
+        lint = _gate_module()
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory, concepts=[{
+                "id": "back-street", "name": "后街铺子", "kind": "place",
+                "known_to": ["甲"], "desc": "校门后街的小铺子。"}],
+                scheduled=[{"event": "errand",
+                            "time": "2026-03-16T07:30:00+08:00",
+                            "target": "甲",
+                            "notice": "交接班前去[[后街铺子]]帮老板娘带话。"}])
+            findings = lint.reachability_findings(lint.load_world_pack(root), root)
+            self.assertTrue(any("后街铺子" in finding for finding in findings), findings)
+        # 绿：同一个地方注册成地点 + 双向路由。
+        with TemporaryDirectory() as directory:
+            root = _gate_world(
+                directory,
+                locations=[{"id": "屋子"}, {"id": "后街铺子"}],
+                routes=[{"from": "屋子", "to": "后街铺子", "duration_seconds": 300},
+                        {"from": "后街铺子", "to": "屋子", "duration_seconds": 300}],
+                scheduled=[{"event": "errand",
+                            "time": "2026-03-16T07:30:00+08:00",
+                            "target": "甲",
+                            "notice": "交接班前去[[后街铺子]]帮老板娘带话。"}])
+            self.assertEqual(lint.reachability_findings(lint.load_world_pack(root), root), [])
+
+    def test_g3_an_item_needs_a_path_or_a_completeness_declaration(self):
+        """G3 红：一件东西放在走不到的地方（红色哨子在远程的老家属院）。
+
+        绿①：放进一个可达角色的背包。绿②：作者声明它此刻不在手上。"""
+        lint = _gate_module()
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory, locations=[
+                {"id": "屋子"}, {"id": "老家", "remote": True, "primer": False}],
+                items=[{"id": "哨子", "location": "老家", "readable": False,
+                        "readable_reason": "一只哨子。"}])
+            findings = lint.reachability_findings(lint.load_world_pack(root), root)
+            self.assertTrue(any("哨子" in finding for finding in findings), findings)
+            self.assertIn("completeness", findings[0])
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory, items=[
+                {"id": "哨子", "location": None, "readable": False,
+                 "readable_reason": "一只哨子。"}],
+                actors=[{"id": "甲", "location": "屋子", "inventory": ["哨子"]}])
+            self.assertEqual(lint.reachability_findings(lint.load_world_pack(root), root), [])
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory, items=[
+                {"id": "哨子", "location": None, "completeness": "missing",
+                 "readable": False, "readable_reason": "一只哨子。"}])
+            self.assertEqual(lint.reachability_findings(lint.load_world_pack(root), root), [])
+
+    def test_g4_a_read_mention_needs_a_document(self):
+        """G4 红：房间正文提到公告栏，但 read 的目标只能是文书。
+
+        d1-pm 10:49–13:35 的全团“谁去看公告栏”循环就是这一族：没有任何人能
+        read 一块板，走进楼也没有“查看张贴”的动作。"""
+        lint = _gate_module()
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory, bodies={
+                "屋子": "# 屋子\n\n一间屋子。\n\n门边的公告栏贴着过期通知。\n"})
+            findings = lint.interaction_findings(lint.load_world_pack(root), root)
+            self.assertEqual(len(findings), 1, findings)
+            self.assertIn("公告栏", findings[0])
+            self.assertIn("documents:", findings[0], "修法必须指到既有类别")
+        # 绿：把公告栏注册成一份可读文书，正文就是张贴的内容；地点行同时按
+        # ticket 35 声明它可以被读（actionable_refs），两条契约正好接上。
+        with TemporaryDirectory() as directory:
+            root = _gate_world(
+                directory,
+                locations=[{"id": "屋子", "actionable_refs": [
+                    {"action": "read", "target": "公告栏", "at": "屋子"}]}],
+                documents=[{"id": "公告栏", "title": "公告栏", "location": "屋子",
+                            "known_to": ["甲"], "reading_seconds": 10,
+                            "content": "本周的申请一律不受理。"}],
+                bodies={"屋子": "# 屋子\n\n一间屋子。\n\n门边的公告栏贴着过期通知。\n",
+                        "公告栏": "# 公告栏\n\n门边钉着的一块板。\n"})
+            self.assertEqual(lint.interaction_findings(lint.load_world_pack(root), root), [])
+
+    def test_g4_an_examine_mention_needs_an_item(self):
+        """G4 红：正文提到热水壶（要被看见/拿取），但它不是 items 行。
+
+        票 77 已裁定这条编码：房间陈设是 items 行，描述走知觉与 observed。"""
+        lint = _gate_module()
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory, bodies={
+                "屋子": "# 屋子\n\n一间屋子。\n\n桌上有一只热水壶，壶身有一道旧划痕。\n"})
+            findings = lint.interaction_findings(lint.load_world_pack(root), root)
+            self.assertTrue(any("热水壶" in finding for finding in findings), findings)
+            self.assertIn("items:", findings[0])
+        with TemporaryDirectory() as directory:
+            root = _gate_world(
+                directory,
+                items=[{"id": "热水壶", "location": "屋子", "known_to": ["甲"],
+                        "readable": False, "readable_reason": "一只水壶。"}],
+                bodies={"屋子": "# 屋子\n\n一间屋子。\n\n桌上有一只热水壶，壶身有一道旧划痕。\n"})
+            self.assertEqual(lint.interaction_findings(lint.load_world_pack(root), root), [])
+
+    def test_g4_a_call_mention_needs_a_person_to_reach(self):
+        """G4 红：一条规则要求“电话报备”，而世界里没有可联系的对方
+        （档案室管理員只是概念；d1-pm 里全团连 12345 都无法表达）。"""
+        lint = _gate_module()
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory, locations=[
+                {"id": "屋子", "rules": ["管理员不在时重大事项须电话报备"]}])
+            findings = lint.interaction_findings(lint.load_world_pack(root), root)
+            self.assertTrue(any("电话" in finding for finding in findings), findings)
+            self.assertIn("actors:", findings[0])
+        # 绿：要求打电话的对象是一个真实角色（同时它也是本行正文提到的对象）。
+        with TemporaryDirectory() as directory:
+            root = _gate_world(
+                directory,
+                actors=[{"id": "甲", "location": "屋子"}, {"id": "乙", "location": "屋子"}],
+                locations=[{"id": "屋子", "rules": ["重大事项须打电话找[[乙]]报备"]}])
+            self.assertEqual(lint.interaction_findings(lint.load_world_pack(root), root), [])
+
+    def test_the_gates_bite_on_the_shipped_pack(self):
+        """四门在**真实种子**的结构上也咬得住（夹具之外的第二重证据）。
+
+        每门往一份真实种子副本里注入一类缺陷，再看它自己那一门是否报出：排程
+        里一个没人能演的角色（G1/G2）、一个被摘掉全部路由的地点（G3）、房间
+        正文里一件没注册的静物（G4）。这样即使夹具写错，门与真实种子的接线也检过。
+        """
+        lint = _gate_module()
+        import shutil
+        import yaml
+        with TemporaryDirectory() as directory:
+            root = Path(directory) / "world"
+            shutil.copytree(Path(__file__).parents[2] / "world", root)
+            manifest_path = root / "manifest.yml"
+            data = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+            data["scheduled"].insert(0, {
+                "event": "gate_probe",
+                "time": "2026-03-16T07:10:00+08:00",
+                "notice": "巡夜保安把侧门锁上了，钥匙交回了值班室。"})
+            data["routes"] = [row for row in data["routes"]
+                              if "河堤" not in (row["from"], row["to"])]
+            manifest_path.write_text(
+                yaml.safe_dump(data, allow_unicode=True, sort_keys=False),
+                encoding="utf-8")
+            canteen = root / "locations" / "食堂.md"
+            canteen.write_text(canteen.read_text(encoding="utf-8").rstrip("\n")
+                               + "\n\n窗口上方挂着一块菜牌，写着今天的四个菜。\n",
+                               encoding="utf-8")
+            pack = lint.load_world_pack(root)
+            # 门报的是词表里的角色词（“保安”），不是整句主语。
+            self.assertTrue(any("保安" in finding and "gate_probe" in finding
+                                for finding in lint.schedule_agent_findings(pack, root)))
+            self.assertTrue(any("保安" in finding and "gate_probe" in finding
+                                for finding in lint.role_prose_findings(pack, root)))
+            reach = lint.reachability_findings(pack, root)
+            self.assertTrue(any("location 河堤" in finding for finding in reach), reach)
+            self.assertTrue(any("菜牌" in finding
+                                for finding in lint.interaction_findings(pack, root)))
+
+    def test_a_fixed_fixture_cannot_be_taken_and_stays_put(self):
+        """E83 / ticket 80（票 79 §8-5）：新登记的五件陈设是固定陈设，拿不走。
+
+        票 78 G4 按票 77 的编码把它们写成 `items:`（在场者靠知觉拿到描写），
+        而 `take` 对任何 item 都成立——模型可以把一台冰柜拿走。泛化只有一处：
+        `items:` 的可选 `takeable: false` 让 take 结构化拒绝，理由取
+        `fixed_reason`（缺省“这是固定陈设”）；give 的就地分支与 trash 走同一条判定，
+        因为两者同样能把它从原处抹去。红：把种子里的 `takeable: false` 删掉，
+        下面第一段拿冰柜就不再被拒。"""
+        pack = load_story_pack()
+        world = pack.build_world()
+        world.actors["唐小岚"].location = "小卖部"
+        world.actors["陈默"].location = "小卖部"
+        offered = [option for option in world.affordances("唐小岚")
+                   if option.get("kind") == "take"]
+        self.assertNotIn({"kind": "take", "item": "冰柜"}, offered,
+                         "固定陈设不进 take 候选")
+        self.assertIn({"kind": "take", "item": "一瓶饮料"}, offered,
+                      "同一地点的货仍然可以拿")
+        for kind, args in (("take", {"item": "冰柜"}),
+                           ("give", {"item": "冰柜", "target": "陈默"}),
+                           ("trash", {"item": "冰柜"})):
+            with self.assertRaises(ActionRejected) as caught:
+                world.submit(Intention("唐小岚", kind, dict(args), world.version))
+            self.assertEqual(caught.exception.context.get("reason"), "fixed_fixture", kind)
+            self.assertIn("拿不走", caught.exception.message, kind)
+            self.assertIn("抱走", caught.exception.message, kind)  # 种子写的理由原样转达
+            self.assertEqual(world.item_locations.get("冰柜"), "小卖部", kind)
+        world.submit(Intention("唐小岚", "take", {"item": "一瓶饮料"}, world.version))
+        world.advance()
+        self.assertIn("一瓶饮料", world.actors["唐小岚"].inventory)
+        # 种子没写理由时用缺省文案；写了就照抄，不改写。
+        bare = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
+                     actors=[ActorState("a", "room")], locations=[LocationState("room")],
+                     item_locations={"冰柜": "room"},
+                     fixed_items={"冰柜": "", "冰柜二号": "通电中，搬不动。"})
+        bare.item_locations["冰柜二号"] = "room"
+        for item, wording in (("冰柜", "这是固定陈设"), ("冰柜二号", "通电中，搬不动。")):
+            with self.assertRaises(ActionRejected) as caught:
+                bare.submit(Intention("a", "take", {"item": item}, bare.version))
+            self.assertIn(wording, caught.exception.message)
+        # 装载器校验字段类型：`takeable` 写错不是静默降级成“可携带”。
+        import shutil
+        from harness.world_loader import load_world_pack
+        with TemporaryDirectory() as directory:
+            root = Path(directory) / "world"
+            shutil.copytree(Path(__file__).parents[2] / "world", root)
+            manifest = root / "manifest.yml"
+            broken = manifest.read_text(encoding="utf-8").replace(
+                "- id: 冰柜\n  location: 小卖部\n  takeable: false\n",
+                "- id: 冰柜\n  location: 小卖部\n  takeable: 'no'\n", 1)
+            self.assertNotEqual(broken, manifest.read_text(encoding="utf-8"))
+            manifest.write_text(broken, encoding="utf-8")
+            with self.assertRaises(ValueError) as caught:
+                load_world_pack(root)
+            self.assertIn("takeable must be true or false", str(caught.exception))
+
+    def test_the_four_gates_run_as_one_command_on_a_clean_pack(self):
+        """四门合成一条通道：一个干净的世界包零违规，CLI 因此只有一条判据。"""
+        lint = _gate_module()
+        with TemporaryDirectory() as directory:
+            root = _gate_world(directory)
+            self.assertEqual(lint.contract_gate_findings(root), [])
+
+
+# --- 票据 83：M1 第一窗口（07:00→14:00）的引擎侧修复 ------------------------
+# 三处引擎行为（物品在 extra 生命周期下不消失、写记录动作的可用性文案、
+# 无调用的回合在 trace 里可诊断）各自先红后绿；第四条（NPC 只叙述不施动）的
+# 裁定见票据 83 与 docs/V4-ENGINE.md §7.4：话语从不被当作动作，缺陷在提示层。
+
+class ExtraDespawnItemInvariantGates(unittest.TestCase):
+    """E84（报 81 §5，票 74 缺陷 B 的邻居）：extra 带走的主线道具必须留在世上。
+
+    2026-10-18 窗口 run（real-20261018T012247）12:52 陈阿姨在半坡咖啡馆
+    `take 校报草稿` 成功，13:07 她按 idle 被回收——草稿随她一起离开世界：
+    `item_locations` 里没有它、没有一条事件说明它去了哪里，唐小岚 13:17 回到
+    咖啡馆时 nearby_items 只剩裂纹马克杯（她的 !always 目标物无声消失）。
+    引擎侧的不变式因此是：**任何物品在任何时刻都有一个确定的位置**——extra
+    被回收前，它手里的每件东西都要按既有 `place` 语义落到它最后所在地点，
+    并留下一条可 replay 的事件。
+    """
+
+    START = datetime.fromisoformat("2026-03-16T12:50:00+08:00")
+
+    def _scene(self):
+        world = load_story_pack().build_world()
+        world.actors["唐小岚"].location = "半坡咖啡馆"
+        world.add_extra("陈阿姨", "半坡咖啡馆")
+        world.submit(Intention("陈阿姨", "take", {"item": "校报草稿"}, world.version))
+        world.advance(until=world.now + timedelta(minutes=2))
+        return world
+
+    def test_despawn_leaves_carried_items_at_the_last_location(self):
+        world = self._scene()
+        self.assertIn("校报草稿", world.actors["陈阿姨"].inventory)
+        self.assertNotIn("校报草稿", world.item_locations)
+        world.remove_extra("陈阿姨", reason="idle")
+        self.assertEqual(world.item_locations.get("校报草稿"), "半坡咖啡馆",
+                         "回收 extra 不能把物品一起带走")
+        drops = [e for e in world.event_log if e.kind == "item_dropped"]
+        self.assertEqual([e.payload.get("item") for e in drops], ["校报草稿"])
+        self.assertEqual(drops[0].payload.get("location"), "半坡咖啡馆")
+        self.assertIn("唐小岚", drops[0].visible_to, "同在地点的人必须看得见它落在原处")
+        self.assertIn({"kind": "take", "item": "校报草稿"}, world.affordances("唐小岚"),
+                      "落在原处的道具必须重新可拿")
+        from harness.prompt import _event_sentence
+        line = _event_sentence(
+            {"kind": "item_dropped", "actor": "陈阿姨",
+             "payload": drops[0].payload}, location="半坡咖啡馆")
+        self.assertIn("校报草稿", line or "")
+        self.assertIn("留在了半坡咖啡馆", line or "",
+                      "同地的人在消息里读得到「它落在了原处」")
+
+    def test_replay_rebuilds_the_same_item_location(self):
+        world = self._scene()
+        world.remove_extra("陈阿姨", reason="idle")
+        replayed = replay_world(load_story_pack().build_world(), world.replayable_log())
+        self.assertEqual(replayed.item_locations.get("校报草稿"), "半坡咖啡馆")
+        self.assertNotIn("陈阿姨", replayed.actors)
+        self.assertEqual(
+            [e["kind"] for e in replayed.replayable_log()],
+            [e["kind"] for e in world.replayable_log()])
+
+    def test_every_prefix_keeps_the_item_somewhere(self):
+        """不变式的形状：日志的每个前缀之后，草稿要么在某人手里，要么在某个地点。"""
+        world = self._scene()
+        world.remove_extra("陈阿姨", reason="idle")
+        initial = load_story_pack().build_world()
+        log = world.replayable_log()
+        for cut in range(1, len(log) + 1):
+            state = replay_world(initial, log[:cut])
+            holders = [actor for actor, value in state.actors.items()
+                       if "校报草稿" in value.inventory]
+            self.assertTrue(holders or state.item_locations.get("校报草稿"),
+                            f"第 {cut} 条事件之后「校报草稿」既不在任何地点也不在任何人手里")
+
+
+class WriteRecordAffordanceGates(unittest.TestCase):
+    """E85（报 81 报告 08:53/13:13）：写记录的动作存在，却读起来不像能写记录。
+
+    林瑶 08:34 真的用 `leave_note` 写下了 400 字事实记录（turn 93，
+    `note_left` 落地），可 08:53 起她说"记录应分别写好再交，不把口头说明或
+    留字条当成完成"，13:13 拿着 `可用纸笔` 的 `inner` 是"纸笔在我手上，但没有
+    可用工具把个人事实记录实际写入纸面"。诊断：`leave_note` **不依赖任何持有物**
+    （`World.affordances` 无条件给出，工具表无条件声明，kernel 只看 `text`），
+    但它的说明只把它写成"给之后进入的人留一张字条、阅后即焚"，于是一个要把
+    记录写在纸上的角色认定"这不是记录"。修法不改语义、不造机制：让工具说明与
+    affordance 提示把它说成"写记录/留字条"，并明说这件事不需要先拿到纸笔。
+    """
+
+    def _offered(self, world, actor):
+        return [option for option in world.affordances(actor)
+                if option.get("kind") == "leave_note"]
+
+    def test_leave_note_is_described_as_writing_a_record_with_or_without_paper(self):
+        from harness.action_schema import TOOLS
+        tool = next(t["function"] for t in TOOLS if t["function"]["name"] == "leave_note")
+        description = tool["description"]
+        self.assertIn("写记录", description, "工具说明必须把 leave_note 说成能写记录")
+        self.assertIn("字条", description)
+        pack = load_story_pack()
+        for held, label in ((False, "空手"), (True, "拿着纸笔")):
+            world = pack.build_world()
+            if held:
+                world.actors["林瑶"].inventory.add("可用纸笔")
+            offered = self._offered(world, "林瑶")
+            self.assertEqual(len(offered), 1, f"{label}：写记录的动作必须在可用清单里")
+            self.assertIn("写记录", str(offered[0].get("hint", "")), label)
+            world.submit(Intention("林瑶", "leave_note",
+                                   {"text": "3/16 记录：亲见、转述与未知分开写。"},
+                                   world.version))
+            world.advance()
+            self.assertEqual(world.locations["女生宿舍"].notes[-1]["author"], "林瑶", label)
+
+    def test_a_note_is_not_gated_on_holding_writing_material(self):
+        """两种持有状态下都能写：纸笔不是前提，拒绝文案里也不出现"先取纸笔"。"""
+        pack = load_story_pack()
+        for held in (False, True):
+            world = pack.build_world()
+            if held:
+                world.actors["陈默"].inventory.add("可用纸笔")
+            world.submit(Intention("陈默", "leave_note", {"text": "记录：仅写亲历。"},
+                                   world.version))
+            events = world.advance()
+            self.assertTrue(any(e.kind == "note_left" for e in events), held)
+            with self.assertRaises(ActionRejected) as caught:
+                world.submit(Intention("陈默", "leave_note", {"text": "  "}, world.version))
+            self.assertNotIn("纸笔", caught.exception.message)
+
+
+class TurnWithoutActionGates(unittest.TestCase):
+    """E86（报 81 §2）：一个没有调用的回合必须在 trace 里说清为什么什么都没发生。
+
+    2026-10-18 窗口 run 的 12:51 林瑶（mc）回合：`result=none`、`inner=None`、
+    零调用，世界只往前走一拍——审阅者只看到一条空白行。引擎不改模型行为，
+    只把"这一回合没有产生动作"记成一条带 reason 的 system_turn：
+    `prose_only`（写了话但没提交意图）或 `no_output`（什么都没返回）。
+
+    E87（报 81 §3）：话语从不被当成动作。食堂大妈 12:44–12:58 七次"我马上给你
+    打"都是真的 `speak` 调用（事件 #…），没有一次 `give`/`place`——引擎照实记
+    了七句话、零交付，所以那是提示层（NPC 导演简报）的问题，不是引擎把承诺当
+    动作。本类同时钉住这条区分：一个只有 speak 的回合不会产生 `empty_turn`。
+    """
+
+    def _engine(self, world, replies):
+        """A v4 engine whose agents return the scripted reply per actor turn."""
+        trace = Trace("v4-test", "ticket83-empty-turn")
+        queue = {actor: list(rows) for actor, rows in replies.items()}
+
+        class _SessionAgent:
+            """v4 agent: returns (text, calls) per call, records what it sent."""
+
+            def __init__(self, actor):
+                self.actor = actor
+                self.session_obj = object()
+
+            def __call__(self, text, state):
+                rows = queue.get(self.actor) or [{"text": "", "calls": []}]
+                row = rows.pop(0) if len(rows) > 1 else rows[0]
+                return {"text": row.get("text", ""), "calls": row.get("calls", []),
+                        "inner": None}
+
+        agents = {actor: _SessionAgent(actor) for actor in world.actors}
+        states = {actor: PrivateState(actor) for actor in world.actors}
+        engine = AsyncEngine(world, agents, states, trace, None,
+                             decision_timeout=10, max_wall_seconds=60)
+        return engine, trace
+
+    def _run(self, replies, minutes=6, locate=None):
+        world = load_story_pack().build_world()
+        for actor, place in (locate or {}).items():
+            world.actors[actor].location = place
+        engine, trace = self._engine(world, replies)
+        engine.run(stop_at=world.now + timedelta(minutes=minutes), max_turns=40)
+        return world, trace
+
+    @staticmethod
+    def _empty_turns(trace, actor):
+        return [t for t in trace.system_turns
+                if t["request"].get("kind") == "empty_turn"
+                and t["result"].get("actor") == actor]
+
+    def test_a_turn_with_text_and_no_call_is_recorded_as_prose_only(self):
+        world, trace = self._run({"陈默": [{"text": "我再想想，还没决定要做什么。"}]})
+        rows = self._empty_turns(trace, "陈默")
+        self.assertTrue(rows, "有输出但没有调用的回合必须留下可审计记录")
+        self.assertEqual(rows[0]["result"]["reason"], "prose_only")
+        self.assertEqual(rows[0]["result"]["role"], "mc")
+        self.assertGreater(rows[0]["result"]["private_chars"], 0)
+
+    def test_a_turn_with_nothing_at_all_is_recorded_as_no_output(self):
+        world, trace = self._run({"林瑶": [{"text": "", "calls": []}]})
+        rows = self._empty_turns(trace, "林瑶")
+        self.assertTrue(rows, "既无调用又无输出的回合必须留下可审计记录")
+        self.assertEqual(rows[0]["result"]["reason"], "no_output")
+        self.assertEqual(rows[0]["result"]["private_chars"], 0)
+
+    def test_a_spoken_promise_is_recorded_as_speech_not_as_an_action(self):
+        """E87：七次"我马上给你打"是七句话、零次交付——引擎照实记账。
+
+        反夹具：食堂大妈同一回合只说 `speak`，世界里没有 `item_given`/`place`，
+        轨迹里也没有 `empty_turn`（她提交了意图）；正夹具：她真的 `give`
+        一份餐食给在场的唐小岚时，`item_given` 才出现。
+        """
+        world = load_story_pack().build_world()
+        world.actors["唐小岚"].location = "食堂"
+        world.submit(Intention("食堂大妈", "speak",
+                               {"text": "行，一荤一素配米饭，我马上给你打。",
+                                "volume": "normal", "to": ["唐小岚"]}, world.version))
+        world.advance()
+        self.assertTrue([e for e in world.event_log if e.kind == "speech"])
+        self.assertFalse([e for e in world.event_log if e.kind == "item_given"],
+                         "说话不产生交付")
+        self.assertIn("一份餐食", world.item_locations, "她确实有可交付的东西")
+        world.submit(Intention("食堂大妈", "give",
+                               {"item": "一份餐食", "target": "唐小岚"}, world.version))
+        world.advance()
+        self.assertEqual([e.payload.get("item") for e in world.event_log
+                          if e.kind == "item_given"], ["一份餐食"])
+        self.assertIn("一份餐食", world.actors["唐小岚"].inventory)
+
+    def test_a_turn_that_speaks_is_not_an_empty_turn(self):
+        """E87 的负向守卫：提交了 speak 的回合不是空回合。
+
+        E86 的诊断只该覆盖"没有提交任何意图"的回合；一个只说了话的回合是
+        `submitted`（话进了世界），不能被记成空回合——否则"话语"与"空转"就
+        又混在一起了。
+        """
+        ask = {"name": "speak",
+               "arguments": {"text": "大妈，我要一份一荤一素配米饭。",
+                             "volume": "normal", "to": ["食堂大妈"]}}
+        promise = {"name": "speak",
+                   "arguments": {"text": "行，一荤一素配米饭，我马上给你打。",
+                                 "volume": "normal", "to": ["唐小岚"]}}
+        world, trace = self._run({
+            "唐小岚": [{"text": "", "calls": [ask]}],
+            "食堂大妈": [{"text": "", "calls": [promise]}]},
+            locate={"唐小岚": "食堂", "陈默": "男生宿舍"})
+        promises = [e for e in world.event_log
+                    if e.kind == "speech" and e.actor == "食堂大妈"]
+        self.assertTrue(promises, "承诺必须作为一句话落地")
+        self.assertFalse([e for e in world.event_log if e.kind == "item_given"],
+                         "说话不产生交付")
+        self.assertFalse(self._empty_turns(trace, "食堂大妈"),
+                         "提交了 speak 的回合不是空回合")
+        turn = next(t for t in trace.agent_turns if t["actor"] == "食堂大妈")
+        self.assertEqual(turn["result"], "submitted")
+
+
+class PromptDeliveryConsistencyGates(unittest.TestCase):
+    """E88（票 85）：话语不改变世界、不得断言未见的世界变化、写记录不必先有纸笔。
+
+    票 83 把"NPC 只叙述不施动"判给提示层，但提示层当时只说了一半：NPC 唤醒的
+    `[director]` 块里只有本场目标，没有"承诺要用 give 兑现"；extra 的固定 prompt
+    只有"不得叙述没做过的动作"，没有"话不改变世界／不得否认世界状态"；MC 只有
+    工具说明，而 `give`/`take` 读起来是纯物理描述、`leave_note` 也没说清"书面记录"
+    这一层。三支测试分别钉住三类角色各自组装出来的提示文本（读文本，不读函数），
+    并断言这些约束没有跑到不属于它的角色类型里。
+    """
+
+    def _run_capturing(self, replies, *, minutes=6, locate=None):
+        """Run a v4 engine and keep every world message each actor was handed."""
+        world = load_story_pack().build_world()
+        for actor, place in (locate or {}).items():
+            world.actors[actor].location = place
+        sent: dict[str, list[str]] = {actor: [] for actor in world.actors}
+        queue = {actor: list(rows) for actor, rows in replies.items()}
+
+        class _RecordingAgent:
+            """v4 agent: records the assembled prompt, then answers from script."""
+
+            def __init__(self, actor):
+                self.actor = actor
+                self.session_obj = object()
+
+            def __call__(self, text, state):
+                sent[self.actor].append(text)
+                rows = queue.get(self.actor) or [{"text": "", "calls": []}]
+                row = rows.pop(0) if len(rows) > 1 else rows[0]
+                return {"text": row.get("text", ""), "calls": row.get("calls", []),
+                        "inner": None}
+
+        agents = {actor: _RecordingAgent(actor) for actor in world.actors}
+        states = {actor: PrivateState(actor) for actor in world.actors}
+        trace = Trace("v4-test", "ticket85-prompt-delivery")
+        engine = AsyncEngine(world, agents, states, trace, None,
+                             decision_timeout=10, max_wall_seconds=60)
+        engine.run(stop_at=world.now + timedelta(minutes=minutes), max_turns=40)
+        return world, sent
+
+    def test_an_npc_wake_briefing_binds_delivery_to_tools(self):
+        """NPC 唤醒拿到的 `[director]` 块必须带上两条约束——且只出现在 NPC 那里。
+
+        报告 §P2 的两处失效（七次"我马上给你打"零交付；"长柄勺找不着"断言了世界
+        从未发生的移动）都发生在同一个角色、同一段简报之下。这条断言读的是
+        **组装后的世界消息**：引擎这次不给 `director_brief`（种子没写本场目标时
+        的真实状态），约束仍然在——它是提示层的固定开头，不是种子数据的一部分。
+        """
+        ask = {"name": "speak",
+               "arguments": {"text": "大妈，我要一份一荤一素配米饭。",
+                             "volume": "normal", "to": ["食堂大妈"]}}
+        world, sent = self._run_capturing({"唐小岚": [{"text": "", "calls": [ask]}]},
+                                          locate={"唐小岚": "食堂"})
+        self.assertTrue([e for e in world.event_log
+                         if e.kind == "speech" and e.actor == "唐小岚"],
+                        "夹具前提：唐小岚真的在食堂开了口")
+        self.assertTrue(sent["食堂大妈"], "夹具前提：食堂大妈被这句话唤醒并拿到简报")
+        briefing = sent["食堂大妈"][0]
+        self.assertIn("[director]", briefing, "NPC 唤醒必须带 [director] 块")
+        self.assertIn("只有工具调用能改变世界", briefing,
+                      "NPC 简报必须说明话不改变世界")
+        self.assertIn("give", briefing, "并指名交付要走 give")
+        self.assertIn("不许断言或否认世界状态的改变", briefing,
+                      "NPC 简报必须禁止断言未见的世界变化")
+
+        # 负面：同一句约束不许漏进 MC 的提示（MC 永远看不到 [director] 块）。
+        for mc in ("陈默", "唐小岚", "林瑶"):
+            for message in sent[mc]:
+                self.assertNotIn("[director]", message, f"{mc} 不该看到导演块")
+                self.assertNotIn("不许断言或否认世界状态的改变", message,
+                                 f"{mc} 不该看到 NPC 简报的约束")
+
+    def test_an_extra_prompt_binds_delivery_to_tools(self):
+        """extra 的固定提示必须说清：话不改变世界，且不得否认世界状态。"""
+        from harness.npc_agent import build_extra_system_prompt
+        prompt = build_extra_system_prompt("打饭阿姨", "", "食堂", name="王阿姨")
+        self.assertIn("只有这些工具调用改变世界", prompt)
+        self.assertIn("说“我给你”“我去拿”什么都不会发生", prompt)
+        self.assertIn("give", prompt)
+        self.assertIn("不许断言或否认世界的变化", prompt)
+        self.assertIn("除非你亲眼看见那条事件", prompt)
+        # 负面：路人的提示里不该出现不属于它的东西——没有 [director] 块，
+        # 也没有只属于 MC 的写记录动作。
+        self.assertNotIn("[director]", prompt)
+        self.assertNotIn("leave_note", prompt)
+
+    def test_mc_tool_notes_say_words_are_not_delivery(self):
+        """MC 只从工具说明学到动作语义，所以那句话必须写在 give/take/leave_note 里。
+
+        报告 §P1 是第三类失效：林瑶 13:13 拿着纸笔写"没有可用工具把个人事实记录
+        实际写入纸面"，而 `leave_note` 就在她的工具表里。三件工具各补一句，
+        并且这句约束只出现在工具说明里，不落进 MC 的世界消息。
+        """
+        from harness.action_schema import TOOLS
+        described = {tool["function"]["name"]: tool["function"]["description"]
+                     for tool in TOOLS}
+        self.assertIn("不会让任何东西移动", described["give"],
+                      "交付的说明要说明话不搬运东西")
+        self.assertIn("不会让东西到你手里", described["take"],
+                      "取物的说明要说明话不搬运东西")
+        self.assertIn("写记录", described["leave_note"])
+        self.assertIn("书面记录", described["leave_note"],
+                      "要留下书面记录就用它——报告 §P1 的桥就在这里")
+        self.assertIn("不需要先拿到纸笔", described["leave_note"])
+
+        # 负面：NPC 唤醒块的措辞是给导演简报的，不该混进工具说明。
+        from harness.prompt import NPC_WAKE_RULES
+        for name, description in described.items():
+            self.assertNotIn(NPC_WAKE_RULES.strip(), description, name)
+            self.assertNotIn("不许断言或否认世界状态的改变", description, name)
+
+    def test_the_docs_name_the_same_three_bindings(self):
+        """两份文档与代码指同一个落点：改提示却不改文档，或反过来，都会被拦住。"""
+        root = Path(__file__).parents[2]
+        interface = (root / "docs" / "V4-AGENT-INTERFACE.md").read_text(encoding="utf-8")
+        cast = (root / "docs" / "V4-CAST.md").read_text(encoding="utf-8")
+        for anchor in ("NPC_WAKE_RULES", "PromptDeliveryConsistencyGates", "leave_note"):
+            self.assertIn(anchor, interface, f"V4-AGENT-INTERFACE 必须点名 {anchor}")
+        self.assertIn("PromptDeliveryConsistencyGates", cast,
+                      "V4-CAST 的导演简报一节必须指向看守测试")
+        self.assertIn("give", cast)
+
+
+class PersistentNoteGates(unittest.TestCase):
+    """E89（报 86 §1，窗口 2 12:11–15:02）：世界里的"书面稿"只能留给下一位进入者、
+    读后即焚，于是"写一份说明并交上去"整条链不可表达。
+
+    3 小时里 21 次 `item_given` 全是纸笔在三人之间往返，0 次成稿；96 个回合
+    （9.9%）的私有推理在讨论"留条能不能算稿"（12:47/13:18/14:55 陈默与班长）。
+    根因不是缺动作：`leave_note` 的投递语义是"给之后第一位非作者、阅后即焚"，
+    **按定义不能交给在场的收件人，也不能被同一个人读第二遍**。
+    修法是一处泛化而不是新原语：`leave_note` 增加可选 `persist`（缺省 false，
+    旧语义一字节不改）；persist 时笔记成为可寻址实体（`note-<作者>-<序号>`），
+    留在原地点、进知觉与 `read` 的可用目标、可重复读、可 `trash`，事件里带
+    id 与 text，所以 replay 能重建。"交付到某处"= 把它留在目标地点的桌上。
+    """
+
+    TEXT = "审计说明：3/16 现场所见与转述已分开记，待班长复核。"
+
+    def _world_with_note(self):
+        world = load_story_pack().build_world()
+        world.submit(Intention("陈默", "leave_note",
+                               {"text": self.TEXT, "persist": True}, world.version))
+        world.advance()
+        return world
+
+    def test_a_persistent_note_can_be_read_twice_with_the_same_text(self):
+        """① 同一张 persist 便条读两次都成功、内容一致，且读后仍留在原处。"""
+        world = self._world_with_note()
+        note_id = next(iter(world.persistent_notes))
+        self.assertTrue(note_id.startswith("note-陈默-"), note_id)
+        self.assertEqual(world.persistent_notes[note_id]["location"], "男生宿舍")
+        # 它没有退化成"房间里等着烧掉的字条"。
+        self.assertEqual(world.locations["男生宿舍"].notes, [])
+        # 留在原地的人当场就能读到：read 的可用目标里有它。
+        self.assertIn({"kind": "read", "item": note_id}, world.affordances("陈默"))
+        for _ in range(2):
+            world.submit(Intention("陈默", "read", {"item": note_id}, world.version))
+            world.advance()
+        reads = [event.payload["content"] for event in world.event_log
+                 if event.kind == "document_read" and event.payload["document"] == note_id]
+        self.assertEqual(reads, [self.TEXT, self.TEXT], "persist 便条必须能重复读到全文")
+        self.assertIn(note_id, world.persistent_notes, "读一次不能把持久便条烧掉")
+        # 他人到场后同样读得到（知觉里有它的编号，read 成功）。
+        world.actors["班长"].location = "男生宿舍"
+        self.assertEqual([note["id"] for note in world.poll("班长")["notes_here"]], [note_id])
+        world.submit(Intention("班长", "read", {"item": note_id}, world.version))
+        world.advance()
+        self.assertEqual([event.payload["content"] for event in world.event_log
+                          if event.kind == "document_read"
+                          and event.actor == "班长"], [self.TEXT])
+        self.assertIn(note_id, world.persistent_notes)
+
+    def test_a_default_note_still_burns_after_its_first_reader(self):
+        """② 反夹具：不带 persist 的字条保持 2026-09-22 裁定的语义（读后即焚）。"""
+        world = load_story_pack().build_world()
+        world.submit(Intention("陈默", "leave_note", {"text": "去后街找我。"},
+                               world.version))
+        events = world.advance()
+        self.assertTrue([e for e in events if e.kind == "note_left"])
+        self.assertEqual(world.persistent_notes, {}, "默认字条不是实体、没有编号")
+        self.assertEqual([note["text"] for note in world.locations["男生宿舍"].notes],
+                         ["去后街找我。"])
+        world.submit(Intention("班长", "move", {"target": "男生宿舍"}, world.version))
+        world.advance(until=world.now + timedelta(minutes=30))
+        self.assertEqual(world.locations["男生宿舍"].notes, [], "默认字条被第一位非作者读者烧掉")
+        self.assertTrue([e for e in world.event_log if e.kind == "note_read"])
+        self.assertFalse([e for e in world.event_log if e.kind == "document_read"],
+                         "默认字条不提供可寻址的 read 通道")
+
+    def test_replay_rebuilds_the_same_persistent_note_id(self):
+        """③ replay 用事件里的 id 与 text 重建同一张便条，仍可读。"""
+        world = self._world_with_note()
+        note_id = next(iter(world.persistent_notes))
+        world.submit(Intention("陈默", "read", {"item": note_id}, world.version))
+        world.advance()
+        replayed = replay_world(load_story_pack().build_world(), world.replayable_log())
+        self.assertEqual(replayed.persistent_notes.get(note_id, {}).get("text"), self.TEXT)
+        self.assertEqual(replayed.locations["男生宿舍"].notes, [])
+        replayed.submit(Intention("陈默", "read", {"item": note_id}, replayed.version))
+        replayed.advance()
+        self.assertTrue([e for e in replayed.event_log
+                         if e.kind == "document_read"
+                         and e.payload["document"] == note_id
+                         and e.payload["content"] == self.TEXT])
+        # 销毁也要可重建：trash 后的世界与 replay 后的世界都读不到了。
+        world.submit(Intention("陈默", "trash", {"item": note_id}, world.version))
+        world.advance()
+        self.assertNotIn(note_id, world.persistent_notes)
+        replayed_trash = replay_world(load_story_pack().build_world(),
+                                      world.replayable_log())
+        self.assertNotIn(note_id, replayed_trash.persistent_notes)
+
+    def test_a_checkpoint_keeps_the_note_and_never_reuses_its_id(self):
+        """检查点带着便条与编号计数器往返：恢复后新写的一张不会撞上旧编号。"""
+        world = self._world_with_note()
+        first = next(iter(world.persistent_notes))
+        restored = World.from_checkpoint(load_story_pack().build_world(),
+                                         world.checkpoint_state())
+        self.assertIn(first, restored.persistent_notes)
+        self.assertIn({"kind": "read", "item": first}, restored.affordances("陈默"))
+        restored.submit(Intention("陈默", "leave_note",
+                                  {"text": "第二张。", "persist": True}, restored.version))
+        restored.advance()
+        second = next(note_id for note_id in restored.persistent_notes if note_id != first)
+        self.assertNotEqual(first, second, "恢复后不得复用已用过的便条编号")
+
+    def test_an_old_checkpoint_without_notes_still_loads(self):
+        """向后兼容：没有 persistent_notes/next_note_serial 的旧检查点照常加载。"""
+        world = load_story_pack().build_world()
+        state = world.checkpoint_state()
+        state.pop("persistent_notes", None)
+        state.pop("next_note_serial", None)
+        restored = World.from_checkpoint(load_story_pack().build_world(), state)
+        self.assertEqual(restored.persistent_notes, {})
+        restored.submit(Intention("陈默", "leave_note",
+                                  {"text": "旧检查点之后的第一张。", "persist": True},
+                                  restored.version))
+        restored.advance()
+        self.assertEqual(len(restored.persistent_notes), 1)
+
+    ARCHIVED_CHECKPOINT = (Path(__file__).parents[2] / "runs" / "archive-20261016-attempt1"
+                           / "d1-am.json")
+
+    @unittest.skipUnless(ARCHIVED_CHECKPOINT.is_file(), "归档检查点不在本工作树")
+    def test_the_archived_d1_am_checkpoint_still_loads(self):
+        """窗口 1 的旧检查点（v4-checkpoint-2）必须仍能恢复：本轮只做向后兼容增量。"""
+        checkpoint = json.loads(self.ARCHIVED_CHECKPOINT.read_text(encoding="utf-8"))
+        world = World.from_checkpoint(load_story_pack().build_world(), checkpoint["world"])
+        self.assertEqual(world.now.isoformat(), "2026-03-16T12:59:00+08:00")
+        self.assertEqual(len(world.event_log), 1535)
+        self.assertEqual(world.persistent_notes, {}, "旧检查点没有持久便条")
+        self.assertEqual(world._note_serial, 1)
+
+
+class ExtraEmptyTurnGates(unittest.TestCase):
+    """E90（报 86 §2，E86 覆盖不完整）：零动作的 extra 回合在 trace 里仍是空白行。
+
+    窗口 2 的 `system_turns` 有 6 条 `empty_turn`（MC/NPC 全覆盖），但 trace 里
+    `result: none` 的回合有 8 条：09:33 林大爷、14:13 陈师傅 的 `calls=[]` 与空
+    `inner` 没有任何记录。`engine._execute_chain` 的 `empty_turn` 只在 MC/NPC 链
+    路径上记；extra 走 `_extra_turn`，于是"零动作"与"没发生"在 trace 上不可分。
+    修法只加诊断：extra 真正被问了（`needs_response`）却一个调用都没有时记一条
+    `empty_turn`（role=extra、reason=no_output），世界不变、不惩罚角色。
+    """
+
+    def _run(self, replies):
+        """一次 6 分钟的对话：陈默向路人搭话，路人按 replies 依次回答。"""
+        world = load_story_pack().build_world()
+        asked = set()
+
+        def agent(state, perception, affordances):
+            if state.actor_id == "陈默" and "ask" not in asked:
+                asked.add("ask")
+                return Intention(state.actor_id, "speak",
+                                 {"text": "请问台账的事？", "volume": "normal",
+                                  "to": ["陌生人"], "wait_response": False},
+                                 perception["world_version"])
+            return Intention(state.actor_id, "wait",
+                             {"duration_seconds": 3600},
+                             perception["world_version"])
+
+        class _Stub:
+            def __init__(self, rows):
+                self.rows = list(rows)
+
+            def chat_with_tools(self, messages, tools):
+                row = self.rows.pop(0) if len(self.rows) > 1 else self.rows[0]
+                return row
+
+        non_extra = [actor for actor in world.actors if world.actors[actor].role != "extra"]
+        trace = Trace("v4-test", "ticket88-extra-empty-turn")
+        _call_pool().submit(lambda: None).result(timeout=5)
+        engine = AsyncEngine(world, {a: agent for a in non_extra},
+                             {a: PrivateState(a) for a in non_extra}, trace, None,
+                             extra_call=_Stub(replies), decision_timeout=10,
+                             max_wall_seconds=60, extra_idle_seconds=3600)
+        engine.run(stop_at=world.now + timedelta(minutes=6), max_turns=300)
+        return world, trace
+
+    @staticmethod
+    def _empty_turns(trace, actor):
+        return [turn for turn in trace.system_turns
+                if turn["request"].get("kind") == "empty_turn"
+                and turn["result"].get("actor") == actor]
+
+    def test_a_zero_action_extra_turn_is_recorded_with_its_reason(self):
+        world, trace = self._run([{"role": "assistant", "content": "", "tool_calls": []}])
+        extra = next(a for a in world.actors.values() if a.role == "extra")
+        rows = self._empty_turns(trace, extra.id)
+        self.assertTrue(rows, "零动作的 extra 回合必须留下可审计记录")
+        self.assertEqual(rows[0]["result"]["role"], "extra")
+        self.assertEqual(rows[0]["result"]["reason"], "no_output")
+        self.assertEqual(rows[0]["result"]["private_chars"], 0)
+        # 不改世界、不惩罚：路人什么也没说，世界照常结束。
+        self.assertFalse([e for e in world.event_log
+                          if e.kind == "speech" and e.actor == extra.id])
+
+    def test_an_answering_extra_turn_is_not_an_empty_turn(self):
+        """负向守卫：真的说了话的 extra 回合不是空回合。"""
+        world, trace = self._run([{"role": "assistant", "content": "我听见了。",
+                                   "tool_calls": []}])
+        extra = next(a for a in world.actors.values() if a.role == "extra")
+        self.assertTrue([e for e in world.event_log
+                         if e.kind == "speech" and e.actor == extra.id])
+        self.assertFalse(self._empty_turns(trace, extra.id))
+
+
+class ExtraPoolAliasGates(unittest.TestCase):
+    """E91（报 86 §3/§6，窗口 2 15:00）：点名的角色被随机姓名替换。
+
+    后街糕点铺的池条目是"后街糕点铺的老板娘"，但 `_spawn_extra` 用
+    `generate_stranger_name()` 取名，于是 13:14 生成的是李师傅、15:09 是王学长；
+    唐小岚两次到场都在问"李师傅或店里负责人现在在吗"，她要找的"老板娘"从未出现，
+    15:12 只能靠"反正有人听见了"结案。修法是一处泛化：池条目可声明
+    `aliases:`；角色用该别名 `speak(to=[...])` 时按同一条搭话通道优先取该条目，
+    别名成为它的名字（被别人占用时才退回随机名，并把别名写进身份描写），
+    未点名时仍走既有随机取样；生命周期机制（idle despawn / E84 落物）不变。
+    """
+
+    ENTRY = {"fragment": "后街糕点铺的老板娘", "rarity": "common",
+             "aliases": ["老板娘"], "weight": 1,
+             "knowledge_notes": "熟客都认得我。"}
+    OTHER = {"fragment": "铺子里的伙计", "rarity": "common", "weight": 1,
+             "knowledge_notes": "我只管揉面。"}
+
+    def _run(self, addressed, entries):
+        world = World(start=datetime.fromisoformat("2026-03-16T15:00:00+08:00"),
+                      actors=[ActorState("唐小岚", "后街糕点铺")],
+                      locations=[LocationState("后街糕点铺", extras=tuple(entries))])
+        asked = set()
+
+        def agent(state, perception, affordances):
+            if state.actor_id == "唐小岚" and "ask" not in asked:
+                asked.add("ask")
+                spoken = ["老板娘"] if addressed == "alias" else ["陌生人"]
+                return Intention(state.actor_id, "speak",
+                                 {"text": "稿子的事老板娘说，别再往吧台上放。",
+                                  "volume": "normal", "to": spoken,
+                                  "wait_response": False},
+                                 perception["world_version"])
+            return Intention(state.actor_id, "wait",
+                             {"duration_seconds": 3600},
+                             perception["world_version"])
+
+        class _PromptRecordingStub:
+            def __init__(self):
+                self.prompts = []
+
+            def chat_with_tools(self, messages, tools):
+                self.prompts.append(str(messages[0]["content"]))
+                return {"role": "assistant", "content": "在的，你找谁？",
+                        "tool_calls": []}
+
+        trace = Trace("v4-test", "ticket88-pool-alias")
+        stub = _PromptRecordingStub()
+        _call_pool().submit(lambda: None).result(timeout=5)
+        engine = AsyncEngine(world, {"唐小岚": agent},
+                             {"唐小岚": PrivateState("唐小岚")}, trace, None,
+                             extra_call=stub, decision_timeout=10,
+                             max_wall_seconds=60, extra_idle_seconds=3600)
+        engine.run(stop_at=world.now + timedelta(minutes=6), max_turns=200)
+        return world, stub
+
+    def test_naming_a_pool_alias_spawns_that_entry_under_that_name(self):
+        world, stub = self._run("alias", [self.ENTRY, self.OTHER])
+        arrives = [e for e in world.event_log if e.kind == "extra_arrived"]
+        self.assertEqual(len(arrives), 1)
+        self.assertEqual(arrives[0].actor, "老板娘", "点名的别名就是这个角色的名字")
+        self.assertEqual(arrives[0].payload.get("location"), "后街糕点铺")
+        self.assertTrue(stub.prompts, "路人必须真的被问过")
+        self.assertIn("后街糕点铺的老板娘", stub.prompts[0], "生成的正是那条池条目")
+        self.assertNotIn("铺子里的伙计", stub.prompts[0], "不能退化成随机抽到的另一条")
+        asked = [e for e in world.event_log if e.kind == "stranger_asked"]
+        self.assertEqual(asked[0].payload.get("alias"), "老板娘")
+        self.assertIn("老板娘", [str(name) for name in
+                                 next(e for e in world.event_log
+                                      if e.kind == "speech").payload.get("to", [])])
+
+    def test_an_unnamed_ask_still_samples_the_pool(self):
+        """未点名时不改变既有行为：随机名 + 池条目，别名不生效。"""
+        world, stub = self._run("stranger", [self.ENTRY, self.OTHER])
+        arrives = [e for e in world.event_log if e.kind == "extra_arrived"]
+        self.assertEqual(len(arrives), 1)
+        self.assertNotEqual(arrives[0].actor, "老板娘")
+        self.assertTrue(stub.prompts)
+        self.assertNotIn("人称「老板娘」", stub.prompts[0])
+        asked = [e for e in world.event_log if e.kind == "stranger_asked"]
+        self.assertNotIn("alias", asked[0].payload)
+
+
+class _DialogueChainAgent:
+    """`_execute_chain` 的会话桩（E92/E93）：记下引擎交回的工具结果与自纠。
+
+    只用引擎真正会问的那几个接缝：`session_obj`（自纠通道）与
+    `deliver_tool_results`（执行回执）。`_execute_chain` 是 `_take_turn` 走的那
+    条链路径，所以这里测的就是生产路径，不是旁路。
+    """
+
+    def __init__(self):
+        self.results = []
+        self.notes = []
+        self.session_obj = self
+
+    def deliver_tool_results(self, results):
+        self.results.extend(dict(result) for result in results)
+
+    def note_no_action(self, streak=1):
+        self.notes.append(f"no_action:{streak}")
+
+    def note_unspoken_content(self):
+        self.notes.append("unspoken")
+
+    def note_private_content(self):
+        self.notes.append("private")
+
+    def consume_compaction(self):
+        return False
+
+    def session_snapshot(self):
+        return None
+
+
+def _dialogue_engine(world, *, system=None, agent=None):
+    """一个不跑事件循环的引擎：只用来逐回合调 `_execute_chain`。"""
+    agent = agent or _DialogueChainAgent()
+    engine = AsyncEngine(world, {actor: agent for actor in world.actors},
+                         {actor: PrivateState(actor) for actor in world.actors},
+                         Trace("v4-test", "chain"), system,
+                         decision_timeout=10, max_wall_seconds=30)
+    engine._scheduler_wake = threading.Event()
+    engine._stop_horizon = None
+    return engine, agent
+
+
+def _dialogue_turn(engine, world, actor, calls, *, text=""):
+    """跑一个回合（= `_take_turn` 的执行半步），并把时钟推到动作完成。"""
+    perception = world.poll(actor)
+    engine._execute_chain(actor, list(calls), perception,
+                          world.affordances(actor), world.version,
+                          content_private=text or None)
+    busy = world.actors[actor].busy_until
+    if busy is not None and busy > world.now:
+        world.advance(until=busy)
+
+
+class LedgerDialogueGates(unittest.TestCase):
+    """E92（报 90 §1，窗口 3 09:02）：台账在对话里够不着它。
+
+    窗口 3 全段的 `system_answer` 是 0：陈默把台账当人说话
+    （`speak(to=["2013年台风台账"])`）被内核判成"未知收件人"，而 v4 的动作面既
+    没有 `ask` 也没有 `system_query`——`Ledger.affordances()` 按工单 14 返回 `[]`，
+    文档 §5 却写着"它是世界内对话者……所有交互走对话"。修法不是新增动作种类：
+    `speak` 的收件人解析扩展到一个已接受案件的 System 对话者——受约束角色点名它的
+    名字（种子 `system.name`）时，引擎走既有的 fact table 应答通道，答案以既有
+    `system_answer` 私有事件只投递给这个人。约束照旧：只答事实表内的条目（答不了
+    就说不知道），查询次数硬上限（用尽只回“闭口”）；未受约束的角色点名它不被应答。
+    **结案不在这里**（票 93：命中即结案是旧语义，结案现由种子排程的结算节拍驱动，
+    见 `LedgerClosureGates`）。
+    """
+
+    QUESTION = "红色哨子在哪里？"
+    OUTSIDE = "今天的课表在哪间教室？"
+
+    def _ask(self, text, who="台账"):
+        return {"name": "speak", "tool_call_id": "speak-1",
+                "arguments": {"text": text, "volume": "normal", "to": [who],
+                              "wait_response": False}}
+
+    def _world(self):
+        pack = load_story_pack()
+        world = pack.build_world()
+        ledger = Ledger(pack.system.get("facts", {}), pack.system)
+        return pack, world, ledger
+
+    @staticmethod
+    def _answers(world):
+        return [event for event in world.event_log if event.kind == "system_answer"]
+
+    def test_the_bound_character_gets_a_fact_table_answer_by_naming_the_ledger(self):
+        from harness.prompt import render_world_message
+        pack, world, ledger = self._world()
+        expected = ledger.facts[self.QUESTION]
+        engine, agent = _dialogue_engine(world, system=ledger)
+        _dialogue_turn(engine, world, "陈默", [self._ask(self.QUESTION)])
+
+        answers = self._answers(world)
+        self.assertEqual(len(answers), 1, "点名台账必须得到一次既有 system_answer")
+        self.assertEqual(answers[0].payload["answer"], expected)
+        self.assertEqual(answers[0].visible_to, frozenset({"陈默"}),
+                         "答案只投递给受约束角色")
+        self.assertFalse([e for e in world.event_log if e.kind == "speech"],
+                         "对台账说的话不进公开 speech（那不是对在场的人说的）")
+        self.assertEqual(ledger.queries_used, 1)
+        self.assertEqual(len(agent.results), 1, agent.results)
+        self.assertTrue(agent.results[0]["ok"])
+        self.assertIn("台账", agent.results[0]["text"])
+        # 答案经既有私有事件进了他自己的知觉，别人一条都收不到。
+        mine = render_world_message(world.poll("陈默"))
+        self.assertIn(expected, mine)
+        self.assertFalse([e for e in world.poll("林瑶")["events"]
+                          if str(e.get("kind", "")).startswith("system_")])
+
+    def test_a_question_outside_the_fact_table_gets_the_ledger_s_dont_know(self):
+        _, world, ledger = self._world()
+        engine, agent = _dialogue_engine(world, system=ledger)
+        _dialogue_turn(engine, world, "陈默", [self._ask(self.OUTSIDE)])
+        self.assertFalse(self._answers(world), "答不了就不答，不编一条答案出来")
+        self.assertEqual(ledger.queries_used, 0, "答不了的问题不吞查询额度")
+        reply = agent.results[0]
+        self.assertTrue(reply["ok"], "话送到了：这是一次对话，不是格式错误")
+        self.assertIn("不知道", reply["text"])
+        self.assertNotIn("speech", {event.kind for event in world.event_log})
+
+    def test_a_used_up_ledger_stops_answering_instead_of_answering_again(self):
+        _, world, ledger = self._world()
+        engine, agent = _dialogue_engine(world, system=ledger)
+        _dialogue_turn(engine, world, "陈默", [self._ask(self.QUESTION)])
+        _dialogue_turn(engine, world, "陈默", [self._ask(self.QUESTION)])
+        self.assertEqual(len(self._answers(world)), 1, "同一条目不会答第二遍")
+        self.assertEqual(ledger.queries_used, 1)
+        self.assertIn("闭口", agent.results[1]["text"], agent.results[1]["text"])
+
+    def test_the_query_limit_silences_the_ledger_without_closing_the_case(self):
+        """票 93：`query_limit: 0` = 一次也不答，但**不结案**（结案由结算节拍驱动）。
+
+        票 95（E95）：拒绝也留一条只给提问者的 `system_dialogue` 审计事件（不编造
+        答案）；它不是 `system_answer`，也不消耗额度。
+        """
+        world = World(start=datetime.fromisoformat("2026-03-16T09:00:00+08:00"),
+                      actors=[ActorState("陈默", "room")], locations=[LocationState("room")])
+        ledger = Ledger({"known": "answer"}, {"name": "台账", "bound_actor": "陈默",
+                                             "query_limit": 0})
+        ledger.auto_accept(world)
+        reply, events = ledger.converse(world, "陈默", "known")
+        self.assertEqual([event.kind for event in events], ["system_dialogue"])
+        self.assertFalse(events[0].payload["matched"])
+        self.assertEqual(events[0].payload["outcome"], "limit")
+        self.assertNotIn("answer_event_id", events[0].payload)
+        self.assertEqual(events[0].visible_to, frozenset({"陈默"}))
+        self.assertEqual(reply, DIALOGUE_REPLIES["limit"].format(name=ledger.name))
+        self.assertEqual(ledger.status, "accepted", "额度用尽不是结案")
+
+    def test_an_unbound_character_naming_the_ledger_is_not_answered_by_it(self):
+        _, world, ledger = self._world()
+        engine, agent = _dialogue_engine(world, system=ledger)
+        _dialogue_turn(engine, world, "林瑶", [self._ask(self.QUESTION)])
+        self.assertFalse(self._answers(world), "台账只对受约束角色应声")
+        self.assertEqual(ledger.queries_used, 0)
+        reply = agent.results[0]
+        self.assertFalse(reply["ok"], "未受约束者的点名照旧是未知收件人拒绝")
+        self.assertIn("unknown or ambiguous speak recipient", reply["text"])
+        self.assertNotIn("台账是世界内的对话者", reply["text"],
+                         "不向未受约束的角色解释台账这条通道")
+
+    def test_a_line_naming_the_ledger_and_others_is_not_dropped_silently(self):
+        """同一句里既点台账又点人：话只对台账说了，回执必须说出这件事。
+
+        不静默丢收件人是票 46 的既有契约；台账这条通道不产生 speech 事件，所以
+        只在 tool 结果里交代清楚，并给出重发的写法。
+        """
+        _, world, ledger = self._world()
+        engine, agent = _dialogue_engine(world, system=ledger)
+        call = self._ask(self.QUESTION)
+        call["arguments"]["to"] = ["台账", "林瑶"]
+        _dialogue_turn(engine, world, "陈默", [call])
+        self.assertEqual(len(self._answers(world)), 1)
+        self.assertFalse([e for e in world.event_log if e.kind == "speech"])
+        reply = agent.results[0]
+        self.assertTrue(reply["ok"])
+        self.assertIn("同场的人没有听到", reply["text"])
+        self.assertIn("林瑶", reply["text"])
+
+    def test_a_busy_actor_cannot_address_the_ledger_mid_action(self):
+        """忙态照旧：一个回合只应有一个耗时动作，回执写明完成时刻。"""
+        _, world, ledger = self._world()
+        engine, agent = _dialogue_engine(world, system=ledger)
+        world.submit(Intention("陈默", "wait", {"duration_seconds": 120}, world.version))
+        now = world.now.isoformat()
+        engine._execute_chain("陈默", [self._ask(self.QUESTION)],
+                              {"time": now, "events": []},
+                              world.affordances("陈默"), world.version)
+        self.assertFalse(self._answers(world), "忙态下这句话没有送到台账")
+        self.assertFalse(agent.results[0]["ok"])
+        self.assertIn("not executed", agent.results[0]["text"])
+        self.assertIn("下一回合", agent.results[0]["text"])
+
+    def test_a_misnamed_attempt_gets_the_ledger_s_real_address_back(self):
+        """09:02 的原样：陈默把台账叫成"2013年台风台账"（档案室里那份纸的名字）。
+
+        拒绝照旧（不能悄悄改收件人），但回执要说明台账就在对话里、该用哪个名字。
+        """
+        _, world, ledger = self._world()
+        engine, agent = _dialogue_engine(world, system=ledger)
+        _dialogue_turn(engine, world, "陈默", [self._ask(
+            "这是2013年台风后用于确认邻里撤离与互助事项的通知书。",
+            who="2013年台风台账")])
+        self.assertFalse(self._answers(world))
+        self.assertEqual(ledger.queries_used, 0)
+        reply = agent.results[0]
+        self.assertFalse(reply["ok"])
+        self.assertIn("台账是世界内的对话者", reply["text"])
+        self.assertIn('to=["台账"]', reply["text"])
+
+
+class LedgerClosureGates(unittest.TestCase):
+    """E94（票 91 §4-2，用户裁定 2026-10-18）：结案 ≠ 首次命中。
+
+    旧语义下 `Ledger.query` 一命中就把 `status` 置成 `completed` 并发报酬，于是
+    `query_limit > 1` 的种子实际只答一次，`limit` 分支在正常流程下不可达；而文档
+    （`V4-AGENT-INTERFACE.md` §5）写的是“查询次数硬上限”、`V4-STORY-MILESTONES.md`
+    把结算排到 d7/d12。裁定：**结案由种子排程的结算事件驱动**（既有
+    `system_reward_granted` 私有路径），首次命中只给答案；额度按既有上限递减，
+    超限只回“闭口”、不消耗、也不结案。
+
+    红绿：① 连续两次命中都得到答案且都产生 `system_answer`；② 超限后闭口而案子
+    仍未结；③ 结算节拍到达后才 `closed`（真种子冒烟一起钉在这里）。
+    """
+
+    FACTS = {"红色哨子在哪里？": "老家属院的地下室",
+             "当前记录的期限是什么？": "学生会审计核对，2026-03-16T16:00:00+08:00"}
+    SETTLE_AT = "2026-03-16T09:00:00+08:00"
+
+    @staticmethod
+    def _ask(text):
+        return {"name": "speak", "tool_call_id": "speak-1",
+                "arguments": {"text": text, "volume": "normal", "to": ["台账"],
+                              "wait_response": False}}
+
+    def _setup(self, *, beat="ledger_settlement"):
+        world = World(start=datetime.fromisoformat("2026-03-16T08:00:00+08:00"),
+                      actors=[ActorState("陈默", "room"), ActorState("林瑶", "room")],
+                      locations=[LocationState("room")],
+                      scheduled=[{"event": beat, "time": self.SETTLE_AT,
+                                  "target": "陈默", "notice": "那边静了一瞬。"}])
+        ledger = Ledger(self.FACTS, {"name": "台账", "bound_actor": "陈默",
+                                    "query_limit": 2, "settle_on": "ledger_settlement"})
+        ledger.auto_accept(world)
+        engine, agent = _dialogue_engine(world, system=ledger)
+        return world, ledger, engine, agent
+
+    @staticmethod
+    def _kinds(world, kind):
+        return [event for event in world.event_log if event.kind == kind]
+
+    def test_two_hits_in_a_row_each_produce_an_answer_and_the_case_stays_open(self):
+        world, ledger, engine, agent = self._setup()
+        _dialogue_turn(engine, world, "陈默", [self._ask("红色哨子在哪里？")])
+        _dialogue_turn(engine, world, "陈默", [self._ask("当前记录的期限是什么？")])
+        answers = self._kinds(world, "system_answer")
+        self.assertEqual([event.payload["answer"] for event in answers],
+                         [self.FACTS["红色哨子在哪里？"],
+                          self.FACTS["当前记录的期限是什么？"]],
+                         "两次命中都得到答案（不是答一次就闭口）")
+        self.assertEqual(ledger.queries_used, 2)
+        self.assertEqual(ledger.status, "accepted", "命中不结案")
+        self.assertFalse(self._kinds(world, "system_reward_granted"),
+                         "报酬不在命中时发")
+        self.assertTrue(all(result["ok"] for result in agent.results), agent.results)
+
+    def test_after_the_limit_the_ledger_silences_without_closing_the_case(self):
+        world, ledger, engine, agent = self._setup()
+        for question in ("红色哨子在哪里？", "当前记录的期限是什么？", "红色哨子在哪里？"):
+            _dialogue_turn(engine, world, "陈默", [self._ask(question)])
+        self.assertEqual(len(self._kinds(world, "system_answer")), 2)
+        self.assertTrue(agent.results[1]["ok"], "额度内的第二问照样得到答案")
+        reply = agent.results[2]["text"]
+        self.assertIn("用尽", reply, "超限是“额度用尽”，不是“案子了结”")
+        self.assertNotIn("已经了结", reply)
+        self.assertEqual(ledger.queries_used, 2, "闭口不再消耗额度")
+        self.assertEqual(ledger.status, "accepted", "超限不结案")
+        self.assertFalse(self._kinds(world, "system_reward_granted"))
+
+    def test_the_seeded_settlement_beat_closes_the_case(self):
+        world, ledger, engine, agent = self._setup()
+        _dialogue_turn(engine, world, "陈默", [self._ask("红色哨子在哪里？")])
+        answer = self._kinds(world, "system_answer")[-1]
+        self.assertEqual(ledger.status, "accepted")
+        world.advance(until=datetime.fromisoformat(self.SETTLE_AT))
+        engine._after_advance()
+        self.assertEqual(ledger.status, "closed", "种子结算节拍到达才结案")
+        rewards = self._kinds(world, "system_reward_granted")
+        self.assertEqual(len(rewards), 1, "结算只发一次")
+        self.assertEqual(rewards[0].visible_to, frozenset({"陈默"}), "报酬只投给受约束角色")
+        self.assertEqual(rewards[0].payload["evidence_event_id"], answer.id)
+        self.assertTrue(ledger.reward_granted)
+        _dialogue_turn(engine, world, "陈默", [self._ask("当前记录的期限是什么？")])
+        self.assertIn("已经了结", agent.results[-1]["text"], "结案之后才是“闭口”")
+        self.assertEqual(len(self._kinds(world, "system_answer")), 1,
+                         "结案后的提问不再产生答案")
+
+    def test_a_world_beat_that_is_not_the_settlement_keeps_the_case_open(self):
+        """负向守卫：只认 `system.settle_on` 点名的那条，不是“任何世界事件”。"""
+        world, ledger, engine, _agent = self._setup(beat="morning_bell")
+        _dialogue_turn(engine, world, "陈默", [self._ask("红色哨子在哪里？")])
+        world.advance(until=datetime.fromisoformat(self.SETTLE_AT))
+        engine._after_advance()
+        self.assertEqual(ledger.status, "accepted")
+        self.assertFalse(self._kinds(world, "system_reward_granted"))
+
+    def test_the_real_seed_schedules_the_settlement_and_it_closes_the_case(self):
+        """真种子冒烟（用户裁定要求）：排程里确有其事，到点才结案，报酬只给陈默。"""
+        pack = load_story_pack()
+        settle_on = pack.system.get("settle_on")
+        self.assertEqual(settle_on, "ledger_settlement")
+        rows = [row for row in pack.scheduled if row.get("event") == settle_on]
+        self.assertEqual(len(rows), 1, "种子排程里有且只有一条结算节拍")
+        self.assertEqual(rows[0]["time"], "2026-03-22T15:00:00+08:00",
+                         "d7 15:00（V4-STORY-MILESTONES §3“d7-台账结算”）")
+        world = pack.build_world()
+        ledger = Ledger(pack.system.get("facts", {}), pack.system)
+        engine, _agent = _dialogue_engine(world, system=ledger)
+        question = "红色哨子在哪里？"
+        _dialogue_turn(engine, world, "陈默", [self._ask(question)])
+        self.assertEqual(len(self._kinds(world, "system_answer")), 1)
+        self.assertEqual(ledger.status, "accepted", "D1 答对了也不结案")
+        world.advance(until=datetime.fromisoformat(rows[0]["time"]))
+        engine._after_advance()
+        self.assertEqual(ledger.status, "closed")
+        rewards = self._kinds(world, "system_reward_granted")
+        self.assertEqual(len(rewards), 1)
+        self.assertEqual(rewards[0].visible_to, frozenset({"陈默"}))
+        self.assertEqual(rewards[0].payload["reward"], pack.system["reward"])
+        for actor in world.actors:
+            if actor == "陈默":
+                continue
+            self.assertFalse([event for event in world.poll(actor)["events"]
+                              if str(event.get("kind", "")).startswith("system_")],
+                             f"{actor} 不该听见台账的任何一笔")
+
+
+class LedgerFactMatchingGates(unittest.TestCase):
+    """E95（报 94 §1，窗口 4 07:00–09:10）：台账事实表不可猜、拒绝零痕迹。
+
+    窗口 4 陈默 5 次用 `speak(to=["台账"])` 提问，全部 `submitted`，`system_answer`
+    仍是 0：`Ledger.query` 用 `facts.get(question.strip())` 逐字匹配，而他从没见过
+    那三句原始问句，只能按 terms 泛问；这 5 次拒绝在世界日志里也一条痕迹都没有。
+
+    修法（不新增动作、不引入模型判定）：事实条目可声明 `keywords`（缺省回落到
+    条目问句本身）；问句归一化（全角/半角、空白、标点）后按关键词命中数打分，
+    唯一最高分即答，并列或零分答“不知道”；每次对话（命中或拒绝）都在世界日志留
+    一条只给提问者的 `system_dialogue` 私有事件（提问原文、matched、outcome、
+    答案事件 id），仍然不产生公开 `speech`。
+    """
+
+    FACTS = {
+        "2013年邻里撤离通知书的责任人是谁？": {
+            "answer": "当年在许可证上签名的那个人",
+            "keywords": ["邻里撤离通知书", "撤离通知书", "责任人", "谁签的字"],
+        },
+        "当前记录的期限是什么？": {
+            "answer": "学生会审计核对，2026-03-16T16:00:00+08:00",
+            "keywords": ["期限", "最迟什么时候"],
+        },
+    }
+
+    def _setup(self):
+        world = World(start=datetime.fromisoformat("2026-03-16T09:00:00+08:00"),
+                      actors=[ActorState("陈默", "room"), ActorState("林瑶", "room")],
+                      locations=[LocationState("room")])
+        ledger = Ledger(self.FACTS, {"name": "台账", "bound_actor": "陈默",
+                                    "query_limit": 3})
+        ledger.auto_accept(world)
+        engine, agent = _dialogue_engine(world, system=ledger)
+        return world, ledger, engine, agent
+
+    @staticmethod
+    def _ask(text, who="台账"):
+        return {"name": "speak", "tool_call_id": "speak-1",
+                "arguments": {"text": text, "volume": "normal", "to": [who],
+                              "wait_response": False}}
+
+    @staticmethod
+    def _kinds(world, kind):
+        return [event for event in world.event_log if event.kind == kind]
+
+    def test_a_natural_question_hits_by_keywords(self):
+        """窗口 4 09:10 的原话（一段长问句里带着“责任人”）不再 miss。"""
+        world, ledger, engine, agent = self._setup()
+        _dialogue_turn(engine, world, "陈默", [self._ask(
+            "台账，你案卷里关于《2013年台风台账》两台抽水泵外借时间从纸本22:05"
+            "变成导出件23:30这条记录，记载的经手责任人是谁？")])
+        answers = self._kinds(world, "system_answer")
+        self.assertEqual(len(answers), 1, agent.results)
+        self.assertEqual(answers[0].payload["answer"],
+                         self.FACTS["2013年邻里撤离通知书的责任人是谁？"]["answer"])
+        self.assertEqual(ledger.queries_used, 1)
+        self.assertTrue(agent.results[0]["ok"])
+        self.assertFalse([e for e in world.event_log if e.kind == "speech"])
+
+    def test_a_question_with_no_keyword_gets_dont_know_and_a_private_audit(self):
+        world, ledger, engine, agent = self._setup()
+        _dialogue_turn(engine, world, "陈默", [self._ask("今天天气如何？")])
+        self.assertFalse(self._kinds(world, "system_answer"), "零分不编答案")
+        self.assertEqual(ledger.queries_used, 0, "答不上不吞额度")
+        self.assertIn("不知道", agent.results[0]["text"])
+        audits = self._kinds(world, "system_dialogue")
+        self.assertEqual(len(audits), 1, "拒绝也要在世界日志里留痕")
+        self.assertEqual(audits[0].payload["question"], "今天天气如何？")
+        self.assertFalse(audits[0].payload["matched"])
+        self.assertEqual(audits[0].payload["outcome"], "unknown")
+        self.assertNotIn("answer_event_id", audits[0].payload)
+        self.assertEqual(audits[0].visible_to, frozenset({"陈默"}))
+        self.assertFalse([e for e in world.event_log if e.kind == "speech"])
+
+    def test_a_tie_between_two_entries_gets_dont_know(self):
+        """窗口 4 07:00 原话：一句里同时问“责任人”与“期限”→ 并列 → 不知道。"""
+        world, ledger, engine, agent = self._setup()
+        _dialogue_turn(engine, world, "陈默", [self._ask(
+            "台账，关于我接下的案子，请告诉我：这案子是什么、责任人是谁、期限是什么？")])
+        self.assertFalse(self._kinds(world, "system_answer"))
+        self.assertEqual(ledger.queries_used, 0)
+        audit = self._kinds(world, "system_dialogue")[0]
+        self.assertEqual(audit.payload["outcome"], "tie")
+        self.assertFalse(audit.payload["matched"])
+        self.assertIn("不知道", agent.results[0]["text"])
+
+    def test_every_dialogue_leaves_one_private_audit_with_the_answer_event_id(self):
+        world, ledger, engine, agent = self._setup()
+        _dialogue_turn(engine, world, "陈默", [self._ask(
+            "台账，你记着的《2013年台风台账》的借出记录里，责任人是谁？")])
+        _dialogue_turn(engine, world, "陈默", [self._ask("今天天气如何？")])
+        answers = self._kinds(world, "system_answer")
+        audits = self._kinds(world, "system_dialogue")
+        self.assertEqual(len(answers), 1)
+        self.assertEqual(len(audits), 2, "每次对话恰一条审计事件")
+        hit, miss = audits
+        self.assertTrue(hit.payload["matched"])
+        self.assertEqual(hit.payload["answer_event_id"], answers[0].id)
+        self.assertEqual(hit.payload["question"],
+                         "台账，你记着的《2013年台风台账》的借出记录里，责任人是谁？")
+        self.assertFalse(miss.payload["matched"])
+        self.assertEqual({event.visible_to for event in audits}, {frozenset({"陈默"})},
+                         "审计只给提问者")
+        self.assertFalse([e for e in world.event_log if e.kind == "speech"])
+        # 审计不是角色能“听见”的一句话，也不进别人的知觉。
+        self.assertFalse([event for event in world.poll("林瑶")["events"]
+                          if str(event.get("kind", "")).startswith("system_")])
+        from harness.prompt import render_world_message
+        rendered = render_world_message(world.poll("陈默"))
+        self.assertNotIn("system_dialogue", rendered)
+        self.assertNotIn("记下了这一笔", rendered)
+
+    def test_an_entry_without_keywords_still_answers_its_own_question(self):
+        """缺省回落：不写 keywords 的旧条目，逐字（归一化后）问仍然命中。"""
+        world = World(start=datetime.fromisoformat("2026-03-16T09:00:00+08:00"),
+                      actors=[ActorState("陈默", "room")], locations=[LocationState("room")])
+        ledger = Ledger({"红色哨子在哪里？": "老家属院的地下室"},
+                        {"name": "台账", "bound_actor": "陈默", "query_limit": 2})
+        ledger.auto_accept(world)
+        engine, agent = _dialogue_engine(world, system=ledger)
+        _dialogue_turn(engine, world, "陈默", [self._ask("红色哨子在哪里？")])
+        self.assertEqual([event.payload["answer"] for event in self._kinds(world, "system_answer")],
+                         ["老家属院的地下室"])
+
+    def test_the_real_seed_answers_five_natural_questions_with_plain_text(self):
+        """真种子冒烟（票 95）：keywords 在加载后仍然生效，答案不是 dict 字面量。"""
+        pack = load_story_pack()
+        facts = pack.system.get("facts") or {}
+        def answer_of(key):
+            value = facts[key]
+            return value["answer"] if isinstance(value, dict) else value
+        cases = [
+            ("台账，那只红色哨子在哪里？", answer_of("红色哨子在哪里？")),
+            ("台账，老家属院的地下室里放着什么？", answer_of("红色哨子在哪里？")),
+            ("台账，2013年邻里撤离通知书的责任人是谁？",
+             answer_of("2013年邻里撤离通知书的责任人是谁？")),
+            ("台账，当年是谁签的字？", answer_of("2013年邻里撤离通知书的责任人是谁？")),
+            ("台账，学生会审计核对到什么时候截止？",
+             answer_of("学生会审计核对的期限是什么？")),
+        ]
+        world = pack.build_world()
+        ledger = Ledger(facts, {**pack.system, "query_limit": 99})
+        ledger.auto_accept(world)
+        engine, agent = _dialogue_engine(world, system=ledger)
+        for question, _ in cases:
+            _dialogue_turn(engine, world, "陈默", [self._ask(question)])
+        answers = [event.payload["answer"] for event in self._kinds(world, "system_answer")]
+        self.assertEqual(answers, [expected for _, expected in cases])
+        for answer in answers:
+            self.assertIsInstance(answer, str)
+            self.assertNotIn("{'", answer, "答案不能是 Python dict 字面量")
+            self.assertNotIn("keywords", answer)
+        self.assertEqual(ledger.queries_used, len(cases))
+        for question in ("今天天气如何？", "食堂中午有什么饭？", "教学楼三楼怎么走？"):
+            _dialogue_turn(engine, world, "陈默", [self._ask(question)])
+            self.assertEqual(self._kinds(world, "system_dialogue")[-1].payload["outcome"],
+                             "unknown", question)
+        self.assertEqual(len(self._kinds(world, "system_answer")), len(cases),
+                         "表外问题不编造答案")
+        self.assertEqual(ledger.queries_used, len(cases), "表外问题不吞额度")
+
+
+class EscortMoveGates(unittest.TestCase):
+    """E96（报 94 §4，窗口 4 10:00–16:51）：没有“带某人一起走”的原语。
+
+    世界里有视障角色要被人扶着走到教室，`move` 只能自己走，305 又不是地点，
+    于是 6 小时 51 分里 17 个角色重复“我不能实际扶你”。修法不新增动作种类：
+    `move` 增加可选 `with: [...]`，发起者与被携带者同处一地且未被锁死时，
+    按发起者的路线逐跳共同移动，每位被携带者产生自己的 `leave`/`enter`；
+    被携带者仍保有感知与自主（不替他行动）。若其当前动作不可打断，整次 move
+    结构化拒绝并说明是哪一个人、为什么。
+    """
+
+    START = "2026-03-16T09:00:00+08:00"
+
+    def _world(self):
+        return World(start=datetime.fromisoformat(self.START),
+                     actors=[ActorState("陈默", "平台"), ActorState("小满", "平台"),
+                             ActorState("路人", "平台")],
+                     locations=[LocationState("平台"), LocationState("走廊"),
+                                LocationState("教室")],
+                     routes={("平台", "走廊"): 120, ("走廊", "教室"): 180})
+
+    @staticmethod
+    def _moves(world):
+        return [(event.kind, event.actor, str(event.payload.get("location")))
+                for event in world.event_log if event.kind in {"leave", "enter"}]
+
+    def test_two_people_arrive_together_with_one_synchronised_sequence(self):
+        world = self._world()
+        world.submit(Intention("陈默", "move", {"target": "教室", "with": ["小满"]},
+                               world.version))
+        world.advance()
+        self.assertEqual(world.actors["陈默"].location, "教室")
+        self.assertEqual(world.actors["小满"].location, "教室", "被携带者一起到了")
+        self.assertEqual(world.actors["路人"].location, "平台", "没被带上的人留在原地")
+        self.assertEqual(self._moves(world), [
+            ("leave", "陈默", "平台"), ("leave", "小满", "平台"),
+            ("enter", "陈默", "走廊"), ("leave", "陈默", "走廊"),
+            ("enter", "小满", "走廊"), ("leave", "小满", "走廊"),
+            ("enter", "陈默", "教室"), ("enter", "小满", "教室"),
+        ])
+        verify_event_log(world.replayable_log())
+        versions = [event.world_version for event in world.event_log]
+        self.assertEqual(versions, list(range(1, len(world.event_log) + 1)),
+                         "共同移动的每条事件都占一个连续的 world version")
+        # 被携带者没有自己的动作事件：走路是发起者的事，他只被带着移动。
+        self.assertFalse([event for event in world.event_log
+                          if event.actor == "小满" and event.kind == "action_started"])
+
+    def test_a_companion_locked_in_an_uninterruptable_action_rejects_the_move(self):
+        world = self._world()
+        world.submit(Intention("小满", "wait", {"duration_seconds": 600}, world.version,
+                               uninterruptable=True))
+        before = len(world.event_log)
+        with self.assertRaises(ActionRejected) as rejected:
+            world.submit(Intention("陈默", "move", {"target": "教室", "with": ["小满"]},
+                                   world.version))
+        self.assertIn("小满", str(rejected.exception))
+        self.assertIn("不能被打断", str(rejected.exception))
+        self.assertEqual(rejected.exception.context.get("with"), "小满")
+        self.assertEqual(len(world.event_log), before, "整次 move 没有开始")
+        self.assertEqual(world.actors["陈默"].location, "平台")
+
+    def test_replay_after_an_escort_keeps_everyone_in_the_same_place(self):
+        world = self._world()
+        world.submit(Intention("陈默", "move", {"target": "教室", "with": ["小满"]},
+                               world.version))
+        world.advance()
+        replayed = replay_world(self._world(), world.replayable_log())
+        self.assertEqual(replayed.actors["陈默"].location, "教室")
+        self.assertEqual(replayed.actors["小满"].location, "教室")
+        self.assertEqual(replayed.actors["路人"].location, "平台")
+
+    def test_a_companion_who_is_not_here_is_rejected(self):
+        world = self._world()
+        world.actors["小满"].location = "教室"
+        world.actors["陈默"].known_contacts.add("小满")  # 名字能解析，人不在身边
+        with self.assertRaises(ActionRejected) as rejected:
+            world.submit(Intention("陈默", "move", {"target": "教室", "with": ["小满"]},
+                                   world.version))
+        self.assertIn("不在这里", str(rejected.exception))
+
+
+class WorldEventScopeGates(unittest.TestCase):
+    """E97（报 94 §2，窗口 4 16:00/16:20/16:45）：无 target 的 world_event 全场广播。
+
+    `_visibility` 对 actor is None 的 `world_event` 返回 `set(self.actors)`，于是
+    排程事件连正文一起广播全场：陈默整天在档案室，却在 16:02 引用了 16:05 才定向
+    告诉他的原话，16:22 又“刚获知”学生会办公室长桌上的审计包。修法：`world_event`
+    payload 支持可选 `location`——有它时可见性 = 该地点在场者 +（若有）target；
+    无 location 且无 target 的仍是既有全局广播（校园公告、铃声、天气）。
+    """
+
+    EVENT = {"event": "audit_pack_review", "time": "2026-03-16T16:20:00+08:00",
+             "notice": "长桌上摊开了审计包和一张还空着的面核记录。"}
+
+    def _world(self, **extra):
+        return World(start=datetime.fromisoformat("2026-03-16T16:00:00+08:00"),
+                     actors=[ActorState("班长", "办公室"), ActorState("陈默", "档案室"),
+                             ActorState("唐小岚", "咖啡馆")],
+                     locations=[LocationState("办公室"), LocationState("档案室"),
+                                LocationState("咖啡馆")],
+                     scheduled=[{**self.EVENT, **extra}])
+
+    @staticmethod
+    def _event(world):
+        return next(event for event in world.event_log if event.kind == "world_event")
+
+    def test_a_location_scopes_the_audience_instead_of_broadcasting(self):
+        global_world = self._world()
+        global_world.advance()
+        self.assertEqual(self._event(global_world).visible_to,
+                         frozenset({"班长", "陈默", "唐小岚"}),
+                         "既没有 location 也没有 target = 既有全局广播")
+        scoped = self._world(location="办公室")
+        scoped.advance()
+        self.assertEqual(self._event(scoped).visible_to, frozenset({"班长"}),
+                         "只有当时在该地点的人看得见")
+
+    def test_a_location_scoped_event_still_reaches_its_explicit_target(self):
+        world = self._world(location="办公室", target="陈默")
+        world.advance()
+        self.assertEqual(self._event(world).visible_to, frozenset({"班长", "陈默"}))
+
+    def test_replay_preserves_the_scoped_audience(self):
+        world = self._world(location="办公室")
+        world.advance()
+        replayed = replay_world(self._world(location="办公室"), world.replayable_log())
+        self.assertEqual(self._event(replayed).visible_to, frozenset({"班长"}))
+        self.assertEqual(self._event(replayed).payload["notice"], self.EVENT["notice"])
+
+
+class DocumentAnnotationGates(unittest.TestCase):
+    """E98（报 94 §3，窗口 4 16:20–16:42）：工具面没有“在文书上写”。
+
+    `面核记录` 正文要求“谁到场核对，谁就往自己那一栏里填”，但工具面没有
+    annotate，`document_annotated` 事件与 `annotations` 存储早已存在却无入口，
+    班长只能另贴字条，面核记录 0 人签。修法是既有动作的一处参数化：
+    `leave_note` 增加可选 `on=<文书 id>`——文字作为一条 annotation 追加进该文书
+    （须同处一地或持在手上且可读），产生既有的 `document_annotated`（同地点
+    可见，正文仍只属于读过它的人），不覆盖别人写的条目。
+    """
+
+    START = "2026-03-16T16:30:00+08:00"
+
+    def _world(self):
+        return World(start=datetime.fromisoformat(self.START),
+                     actors=[ActorState("班长", "办公室"), ActorState("辅导员", "办公室")],
+                     locations=[LocationState("办公室")],
+                     item_locations={"面核记录": "办公室"},
+                     document_defs={"面核记录": {
+                         "title": "面核记录",
+                         "content": "谁到场核对，谁就往自己那一栏里填。",
+                         "reading_seconds": 30}})
+
+    @staticmethod
+    def _annotations(world):
+        return world.document_defs["面核记录"].get("annotations", [])
+
+    def test_signature_is_an_appended_annotation_that_others_can_read(self):
+        world = self._world()
+        world.submit(Intention("班长", "leave_note",
+                               {"text": "到场核对：材料三份，缺说明一页。",
+                                "on": "面核记录"}, world.version))
+        world.advance()
+        self.assertEqual([entry["text"] for entry in self._annotations(world)],
+                         ["到场核对：材料三份，缺说明一页。"])
+        self.assertEqual(self._annotations(world)[0]["by"], "班长")
+        annotated = [event for event in world.event_log if event.kind == "document_annotated"]
+        self.assertEqual(len(annotated), 1, "产生既有的 document_annotated")
+        self.assertEqual(annotated[0].payload["document"], "面核记录")
+        self.assertEqual(annotated[0].visible_to, frozenset({"班长", "辅导员"}))
+        self.assertFalse([event for event in world.event_log if event.kind == "note_left"],
+                         "写在文书上不是另贴一张字条")
+        # 同地点的人只看见“谁写了字”，正文要自己 read；读过的人能看到全部批注。
+        seen = next(event for event in world.poll("辅导员")["events"]
+                    if event["kind"] == "document_annotated")
+        self.assertNotIn("annotation", seen["payload"], "批注正文不随事件广播")
+        world.submit(Intention("辅导员", "read", {"item": "面核记录"}, world.version))
+        world.advance()
+        read = next(event for event in world.event_log if event.kind == "document_read")
+        self.assertEqual([entry["text"] for entry in read.payload["annotations"]],
+                         ["到场核对：材料三份，缺说明一页。"])
+        self.assertEqual(read.visible_to, frozenset({"辅导员"}), "正文只给读者")
+
+    def test_a_second_writer_appends_without_overwriting(self):
+        world = self._world()
+        world.submit(Intention("班长", "leave_note", {"text": "缺说明。", "on": "面核记录"},
+                               world.version))
+        world.advance()
+        world.submit(Intention("辅导员", "leave_note", {"text": "已复核。", "on": "面核记录"},
+                               world.version))
+        world.advance()
+        self.assertEqual([entry["text"] for entry in self._annotations(world)],
+                         ["缺说明。", "已复核。"])
+        self.assertEqual([entry["by"] for entry in self._annotations(world)],
+                         ["班长", "辅导员"])
+
+    def test_replay_rebuilds_the_annotations(self):
+        world = self._world()
+        world.submit(Intention("班长", "leave_note", {"text": "缺说明。", "on": "面核记录"},
+                               world.version))
+        world.advance()
+        replayed = replay_world(self._world(), world.replayable_log())
+        self.assertEqual([entry["text"] for entry in self._annotations(replayed)],
+                         ["缺说明。"])
+        self.assertEqual(self._annotations(replayed)[0]["by"], "班长")
+
+    def test_writing_on_a_document_that_is_not_here_is_rejected(self):
+        world = self._world()
+        world.item_locations.pop("面核记录")
+        before = len(world.event_log)
+        with self.assertRaises(ActionRejected) as rejected:
+            world.submit(Intention("班长", "leave_note",
+                                   {"text": "补签。", "on": "面核记录"}, world.version))
+        self.assertIn("没有可以在上面写字的文书", str(rejected.exception))
+        self.assertEqual(rejected.exception.context.get("writable_documents"), [])
+        self.assertEqual(len(world.event_log), before)
+
+
+class GiveAtHandAffordanceGates(unittest.TestCase):
+    """E99（报 94 §R6/C，窗口 4 11:00–11:48）：食堂大妈的 give 候选是空的。
+
+    引擎早已支持“把就在自己手边的物品直接 give 给面前的人”（ticket 63 的
+    take-then-give 就地分支），但 `affordances()` 只列背包里的东西。于是
+    “把这份饭递给面前的人”不在可见选项里，她只招呼、饭被学生自取。
+    """
+
+    def _world(self):
+        return World(start=datetime.fromisoformat("2026-03-16T11:00:00+08:00"),
+                     actors=[ActorState("食堂大妈", "食堂"), ActorState("唐小岚", "食堂")],
+                     locations=[LocationState("食堂")],
+                     item_locations={"一份午饭": "食堂", "灶台": "食堂"},
+                     fixed_items={"灶台": "砌在墙边，抬不走"})
+
+    def test_an_item_at_my_location_is_a_visible_give_candidate(self):
+        world = self._world()
+        gives = [option for option in world.affordances("食堂大妈")
+                 if option.get("kind") == "give"]
+        self.assertIn({"kind": "give", "target": "唐小岚", "item": "一份午饭"}, gives)
+        self.assertNotIn({"kind": "give", "target": "唐小岚", "item": "灶台"}, gives,
+                         "固定陈设不是可递交的候选")
+        world.submit(Intention("食堂大妈", "give",
+                               {"target": "唐小岚", "item": "一份午饭"}, world.version))
+        world.advance()
+        self.assertIn("一份午饭", world.actors["唐小岚"].inventory)
+        self.assertNotIn("一份午饭", world.item_locations)
+
+
+class BlankNoteOnGates(unittest.TestCase):
+    """E100（报 97 §E1，窗口 5 08:06–17:19）：`leave_note on: ""` 被当成“在文书上补写”。
+
+    窗 5 全天 106 条拒绝（陈默 60、林瑶 23……）都是同一个形状：
+    `leave_note {"text": …, "persist": true, "on": ""}`。校验用
+    `if on is not None` 判“同时声明了 on 与 persist”，空串于是把“留一份新文稿”
+    自己判成冲突；陈默因此从 11:25 起逢人就说“我三次尝试留书面说明都没有成功”，
+    而世界给他的理由是假的（他的《个人情况说明》全天没写成）。
+
+    语义：`on` 只有**非空字符串**才进入批注分支；空串/纯空白等于没提供，
+    照常走普通便条（`persist` 生效）。
+    """
+
+    BODY = "3月16日 08:06，陈默核对记录：材料三份，缺说明一页。"
+
+    def _world(self):
+        return World(start=datetime.fromisoformat("2026-03-16T08:06:00+08:00"),
+                     actors=[ActorState("陈默", "档案室")],
+                     locations=[LocationState("档案室")],
+                     item_locations={"面核记录": "档案室"},
+                     document_defs={"面核记录": {
+                         "title": "面核记录",
+                         "content": "谁到场核对，谁就往自己那一栏里填。",
+                         "reading_seconds": 30}})
+
+    @staticmethod
+    def _annotations(world):
+        return world.document_defs["面核记录"].get("annotations", [])
+
+    def test_a_blank_on_writes_an_ordinary_persistent_note(self):
+        world = self._world()
+        world.submit(Intention("陈默", "leave_note",
+                               {"text": self.BODY, "persist": True, "on": ""},
+                               world.version))
+        world.advance()
+        notes = [event for event in world.event_log if event.kind == "note_left"]
+        self.assertEqual(len(notes), 1, "空的 on 等于没提供：这是一张普通便条")
+        self.assertTrue(notes[0].payload.get("persist"))
+        self.assertIn(notes[0].payload["note"], world.persistent_notes)
+        self.assertEqual(self._annotations(world), [], "没有往任何文书上写")
+        self.assertFalse([event for event in world.event_log
+                          if event.kind == "document_annotated"])
+
+    def test_a_whitespace_only_on_is_the_same_as_no_on(self):
+        world = self._world()
+        world.submit(Intention("陈默", "leave_note", {"text": self.BODY, "on": "   "},
+                               world.version))
+        world.advance()
+        self.assertEqual([event.kind for event in world.event_log
+                          if event.kind in {"note_left", "document_annotated"}],
+                         ["note_left"])
+        self.assertEqual(len(world.locations["档案室"].notes), 1)
+        self.assertEqual(self._annotations(world), [])
+
+    def test_a_real_document_still_takes_the_annotation_path(self):
+        world = self._world()
+        world.submit(Intention("陈默", "leave_note",
+                               {"text": self.BODY, "on": "面核记录"}, world.version))
+        world.advance()
+        self.assertEqual([entry["text"] for entry in self._annotations(world)], [self.BODY])
+        self.assertTrue([event for event in world.event_log
+                         if event.kind == "document_annotated"])
+        self.assertFalse([event for event in world.event_log if event.kind == "note_left"])
+
+
+class BlankCompanionGates(unittest.TestCase):
+    """E101（报 97 §E2，窗口 5 08:27–17:49）：`move with: [""]` 被当成“有同行者”。
+
+    窗 5 有 76 条“move 的 with 里有一个空名字”，相邻形态还有 `with: ["_self"]`、
+    `with: ["陈默(you)"]`、`with: ["唐小岚"]`（自己）——模型在找“一个人走”的表达法，
+    而接口只有“不带 with”，拒绝回执的 Valid call 实测 7 连未纠正（唐小岚 08:29–08:59），
+    于是唐小岚 13:04 对外说出“移动需要明确同行者”，花 88 分钟逐人求同行。
+
+    语义：`with` 的空项/重复项先过滤；过滤后为空 = 独自走，等同没写 `with`；
+    拒绝回执与 `action_schema` 都明写“独自走就只写 target，别写 with”。
+    """
+
+    def _world(self):
+        return World(start=datetime.fromisoformat("2026-03-16T08:27:00+08:00"),
+                     actors=[ActorState("唐小岚", "半坡咖啡馆"),
+                             ActorState("林瑶", "半坡咖啡馆")],
+                     locations=[LocationState("半坡咖啡馆"), LocationState("后街糕点铺")],
+                     routes={("半坡咖啡馆", "后街糕点铺"): 120})
+
+    @staticmethod
+    def _moves(world):
+        return [(event.kind, event.actor) for event in world.event_log
+                if event.kind in {"leave", "enter"}]
+
+    def test_an_empty_companion_entry_means_walking_alone(self):
+        world = self._world()
+        world.submit(Intention("唐小岚", "move",
+                               {"target": "后街糕点铺", "with": [""]}, world.version))
+        world.advance()
+        self.assertEqual(world.actors["唐小岚"].location, "后街糕点铺")
+        self.assertEqual(world.actors["林瑶"].location, "半坡咖啡馆", "空项不是同行者")
+        self.assertEqual(self._moves(world), [("leave", "唐小岚"), ("enter", "唐小岚")])
+
+    def test_an_empty_with_list_means_walking_alone(self):
+        world = self._world()
+        world.submit(Intention("唐小岚", "move",
+                               {"target": "后街糕点铺", "with": []}, world.version))
+        world.advance()
+        self.assertEqual(world.actors["唐小岚"].location, "后街糕点铺")
+        self.assertEqual(self._moves(world), [("leave", "唐小岚"), ("enter", "唐小岚")])
+
+    def test_a_real_companion_still_comes_along(self):
+        world = self._world()
+        world.submit(Intention("唐小岚", "move",
+                               {"target": "后街糕点铺", "with": ["林瑶", "林瑶"]},
+                               world.version))
+        world.advance()
+        self.assertEqual(world.actors["林瑶"].location, "后街糕点铺",
+                         "重复项不改变“带上这个人”")
+
+    def test_a_placeholder_companion_name_teaches_walking_alone(self):
+        world = self._world()
+        with self.assertRaises(ActionRejected) as rejected:
+            world.submit(Intention("唐小岚", "move",
+                                   {"target": "后街糕点铺", "with": ["_self"]},
+                                   world.version))
+        self.assertIn("target", str(rejected.exception),
+                      "拒绝必须说清“一个人走就只写 target”")
+        self.assertNotIn("with 里有一个空名字", str(rejected.exception))
+
+
+class SingleInstanceTakeGates(unittest.TestCase):
+    """E102（报 97 §E3，窗口 5 17:56–17:58）：同一件东西被两个人同时 take 都算成功。
+
+    事件序列（run real-20261018T062031，4675 之后的 #4707–#4719）：
+    17:57 `action_started 陈默 take 一份晚饭` 与 #4708 `action_started 辅导员 take
+    一份晚饭` 相继成立——`take` 的归属只在**完成时**写进世界，两次提交之间
+    `item_locations` 还没变，于是两人都通过校验、两条 `action_completed` 都写下
+    “拿起了”，只有先完成的那一位背包里真的有它：陈默拿到，辅导员 17:59 对食堂
+    大妈说“谢谢，我们都拿了晚饭”。回执说成功、世界没变 = 票 75 的同一族。
+
+    不变量：一件东西在任一时刻只有一个持有者或一个地点。它覆盖两条能把东西从原地
+    拿走的路径——`take`，以及 `give` 的“就地拿起再递出”（票 63）。
+    """
+
+    def _world(self):
+        return World(start=datetime.fromisoformat("2026-03-16T17:56:00+08:00"),
+                     actors=[ActorState("辅导员", "食堂"), ActorState("陈默", "食堂")],
+                     locations=[LocationState("食堂")],
+                     item_locations={"一份晚饭": "食堂", "例汤": "食堂"})
+
+    @staticmethod
+    def _completions(world):
+        return [event for event in world.event_log
+                if event.kind == "action_completed"
+                and str(event.payload.get("action")) == "take"]
+
+    def test_the_second_taker_is_rejected_while_the_first_is_still_taking(self):
+        world = self._world()
+        world.submit(Intention("陈默", "take", {"item": "一份晚饭"}, world.version))
+        with self.assertRaises(ActionRejected) as rejected:
+            world.submit(Intention("辅导员", "take", {"item": "一份晚饭"}, world.version))
+        self.assertIn("陈默", str(rejected.exception), "拒绝要点名正在拿这一件的人")
+        self.assertEqual(rejected.exception.context.get("claimed_by"), "陈默")
+        world.advance()
+        self.assertEqual(len(self._completions(world)), 1,
+                         "只有一次 take 真的发生")
+        self.assertIn("一份晚饭", world.actors["陈默"].inventory)
+        self.assertNotIn("一份晚饭", world.actors["辅导员"].inventory)
+
+    def test_an_item_never_has_two_holders(self):
+        world = self._world()
+        world.submit(Intention("陈默", "take", {"item": "一份晚饭"}, world.version))
+        try:
+            world.submit(Intention("辅导员", "take", {"item": "一份晚饭"}, world.version))
+        except ActionRejected:
+            pass
+        world.advance()
+        holders = [actor.id for actor in world.actors.values()
+                   if "一份晚饭" in actor.inventory]
+        self.assertEqual(holders, ["陈默"])
+        self.assertNotIn("一份晚饭", world.item_locations)
+        self.assertEqual(len(self._completions(world)), 1,
+                         "世界日志里不能有第二句“拿起了”而世界没变")
+
+    def test_a_late_take_names_where_the_item_actually_is(self):
+        world = self._world()
+        world.submit(Intention("陈默", "take", {"item": "一份晚饭"}, world.version))
+        world.advance()
+        with self.assertRaises(ActionRejected) as rejected:
+            world.submit(Intention("辅导员", "take", {"item": "一份晚饭"}, world.version))
+        message = str(rejected.exception)
+        self.assertIn("陈默", message, "回执要说出这件东西现在在谁手上")
+        self.assertEqual(rejected.exception.context.get("held_by"), "陈默")
+        self.assertNotIn("这里没有「一份晚饭」可拿", message)
+
+    def test_an_abandoned_take_releases_the_item(self):
+        world = self._world()
+        world.submit(Intention("陈默", "take", {"item": "一份晚饭"}, world.version))
+        self.assertTrue(world.force_interrupt("陈默", "辅导员"))
+        world.submit(Intention("陈默", "abandon_action", {}, world.version))
+        world.submit(Intention("辅导员", "take", {"item": "一份晚饭"}, world.version))
+        world.advance()
+        self.assertIn("一份晚饭", world.actors["辅导员"].inventory)
+        self.assertNotIn("一份晚饭", world.actors["陈默"].inventory)
+
+    def test_two_hand_overs_of_one_item_cannot_duplicate_it(self):
+        """同一族的另一半：`give` 的“就地拿起再递出”分支（票 63）也把东西从
+        原地拿走，于是两个人各递一次同一份饭，两个收件人背包里都会有一份。
+        不变量对这条路径同样成立：第二个就地递出结构化拒绝。"""
+        world = World(start=datetime.fromisoformat("2026-03-16T17:56:00+08:00"),
+                      actors=[ActorState("食堂大妈", "食堂"), ActorState("宿管阿姨", "食堂"),
+                              ActorState("陈默", "食堂"), ActorState("林瑶", "食堂")],
+                      locations=[LocationState("食堂")],
+                      item_locations={"一份晚饭": "食堂"})
+        world.submit(Intention("食堂大妈", "give",
+                               {"target": "陈默", "item": "一份晚饭"}, world.version))
+        with self.assertRaises(ActionRejected) as rejected:
+            world.submit(Intention("宿管阿姨", "give",
+                                   {"target": "林瑶", "item": "一份晚饭"}, world.version))
+        self.assertEqual(rejected.exception.context.get("claimed_by"), "食堂大妈")
+        world.advance()
+        holders = sorted(actor.id for actor in world.actors.values()
+                         if "一份晚饭" in actor.inventory)
+        self.assertEqual(holders, ["陈默"], "一份晚饭只能有一个人拿到")
+        self.assertNotIn("一份晚饭", world.item_locations)
+
+
+class ExtraScenePrivacyGates(unittest.TestCase):
+    """E103（报 97 §E4，窗口 5 15:04–15:06）：陌生人的输入带着别人还没送到的便条正文。
+
+    15:04 唐小岚读了 `代话便条`（正文：“…稿子的事我晓得了，别再往吧台上放…”）；
+    15:06 她朝“陌生人”搭话求同行，回话的是当场生成的 `张学长`：
+    “愿意啊。老板娘还留了话：稿子的事我晓得了，别再往吧台上放……”——一句她还没
+    送到的话被提前兑付了。诊断（该回合的 perception 实录）：extra 没有拿到提问者的
+    KB/记忆，泄漏通道是**场景事实块**——`scene_perception` 把同地每件东西的
+    `entity_descriptions` 全文发给它，而 `代话便条` 的客观描述就是便条正文，尽管
+    种子把这份便条声明为 `known_to: [唐小岚]`。
+
+    修法：extra 只接收“当面听到的话 + 该地点的**公开**可见物 + 自己身份”。
+    被 `known_to` 限定给别人的东西，extra 看得见它在场（`nearby_items` 保留，
+    因为它确实摆在吧台上），但不拿到它的描述正文。
+    """
+
+    SECRET = "别再往吧台上放"
+
+    def _scene(self):
+        from harness.npc_agent import build_extra_scene
+        world = load_story_pack().build_world()
+        world.actors["唐小岚"].location = "半坡咖啡馆"
+        world.add_extra("张学长", "半坡咖啡馆")
+        perception = world.scene_perception("张学长")
+        return world, perception, build_extra_scene(perception, world.affordances("张学长"))
+
+    def test_a_stranger_never_receives_a_note_that_is_not_his(self):
+        _world, perception, scene = self._scene()
+        self.assertNotIn(self.SECRET, scene,
+                         "陌生人的场景事实里不能有别人便条的正文")
+        self.assertNotIn(self.SECRET, json.dumps(perception, ensure_ascii=False))
+        self.assertIn("代话便条", perception["nearby_items"],
+                      "摆在吧台上的纸，陌生人是看得见它在场的")
+
+    def test_a_public_prop_still_grounds_its_own_description(self):
+        _world, perception, scene = self._scene()
+        self.assertIn("校报草稿", scene, "没有 known_to 限定的物件照旧给描述")
+        self.assertIn("一份", scene, "数量类断言仍有根据")
+
+    def test_the_owner_still_sees_her_own_note(self):
+        world = load_story_pack().build_world()
+        world.actors["唐小岚"].location = "半坡咖啡馆"
+        poll = world.poll("唐小岚")
+        self.assertIn(self.SECRET, poll["descriptions"].get("代话便条", ""),
+                      "种子声明 known_to 的人照旧看得见")
+        self.assertIn(self.SECRET, world.readable_body("代话便条")["content"])
+
+
+class EscortIdleGates(unittest.TestCase):
+    """E104（票 98 §5.3 顺带发现，窗口 5 15:15–15:33，run real-20261018T062031）：
+    同行途中的 extra 被当成“闲”回收。
+
+    15:06 张学长应下“愿意陪你去”，15:08 随唐小岚 `move 后街糕点铺 with 张学长`
+    出发，15:15 两人同到小卖部，15:19 它在下一跳（780s）途中得到
+    `extra_removed reason: idle`——唐小岚 15:28 独自到夜市、15:33 独自到糕点铺。
+    成因：idle 判据只看 `last_active`（上一次开口/动手的时刻），把“没人跟它说话”
+    当成“它站在原地”；被携带的整段路上它没有也不该有动作事件。
+
+    修法：`AsyncEngine._extra_is_idle` 把两种在场状态排除在 idle 之外——正被一次
+    `move` 携带着赶路（自己也在这段路上，或它是别人 `with` 里的同行者），或还有
+    一笔没结的对话（未答的问题 / 已听到还没回的话 / 供给方还在写的那一句）。
+    被携带者要离开仍走既有“途中可脱离”的路：他自己开始走另一段 move，
+    `_follows_escort` 便不再带他；到了地方站定，idle 照常计时。
+    """
+
+    START = datetime.fromisoformat("2026-03-16T07:00:00+08:00")
+
+    class _QuietExtra:
+        """一个应一声就沉默跟着走的路人（被携带时本来就不会有动作）。"""
+
+        def __init__(self):
+            self.calls = 0
+
+        def chat_with_tools(self, messages, tools):
+            self.calls += 1
+            return {"role": "assistant", "content": "", "tool_calls": [
+                {"id": f"c-{self.calls}", "type": "function",
+                 "function": {"name": "speak", "arguments": json.dumps(
+                     {"inner": "应一声", "text": "行，我陪你去。"},
+                     ensure_ascii=False)}}]}
+
+    def _run(self, *, walk: bool, minutes: int):
+        world = load_story_pack().build_world()
+        trace = Trace("v4-test", "e104-escort-idle")
+        script = {"asked": False, "walked": False}
+
+        def agent(state, perception, affordances):
+            if state.actor_id != "唐小岚":
+                return Intention(state.actor_id, "wait", {"duration_seconds": 3600},
+                                 perception["world_version"])
+            if not script["asked"]:
+                script["asked"] = True
+                return Intention("唐小岚", "speak",
+                                 {"text": "同学，我受老板娘所托去后街糕点铺带句话，"
+                                          "你愿意陪我一起去吗？",
+                                  "volume": "normal", "to": ["陌生人"]},
+                                 perception["world_version"])
+            companions = [name for name in perception.get("nearby_actors", ())
+                          if name in world.actors and world.actors[name].role == "extra"]
+            if walk and companions and not script["walked"]:
+                script["walked"] = True
+                return Intention("唐小岚", "move",
+                                 {"target": "后街糕点铺", "with": companions},
+                                 perception["world_version"])
+            return Intention("唐小岚", "wait", {"duration_seconds": 600},
+                             perception["world_version"])
+
+        states = {actor: PrivateState(actor) for actor in world.actors}
+        agents = {actor: agent for actor in world.actors
+                  if world.actors[actor].role != "extra"}
+        # 阈值 300s 小于路线的第一跳（420s），但比生成路人的回合延迟宽：
+        # 票 73 §6.1 的 extra 时序族曾把“应一声”推到 120s，留出余量才不误红。
+        engine = AsyncEngine(world, agents, states, trace, None,
+                             extra_call=self._QuietExtra(), decision_timeout=10,
+                             max_wall_seconds=60, extra_idle_seconds=300)
+        engine.run(stop_at=self.START + timedelta(minutes=minutes), max_turns=400)
+        return world, trace
+
+    @staticmethod
+    def _extra_name(trace) -> str:
+        return next(turn["actor"] for turn in trace.agent_turns
+                    if turn.get("role") == "extra")
+
+    def test_a_carried_extra_rides_out_the_idle_threshold(self):
+        """同行在飞超过 idle 阈值不被回收：每一跳都跟上，并随队到达目的地。"""
+        world, trace = self._run(walk=True, minutes=40)
+        name = self._extra_name(trace)
+        move_done = next(event for event in world.event_log
+                         if event.actor == "唐小岚"
+                         and event.kind == "action_completed"
+                         and event.payload.get("action") == "move")
+        self.assertEqual(move_done.payload.get("with"), [name], "这次确实是同行")
+        removed = [event for event in world.event_log
+                   if event.kind == "extra_removed" and event.actor == name]
+        self.assertFalse([event for event in removed
+                          if event.payload.get("reason") == "idle"
+                          and event.time < move_done.time],
+                         "同行在飞时不得被当成闲回收")
+        entered = [event for event in world.event_log
+                   if event.kind == "enter" and event.actor == name]
+        self.assertEqual([event.payload.get("location") for event in entered],
+                         ["小卖部", "夜市", "后街糕点铺"],
+                         "每一跳都跟上，一步不少")
+        self.assertEqual({event.payload.get("escorted_by") for event in entered},
+                         {"唐小岚"})
+        self.assertEqual(entered[-1].time, move_done.time, "与发起者同时到达")
+
+    def test_a_silent_extra_with_no_walk_is_still_reclaimed(self):
+        """守卫：没有同行的沉默路人照旧被 idle 回收——豁免只属“在途”。"""
+        world, trace = self._run(walk=False, minutes=12)
+        name = self._extra_name(trace)
+        removed = [event for event in world.event_log
+                   if event.kind == "extra_removed" and event.actor == name]
+        self.assertEqual([event.payload.get("reason") for event in removed], ["idle"])
+        self.assertNotIn(name, world.actors)
+
+    def _idle_engine(self):
+        world = load_story_pack().build_world()
+        trace = Trace("v4-test", "e104-idle-predicate")
+
+        def agent(state, perception, affordances):
+            return Intention(state.actor_id, "wait", {"duration_seconds": 600},
+                             perception["world_version"])
+
+        states = {actor: PrivateState(actor) for actor in world.actors}
+        agents = {actor: agent for actor in states}
+        engine = AsyncEngine(world, agents, states, trace, None,
+                             extra_call=self._QuietExtra(), decision_timeout=10,
+                             max_wall_seconds=60, extra_idle_seconds=60)
+        world.add_extra("路人", "半坡咖啡馆")
+        info = {"partner": "唐小岚",
+                "last_active": world.now - timedelta(seconds=120),
+                "pending_question": "", "pending_heard_speech": False}
+        return engine, info
+
+    def test_the_idle_clock_is_held_by_an_unanswered_conversation(self):
+        """没结的对话同样不是“闲”：未答的问题、已听到未回的话、在飞的回答。"""
+        engine, info = self._idle_engine()
+        self.assertTrue(engine._extra_is_idle("路人", info),
+                        "沉默过阈值的路人本来就会回收")
+        info["pending_question"] = "三点方老师来取草稿，先放你这儿。"
+        self.assertFalse(engine._extra_is_idle("路人", info), "问题还没答，它欠一回")
+        info["pending_question"] = ""
+        info["pending_heard_speech"] = True
+        self.assertFalse(engine._extra_is_idle("路人", info), "听见了还没回，它欠一回")
+        info["pending_heard_speech"] = False
+        engine._extra_inflight["路人"] = engine.world.now
+        self.assertFalse(engine._extra_is_idle("路人", info), "供给方还在写那一名")
+
+    def test_an_extra_walking_on_its_own_is_not_idle(self):
+        """自己也在这段路上（自己发起的 move）同样不是“闲”；到站后照常计时。"""
+        engine, info = self._idle_engine()
+        world = engine.world
+        world.submit(Intention("路人", "move", {"target": "中庭"}, world.version))
+        self.assertFalse(engine._extra_is_idle("路人", info), "走在路上不是闲着")
+        world.advance(until=world.now + timedelta(seconds=720))
+        self.assertTrue(engine._extra_is_idle("路人", info), "到了地方站定，idle 照常计时")
+
+    def test_a_carried_extra_leaves_by_walking_to_its_own_target(self):
+        """被携带者要离开仍走既有“途中可脱离”的路：自己走另一段 move。"""
+        start = datetime.fromisoformat("2026-03-16T09:00:00+08:00")
+        world = World(start=start,
+                      actors=[ActorState("唐小岚", "平台"),
+                              ActorState("张学长", "平台", role="extra")],
+                      locations=[LocationState("平台"), LocationState("走廊"),
+                                 LocationState("教室"), LocationState("图书馆")],
+                      routes={("平台", "走廊"): 120, ("走廊", "教室"): 180,
+                              ("走廊", "图书馆"): 90})
+        world.submit(Intention("唐小岚", "move",
+                               {"target": "教室", "with": ["张学长"]}, world.version))
+        world.advance(until=start + timedelta(seconds=120))
+        self.assertEqual(world.actors["张学长"].location, "走廊")
+        world.submit(Intention("张学长", "move", {"target": "图书馆"}, world.version))
+        world.advance()
+        self.assertEqual(world.actors["唐小岚"].location, "教室")
+        self.assertEqual(world.actors["张学长"].location, "图书馆",
+                         "脱离是一次显式动作，不是被静默回收")
+        self.assertFalse([event for event in world.event_log
+                          if event.kind == "extra_removed"],
+                         "没有人替他离开")
+
+
+class ConsecutiveEmptyTurnGates(unittest.TestCase):
+    """E93（报 90 §2，窗口 3 08:42–09:04）：连续空回合的后果没人告诉角色。
+
+    陈默那 22 分钟里 9 个回合只有正文、零工具调用，每个回合世界照常往前走
+    （版本 482→798、时钟每拍两分钟）；`empty_turn{reason: prose_only}` 记了，
+    但那一回合的后果从没回到他的输入里——他在正文里把台账的三条款答了五遍，
+    每一遍都像已经答过了（ticket 64 的自纠只在正文像在对人说话时发；他写的是
+    一份"已答好"的答案，既没有引号也没有第二人称）。裁定：
+    (a) 时钟不改——发呆一拍是 §4 的既定语义，而且每一拍都由一条显式 `wait`
+        事件归因（诊断见票 91：那 20 分钟是"零调用的模型输出 + 一拍 wait"，
+        不是引擎重试，provider 故障计数为 0）；
+    (b) 提示层补一条一次性反馈：上一回合只有想法、零调用时，告诉下一回合
+        "那段想法没有改变世界"，并给出两条出路（工具、或明确 wait）。
+    有界：一拍一条，一旦有调用就不再追加。
+    """
+
+    PROSE = ("我能确认：这是 **2013年邻里撤离与互助事项的确认通知书**；"
+             "负责确认的是家属院推举的老街坊代表，儿子只是代笔。")
+
+    def _world(self):
+        return load_story_pack().build_world()
+
+    @staticmethod
+    def _empty_rows(trace, actor):
+        return [turn["result"] for turn in trace.system_turns
+                if turn["request"].get("kind") == "empty_turn"
+                and turn["result"].get("actor") == actor]
+
+    def test_each_empty_turn_is_recorded_as_a_streak_and_owns_one_wait(self):
+        world = self._world()
+        engine, agent = _dialogue_engine(world)
+        for _ in range(3):
+            _dialogue_turn(engine, world, "陈默", [], text=self.PROSE)
+        rows = self._empty_rows(engine.trace, "陈默")
+        self.assertEqual([row["streak"] for row in rows], [1, 2, 3])
+        self.assertTrue(all(row["reason"] == "prose_only" for row in rows))
+        self.assertTrue(all(row["private_chars"] > 0 for row in rows))
+        actions = [event for event in world.event_log
+                   if event.actor == "陈默"
+                   and event.kind in {"speech", "action_started", "action_completed"}]
+        self.assertFalse([e for e in actions if e.kind == "speech"],
+                         "空回合不代填说话")
+        self.assertEqual({e.payload.get("action") for e in actions}, {"wait"},
+                         "空回合除了发呆一拍不得代填任何动作")
+        self.assertEqual({e.payload.get("duration_seconds") for e in actions},
+                         {TICK_SECONDS}, "发呆就是一拍")
+
+    def test_the_next_input_says_the_thought_changed_nothing(self):
+        world = self._world()
+        engine, agent = _dialogue_engine(world)
+        for _ in range(3):
+            _dialogue_turn(engine, world, "陈默", [], text=self.PROSE)
+        self.assertEqual(agent.notes, ["no_action:1", "no_action:2", "no_action:3"],
+                         "每拍一条，带连续次数")
+
+    def test_a_turn_with_a_call_resets_the_streak_and_gets_no_notice(self):
+        world = self._world()
+        engine, agent = _dialogue_engine(world)
+        _dialogue_turn(engine, world, "陈默", [], text=self.PROSE)
+        _dialogue_turn(engine, world, "陈默",
+                    [{"name": "wait", "tool_call_id": "w-1",
+                      "arguments": {"duration_seconds": TICK_SECONDS}}])
+        _dialogue_turn(engine, world, "陈默", [], text=self.PROSE)
+        rows = self._empty_rows(engine.trace, "陈默")
+        self.assertEqual([row["streak"] for row in rows], [1, 1],
+                         "有调用的回合把连续计数清零")
+        self.assertEqual(agent.notes, ["no_action:1", "no_action:1"],
+                         "有调用的回合自己不产生空回合反馈")
+        self.assertNotIn("unspoken", agent.notes,
+                         "这段正文不像对人说话，ticket 64 的自纠不该抢这条反馈")
+
+
+class NoActionNoticeTextGates(unittest.TestCase):
+    """E93 的提示层文本：那段反馈要说清后果与两条出路，并带连续次数。"""
+
+    def test_the_note_states_the_consequence_and_the_two_ways_out(self):
+        from harness.natural_agent import NO_ACTION_NOTE, V4Session
+        self.assertIn("没有调用任何工具", NO_ACTION_NOTE)
+        self.assertIn("时间照常过去", NO_ACTION_NOTE)
+        self.assertIn("speak", NO_ACTION_NOTE)
+        self.assertIn("wait", NO_ACTION_NOTE)
+        session = V4Session("陈默", provider=None)   # 只测追加，不调用模型
+        session.note_no_action(3)
+        self.assertEqual(session.messages[-1]["role"], "user")
+        self.assertIn("连续第 3 个", session.messages[-1]["content"])
+        session.note_no_action(1)
+        self.assertNotIn("连续第", session.messages[-1]["content"])
+
+
+class NoteDeliveryGates(unittest.TestCase):
+    """E105（票 101，窗口 6 18:44–21:30，run real-20261018T073833）：字条能写、能读，递不出去。
+
+    夜段 12 个回合、四种写法全部撞在同一堵墙上：18:48 `give note-陈默-1` 给辅导员
+    被拒（"你没有拿着「note-陈默-1」…可行调用：give 2013年邻里撤离通知书"），
+    19:07 `leave_note on:"空白纸"` 被拒（`on` 只认当前地点的 `document_defs`），
+    19:11 不带 on 留字成功但那张字条只由后到者读。主角 D1 的核心目标（"自己写好、
+    签名、亲手交给辅导员"）因此在世界里**结构上不可达**。修法不新增动作种类：
+    ① `give` 的目标物 = item ∪ 已存在的便条 id（便条本来就在世界上，递它就是递纸），
+    持有关系沿用背包（→ replay 可重建），完成时字条随收件人移动；
+    ② `leave_note on=<空白纸>` 把那张纸写成一份带编号的文稿（可读、可递），纸被用掉；
+    ③ 拒绝回执不再拿无关文书当替代。
+    """
+
+    TEXT = "个人情况说明：3/16 现场所见与转述已分开记，落款陈默。"
+
+    def _world(self):
+        world = load_story_pack().build_world()
+        world.actors["陈默"].location = "学生会办公室"
+        world.actors["辅导员"].location = "学生会办公室"
+        return world
+
+    def _written_sheet(self, world):
+        """一张写好的纸：写在 空白纸 上，文稿因此在他手上。"""
+        world.submit(Intention("陈默", "leave_note",
+                               {"text": self.TEXT, "on": "空白纸"}, world.version))
+        world.advance()
+        return next(note_id for note_id, row in world.persistent_notes.items()
+                    if row.get("text") == self.TEXT)
+
+    def test_a_written_sheet_is_a_note_that_can_be_handed_over_and_read(self):
+        """① 写在一张纸上的说明：作者拿着 → 递给在场的人 → 收件人读得到全文。"""
+        world = self._world()
+        self.assertIn("空白纸", world._writable_sheets(world.actors["陈默"]),
+                      "手边的空白纸必须是一个真的能写的目标")
+        note_id = self._written_sheet(world)
+        self.assertIn(note_id, world.actors["陈默"].inventory, "写好的纸在他手上")
+        self.assertNotIn("空白纸", world.item_locations, "那张纸已经写满了字，不再是空白纸")
+        self.assertIn({"kind": "read", "item": note_id}, world.affordances("陈默"))
+        self.assertIn({"kind": "give", "target": "辅导员", "item": note_id},
+                      world.affordances("陈默"), "拿着它就该能在选项里递给面前的人")
+        world.submit(Intention("陈默", "give",
+                               {"target": "辅导员", "item": note_id}, world.version))
+        world.advance()
+        given = next(event for event in world.event_log if event.kind == "item_given")
+        self.assertEqual(given.payload["item"], note_id)
+        self.assertEqual((given.payload["from"], given.payload["to"]), ("陈默", "辅导员"))
+        self.assertIn(note_id, world.actors["辅导员"].inventory, "递出去就是递那张纸")
+        self.assertNotIn(note_id, world.actors["陈默"].inventory, "递出去之后不再在他手上")
+        world.submit(Intention("辅导员", "read", {"item": note_id}, world.version))
+        world.advance()
+        self.assertEqual([event.payload["content"] for event in world.event_log
+                          if event.kind == "document_read"], [self.TEXT])
+
+    def test_a_persistent_note_left_on_the_table_can_also_be_handed_over(self):
+        """② 先留一份 persist 文稿（untaken），再当场递出去：纸本来就在世界上。"""
+        world = self._world()
+        world.submit(Intention("陈默", "leave_note",
+                               {"text": self.TEXT, "persist": True}, world.version))
+        world.advance()
+        note_id = next(iter(world.persistent_notes))
+        world.submit(Intention("陈默", "give", {"target": "辅导员", "item": note_id},
+                               world.version))
+        world.advance()
+        self.assertIn(note_id, world.actors["辅导员"].inventory)
+        # 收件人拿在手上：别人（包括作者）不能隔着手读这张纸。
+        with self.assertRaises(ActionRejected) as rejected:
+            world.submit(Intention("陈默", "read", {"item": note_id}, world.version))
+        self.assertIn("辅导员", str(rejected.exception), "要说清现在在谁手上")
+        self.assertEqual(rejected.exception.alternatives, [],
+                         "字条在别人手上时不得推荐无关文书当替代")
+
+    def test_a_rejected_note_handover_never_offers_an_unrelated_document(self):
+        """③ 回执护栏：窗口 6 18:48 那条“可行调用：give 2013年邻里撤离通知书”
+        既无关又误导；字条不在手上时只说它在谁手上/哪里。"""
+        world = self._world()
+        note_id = self._written_sheet(world)
+        world.submit(Intention("陈默", "give", {"target": "辅导员", "item": note_id},
+                               world.version))
+        world.advance()
+        with self.assertRaises(ActionRejected) as rejected:
+            world.submit(Intention("陈默", "give",
+                                   {"target": "辅导员", "item": note_id}, world.version))
+        message = str(rejected.exception)
+        self.assertIn("字条", message)
+        self.assertIn("辅导员", message, "要说清它现在在谁手上")
+        self.assertNotIn("2013年邻里撤离通知书", message, "不得推荐无关文书")
+        self.assertTrue(rejected.exception.context.get("note"))
+
+    def test_replay_rebuilds_the_handed_over_note_and_the_used_sheet(self):
+        """④ replay 一致：字条、持有者、被写掉的那张纸都从事件重建。"""
+        world = self._world()
+        note_id = self._written_sheet(world)
+        world.submit(Intention("陈默", "give", {"target": "辅导员", "item": note_id},
+                               world.version))
+        world.advance()
+        replayed = replay_world(load_story_pack().build_world(), world.replayable_log())
+        self.assertIn(note_id, replayed.actors["辅导员"].inventory,
+                      "递出的字条必须随事件重建在同一只手上")
+        self.assertNotIn(note_id, replayed.actors["陈默"].inventory)
+        self.assertNotIn("空白纸", replayed.item_locations, "被写掉的那张纸不能又变回空白纸")
+        self.assertEqual(replayed.persistent_notes[note_id]["text"], self.TEXT)
+        replayed.submit(Intention("辅导员", "read", {"item": note_id}, replayed.version))
+        replayed.advance()
+        self.assertEqual([event.payload["content"] for event in replayed.event_log
+                          if event.kind == "document_read"], [self.TEXT])
+
+    def test_the_sheet_route_is_offered_and_a_non_paper_is_refused(self):
+        """提示层：`on` 的候选里说得出能写的纸；不是纸的东西被拒且不推荐别的文书。"""
+        world = self._world()
+        hint = next(option["hint"] for option in world.affordances("陈默")
+                    if option.get("kind") == "leave_note")
+        self.assertIn("空白纸", hint, "写的入口必须把纸说出来")
+        self.assertIn("give", hint, "写好的纸可以递出去，这条路也要说出来")
+        with self.assertRaises(ActionRejected) as rejected:
+            world.submit(Intention("陈默", "leave_note",
+                                   {"text": "随手一记。", "on": "圆珠笔"},
+                                   world.version))
+        message = str(rejected.exception)
+        self.assertIn("空白纸", message, "拒绝要列出真的能写的纸")
+        sheets = rejected.exception.context.get("writable_sheets")
+        self.assertIn("空白纸", sheets)
+        self.assertNotIn("圆珠笔", sheets, "不是纸就不该出现在可写清单里")
+
+
+class SleepWaitGates(unittest.TestCase):
+    """E106（票 101，窗口 6 夜间）：睡觉没有表达法，夜段 43% 的回合是 `wait 900`。
+
+    7 次 `wait 34200–48960`（≈9.5–13.6 小时，“睡到明早”）被 900 秒上限拒收，模型只能
+    15 分钟一觉熬到天亮；19:14–21:24 有 2h10m 结构空转。修法不新增动作种类（§2 早已
+    裁定 sleep 并入 wait）：`wait` 增加可选 `sleep: true`，上限 12 小时，语义是
+    “睡到指定时长，或被打断/被叫醒”；复用既有 `sleeping` 字段与可见性（他人看不见你在睡），
+    `wake_waiter` 的唤醒类照旧能打断，点名的排程事件也能叫醒他。
+    """
+
+    def _world(self):
+        return load_story_pack().build_world()
+
+    def test_eight_hours_of_sleep_is_accepted_and_advances_the_clock(self):
+        """① 8 小时睡眠成功，世界时钟真的走到天亮。"""
+        world = self._world()
+        with self.assertRaises(ActionRejected) as rejected:
+            world.submit(Intention("陈默", "wait", {"duration_seconds": 8 * 3600},
+                                   world.version))
+        self.assertIn("sleep: true", str(rejected.exception),
+                      "超上限的等待必须教给模型 sleep 这条路")
+        start = world.now
+        world.submit(Intention("陈默", "wait",
+                               {"duration_seconds": 8 * 3600, "sleep": True}, world.version))
+        self.assertTrue(world.actors["陈默"].sleeping)
+        world.advance(until=start + timedelta(hours=8))
+        self.assertEqual(world.now, start + timedelta(hours=8))
+        done = [event for event in world.event_log
+                if event.kind == "action_completed" and event.payload.get("sleep")]
+        self.assertEqual(len(done), 1)
+        self.assertFalse(world.actors["陈默"].sleeping, "睡完就不再是睡着的状态")
+        # 他人看不见你在睡：同地的人也读不到这条动作。
+        self.assertEqual([event for event in world.event_log
+                          if event.kind == "action_started"
+                          and event.payload.get("sleep")][0].visible_to,
+                         frozenset({"陈默"}))
+
+    def test_a_sleeping_actor_is_woken_before_its_hour_is_up(self):
+        """② 睡眠中被叫醒/被打断则提前结束，而且醒着的人不被打扰。"""
+        world = self._world()
+        start = world.now
+        world.submit(Intention("陈默", "wait",
+                               {"duration_seconds": 8 * 3600, "sleep": True}, world.version))
+        # 普通 wait 不走这条点名唤醒（守卫）：先确认只对睡眠生效。
+        world.submit(Intention("班长", "wait", {"duration_seconds": 900}, world.version))
+        self.assertFalse(world.wake_sleeper("班长"))
+        self.assertTrue(world.wake_sleeper("陈默"))
+        self.assertFalse(world.actors["陈默"].sleeping)
+        self.assertTrue([event for event in world.event_log if event.kind == "wait_woken"])
+        self.assertEqual(world.now, start, "被叫醒不消耗剩余时长")
+        self.assertLess(world.now, start + timedelta(hours=8))
+        # 醒了就能做事：不再被自己的睡眠挡住。
+        world.submit(Intention("陈默", "wait", {"duration_seconds": 60}, world.version))
+        world.advance()
+        self.assertFalse([event for event in world.event_log
+                          if event.kind == "action_completed"
+                          and event.payload.get("sleep")], "那一觉已经被叫醒，不会再睡满")
+
+    def test_a_named_scheduled_event_wakes_a_sleeper_and_a_broadcast_does_not(self):
+        """③ 点名叫他的排程事件能叫醒他；全场广播不叫醒睡着的人。
+
+        这是引擎侧的那一半：`_wake_waiters` 只对 payload 里 `target` 点名的事件
+        调用 `wake_sleeper`。窗口 6 的夜段若允许 8 小时睡眠而 19:30 的妈妈电话
+        叫不醒他，那就是用一个更贵的问题换掉一个便宜的问题。"""
+        def run(with_target):
+            event = {"event": "mom_evening_call",
+                     "time": "2026-03-16T09:00:00+08:00",
+                     "notice": "妈妈又打来电话。"}
+            if with_target:
+                event["target"] = ["陈默"]
+            world = World(start=datetime.fromisoformat("2026-03-16T07:00:00+08:00"),
+                          actors=[ActorState("陈默", "宿舍", role="mc")],
+                          locations=[LocationState("宿舍")],
+                          scheduled=[event])
+            turns = []
+
+            def agent(state, perception, affordances):
+                turns.append(perception["time"])
+                if len(turns) == 1:
+                    return Intention(state.actor_id, "wait",
+                                     {"duration_seconds": 8 * 3600, "sleep": True},
+                                     perception["world_version"])
+                return Intention(state.actor_id, "wait",
+                                 {"duration_seconds": 60}, perception["world_version"])
+
+            trace = Trace("v4-test", f"sleep-wake-{with_target}")
+            _call_pool().submit(lambda: None).result(timeout=5)
+            engine = AsyncEngine(world, {"陈默": agent},
+                                 {"陈默": PrivateState("陈默")}, trace, None,
+                                 decision_timeout=10, max_wall_seconds=60,
+                                 mc_idle_heartbeat=10 ** 6)
+            engine.run(stop_at=datetime.fromisoformat("2026-03-16T12:00:00+08:00"),
+                       max_turns=40)
+            return world, turns
+
+        world, turns = run(with_target=True)
+        self.assertIn("2026-03-16T09:00:00+08:00", turns,
+                      "点名叫他的事件必须叫醒他（那一回合就是 09:00）")
+        self.assertTrue([event for event in world.event_log if event.kind == "wait_woken"])
+        world_quiet, turns_quiet = run(with_target=False)
+        self.assertEqual(turns_quiet, ["2026-03-16T07:00:00+08:00"],
+                         "全场广播不该把睡着的人叫起来")
+        self.assertFalse([event for event in world_quiet.event_log
+                          if event.kind == "wait_woken"])
+
+    def test_replay_and_checkpoint_keep_the_sleep(self):
+        """④ replay 一致 + 检查点：事件与时钟重建，睡着这件事跨检查点还在。"""
+        world = self._world()
+        start = world.now
+        world.submit(Intention("陈默", "wait",
+                               {"duration_seconds": 8 * 3600, "sleep": True}, world.version))
+        world.advance(until=start + timedelta(hours=2))
+        restored = World.from_checkpoint(load_story_pack().build_world(),
+                                         world.checkpoint_state())
+        self.assertTrue(restored.actors["陈默"].sleeping, "检查点带着 sleep 状态")
+        self.assertTrue(restored.wake_sleeper("陈默"), "恢复后仍叫得醒")
+        replayed = replay_world(load_story_pack().build_world(), world.replayable_log())
+        self.assertEqual(replayed.now, world.now)
+        self.assertEqual([event.kind for event in replayed.event_log],
+                         [event.kind for event in world.event_log])
+        self.assertEqual([(event.kind, event.payload.get("sleep"))
+                          for event in replayed.event_log
+                          if event.kind == "action_started"],
+                         [("action_started", True)])
+
+
+class _ScriptedV4Agent:
+    """Minimal v4-session agent: one scripted tool-call list per turn.
+
+    `session_obj` routes the turn through `_execute_chain` — the production
+    path (`SleepWaitGates`③ 用的是旧 callable 路径，所以那条门在真实种子上
+    仍会红：本类补的正是这一段）。"""
+
+    session_obj = object()
+
+    def __init__(self, script):
+        self.script = [list(turn) for turn in script]
+        self.turns = 0
+
+    def __call__(self, world_message, state):
+        script = self.script[min(self.turns, len(self.script) - 1)]
+        self.turns += 1
+        return {"text": "",
+                "calls": [{"name": name, "arguments": dict(args)}
+                          for name, args in script]}
+
+    def session_snapshot(self):
+        return None
+
+    def deliver_tool_results(self, results):
+        pass
+
+    def consume_compaction(self):
+        return False
+
+
+def _turns_from(trace, at: datetime):
+    return [turn for turn in trace.agent_turns
+            if datetime.fromisoformat(str(turn["perception"]["time"])) == at]
+
+
+class WakeReachabilityGates(unittest.TestCase):
+    """E109（票 106，D1 工件 real-20261018T085705）：睡眠把整个夜吞掉。
+
+    D1 18:35 林瑶 `wait 28800 sleep:true` 那一回合里，`_execute_chain` 为了“让
+    同一回合的后续调用落在动作完成之后”把世界时钟一路推进到 `_stop_horizon`
+    （22:00）——一次 `world.advance` 就把 18:40–22:00 的六条夜间排程、三条
+    `private_wake`、四条 `reminder_due` 全部记进日志而不派任何回合，然后循环顶部
+    的 `_stop_check` 直接 `stop_at_reached`。于是“点名叫他的事件叫得醒他”这条
+    不变式（票 101 的 SleepWaitGates③）在真实种子上不成立：那条门走的是旧
+    callable 路径（`_submit`），而真实回合走的是 v4 链式路径。
+
+    不变式（唤醒可达）：**一次回合内的时钟推进不得越过世界上下一个排程作业**
+    （`World.next_event_time()`）——它会交出回合的作业里既有 `world_event` /
+    `private_wake` / `reminder_due`，也有别人的 `action_completed`；越过任何一条，
+    那些事件都既到不了角色的游标，也换不来回合。修法是把这条界加进链式推进的
+    `limit`（V4-ENGINE §3.1），而不是每隔 N 分钟叫醒所有人。
+    """
+
+    def test_a_private_wake_still_reaches_an_awake_actor_while_another_sleeps(self):
+        """① 全部角色 wait/睡下之后，07:30 的 private_wake 仍要在活人身上落成回合。
+
+        07:15 陈默入睡（12 小时；那一刻没有别人在思考，`_horizon_bound()` 为
+        None——正是 D1 18:35 的形状），唐小岚从 07:00 起就在等 30 分钟（先替她
+        提交这一拍，免得 07:00 两个人同时起跳把这条门变成竞态）。修复前那次睡眠
+        把时钟一次推到 stop_at（10:00）：唐小岚 07:30 的唤醒连同之后每一拍都被记
+        进日志而不派回合。修复后推进停在 07:30，她在那一拍拿到回合，感知里带着
+        那条 `private_wake`。"""
+        start = datetime.fromisoformat("2026-03-16T07:00:00+08:00")
+        wake_time = datetime.fromisoformat("2026-03-16T07:30:00+08:00")
+        actors = [ActorState("陈默", "宿舍", role="mc"),
+                  ActorState("唐小岚", "食堂", role="mc")]
+        agents = {
+            "陈默": _ScriptedV4Agent([[("wait", {"duration_seconds": 900})],
+                                      [("wait", {"duration_seconds": 12 * 3600,
+                                                  "sleep": True})],
+                                      [("wait", {"duration_seconds": 60})]]),
+            "唐小岚": _ScriptedV4Agent([[("wait", {"duration_seconds": 1800})]]),
+        }
+        world = World(start=start, actors=actors,
+                      locations=[LocationState("宿舍"), LocationState("食堂")],
+                      routes={("宿舍", "食堂"): 300, ("食堂", "宿舍"): 300})
+        world.submit(Intention("唐小岚", "wait", {"duration_seconds": 1800},
+                               world.version))
+        world.schedule_private_wake("唐小岚", wake_time)
+        trace = Trace("v4-test", "wake-reachability-private-wake")
+        _call_pool().submit(lambda: None).result(timeout=5)
+        engine = AsyncEngine(world, agents,
+                             {actor.id: PrivateState(actor.id) for actor in actors},
+                             trace, None, decision_timeout=10,
+                             max_wall_seconds=60, mc_idle_heartbeat=0)
+        engine.run(stop_at=datetime.fromisoformat("2026-03-16T10:00:00+08:00"),
+                   max_turns=200)
+
+        def at(turn):
+            return datetime.fromisoformat(str(turn["perception"]["time"]))
+
+        hers = [turn for turn in trace.agent_turns if turn["actor"] == "唐小岚"]
+        self.assertTrue([turn for turn in hers if at(turn) > wake_time],
+                        "睡眠中的长动作把 07:30 之后唐小岚的每一拍都吞掉了")
+        delivered = [event["kind"] for turn in hers if at(turn) >= wake_time
+                     for event in turn["perception"]["events"]]
+        self.assertIn("private_wake", delivered,
+                      "被唤醒的角色必须在自己的感知里看到那次唤醒（游标前移）")
+
+    def test_a_named_scheduled_event_wakes_a_sleeper_on_the_chain_path(self):
+        """② 睡眠中被点名的事件：先有可见的唤醒（`wait_woken`），再拿到回合。
+
+        与 SleepWaitGates③ 同一断言，但走真实回合路径（`_execute_chain`）。
+        修复前：08:00 的叫醒事件被 07:10 那次睡眠的推进吞掉，既没有 `wait_woken`
+        也没有回合——D1 夜里的 `private_wake`/`reminder_due` 就是这样变成死信的。"""
+        start = datetime.fromisoformat("2026-03-16T07:00:00+08:00")
+        event = {"event": "mom_evening_call",
+                 "time": "2026-03-16T08:00:00+08:00",
+                 "notice": "妈妈又一次打来电话。",
+                 "target": ["陈默"]}
+        world = World(start=start, actors=[ActorState("陈默", "宿舍", role="mc")],
+                      locations=[LocationState("宿舍")], scheduled=[event])
+        agents = {"陈默": _ScriptedV4Agent([
+            [("wait", {"duration_seconds": 600})],
+            [("wait", {"duration_seconds": 12 * 3600, "sleep": True})],
+            [("wait", {"duration_seconds": 60})]])}
+        trace = Trace("v4-test", "wake-reachability-sleeper")
+        _call_pool().submit(lambda: None).result(timeout=5)
+        engine = AsyncEngine(world, agents, {"陈默": PrivateState("陈默")},
+                             trace, None, decision_timeout=10,
+                             max_wall_seconds=60, mc_idle_heartbeat=0)
+        engine.run(stop_at=datetime.fromisoformat("2026-03-16T08:30:00+08:00"),
+                   max_turns=200)
+
+        call_time = datetime.fromisoformat("2026-03-16T08:00:00+08:00")
+        woken = [event for event in world.event_log if event.kind == "wait_woken"]
+        self.assertTrue(woken, "点名事件必须产生一次可见的唤醒")
+        self.assertEqual(woken[0].time, call_time, "唤醒发生在点名的那一刻，不是之后")
+        calls = _turns_from(trace, call_time)
+        self.assertTrue(calls, "被叫醒之后必须在 08:00 拿到一个回合")
+        self.assertIn("world_event", [event["kind"] for event in calls[0]["perception"]["events"]])
+
+
+class PrivateWakeDeliveryGates(unittest.TestCase):
+    """E110（票 109 D1-2-E5，D1 工件 real-20261018T100115）：心跳对睡着的人是死信。
+
+    D1 20:41 与 21:36 给林瑶、21:40 给陈默的三条 `private_wake` 都落在 `wait
+    sleep:true` 期间（林瑶 20:11→07:31、21:06→07:16，陈默 21:10→07:10）：
+    `World.advance` 只把这个 kind `_commit` 进日志（可见性 {本人}），唤醒路径只
+    在引擎的 `_wake_waiters` 里为 `world_event` 走，于是既没有 `wait_woken`，也没有
+    任何回合——两人的最后一个回合停在 21:05 / 21:09，事件在游标之后等到天亮。
+
+    不变式：一条点名某人的私有排程事件就是叫他（E106 的判据同样适用于
+    `private_wake`）。到点时若目标在睡，先用 `World.wake_sleeper` 结束睡眠、留下
+    可见的 `wait_woken`，再在那一拍给出回合；目标已不在世界里时记一条带 `reason`
+    的 `private_wake_failed`，不静默成死信。
+    """
+
+    def test_a_private_wake_wakes_a_sleeping_mc_and_lands_a_turn(self):
+        """07:00 入睡 12 小时，07:30 的心跳（生产路径 `_rearm_heartbeat`）
+        必须叫醒他并在 07:30 换出一回合。
+
+        修复前：07:30 的 `private_wake` 只进日志，陈默的下一个回合要等到 19:00
+        睡眠自然完成——心跳对睡着的人是死信。"""
+        start = datetime.fromisoformat("2026-03-16T07:00:00+08:00")
+        wake_time = datetime.fromisoformat("2026-03-16T07:30:00+08:00")
+        world = World(start=start, actors=[ActorState("陈默", "宿舍", role="mc")],
+                      locations=[LocationState("宿舍")])
+        agents = {"陈默": _ScriptedV4Agent([
+            [("wait", {"duration_seconds": 12 * 3600, "sleep": True})],
+            [("wait", {"duration_seconds": 60})]])}
+        trace = Trace("v4-test", "private-wake-sleeper")
+        _call_pool().submit(lambda: None).result(timeout=5)
+        engine = AsyncEngine(world, agents, {"陈默": PrivateState("陈默")},
+                             trace, None, decision_timeout=10,
+                             max_wall_seconds=60, mc_idle_heartbeat=1800)
+        engine.run(stop_at=datetime.fromisoformat("2026-03-16T07:33:00+08:00"),
+                   max_turns=200)
+
+        woken = [event for event in world.event_log if event.kind == "wait_woken"]
+        self.assertEqual(len(woken), 1, "心跳必须留下一条可见的唤醒事实")
+        self.assertEqual(woken[0].actor, "陈默")
+        self.assertEqual(woken[0].time, wake_time)
+        self.assertIn("陈默", woken[0].visible_to)
+        calls = _turns_from(trace, wake_time)
+        self.assertEqual([turn["actor"] for turn in calls], ["陈默"],
+                         "被叫醒之后必须在 07:30 拿到一个回合")
+        kinds = [event["kind"] for event in calls[0]["perception"]["events"]]
+        self.assertIn("private_wake", kinds, "唤醒事件必须进得了他的游标")
+        self.assertIn("wait_woken", kinds)
+        self.assertFalse(world.actors["陈默"].sleeping)
+        self.assertFalse([event for event in world.event_log
+                          if event.kind == "action_completed"
+                          and event.payload.get("sleep")],
+                         "叫醒必须真的结束那段睡眠，而不是等它自然完成")
+
+    def test_a_private_wake_for_an_absent_target_records_the_reason(self):
+        """目标已不在世界里：记一条带 reason 的失败，不是一条没人能读的事件。
+
+        修复前它照样写成 `private_wake`（可见性 {那个不存在的 id}），日志里
+        与一条正常送达的心跳无法区分。"""
+        start = datetime.fromisoformat("2026-03-16T07:00:00+08:00")
+        fire = start + timedelta(minutes=5)
+        world = World(start=start, actors=[ActorState("陈默", "宿舍", role="mc")],
+                      locations=[LocationState("宿舍")])
+        world.schedule_private_wake("早已离开的人", fire)
+        world.advance(until=start + timedelta(minutes=10))
+
+        wakes = [event for event in world.event_log
+                 if event.kind.startswith("private_wake")]
+        self.assertEqual([(event.kind, event.payload.get("reason")) for event in wakes],
+                         [("private_wake_failed", "actor_not_present")])
+        self.assertEqual(wakes[0].time, fire)
+        self.assertFalse(wakes[0].visible_to & set(world.actors),
+                         "一条没人能读的失败不得落进任何活人的感知")
+
+
+class ExtraNoRequestTurnGates(unittest.TestCase):
+    """E107（票 101，窗口 6 18:00）：extra 的零动作回合仍然静默。
+
+    E90 修的是“模型被问了却没输出”（`reason: no_output`）。窗口 6 18:00 胡大叔那条
+    （`result: none`、`calls: []`、`inner: null`、夜间 `system_turns` 无任何
+    `empty_turn`）不是这一种：18:00 正是从窗口 5 检查点续跑的那一刻，restored extra
+    的 `_extra_loop(name, "")` 第一拍既没有待答问题、也没有新听到的话，`needs_response`
+    为假——**这一回合根本没有请求模型**（所以没有调用、没有 inner、没有 provider 错误）。
+    判定依据就是本测试的两条读数：resume 后 provider 调用 0 次，而 trace 里仍有一行
+    `result: none` 的 agent 回合。修法只加诊断：这一种也记一条 `empty_turn`
+    （`reason: no_request`），让“没被问”与“被问了但没输出”在 trace 上可分辨。
+    """
+
+    def _engine(self, world, trace, stub):
+        non_extra = [actor for actor in world.actors if world.actors[actor].role != "extra"]
+
+        def agent(state, perception, affordances):
+            return Intention(state.actor_id, "wait", {"duration_seconds": 60},
+                             perception["world_version"])
+
+        _call_pool().submit(lambda: None).result(timeout=5)
+        return AsyncEngine(world, {actor: agent for actor in non_extra},
+                           {actor: PrivateState(actor) for actor in non_extra},
+                           trace, None, extra_call=stub, decision_timeout=10,
+                           max_wall_seconds=60, extra_idle_seconds=3600)
+
+    def test_a_wake_without_a_question_records_the_reason_instead_of_a_blank_line(self):
+        world = load_story_pack().build_world()
+        asked = set()
+
+        def agent(state, perception, affordances):
+            if state.actor_id == "陈默" and "ask" not in asked:
+                asked.add("ask")
+                return Intention(state.actor_id, "speak",
+                                 {"text": "请问台账的事？", "volume": "normal",
+                                  "to": ["陌生人"], "wait_response": False},
+                                 perception["world_version"])
+            return Intention(state.actor_id, "wait", {"duration_seconds": 60},
+                             perception["world_version"])
+
+        class _Stub:
+            def __init__(self, replies):
+                self.replies = list(replies)
+                self.calls = 0
+
+            def chat_with_tools(self, messages, tools):
+                self.calls += 1
+                return self.replies.pop(0) if len(self.replies) > 1 else self.replies[0]
+
+        non_extra = [actor for actor in world.actors if world.actors[actor].role != "extra"]
+        first_stub = _Stub([{"role": "assistant", "content": "我听见了。", "tool_calls": []}])
+        trace = Trace("v4-test", "ticket101-extra-no-request")
+        _call_pool().submit(lambda: None).result(timeout=5)
+        engine = AsyncEngine(world, {actor: agent for actor in non_extra},
+                             {actor: PrivateState(actor) for actor in non_extra},
+                             trace, None, extra_call=first_stub, decision_timeout=10,
+                             max_wall_seconds=60, extra_idle_seconds=3600)
+        engine.run(stop_at=world.now + timedelta(minutes=6), max_turns=300)
+        extra = next(a for a in world.actors.values() if a.role == "extra")
+        self.assertTrue(first_stub.calls, "第一段里路人真的被问过")
+
+        resume_stub = _Stub([{"role": "assistant", "content": "", "tool_calls": []}])
+        resumed_trace = Trace("v4-test", "ticket101-extra-no-request-resume")
+        resumed = self._engine(world, resumed_trace, resume_stub)
+        resumed.restore_checkpoint(engine.checkpoint_state())
+        resumed.run(stop_at=world.now + timedelta(minutes=3), max_turns=100)
+        self.assertEqual(resume_stub.calls, 0,
+                         "续跑的第一拍没有可答的东西，模型根本不该被请求")
+        rows = [turn for turn in resumed_trace.system_turns
+                if turn["request"].get("kind") == "empty_turn"
+                and turn["result"].get("actor") == extra.id]
+        self.assertTrue(rows, "没被问的回合也必须留一行可审计记录")
+        self.assertEqual(rows[0]["result"]["reason"], "no_request")
+        self.assertEqual(rows[0]["result"]["role"], "extra")
+        silent_turns = [turn for turn in resumed_trace.agent_turns
+                        if turn.get("actor") == extra.id and turn.get("result") == "none"]
+        self.assertTrue(silent_turns, "被诊断的就是那一行 result: none 的回合")
+
+
+class NoMechanismInSpeechGates(unittest.TestCase):
+    """E108（票 101，窗口 6 19:12）：引擎机制被当众说成了剧情。
+
+    陈默对在场三人说“刚才的留字只生成了下一位进入者才看得到的字条”。这句话在机制上
+    是对的（burn 字条确实只给后到者），正因为对，才证明它是从 affordance hint 与回执
+    里推出来的引擎知识，而不是任何世界内的感知。修法是一句提示层规则，只加在 MC 的
+    工具说明上：主角可以说自己做了什么、谁看见了什么，不得向别人描述引擎怎么运作。
+    """
+
+    def test_the_mc_tool_surface_carries_the_rule(self):
+        from harness.action_schema import EXTRA_TOOLS, NO_MECHANISM_IN_SPEECH, TOOLS
+        leave_note = next(tool for tool in TOOLS
+                          if tool["function"]["name"] == "leave_note")
+        self.assertIn(NO_MECHANISM_IN_SPEECH, leave_note["function"]["description"])
+        for tool in EXTRA_TOOLS:
+            self.assertNotIn(NO_MECHANISM_IN_SPEECH, tool["function"]["description"],
+                             f"路人的工具面不重复这条主角规则：{tool['function']['name']}")
+
+    def test_the_npc_and_extra_prompts_do_not_carry_it(self):
+        from harness.action_schema import NO_MECHANISM_IN_SPEECH
+        from harness.character_loader import CharacterSeed
+        from harness.npc_agent import (build_extra_briefing, build_extra_system_prompt,
+                                       build_npc_system_prompt)
+        npc_prompt = build_npc_system_prompt(
+            CharacterSeed("宿管阿姨", "你是宿管阿姨。", "宿管阿姨自己的备忘。"), "今晚查寝。")
+        extra_prompt = build_extra_system_prompt("咖啡店里的客人", "我只管喝咖啡。", "咖啡馆",
+                                                 name="胡大叔")
+        extra_briefing = build_extra_briefing(transcript=[], scene="（这里是咖啡馆）")
+        for text, where in ((npc_prompt, "NPC 提示"), (extra_prompt, "路人系统提示"),
+                            (extra_briefing, "路人简报")):
+            self.assertNotIn(NO_MECHANISM_IN_SPEECH, text, where)

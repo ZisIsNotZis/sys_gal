@@ -162,6 +162,11 @@ class WorldPack:
         world = World(
             start=datetime.fromisoformat(str(self.manifest["clock"]["start"])),
             actors=actors, locations=locations, item_locations=item_locations,
+            # Ticket 83 的 固定陈设 声明对文书同样有效（票 91 裁定）：一块钉在
+            # 门边的公告栏也是文书，但它拿不走。缺省不写 = 可拿（纸张本就可携带）。
+            fixed_items={str(row["id"]): str(row.get("fixed_reason", ""))
+                         for row in self.items + self.documents
+                         if row.get("takeable") is False},
             routes=routes, sound_barriers=barriers, scheduled=self.scheduled,
             document_defs=document_defs,
             entity_descriptions=DescriptionStore({name: self.descriptions[name] for name in
@@ -220,9 +225,25 @@ def load_world_pack(root: str | Path) -> WorldPack:
         for extra in (row.get("extras") or ()):
             if isinstance(extra, dict) and "knowledge_notes" in extra:
                 extra["knowledge_notes"] = strip_refs(extra["knowledge_notes"])
-    for key, value in (manifest.get("system", {}).get("facts", {}) or {}).items():
-        manifest["system"]["facts"][key] = strip_refs(value)
-        manifest["system"]["facts"][strip_refs(key)] = strip_refs(value)
+    # 票 95（E95）：事实条目的值可能是旧字符串，也可能是 `{answer, keywords}`——
+    # 这里保留形状（不能对 dict 做 str()，否则 keywords 能力在真种子上失效，
+    # 而且台账会把 Python dict 字面量当作答案投给角色）。
+    facts = manifest.get("system", {}).get("facts", {}) or {}
+    for key, value in list(facts.items()):
+        if isinstance(value, dict):
+            raw_keywords = value.get("keywords") or ()
+            if isinstance(raw_keywords, str):
+                raw_keywords = (raw_keywords,)
+            entry: Any = {
+                "answer": strip_refs(value.get("answer", "")),
+                "keywords": ([strip_refs(str(item)) for item in raw_keywords]
+                             if isinstance(raw_keywords, (list, tuple))
+                             else raw_keywords),
+            }
+        else:
+            entry = strip_refs(value)
+        facts[key] = entry
+        facts[strip_refs(key)] = entry
     # Pre-run history (ticket 25): authored real events (2013 typhoon night)
     # that compile into the event log's first segment. [[ ]] markers are
     # linter-only syntax here too — flashback shows this text to actors.
@@ -702,6 +723,14 @@ def _validate(fields: dict[str, tuple[dict[str, Any], ...]], manifest: dict[str,
         for entry in targets:
             if str(entry) not in actors:
                 raise ValueError("scheduled event references an unknown actor")
+        # 票 95（E97）：`location` 把一条排程事件的可见范围收窄到该地点在场者
+        # （加显式 target）。点名一个不存在的地点 = 全场没人看得见，所以在这里
+        # 大声失败；不写 location 且不写 target 的仍是既有全局广播。
+        location = row.get("location")
+        if location is not None and str(location) not in locations:
+            raise ValueError(
+                f"scheduled event {row.get('event')!r} references an unknown location: "
+                f"{location!r}")
         for effect in row.get("effects", ()):
             if not isinstance(effect, dict):
                 raise ValueError("scheduled effects must be mappings")
@@ -723,6 +752,40 @@ def _validate(fields: dict[str, tuple[dict[str, Any], ...]], manifest: dict[str,
     defined = items | documents
     if actors & items or actors & documents or items & documents:
         raise ValueError("actor, item, and document ids must be disjoint")
+    # ticket 93：台账的结案由 `system.settle_on` 点的那条排程驱动。点了一个不存在
+    # 的事件名就是一个沉默的“永不结案”，所以在这里就大声失败，而不是等运行到点。
+    settle_on = (manifest.get("system") or {}).get("settle_on")
+    if settle_on is not None:
+        names = {str(row.get("event", "")) for row in fields["scheduled"]}
+        if str(settle_on) not in names:
+            raise ValueError(
+                f"system.settle_on names an undeclared scheduled event: {settle_on!r} "
+                "(the Ledger case would never close)")
+    # 票 95（E95）：事实条目要么是旧的 `问句: 答案` 字符串，要么声明
+    # `{answer: ..., keywords: [...]}`。写错形状的条目 = 永远答不上，所以
+    # 在这里大声失败，而不是让角色在对话里被告知“不知道”。
+    facts = (manifest.get("system") or {}).get("facts") or {}
+    if not isinstance(facts, dict):
+        raise ValueError("system.facts must be a mapping of entry -> answer")
+    for key, value in facts.items():
+        if isinstance(value, dict):
+            answer = value.get("answer")
+            if not isinstance(answer, str) or not answer.strip():
+                raise ValueError(
+                    f"system.facts entry {key!r} must declare a non-empty answer")
+            keywords = value.get("keywords", [])
+            if isinstance(keywords, str):
+                keywords = [keywords]
+            if (not isinstance(keywords, list)
+                    or not all(isinstance(item, str) and item.strip()
+                               for item in keywords)):
+                raise ValueError(
+                    f"system.facts entry {key!r} keywords must be a list of "
+                    "non-empty strings")
+        elif not isinstance(value, str) or not value.strip():
+            raise ValueError(
+                f"system.facts entry {key!r} must be an answer string or a "
+                "mapping with answer/keywords")
 
 
 _REMINDER_RE = re.compile(r"^\d{1,2}/\d{1,2}\(周[一二三四五六日]\) \d{1,2}:\d{2}$")
@@ -821,6 +884,17 @@ def _validate_descriptions(fields: dict[str, tuple[dict[str, Any], ...]],
     # the seed as a silently unreadable prop.
     for row in fields["items"]:
         entity = str(row["id"])
+        # Ticket 83: `takeable` is the one generalisation separating a fixture
+        # from portable stock — `take` refuses a `takeable: false` item instead
+        # of letting the model carry off a chest freezer. Absent means true;
+        # `fixed_reason` is the wording that refusal uses.
+        takeable = row.get("takeable")
+        if takeable is not None and not isinstance(takeable, bool):
+            raise ValueError(f"item {entity} takeable must be true or false: {takeable!r}")
+        fixed_reason = row.get("fixed_reason")
+        if fixed_reason is not None and not isinstance(fixed_reason, str):
+            raise ValueError(
+                f"item {entity} fixed_reason must be a string: {fixed_reason!r}")
         readable = row.get("readable")
         if readable is not None and not isinstance(readable, bool):
             raise ValueError(f"item {entity} readable must be true or false: {readable!r}")
@@ -839,6 +913,18 @@ def _validate_descriptions(fields: dict[str, tuple[dict[str, Any], ...]],
                 f"item {entity} has a prose body in world/items/{entity}.md but no "
                 f"readable content — add `content:` (with `reading_seconds:`) or declare "
                 f"`readable: false` with a `readable_reason:`")
+    # 票 91（裁定，见 V4-AGENT-INTERFACE §3 take）：`takeable` 声明的是**实体钉在
+    # 哪**，不只属于 `items:`——公告栏是文书，也拿不走。同样的两个键、同样的检查。
+    for row in fields["documents"]:
+        entity = str(row["id"])
+        takeable = row.get("takeable")
+        if takeable is not None and not isinstance(takeable, bool):
+            raise ValueError(
+                f"document {entity} takeable must be true or false: {takeable!r}")
+        fixed_reason = row.get("fixed_reason")
+        if fixed_reason is not None and not isinstance(fixed_reason, str):
+            raise ValueError(
+                f"document {entity} fixed_reason must be a string: {fixed_reason!r}")
 
 
 def _validate_actionable_refs(fields: dict[str, tuple[dict[str, Any], ...]],

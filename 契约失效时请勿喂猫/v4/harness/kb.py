@@ -19,9 +19,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 import difflib
-import itertools
 import re
 from typing import Any
+
+from .kernel import Count
 
 ALWAYS_REPLAY_MINUTES = 60
 SCHEDULED_REPLAY_MINUTES = 30
@@ -413,7 +414,7 @@ class ActorKB:
         self._rows: dict[frozenset[str], _Row] = {}
         self._overflow: list[frozenset[str]] = []
         self._pending_recall: list[frozenset[str]] = []
-        self._shown_seq = itertools.count(1)
+        self._shown_seq = Count(1)
         for entry in rows:
             keys = _row_keys(entry)
             keys = _expand_keys(keys, now)
@@ -797,7 +798,7 @@ class ActorKB:
         kb.valid_contact_names = (set(map(str, valid_contact_names))
                                   if valid_contact_names is not None else None)
         try:
-            kb._shown_seq = itertools.count(int(state.get("shown_seq", 1)))
+            kb._shown_seq = Count(int(state.get("shown_seq", 1)))
         except (TypeError, ValueError) as exc:
             raise ValueError(f"invalid kb snapshot shown_seq: {exc}") from exc
         kb._rows = {}

@@ -112,14 +112,42 @@ class EngineTests(unittest.TestCase):
         # decision crashes; the abandonment resumes the pending move
         # (V4-ENGINE §3: silence = the actor keeps doing what it was doing).
         world = _world()
+        observed = {"b_turns": 0, "b_saw_move": False}
+
+        def b_agent(state, perception, affordances):
+            # Ticket 104 (determinism): an interrupt has nothing to suspend
+            # until a's move is actually in progress, and both bootstrap
+            # decisions are submitted from worker threads — so whether the
+            # speech landed before or after a's move used to depend on which
+            # thread got the GIL first, and the interruption became a no-op on
+            # the losing side. Wait on the world state, not on wall time: b
+            # speaks once a is visibly moving, which is the premise of this
+            # gate. One speech only (the old Scripted script had one entry),
+            # and the barrier stays well inside the engine's decision_timeout.
+            observed["b_turns"] += 1
+            if observed["b_turns"] > 1:
+                return None
+            deadline = wall_time.monotonic() + 2.0
+            while wall_time.monotonic() < deadline:
+                action = (world.actors["a"].current_action or {}).get("payload", {})
+                if action.get("action") == "move":
+                    observed["b_saw_move"] = True
+                    break
+                wall_time.sleep(0.001)
+            return Intention("b", "speak", {"text": "哎，等一下"},
+                             world.version, interrupt=("a",))
+
         agents = {
             "a": Scripted([Intention("a", "move", {"target": "far"}, world.version),
                            RuntimeError("provider exploded")]),
-            "b": Scripted([Intention("b", "speak", {"text": "哎，等一下"},
-                                     world.version, interrupt=("a",))]),
+            "b": b_agent,
         }
         engine = self._engine(world, agents, decision_timeout=5)
         engine.run(stop_at=START + timedelta(seconds=300), max_turns=50)
+        self.assertTrue(observed["b_saw_move"],
+                        "b spoke before a's move was in progress: the "
+                        "interruption had nothing to suspend, so this run says "
+                        "nothing about abandonment (ticket 104)")
         self.assertEqual(world.actors["a"].location, "far",
                          "pending move was not auto-continued")
         self.assertTrue(any(e.kind == "action_resumed" for e in world.event_log))

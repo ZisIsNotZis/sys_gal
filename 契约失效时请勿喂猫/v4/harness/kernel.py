@@ -10,7 +10,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 import heapq
-import itertools
 import copy
 import json
 from typing import Any, Iterable, Mapping
@@ -40,11 +39,69 @@ class CheckpointError(ValueError):
     pass
 
 
+class Count:
+    """Picklable stand-in for ``itertools.count``.
+
+    Python 3.14 dropped pickle support for ``itertools.count``, so
+    ``copy.deepcopy`` of a World/ActorKB (replay.py, launch traces, kb
+    restore) raised ``TypeError: cannot pickle 'itertools.count' object``.
+    Monotonic arithmetic sequence: ``next()`` yields start, start+step, ...
+    Restore sites seed it from the already-serialized ``next_*``/``shown_seq``
+    value, so the checkpoint schema is untouched.
+    """
+
+    __slots__ = ("_value", "_step")
+
+    def __init__(self, start: int = 0, step: int = 1) -> None:
+        self._value = int(start)
+        self._step = int(step)
+
+    def __iter__(self) -> "Count":
+        return self
+
+    def __next__(self) -> int:
+        value = self._value
+        self._value += self._step
+        return value
+
+    def __getstate__(self) -> tuple[int, int]:
+        return (self._value, self._step)
+
+    def __setstate__(self, state: tuple[int, int]) -> None:
+        self._value, self._step = state
+
+
 TICK_SECONDS = 60
 """One tick (V4-ENGINE.md §2): the unit of minimum action duration, message
 delivery delay, the decision-horizon bound, and the actors' common-knowledge
 budgeting. Timestamps stay continuous — never assume a time is a tick
 multiple, always round durations up with :func:`tick_ceil`."""
+
+PERSISTENT_NOTE_READING_SECONDS = 30
+"""How long an explicit `read` of a persistent note takes (ticket 88). It
+matches a document's default `reading_seconds`: the note is a piece of prose
+of unknown length, not a glance at an object."""
+
+SLEEP_WAIT_SECONDS = 12 * 3600
+"""A `wait` declared as sleep takes this long at most (ticket 101, E106).
+
+The ordinary wait cap (`longest_wait_seconds`, 900s in this seed) is a
+"stay attentive for a moment" bound; falling asleep is a different ask — the
+window-6 night asked for 9.5–13.6 hours seven times and was told to split it
+into 37 waits, so the night filled up with `wait 900` turns. Sleeping is not
+a new action kind (V4-AGENT-INTERFACE §2 keeps sleep merged into wait): it is
+`wait` with `sleep: true`, which is still wakeable and interruptible."""
+
+WRITING_SURFACE_HINTS = ("纸", "写")
+"""What makes an item a sheet you can write on (ticket 101, E105b).
+
+`leave_note on=<paper>` must produce a real, readable record instead of
+inventing a note — so the target has to be actual stationery, not any object
+at hand. The seed declares no `writable:` key and the world stays untouched,
+so the test reads the item's own objective description: it has to be paper
+(纸) you can write on (写). 空白纸/可用纸笔 pass; 圆珠笔 (no 纸) and
+蓝色兔子贴纸 (no 写) do not. A readable body (a 簿/本 in `document_defs`) is
+never a blank sheet — those keep the annotation path (`on=<文书>`)."""
 
 
 def _as_int(value, what="value"):
@@ -90,6 +147,14 @@ WAKE_EVENT_KINDS = frozenset({"speech", "message_delivered", "knock", "interacti
                               "action_interrupted", "enter", "note_read"})
 """Ambient social events that end a light ``wait`` early (V4-ENGINE §3 wake
 class). Movement/observation events only queue for the next turn."""
+
+WAIT_SLEEP_HINT = "要睡到更晚（比如睡到明早、睡一整夜）就在 wait 里加 sleep: true。"
+"""票 101（E106）：窗口 6 夜段 7 次 `wait 34200–48960` 被 900 秒上限拒收，模型
+只能 37 次 `wait 900` 熬到天亮；拒绝回执必须直接给出睡眠这条路。"""
+
+WALK_ALONE_HINT = "一个人走就只写 target——省略 with，不要写空值或占位符。"
+"""票 98（E101）：窗口 5 里 `with: [""]`/`["_self"]`/`["陈默(you)"]` 出现 76 次，
+模型在找“独自走”的表达法；拒绝回执必须直接给出这条路。"""
 
 
 @dataclass
@@ -159,6 +224,10 @@ class LocationState:
     # receive the content.
     # compare=False keeps frozen-dataclass equality on identity fields only.
     notes: list[dict[str, Any]] = field(default_factory=list, compare=False)
+    # Ticket 88: a note written with `persist: true` is the other kind — an
+    # addressable, re-readable record that stays where it was left. Its id
+    # lives in World.persistent_notes, never in this burn-on-read list.
+    # (No field here: the note table is world-level, keyed by note id.)
 
 @dataclass(frozen=True)
 class Intention:
@@ -237,6 +306,7 @@ class World:
     def __init__(self, *, start: datetime, actors: Iterable[ActorState],
                  locations: Iterable[LocationState],
                  item_locations: Mapping[str, str] | None = None,
+                 fixed_items: Mapping[str, str] | None = None,
                  routes: Mapping[tuple[str, str], int] | None = None,
                  sound_barriers: Mapping[tuple[str, str], float] | None = None,
                  scheduled: Iterable[Mapping[str, Any]] | None = None,
@@ -255,6 +325,12 @@ class World:
         self.actors = {a.id: a for a in actor_list}
         self.locations = {x.id: x for x in locations}
         self.item_locations = dict(item_locations or {})
+        # Ticket 83: items declared `takeable: false` are 固定陈设 — present and
+        # described like any other item, but they never enter an inventory and
+        # never leave their place. The value is the authored `fixed_reason`
+        # (empty string when the seed gives none). Seed-derived, like `routes`:
+        # not part of the checkpoint.
+        self.fixed_items = {str(k): str(v) for k, v in (fixed_items or {}).items()}
         self.routes = dict(routes or {})
         self.sound_barriers = dict(sound_barriers or {})
         self.document_defs = {str(k): dict(v) for k, v in (document_defs or {}).items()}
@@ -275,12 +351,19 @@ class World:
         self.event_log: list[Event] = []
         self._queue: list[_Scheduled] = []
         self._cancelled: set[int] = set()
-        self._sequence = itertools.count(1)
-        self._event_id = itertools.count(1)
+        self._sequence = Count(1)
+        self._event_id = Count(1)
+        # Ticket 88: persistent notes (leave_note persist: true) are entities
+        # with a stable id — `note-<author>-<serial>` — so they can be read
+        # more than once by whoever is at their location. `_note_serial` is the
+        # id counter; it rides the checkpoint so a resumed world never reuses
+        # an id.
+        self.persistent_notes: dict[str, dict[str, Any]] = {}
+        self._note_serial = 1
         # Pre-run authored history (ticket 25): real past events, same Event
         # shape, negative id space. Never delivered, never replayed for `now`
         # — but flashback replays them like any memory of the past.
-        self._history_id = itertools.count(-1, -1)
+        self._history_id = Count(-1, -1)
         self.history_log: list[Event] = []
         self._cursor = {a.id: 0 for a in actor_list}
         # Two refresh cadences (V4-DESIGN §5.7 + 首验日反馈): state (layout,
@@ -366,6 +449,12 @@ class World:
                           for key, value in self.locations.items()},
             "item_locations": dict(self.item_locations),
             "document_defs": copy.deepcopy(self.document_defs),
+            # Ticket 88: persistent notes are world state, so they and their id
+            # counter ride the checkpoint; an older checkpoint simply has no
+            # notes there and starts the counter at 1.
+            "persistent_notes": {key: dict(value)
+                                 for key, value in self.persistent_notes.items()},
+            "next_note_serial": self._note_serial,
             "queue": [{"time": job.time.isoformat(), "sequence": job.sequence,
                        "kind": job.kind, "actor": job.actor, "payload": dict(job.payload),
                        "cause": job.cause} for job in sorted(self._queue)
@@ -439,6 +528,9 @@ class World:
             self.now = datetime.fromisoformat(str(state["now"]))
             self.version = int(state["version"]); self.actors = actors; self.locations = locations
             self.item_locations = dict(state["item_locations"]); self.document_defs = copy.deepcopy(state["document_defs"])
+            self.persistent_notes = {str(key): dict(value)
+                                     for key, value in (state.get("persistent_notes") or {}).items()}
+            self._note_serial = int(state.get("next_note_serial", 1))
             self.event_log = events; self._cursor = {str(k): int(v) for k, v in state["cursor"].items()}
             self.history_log = [
                 Event(int(row["id"]), datetime.fromisoformat(row["time"]), row["kind"],
@@ -449,8 +541,9 @@ class World:
             self._queue = [_Scheduled(datetime.fromisoformat(row["time"]), int(row["sequence"]),
                 str(row["kind"]), row["actor"], dict(row["payload"]), row["cause"]) for row in state["queue"]]
             heapq.heapify(self._queue)
-            self._sequence = itertools.count(int(state["next_sequence"]))
-            self._event_id = itertools.count(int(state["next_event_id"]))
+            self._sequence = Count(int(state["next_sequence"]))
+            self._event_id = Count(int(state["next_event_id"]))
+            self.fixed_items = dict(source.fixed_items)
             self.routes = dict(source.routes); self.sound_barriers = dict(source.sound_barriers)
             self.copy_material_items = set(source.copy_material_items); self.entity_descriptions = source.entity_descriptions
             self.longest_wait_seconds = source.longest_wait_seconds
@@ -536,11 +629,32 @@ class World:
         self._commit("reminder_due", actor_id, payload, None)
         self.force_interrupt(actor_id, "reminder")
 
+    def _fire_private_wake(self, job: Any) -> None:
+        """V4-ENGINE §3: an idle heartbeat is a private event that names its
+        target, so it reaches a sleeper exactly like a named `world_event`
+        (E110): `wake_sleeper` ends the sleep and leaves the visible
+        `wait_woken` fact at this tick, and the target's next poll sees both
+        events. A target that is no longer in the world cannot be woken and
+        cannot read the event, so the firing is recorded as a reasoned
+        failure instead of a silently delivered dead letter."""
+        actor_id = job.actor
+        if actor_id is None or actor_id not in self.actors:
+            self._commit("private_wake_failed", actor_id,
+                         {"reason": "actor_not_present"}, None)
+            return
+        self._commit("private_wake", actor_id, {}, None)
+        self.wake_sleeper(actor_id)
+
     def _move_hop(self, job: "Any") -> None:
         """Fire one hop boundary: enter the reached location, and (unless it
         is the destination) leave it again immediately — the discrete event
         sequence leave A / enter B / leave B / enter C (V4-ENGINE §2.1).
-        Visibility: everyone at the location touched, plus the mover."""
+        Visibility: everyone at the location touched, plus the mover.
+
+        票 95（E96）：`with` 里的人与发起者同步逐跳移动——每人各有一条自己的
+        `enter`/`leave`（replay 只看 enter 就能重建他们的位置），并共享发起者
+        的路线与时刻。被携带者没有被锁定：他在途中自己走开或开始走另一段路
+        就不再跟随（“可在中途拒绝”），也不会有任何替他的动作事件。"""
         actor_id = job.actor
         if actor_id not in self.actors:
             return  # a despawned extra's leftover hop must not crash the clock
@@ -549,6 +663,7 @@ class World:
         new = str(path[index])
         if a.location == new:
             return
+        previous = a.location
         a.location = new
         a.reading_dwell.clear()   # ticket 49: a departure voids the stay clock
         enter = self._commit("enter", actor_id, {"location": new}, None)
@@ -557,29 +672,79 @@ class World:
         self._consume_notes(new, actor_id, enter.id)
         if index < len(path) - 1:
             self._commit("leave", actor_id, {"location": new}, None)
+        for companion_id in self._requested_companions(job.payload):
+            companion = self.actors.get(companion_id)
+            if companion is None or companion.location != previous:
+                continue  # already gone / never joined
+            if not self._follows_escort(companion, actor_id):
+                continue  # declined mid-way: walking elsewhere or locked down
+            companion.location = new
+            companion.reading_dwell.clear()
+            companion_enter = self._commit("enter", companion_id, {
+                "location": new, "escorted_by": actor_id}, None)
+            self._consume_notes(new, companion_id, companion_enter.id)
+            if index < len(path) - 1:
+                self._commit("leave", companion_id, {
+                    "location": new, "escorted_by": actor_id}, None)
+
+    def _follows_escort(self, companion: ActorState, initiator_id: str) -> bool:
+        """Whether this actor is still being brought along (ticket 95, E96).
+
+        The carried person keeps their own agency: an uninterruptable action, a
+        pending continue-or-abandon decision, or a walk of their own means they
+        are no longer following — the escort does not wait or drag them. A busy
+        *interruptable* action (a sentence in progress) does not detach them:
+        being walked somewhere does not stop you talking."""
+        if companion.pending is not None:
+            return False
+        current = companion.current_action or {}
+        if companion.busy_until and companion.busy_until > self.now:
+            if current.get("uninterruptable"):
+                return False
+            payload = current.get("payload", {})
+            if payload.get("action") == "move" and payload.get("escorted_by") != initiator_id:
+                return False
+        return True
+
+    @staticmethod
+    def _requested_companions(args: Mapping[str, Any]) -> list[str]:
+        """Canonical, de-duplicated `with` list (ticket 95, E96)."""
+        entries = args.get("with")
+        if not isinstance(entries, (list, tuple)):
+            return []
+        return list(dict.fromkeys(str(entry).strip() for entry in entries
+                                  if str(entry).strip()))
 
     def _schedule_move_hops(self, actor_id: str, path: list[str],
                             hop_seconds: list[int], duration_seconds: int,
-                            cause: int | None) -> list[int]:
+                            cause: int | None,
+                            companions: Iterable[str] = ()) -> list[int]:
         """Schedule the per-hop boundary jobs for a move; returns their queue
-        sequences so an interrupt can cancel the remaining hops."""
+        sequences so an interrupt can cancel the remaining hops. `companions`
+        ride every hop so the carried people keep pace (ticket 95, E96)."""
         total_raw = sum(hop_seconds)
+        companions = list(companions)
         sequences = []
         elapsed = 0
         for index in range(1, len(path)):
             elapsed += hop_seconds[index - 1]
             when = self.now + timedelta(
                 seconds=round(duration_seconds * elapsed / total_raw))
+            payload: dict[str, Any] = {"path": list(path), "index": index}
+            if companions:
+                payload["with"] = companions
             sequences.append(self._schedule(
-                when, "move_hop", actor_id,
-                {"path": list(path), "index": index}, cause).sequence)
+                when, "move_hop", actor_id, payload, cause).sequence)
         return sequences
 
     def wake_waiter(self, actor_id: str) -> bool:
-        """V4-ENGINE §3 wake semantics: an ambient social event ends a light
-        ``wait`` early (the waiter notices and takes a turn); ``sleep`` and
-        real actions are not wakeable — their events queue for delivery at
-        the next turn instead. Returns True when the actor was woken."""
+        """V4-ENGINE §3 wake semantics: an ambient social event ends a `wait`
+        early (the waiter notices and takes a turn). Since ticket 101 a
+        `sleep: true` wait is still a `wait` — its payload action is `wait` —
+        so a co-located social act ends a sleep too, and `wake_sleeper` (E106)
+        is the extra path for a scheduled event that names the sleeper. Real
+        actions are not wakeable: their events queue for delivery at the next
+        turn instead. Returns True when the actor was woken."""
         a = self._actor(actor_id)
         if not a.busy_until or a.busy_until <= self.now or a.current_action is None:
             return False
@@ -591,12 +756,30 @@ class World:
         self._commit("wait_woken", actor_id, {}, None)
         a.busy_until = None
         a.current_action = None
+        a.sleeping = False
         return True
+
+    def wake_sleeper(self, actor_id: str) -> bool:
+        """A scheduled event that names this actor ends its sleep early (E106).
+
+        睡眠的语义是“睡到指定时长，或被打断/被叫醒”：一场排程事件点了名（`target`
+        里有他），就是在叫他——他不能因为睡着了而跨过它。只对睡眠生效：普通 `wait`
+        的唤醒类仍是 V4-ENGINE §3 那一条（同地社交事件），不因点名事件而改变。"""
+        a = self.actors.get(actor_id)
+        if a is None:
+            return False
+        payload = (a.current_action or {}).get("payload") or {}
+        if not payload.get("sleep"):
+            return False
+        return self.wake_waiter(actor_id)
 
     def schedule_private_wake(self, actor_id: str, when: datetime) -> int:
         """V4-ENGINE §3 idle heartbeat: schedule a private event that gives
         the actor a turn even when nothing else happens (MC idle heartbeat).
-        Returns the job sequence so the caller can cancel/reschedule it."""
+        Firing goes through `_fire_private_wake`: it wakes a sleeping target
+        via `wake_sleeper` (E110) and records a reasoned failure when the
+        target has already left the world. Returns the job sequence so the
+        caller can cancel/reschedule it."""
         return self._schedule(when, "private_wake", actor_id, {}, None).sequence
 
     def cancel_scheduled(self, sequence: int) -> None:
@@ -683,17 +866,38 @@ class World:
             options.append({"kind": "route_hints",
                             "note": "非相邻目的地也可经多跳 move 到达",
                             "routes": hints})
-        options += [{"kind": "take", "item": item} for item, loc in self.item_locations.items() if loc == a.location]
+        options += [{"kind": "take", "item": item} for item in self._takeable_here(a)]
         options += [{"kind": "knock", "target": location.id} for location in self.locations.values()
                     if not location.open and (a.location, location.id) in self.routes]
+        # 票 95（E99）：递东西的候选不只来自背包——就在自己手边的物品也能
+        # 直接 give（ticket 63 的 take-then-give 就地分支）。食堂的窗口阿姨
+        # 因此看得到“把这份饭递给面前的人”，而不是只有背包里的东西。
+        handable = sorted(set(a.inventory) | set(self._takeable_here(a)))
         options += [{"kind": "give", "target": other.id, "item": item}
                     for other in self.actors.values()
                     if other.id != actor_id and other.location == a.location
-                    for item in sorted(a.inventory)]
+                    for item in handable]
         options += [{"kind": "place", "item": item} for item in sorted(a.inventory)]
-        options += [{"kind": "leave_note", "text": "",
-                     "hint": "字条是房间留言：在场的人只知道有人留条；作者返场不算读者，第一位非作者进入者私下读到全文并阅后即焚"},
-                    *({"kind": "trash", "item": item} for item in sorted(a.inventory))]
+        # E85（报 81 报告 08:53/13:13）：同一个动作的两个名字——写记录与留字条。
+        # 先把"把话写成文字"放在能看见的地方，投递规则留给工具说明（一处完整
+        # 说法），并说明它不取决于身上有什么：纸笔不是前提。票 95（E98）：手边
+        # 有可写文书时，把 on= 这个入口也放在同一行提示里。票 101（E105b）：
+        # 手边有张白纸时，"写在纸上"也是同一行提示里的一个入口。
+        note_hint = ("写记录/留字条：把文字留在当前地点；不需要先拿到纸笔；"
+                     "要留一份别人能再读到、一直留在这里的文稿就加 persist=true")
+        writable = [doc for doc in self._available_readables(a)
+                    if doc in self.document_defs]
+        if writable:
+            note_hint += ("；要在手边文书上补写/签名，加 on=<文书名>"
+                          f"（这里能写：{', '.join(writable)}）")
+        sheets = self._writable_sheets(a)
+        if sheets:
+            note_hint += ("；要写在手边一张纸上（写好后这份文稿就在你手上，可以 give 给别人），"
+                          f"加 on=<纸张名>（能写的纸：{', '.join(sheets)}）")
+        options += [{"kind": "leave_note", "text": "", "hint": note_hint},
+                    *({"kind": "trash", "item": item}
+                      for item in sorted(a.inventory)
+                      + [note["id"] for note in self._notes_here(a)])]
         options += [{"kind": "read", "item": document}
                     for document in self._available_readables(a)]
         return options
@@ -745,9 +949,25 @@ class World:
             # names. Ambiguity/no-hit is rejected with the candidates that
             # would actually succeed for this action.
             intention = self._canonicalize_persons(a, intention, seen_here)
+        elif intention.kind == "move":
+            # 票 95（E96）：with 里的名字与 speak/text 的名字同一套解析。
+            intention = self._canonicalize_companions(a, intention, seen_here)
         elif intention.kind == "speak":
             # Addressed speech is planned per addressee (ticket 46).
             intention = self._canonicalize_speech(a, intention, seen_here)
+        elif intention.kind == "leave_note":
+            # 票 98（E100）：`on` 只有非空字符串才算“写进既有文书”。空串/纯空白
+            # 等于没提供，按普通便条走（persist 照常生效）——否则“留一份新文稿”
+            # 会被自己判成“同时声明了 on 与 persist”（窗口 5 106 条拒绝的成因）。
+            # 在提交入口一次性剔除，后面的校验、payload、事件与 replay 只看一种写法。
+            on = intention.args.get("on")
+            if isinstance(on, str) and not on.strip():
+                args = dict(intention.args)
+                args.pop("on", None)
+                intention = Intention(intention.actor, intention.kind, args,
+                                      intention.expected_version, inner=intention.inner,
+                                      interrupt=intention.interrupt,
+                                      uninterruptable=intention.uninterruptable)
         if a.pending is not None and intention.kind not in {"continue_action", "abandon_action"}:
             action = str(a.pending.get("payload", {}).get("action", "action"))
             interrupted_by = str(a.pending.get("interrupted_by", "unknown"))
@@ -773,6 +993,18 @@ class World:
             # no-op and the event delivers on the actor's next poll.
             return ()
         action_payload = {"action": intention.kind, **dict(intention.args)}
+        if intention.kind == "leave_note":
+            on = action_payload.get("on")
+            if on and str(on) not in self.document_defs:
+                # 票 101（E105b）：写在一张白纸上——校验已经确认它是纸（`_writable_sheets`），
+                # 产物就是一份带编号的文稿（等同于 persist），而不是批注。
+                action_payload["persist"] = True
+            if action_payload.get("persist"):
+                # Ticket 88: the id of a persistent note is fixed at submit, so the
+                # started event (which the tool receipt reads) and the completion
+                # agree on one addressable name, and a checkpoint taken mid-write
+                # keeps it.
+                action_payload["note"] = self._next_note_id(a.id)
         move_path: list[str] | None = None
         move_hops: list[int] | None = None
         if intention.kind == "move":
@@ -797,6 +1029,13 @@ class World:
                 # Departure broadcasts immediately: the origin location sees
                 # the actor leave at t0 (V4 multi-hop move semantics).
                 self._commit("leave", a.id, {"location": a.location}, None)
+                # 票 95（E96）：被携带者与发起者同步离开原地。之后每一个
+                # hop 由 `_move_hop` 同步推进；没有为他们另造动作事件。
+                for companion_id in self._requested_companions(action_payload):
+                    companion = self.actors.get(companion_id)
+                    if companion is not None and companion.location == a.location:
+                        self._commit("leave", companion_id, {
+                            "location": a.location, "escorted_by": a.id}, None)
         if intention.kind == "speak":
             speech_payload = {"text": intention.args["text"],
                               "volume": intention.args.get("volume", "normal")}
@@ -814,10 +1053,18 @@ class World:
             # Merged ask (ticket 22): to=["陌生人"] asks the room's passers-by.
             # The spawn fires at the utterance's completion tick (the moment
             # the message is heard), keyed by cause so _handle_extras can
-            # match it — never at submit time.
-            if "陌生人" in (intention.args.get("to") or []):
-                self._commit("stranger_asked", a.id,
-                             {"question": intention.args["text"]},
+            # match it — never at submit time. Ticket 88: naming a pool alias
+            # ("老板娘") is the same ask with a known face — the payload names
+            # the alias so the engine can spawn that entry.
+            addressed = [str(name) for name in intention.args.get("to") or ()]
+            alias = next((name for name in addressed
+                          if name != "陌生人"
+                          and self.pool_entry_for_alias(a.location, name) is not None), None)
+            if "陌生人" in addressed or alias is not None:
+                ask_payload: dict[str, Any] = {"question": intention.args["text"]}
+                if alias is not None:
+                    ask_payload["alias"] = alias
+                self._commit("stranger_asked", a.id, ask_payload,
                              started.id if started else None)
         elif intention.kind == "text":
             self._commit("message_sent", a.id, {"target": str(intention.args["target"])},
@@ -830,7 +1077,8 @@ class World:
             if move_path is not None:
                 hop_sequences = self._schedule_move_hops(
                     a.id, move_path, move_hops or [],
-                    _as_int(duration.total_seconds(), 'duration'), started.id if started else None)
+                    _as_int(duration.total_seconds(), 'duration'), started.id if started else None,
+                    companions=self._requested_companions(action_payload))
             job = self._schedule(self.now + duration, "action_completed", a.id,
                                  action_payload, started.id if started else None)
             sequence = job.sequence
@@ -838,7 +1086,7 @@ class World:
             self._schedule(self.now, "action_completed", a.id, action_payload, None)
             self.advance(until=self.now)
         a.busy_until = self.now + duration if duration else None
-        a.sleeping = False
+        a.sleeping = bool(duration and action_payload.get("sleep"))
         if duration:
             a.current_action = {"payload": dict(action_payload), "sequence": sequence,
                                 "hop_sequences": hop_sequences,
@@ -947,11 +1195,13 @@ class World:
             remaining_path = [str(x) for x in pending["remaining_path"]]
             remaining_hops = [_as_int(x, 'remaining hops') for x in pending.get("remaining_hops", ())]
             hop_sequences = self._schedule_move_hops(
-                a.id, remaining_path, remaining_hops, remaining, event.id)
+                a.id, remaining_path, remaining_hops, remaining, event.id,
+                companions=self._requested_companions(payload))
         job = self._schedule(self.now + timedelta(seconds=remaining),
                              "action_completed", a.id, payload, event.id)
         a.pending = None
         a.busy_until = self.now + timedelta(seconds=remaining)
+        a.sleeping = bool(payload.get("sleep"))
         a.current_action = {"payload": payload, "sequence": job.sequence,
                             "hop_sequences": hop_sequences,
                             "uninterruptable": False}
@@ -991,6 +1241,9 @@ class World:
             if job.kind == "reminder_due":
                 self.now = job.time
                 self._fire_reminder(job)
+                continue
+            if job.kind == "private_wake":
+                self._fire_private_wake(job)
                 continue
             event = self._commit(job.kind, job.actor, self._public_payload(job.payload), job.cause)
             out.append(event)
@@ -1067,6 +1320,7 @@ class World:
                   "busy_until": a.busy_until.isoformat() if a.busy_until else None,
                   "nearby_actors": sorted(x.id for x in self.actors.values() if x.id != actor_id and x.location == a.location),
                   "nearby_items": sorted(i for i, loc in self.item_locations.items() if loc == a.location),
+                  "notes_here": self._notes_here(a),
                   "inbox": inbox, "unrecorded_senders": unrecorded,
                   "events": [self._public(e, observer=actor_id) for e in visible],
                   "knowledge": self._knowledge(a) if full_state else {}}
@@ -1127,9 +1381,12 @@ class World:
         observation / stay-read bookkeeping to run. It exists so an extra can
         see who is here, what is here (each entity carries its real
         description, so a quantity like “一份” is stated instead of guessed),
-        and what just happened. It never grants more than a co-located main
-        actor's poll would: the visible set is exactly this location's people
-        and items.
+        and what just happened.
+
+        票 98（E103）：物件描述的投递比 `poll` 再窄一层——被种子 `known_to` 限定给
+        别人的东西，extra 看得见它在场（`nearby_items`），但不拿到它的描述正文。
+        窗口 5 15:06 陌生人回话里那句还没送到的便条正文就是这条路送出去的：
+        `代话便条` 的客观描述就是便条正文，而它 `known_to: [唐小岚]`。
         """
         a = self._actor(actor_id)
         visible = [e for e in self.event_log[-tail:] if actor_id in e.visible_to]
@@ -1140,12 +1397,38 @@ class World:
                                     if x.id != actor_id and x.location == a.location),
             "nearby_items": sorted(i for i, loc in self.item_locations.items()
                                    if loc == a.location),
+            "notes_here": self._notes_here(a),
             "inventory": sorted(a.inventory),
             "events": [self._public(e, observer=actor_id) for e in visible],
             "descriptions": {entity_id: self.entity_descriptions[entity_id]
                              for entity_id in sorted(self._visible_descriptions(a))
-                             if entity_id in self.entity_descriptions},
+                             if entity_id in self.entity_descriptions
+                             and self._described_to(a, entity_id)},
         }
+
+    def _described_to(self, actor: ActorState, entity_id: str) -> bool:
+        """Whether this observer may be handed the entity's description body.
+
+        A seed's `known_to` declares who knows a thing exists; anyone outside
+        that list may see it is here (`nearby_items`) but not receive its
+        description text. Ticket 57's quantity grounding (`一份`) needs the
+        descriptions of unrestricted props, which stay untouched — this only
+        withholds what the seed itself restricted.
+        """
+        restricted = self.entity_access.get(entity_id)
+        return not restricted or actor.id in restricted
+
+    def _is_entity(self, entity_id: str) -> bool:
+        """Whether the world ever held a thing under this name (E102).
+
+        A name that was never registered is not “gone”: it is absent, and the
+        rejection says so instead of inventing a history for it. Everything
+        else — an item, a document, a fixture, a persistent note — was once
+        somewhere, so “it is nowhere now” is the true statement."""
+        return (entity_id in self.item_locations or entity_id in self.document_defs
+                or entity_id in self.fixed_items
+                or entity_id in self.persistent_notes
+                or entity_id in self.entity_descriptions)
 
     def notify_compaction(self, actor_id: str) -> None:
         """The actor's context was just rewritten (compaction): force one full
@@ -1202,6 +1485,12 @@ class World:
             if entity_id not in present:
                 del actor.reading_dwell[entity_id]
         for entity_id in present:
+            if entity_id not in self.document_defs:
+                # Ticket 88: a persistent note is not a document row, so the
+                # stay-read timer does not apply — it is read by calling `read`,
+                # and may be read as many times as the reader wants.
+                actor.reading_dwell.pop(entity_id, None)
+                continue
             if (entity_id in actor.read_entities
                     or self.document_defs[entity_id].get("auto_read", True) is False):
                 actor.reading_dwell.pop(entity_id, None)
@@ -1268,16 +1557,36 @@ class World:
     def _raw_duration(self, a: ActorState, i: Intention) -> timedelta:
         x = i.args
         if i.kind in {"wait", "sleep"}:
+            # 票 101（E106）：`sleep: true` 是 `wait` 的一个参数，不是新动作——
+            # 睡着时世界照旧走，被唤醒/被打断就提前结束。普通等待的上限是“守一会
+            # 儿”的时长；睡眠另外有一条更宽的上限（`SLEEP_WAIT_SECONDS`）。
+            sleep = x.get("sleep")
+            if sleep is not None and not isinstance(sleep, bool):
+                raise ActionRejected(
+                    "wait 的 sleep 只能是 true / false：睡着了就是 sleep: true 的 wait。",
+                    context={"sleep": sleep})
             seconds = x.get("duration_seconds")
             if not isinstance(seconds, int) or isinstance(seconds, bool) or seconds <= 0:
                 raise ActionRejected(
                     'wait needs a positive integer duration_seconds; for one minute use '
                     '{"name": "wait", "arguments": {"duration_seconds": 60}}.')
-            if seconds > self.longest_wait_seconds:
-                raise ActionRejected(
-                    f"单次等待不能超过 {self.longest_wait_seconds} 秒；如需更久，请分几次等待。"
-                    f"例如：{self._tool_call_json('wait', {'duration_seconds': self.longest_wait_seconds})}。",
-                    context={"limit": self.longest_wait_seconds})
+            limit = SLEEP_WAIT_SECONDS if sleep else self.longest_wait_seconds
+            if seconds > limit:
+                if sleep:
+                    head = (f"一次睡眠最长 {SLEEP_WAIT_SECONDS} 秒（12 小时），"
+                            "被打断或有人叫醒会提前结束；要更久就分两次睡。")
+                else:
+                    head = (f"单次等待不能超过 {self.longest_wait_seconds} 秒。{WAIT_SLEEP_HINT}"
+                            f"睡眠单次最长 {SLEEP_WAIT_SECONDS} 秒（12 小时），"
+                            "被打断或有人叫醒会提前结束。")
+                # 回执里给出“把这个时长改成 sleep:true”的可执行例子：窗口 6 的
+                # 7 次拒收全是“睡到明早”，模型缺的就是这一次改写。
+                example = self._tool_call_json(
+                    "wait", {"duration_seconds": min(seconds, SLEEP_WAIT_SECONDS),
+                             "sleep": True})
+                raise ActionRejected(f"{head}例如：{example}。",
+                                      context={"limit": limit, "sleep": bool(sleep),
+                                               "sleep_limit": SLEEP_WAIT_SECONDS})
             return timedelta(seconds=seconds)
         if i.kind == "speak":
             if not isinstance(x.get("text"), str) or not x["text"]:
@@ -1356,7 +1665,28 @@ class World:
                              "recipient_candidates": self._present_others(a)})
             item = str(x.get("item"))
             here, held = self._present_items(a)
-            if item not in a.inventory and self.item_locations.get(item) != a.location:
+            note = self.persistent_notes.get(item)
+            # 票 101（E105）：一张留在你身边（或已经被你拿着）的字条是可递的——
+            # 字条本来就在世界上，递它就是递那张纸；被别人拿在手上的那张不算。
+            note_here = (note is not None and self._note_carrier(item) is None
+                         and str(note.get("location")) == a.location)
+            if (item not in a.inventory and self.item_locations.get(item) != a.location
+                    and not note_here):
+                if note is not None:
+                    # 票 101（E105）：字条本来就在世界上，递它就是递那张纸。一条字条
+                    # 只能从写它的地点或被递到手的那一刻开始转手，所以这张不在手上
+                    # 就不在你的手里——拒绝里只说它现在在谁手上/哪里，不得再拿无关
+                    # 文书当替代。
+                    carrier = self._note_carrier(item)
+                    where = (f"在{carrier}手上" if carrier
+                             else f"留在{note.get('location')}")
+                    raise ActionRejected(
+                        f"「{item}」是一张字条，现在不在你手上：它{where}。"
+                        "先把它拿到手（写在一张纸上，或让拿着它的人递给你，或到它所在的"
+                        "地方读它），才能再递给别人。",
+                        context={"item": item, "note": True,
+                                 "note_location": note.get("location"),
+                                 "carried_by": carrier or None})
                 # Ticket 63: the 上菜/递物 gap. `give` also accepts an item
                 # that is physically at the actor's OWN location (the window
                 # counter), i.e. an atomic pick-up-and-hand-over — the
@@ -1364,15 +1694,14 @@ class World:
                 # the thing is right at hand. It never invents an item that is
                 # neither held nor here.
                 alternatives = [f"give {name} to {target.id}" for name in held]
-                alternatives += [f"take {name}" for name in here]
+                alternatives += [f"give {name} to {target.id}"
+                                 for name in here if name not in self.fixed_items]
+                alternatives += [f"take {name}" for name in self._takeable_here(a)]
+                handable = held + [name for name in here if name not in self.fixed_items]
                 valid = "; ".join(self._tool_call_json(
-                    "give", {"target": target.id, "item": name}) for name in held)
-                if valid:
-                    suffix = f" 可行调用：{valid}。"
-                elif here:
-                    suffix = (f"这里可拿：{', '.join(here)}——先 take 再 give 给{target.id}。")
-                else:
-                    suffix = "先拿起当前地点的一件物品，再递给在场的人。"
+                    "give", {"target": target.id, "item": name}) for name in handable)
+                suffix = (f" 可行调用：{valid}。" if valid
+                          else "先拿起当前地点的一件物品，再递给在场的人。")
                 raise ActionRejected(
                     f"你没有拿着「{item}」，这里也没有「{item}」。"
                     f"你拿着：{', '.join(held) or '没有'}；"
@@ -1380,6 +1709,19 @@ class World:
                     alternatives=alternatives,
                     context={"item": item, "available_items": held,
                              "items_here": here})
+            if item not in a.inventory and item in self.fixed_items:
+                # Ticket 83: the at-hand branch would lift a fixture out of the
+                # room (ticket 63's atomic pick-up-and-hand-over).
+                self._reject_fixed_item(a, item)
+            if item not in a.inventory:
+                # 票 98（E102）：就地递出也把东西从原地拿走，所以它和 take 争同一
+                # 件东西——两个人各递一次同一份饭曾经能让两个人背包里都有一份。
+                claimant = self._item_claimant(a, item)
+                if claimant is not None:
+                    raise ActionRejected(
+                        f"「{item}」正被{claimant}拿着，还没落到你手里，你没法把它递给"
+                        f"{target.id}：等这一步结束，再看它还在不在{a.location}。",
+                        context={"item": item, "claimed_by": claimant})
             return timedelta(seconds=2)
         if i.kind == "move":
             target = str(x.get("target"))
@@ -1399,6 +1741,51 @@ class World:
                     f"「{target}」现在关着，进不去。",
                     alternatives=[f"move to {neighbor} (open)" for neighbor in open_neighbors],
                     context={"target": target, "open": False})
+            # 票 95（E96）：move 可以带上同在此地的人（扶/陪）。被携带者仍是
+            # 自主的：他自己看、自己说；只是“没人扶/没法带”不再是一个缺口。
+            # 拒绝是结构化的：不在这里、正被锁在一个不能打断的动作里、或
+            # 自己正在往别处走，都整次拒绝并说清是哪一个人、为什么。
+            for companion_id in self._requested_companions(x):
+                if companion_id == a.id:
+                    raise ActionRejected(
+                        "with 里不能写自己：你自己就是发起者，写要带谁一起走。",
+                        context={"with": companion_id})
+                companion = self.actors.get(companion_id)
+                if companion is None:
+                    raise ActionRejected(
+                        f"这个世界里没有「{companion_id}」这个人。",
+                        alternatives=[f"move <地点> with {name}"
+                                      for name in self._present_others(a)],
+                        context={"with": companion_id, "name_resolution": True,
+                                 "companion_candidates": self._present_others(a)})
+                if companion.location != a.location:
+                    raise ActionRejected(
+                        f"{companion_id}不在这里（{companion.location}），你没法带着他走；"
+                        "要一起走，先到同一个地点。",
+                        context={"with": companion_id, "absent": True,
+                                 "companion_candidates": self._present_others(a)})
+                if companion.pending is not None:
+                    interrupted = str(companion.pending.get("payload", {})
+                                       .get("action", "action"))
+                    raise ActionRejected(
+                        f"{companion_id}刚被打断（「{interrupted}」还没决定继续还是放弃），"
+                        "这会儿不能带他走；等他自己处理完。",
+                        context={"with": companion_id, "pending": interrupted})
+                if companion.busy_until and companion.busy_until > self.now:
+                    current = companion.current_action or {}
+                    action = str(current.get("payload", {}).get("action", "action"))
+                    if current.get("uninterruptable"):
+                        raise ActionRejected(
+                            f"{companion_id}正在做「{action}」，这件事不能被打断，"
+                            "没法带着他走；等它结束再一起走。",
+                            context={"with": companion_id, "uninterruptable": True,
+                                     "action": action,
+                                     "busy_until": companion.busy_until.isoformat()})
+                    if action == "move":
+                        raise ActionRejected(
+                            f"{companion_id}自己正在往别处走，不能被你带走；"
+                            "等他到，或让他自己跟来。",
+                            context={"with": companion_id, "walking": True})
             # V4-DESIGN §5.6 + multi-hop move: the actor states intent; the
             # engine finds the shortest walk and its duration is the map's
             # physical fact, never an actor-supplied argument.
@@ -1417,13 +1804,25 @@ class World:
             return timedelta(0)
         if i.kind == "take":
             item = str(x.get("item"))
-            here, held = self._present_items(a)
+            _here, held = self._present_items(a)
             if self.item_locations.get(item) != a.location:
+                raise self._take_rejection(a, item, held)
+            if item in self.fixed_items:
+                self._reject_fixed_item(a, item)
+            # 票 98（E102）：一件东西从提交到完成之间只有一个归属。窗口 5
+            # 17:57 陈默与辅导员各自 `take 一份晚饭`，两次都通过校验，两条
+            # `action_completed` 都写下“拿起了”，只有先完成的那位背包里真的有它
+            # （辅导员 17:59 还对食堂大妈说“我们都拿了晚饭”）。回执说成功、世界
+            # 没变 = 票 75 的同一族；这里把“有人正在拿这一件”变成一个真实的拒绝。
+            claimant = self._item_claimant(a, item)
+            if claimant is not None:
+                takeable = [name for name in self._takeable_here(a) if name != item]
                 raise ActionRejected(
-                    f"这里没有「{item}」可拿。这里有的：{', '.join(here) or '没有'}。"
-                    f"你拿着的：{', '.join(held) or '没有'}。",
-                    alternatives=[f"take {present}" for present in here],
-                    context={"item": item})
+                    f"「{item}」正被{claimant}拿在手里，还没落到你手里：等这一步结束，"
+                    f"再看看它还在不在{a.location}。",
+                    alternatives=[f"take {name}" for name in takeable],
+                    context={"item": item, "claimed_by": claimant,
+                             "takeable_here": takeable})
             return timedelta(0)
         if i.kind == "place":
             item = str(x.get("item"))
@@ -1456,12 +1855,58 @@ class World:
         return self.entity_descriptions.get(entity_id)
 
     def available_now(self, actor_id: str, entity_id: str) -> bool:
-        """Physical reach today: the entity is held or at the actor's
-        location. This — not `known_to` — is what `read` and the read
-        suggestions treat as available (issues 39/40)."""
+        """Physical reach today: the entity is held, at the actor's
+        location, or — for a persistent note — lying where it was left. This
+        — not `known_to` — is what `read` and the read suggestions treat as
+        available (issues 39/40).
+
+        票 101（E105）：一张被递出去的字条进了收件人的背包（`give` 完成后它在
+        `inventory` 里），所以第一个条件已经盖住了；而别人拿在手上的那张不再是
+        “留在这里的纸”，同屋的人不能隔着手读它。"""
         actor = self._actor(actor_id)
-        return (entity_id in actor.inventory
-                or self.item_locations.get(entity_id) == actor.location)
+        if entity_id in actor.inventory or self.item_locations.get(entity_id) == actor.location:
+            return True
+        note = self.persistent_notes.get(entity_id)
+        return (note is not None and str(note.get("location")) == actor.location
+                and self._note_carrier(entity_id) is None)
+
+    def _note_carrier(self, entity_id: str) -> str | None:
+        """Who is carrying this persistent note right now, or None (E105).
+
+        一张被递出去的字条与一件物品同义：持有关系就写在持有者的背包里。
+        """
+        return next((other.id for other in self.actors.values()
+                     if entity_id in other.inventory), None)
+
+    def _writable_sheets(self, actor: ActorState) -> list[str]:
+        """Blank sheets at hand that `leave_note on=<纸张>` can write on.
+
+        票 101（E105b）：判据只有三条——它在本手上或本地点（物理够得着）、它不是有
+        正文的文书（有正文的走 `document_defs` 的批注路径，按目标类型分派）、它自己的
+        客观描述既是纸又能写（见 `WRITING_SURFACE_HINTS`）。固定陈设拿不走，也不算。"""
+        here, held = self._present_items(actor)
+        return [item for item in held + here
+                if item not in self.document_defs and item not in self.fixed_items
+                and all(hint in str(self.entity_descriptions.get(item) or "")
+                        for hint in WRITING_SURFACE_HINTS)]
+
+    def readable_body(self, entity_id: str) -> dict[str, Any] | None:
+        """The readable body of an entity (ticket 88).
+
+        A document row is read as declared. A persistent note is read from its
+        own stored text: its id is the read target, and it stays readable for
+        as long as it lies there. A burn-on-read note is never addressable, so
+        it never appears here.
+        """
+        if entity_id in self.document_defs:
+            return dict(self.document_defs[entity_id])
+        note = self.persistent_notes.get(entity_id)
+        if note is None:
+            return None
+        return {"title": f"字条（{note.get('author')} 留）",
+                "content": str(note.get("text", "")),
+                "reading_seconds": PERSISTENT_NOTE_READING_SECONDS,
+                "annotations": []}
 
     def aware_of(self, actor_id: str, entity_id: str) -> bool:
         """Awareness only (manifest `known_to`): the actor knows the thing
@@ -1473,19 +1918,45 @@ class World:
         kind = intention.kind
         item = str(intention.args.get("item"))
         if kind == "read":
-            if item not in self.document_defs or not self.available_now(actor.id, item):
+            definition = self.readable_body(item)
+            if definition is None or not self.available_now(actor.id, item):
                 raise self._read_rejection(actor, item)
-            return timedelta(seconds=_as_int(self.document_defs[item].get("reading_seconds", 30), "reading_seconds"))
+            return timedelta(seconds=_as_int(definition.get("reading_seconds", 30), "reading_seconds"))
         if kind == "leave_note":
             text = intention.args.get("text")
             if not isinstance(text, str) or not text.strip():
                 raise ActionRejected("leave_note 需要非空文本（text）。")
+            on = intention.args.get("on")
+            if on is not None:
+                document = str(on)
+                definition = self.document_defs.get(document)
+                if definition is not None:
+                    # 票 95（E98）：在既有文书上补写/签名 = 往那份文书的 annotations
+                    # 追加一条，不新增动作种类。文书必须在这里或手上（可读），
+                    # 条目只追加、不覆盖别人写的。persist 是“留一份新文稿”，
+                    # 与“写进既有文书”是两件事，不能同时声明。
+                    if intention.args.get("persist"):
+                        raise ActionRejected(
+                            "leave_note 的 on（写进既有文书）与 persist（留一份新文稿）"
+                            "只能选一个。",
+                            context={"on": str(on), "persist": True})
+                    if not self.available_now(actor.id, document):
+                        raise self._unwritable_on_rejection(actor, document)
+                elif document not in self._writable_sheets(actor):
+                    # 票 101（E105b）：on 也可以指向手边一张白纸（抽一张来写）——
+                    # 那时产物是一份可读、可递的文稿，不是批注，也不是凭空字条。
+                    raise self._unwritable_on_rejection(actor, document)
             return timedelta(seconds=3)
         if kind == "trash":
             item = str(intention.args.get("item"))
-            if item not in actor.inventory and self.item_locations.get(item) != actor.location:
-                present, held = self._present_items(actor)
-                candidates = sorted(set(present) | set(held))
+            note = self.persistent_notes.get(item)
+            note_here = note is not None and (item in actor.inventory
+                                              or (str(note.get("location")) == actor.location
+                                                  and self._note_carrier(item) is None))
+            if (item not in actor.inventory and self.item_locations.get(item) != actor.location
+                    and not note_here):
+                _present, held = self._present_items(actor)
+                candidates = sorted(set(self._takeable_here(actor)) | set(held))
                 valid = "; ".join(self._tool_call_json("trash", {"item": name})
                                   for name in candidates)
                 suffix = f" Available items and valid calls: {valid}." if valid else \
@@ -1494,6 +1965,8 @@ class World:
                     f"Cannot trash '{item}': it is neither held nor at this location.{suffix}",
                     alternatives=[f"trash {name}" for name in candidates],
                     context={"item": item, "available_items": candidates})
+            if item not in actor.inventory and item in self.fixed_items:
+                self._reject_fixed_item(actor, item)
             return timedelta(seconds=3)
         return timedelta(seconds=3)
 
@@ -1511,15 +1984,32 @@ class World:
                        f"{here_line}")
             alternatives: list[str] = []
             reason = "readable_not_here"
+        elif item in self.persistent_notes:
+            # (c) a content record that is not yours to read where you stand:
+            # either somebody is carrying it, or it lies elsewhere.
+            # 票 101（E105）：被递出去的字条在收件人手上，说“在别处”会误导。
+            carrier = self._note_carrier(item)
+            if carrier is not None:
+                message = (f"「{item}」现在在{carrier}手上：这张字条不在你手里，"
+                           f"要读它得让他递给你。{here_line}")
+                reason = "note_carried"
+            else:
+                message = (f"「{item}」现在不在{actor.location}：这张字条留在别处，"
+                           f"只能到它所在的地方读。{here_line}")
+                reason = "note_not_here"
+            alternatives = []
         elif item in here or item in held:
             # (b) physically here, but it carries no readable text.
             objective = self._observed_objective(actor, item)
             seen = (f"你看见过它，这里是它的客观描述（系统所记，不是任何人的推测）："
                     f"{objective}" if objective else "")
+            fixed = item in self.fixed_items
             message = (f"「{item}」没有可读的正文：它是一件实物，不是写着字的文书，读不出内容。"
-                       f"{here_line}你可以先把它拿上，或带在身上去问知道的人。{seen}")
+                       f"{here_line}"
+                       f"{'它固定在这里，拿不走，只能就地看着、问起或使用。' if fixed else '你可以先把它拿上，或带在身上去问知道的人。'}"
+                       f"{seen}")
             alternatives = []
-            if item in here:
+            if item in here and not fixed:
                 alternatives.append(f"take {item}")
             if item in held:
                 alternatives.append(f"place {item}")
@@ -1559,13 +2049,39 @@ class World:
                                        "readable_now": readable_now,
                                        "held": held, "items_here": here})
 
+    def _unwritable_on_rejection(self, actor: ActorState, target: str) -> ActionRejected:
+        """`leave_note on=<X>` when X is neither a writable document at hand
+        nor a blank sheet you can write on (票 101 / E105b).
+
+        两种可写目标按类型分派：有正文的文书 → 批注（`document_annotated`）；
+        无正文的白纸 → 一份可读、可递的文稿（`note_left` + `note-<作者>-<n>`）。
+        回执只列真的能写的东西，不再拿无关文书（窗口 6 18:48 的
+        `give 2013年邻里撤离通知书` 推荐）当替代。"""
+        documents = [name for name in self._available_readables(actor)
+                     if name in self.document_defs]
+        sheets = self._writable_sheets(actor)
+        writable = documents + [name for name in sheets if name not in documents]
+        lead = (f"这里没有可以在上面写字的文书「{target}」。"
+                if target in self.document_defs
+                else f"「{target}」不是手边能写字的一张纸，也不是这里的文书。")
+        holder = next((other.id for other in self.actors.values()
+                       if target in other.inventory), None)
+        where = self.item_locations.get(target)
+        if holder is not None:
+            lead += f"它现在在{holder}手上。"
+        elif where is not None:
+            lead += f"它现在在{where}，不在这里。"
+        return ActionRejected(
+            f"{lead}手边能写的：{', '.join(writable) or '没有'}；要留一张新字条就别写 on。",
+            context={"document": target, "writable_documents": documents,
+                     "writable_sheets": sheets})
+
     def _fallback_next_actions(self, actor: ActorState) -> list[str]:
         """Real, executable next actions when a `read` has nothing readable to
         offer (ticket 63): what is physically here, who is here to ask, and
         where one can still go. Deterministic and capped; every entry can be
         submitted as-is (the caller converts `take`/`speak to`/`move to`)."""
-        here, _held = self._present_items(actor)
-        actions = [f"take {item}" for item in here]
+        actions = [f"take {item}" for item in self._takeable_here(actor)]
         actions += [f"speak to {person}" for person in self._present_others(actor)]
         actions += [f"move to {place}" for place in self._reachable_open(actor)]
         return actions[:3]
@@ -1600,11 +2116,27 @@ class World:
             target = self.actors[target_id]
             target.inbox.append({"from": actor_id, "text": str(payload["text"]), "sent_at": self.now.isoformat()})
         elif kind == "take":
-            item = str(payload["item"]); a.inventory.add(item); del self.item_locations[item]
+            item = str(payload["item"])
+            if self.item_locations.get(item) != a.location:
+                # Defensive: two takes queued in the same tick (both valid at
+                # submit, ticket 75) complete back to back; the first empties
+                # the spot, the second must not crash the clock — the
+                # completion event stands, nothing mutates (mirror of the
+                # despawned-extra returns above). 票 98（E102）：提交期已经不让
+                # 第二个人拿同一件，所以这条只剩恢复旧检查点时才走得到；条件收紧
+                # 到“还在我这里”，别人的东西不会被隔空拿到手上。
+                return
+            a.inventory.add(item); del self.item_locations[item]
         elif kind == "place":
             item = str(payload["item"]); a.inventory.remove(item)
-            self._require_described(item)
-            self.item_locations[item] = a.location
+            note = self.persistent_notes.get(item)
+            if note is not None:
+                # 票 101（E105）：一张字条放下来就是“留在这里的纸”，不当作
+                # 未登记的物件记进 item_locations（它没有客观描述，也没有 item 行）。
+                note["location"] = a.location
+            else:
+                self._require_described(item)
+                self.item_locations[item] = a.location
         elif kind == "read":
             # Ticket 49: a manual read also settles the stay-read book-keeping
             # so the same document is never read twice in one stay.
@@ -1613,29 +2145,80 @@ class World:
         elif kind == "leave_note":
             # Ruling 2026-09-22: a note is a room message attribute, not an
             # item — it joins the location's notes list and burns when read.
-            note = {"author": actor_id, "text": str(payload["text"]),
-                    "left_at": self.now.isoformat()}
-            self.locations[a.location].notes.append(note)
+            # Ticket 88: `persist: true` is the other kind of written record —
+            # a stable-id entity that stays where it was left and can be read
+            # again. The id was assigned at submit (so the started event and the
+            # tool receipt can name it); replay rebuilds it from note_left.
+            # 票 95（E98）：`on` 是第三种写法——往既有文书的 annotations 追加
+            # 一条，不覆盖别人写的；文书本身不动，也不产生字条。
+            text = str(payload["text"])
+            if payload.get("on") and str(payload["on"]) in self.document_defs:
+                document = str(payload["on"])
+                self.document_defs[document].setdefault("annotations", []).append(
+                    {"text": text, "by": actor_id,
+                     "time": self.now.isoformat()})
+            elif payload.get("persist"):
+                note_id = str(payload["note"])
+                self.persistent_notes[note_id] = {
+                    "id": note_id, "author": actor_id, "location": a.location,
+                    "text": text, "left_at": self.now.isoformat()}
+                sheet = str(payload.get("on") or "")
+                if sheet:
+                    # 票 101（E105b）：字是写在这一张纸上的——这张纸从此就是这份文稿
+                    # （可读、可递），它不再是空白的了：纸进作者手上，原地的库存出账。
+                    a.inventory.discard(sheet)
+                    self.item_locations.pop(sheet, None)
+                    a.inventory.add(note_id)
+            else:
+                note = {"author": actor_id, "text": text,
+                        "left_at": self.now.isoformat()}
+                self.locations[a.location].notes.append(note)
         elif kind == "trash":
             item = str(payload["item"])
             self.item_locations.pop(item, None)
             a.inventory.discard(item)
+            self.persistent_notes.pop(item, None)
         elif kind == "give":
             item = str(payload["item"]); target = self._actor(str(payload["target"]))
-            if item in a.inventory:
-                a.inventory.remove(item)
+            note = self.persistent_notes.get(item)
+            if note is not None:
+                # 票 101（E105）：递一张字条就是递那张纸——持有关系与 item 一致
+                # （进收件人的背包），位置随之更新，所以 replay 不用第三个概念。
+                if item in a.inventory:
+                    a.inventory.discard(item)
+                target.inventory.add(item)
+                note["location"] = target.location
             else:
-                # Ticket 63: an item at the actor's own location was handed
-                # over in one motion (take-then-give); it leaves the location.
-                self.item_locations.pop(item, None)
-            target.inventory.add(item)
+                if item in a.inventory:
+                    a.inventory.remove(item)
+                elif self.item_locations.get(item) == a.location:
+                    # Ticket 63: an item at the actor's own location was handed
+                    # over in one motion (take-then-give); it leaves the location.
+                    self.item_locations.pop(item, None)
+                else:
+                    # 票 98（E102）：同一件东西已经在别处/别人手上（旧检查点里可能还
+                    # 排着第二次 give），这条完成事件成立，但不能再凭空给收件人一件。
+                    target = None
+                if target is not None:
+                    target.inventory.add(item)
         elif kind == "sleep": a.sleeping = False
+        if payload.get("sleep"):
+            a.sleeping = False
         a.busy_until = None
         a.current_action = None
 
     def _commit_interaction(self, actor_id: str, payload: Mapping[str, Any], cause: int) -> Event:
         actor = self._actor(actor_id)
         kind = str(payload["action"])
+        if (kind == "leave_note" and payload.get("on")
+                and str(payload["on"]) in self.document_defs):
+            # 票 95（E98）：写进既有文书不是字条事件——它产生既有的
+            # `document_annotated`（同地点可见），内容进入该文书的 annotations。
+            # 票 101（E105b）：on 指向一张白纸时不是批注，而是下文 `note_left` 分支。
+            return self._commit("document_annotated", actor_id, {
+                "document": str(payload["on"]),
+                "location": actor.location,
+                "annotation": str(payload.get("text", ""))}, cause)
         return self._commit(self._interaction_event(kind), actor_id,
                             self._interaction_payload(actor, payload), cause)
 
@@ -1650,9 +2233,12 @@ class World:
             return {"item": str(intention["item"]), "from": actor.id, "to": str(intention["target"])}
         if kind == "read":
             document = str(intention["item"])
-            return {"document": document, "title": self.document_defs[document].get("title", document),
-                    "content": self.document_defs[document].get("content", ""),
-                    "annotations": [dict(entry) for entry in self.document_defs[document].get("annotations", [])]}
+            definition = self.readable_body(document) or {}
+            return {"document": document,
+                    "title": definition.get("title", document),
+                    "content": definition.get("content", ""),
+                    "annotations": [dict(entry)
+                                    for entry in definition.get("annotations", [])]}
         if kind == "knock":
             target = str(intention["target"])
             occupants = [x.id for x in self.actors.values() if x.location == target]
@@ -1664,11 +2250,29 @@ class World:
                     "parameters": dict(intention.get("parameters", {})),
                     "responded": bool(occupants)}
         if kind == "leave_note":
-            return {"location": actor.location, "text": str(intention.get("text", ""))}
+            payload = {"location": actor.location,
+                       "text": str(intention.get("text", ""))}
+            if intention.get("on"):
+                payload["on"] = str(intention.get("on"))
+            if intention.get("persist"):
+                payload["persist"] = True
+                payload["note"] = str(intention.get("note", ""))
+            return payload
         if kind in {"trash"}:
-            # these payloads carry no "target" key
-            return {"target": ""}
+            # these payloads carry no "target" key; the item is carried so a
+            # replay can rebuild what it removed (ticket 88: a trashed
+            # persistent note must not stay readable after replay).
+            return {"target": "", "item": str(intention.get("item", ""))}
         return {"target": str(intention["target"]) if "target" in intention else ""}
+
+    def _next_note_id(self, actor_id: str) -> str:
+        """A stable, addressable id for a persistent note (ticket 88).
+
+        `note-<author>-<serial>` is unique for the whole world, never reused
+        across a checkpoint, and readable as a `read` target."""
+        note_id = f"note-{actor_id}-{self._note_serial}"
+        self._note_serial += 1
+        return note_id
 
     def add_extra(self, name: str, location: str) -> ActorState:
         """V4-CAST §1: register a conversation-scoped stranger (role=extra).
@@ -1689,10 +2293,27 @@ class World:
         stranger must not crash the clock when its turn comes (首验日 v2 事故).
         ``reason`` rides on the visible ``extra_removed`` event (ticket 42):
         co-located characters must be able to tell a mid-conversation
-        interruption (``idle``) from a natural departure."""
+        interruption (``idle``) from a natural departure.
+
+        E84 (报 81 §5): what the stranger is carrying stays in the world. It
+        used to leave with it — 陈阿姨 took 校报草稿 at 12:52 and the idle
+        despawn at 13:07 deleted the item outright (no event, no location,
+        the owner never learned). Every carried item is now put down at the
+        extra's last location with its own visible ``item_dropped`` event
+        *before* ``extra_removed``, so the invariant "an item is always either
+        held by someone or at a location" holds at every prefix of the log and
+        replay rebuilds the same result."""
         if name in self.actors and self.actors[name].role == "extra":
+            extra = self.actors[name]
+            for item in sorted(extra.inventory):
+                self._commit("item_dropped", name,
+                             {"item": item, "location": extra.location,
+                              "reason": str(reason)},
+                             None)
+                self.item_locations[item] = extra.location
+            extra.inventory.clear()
             self._commit("extra_removed", name,
-                         {"location": self.actors[name].location, "reason": str(reason)},
+                         {"location": extra.location, "reason": str(reason)},
                          None)
             del self.actors[name]
             self._cursor.pop(name, None)
@@ -1713,7 +2334,7 @@ class World:
         and receiver, and another actor's wait/sleep is not a sight."""
         if kind.startswith("system_"):
             return {str(actor)} if actor is not None else set()
-        if kind in {"wait_woken", "private_wake", "reminder_due"}:
+        if kind in {"wait_woken", "private_wake", "private_wake_failed", "reminder_due"}:
             return {str(actor)} if actor is not None else set()
         if kind == "document_read":
             # Content privacy: only the reader sees the text.
@@ -1742,9 +2363,21 @@ class World:
             return self._co_located(str(actor))
         if kind in {"action_resumed", "action_abandoned"}:
             return self._co_located(str(actor))
-        if kind == "world_event" and payload.get("target"):
-            targets = payload["target"] if isinstance(payload["target"], (list, tuple)) else [payload["target"]]
-            return {str(target) for target in targets}
+        if kind == "world_event":
+            # 票 95（E97）：排程事件可以点名一个发生地点。有 `location` 时，
+            # 只有当时在该地点的人（以及显式 target）看得见——一条“学生会
+            # 办公室长桌上摊开了面核记录”不再是全场广播。没有 `location` 且
+            # 没有 `target` 的仍按既有全局广播（校园公告、铃声、天气）。
+            targets = payload.get("target")
+            targets = (list(targets) if isinstance(targets, (list, tuple))
+                       else [targets] if targets is not None else [])
+            location = payload.get("location")
+            if location is not None:
+                visible = {x.id for x in self.actors.values()
+                           if x.location == str(location)}
+                return visible | {str(target) for target in targets}
+            if targets:
+                return {str(target) for target in targets}
         if kind == "leave" or kind == "enter":
             # Movement visibility: everyone at the location being touched,
             # plus the mover (who sees its own whole route).
@@ -1775,6 +2408,9 @@ class World:
         if kind == "note_read":
             # 阅后即焚：content is private to the readers listed in the payload.
             return {str(r) for r in payload.get("readers", ()) if r in self.actors}
+        if kind == "item_dropped":
+            # E84（报 81 §5）：物品落在原处是现场事实，同地的人都看得见。
+            return self._co_located(str(actor))
         if kind in {"extra_arrived", "extra_removed"}:
             return self._co_located(str(actor))
         if actor is None: return set(self.actors)
@@ -1816,6 +2452,11 @@ class World:
                           and payload.get("action") == "leave_note")
         if (e.kind == "note_left" or is_note_action) and observer is not None and observer != e.actor:
             payload.pop("text", None)
+        # 票 95（E98）：批注的正文与文书内容同一条隐私线——同地点的人只看见
+        # “谁在文书上写了字”，正文要自己 read 那份文书才看得到。
+        if (e.kind == "document_annotated" and observer is not None
+                and observer != e.actor):
+            payload.pop("annotation", None)
         return {"id": e.id, "time": e.time.isoformat(), "kind": e.kind, "actor": e.actor, "payload": payload, "cause": e.cause}
 
     def _actor(self, actor_id: str) -> ActorState:
@@ -1921,6 +2562,49 @@ class World:
                          interrupt=intention.interrupt,
                          uninterruptable=intention.uninterruptable)
 
+    def _canonicalize_companions(self, actor: ActorState, intention: Intention,
+                                 seen_here: Iterable[str] | None = None) -> Intention:
+        """Resolve `move`'s `with` names to formal actor ids (ticket 95, E96).
+
+        Same T4 resolution as `text`/`give`: a nickname that uniquely matches
+        one candidate is canonicalized before validation, so the gate and the
+        committed event agree on who was brought along. An unknown or
+        ambiguous name is a rejection carrying the people who are actually
+        here (the only ones that could succeed).
+
+        票 98（E101）：空项/纯空白项先过滤，重复项去重；过滤后为空就是**一个人走**
+        ——`with` 整个键被去掉，与“没写 with”完全同一条路径。窗口 5 的 76 条
+        “with 里有一个空名字”不是模型写错，而是它在找“独自走”的表达法：空值只能
+        等于未提供，不能把唯一可行的走法判成错。"""
+        entries = intention.args.get("with")
+        if not isinstance(entries, (list, tuple)):
+            return intention
+        args = dict(intention.args)
+        resolved: list[str] = []
+        for entry in entries:
+            query = str(entry).strip()
+            if not query:
+                continue
+            formal, note = self._resolve_person(actor, query, seen_here)
+            if formal is None:
+                raise ActionRejected(f"{str(note).rstrip('。')}。{WALK_ALONE_HINT}",
+                                     context={"with": query, "name_resolution": True,
+                                              "companion_candidates": self._present_others(actor)})
+            resolved.append(formal)
+        resolved = list(dict.fromkeys(resolved))
+        if not resolved:
+            if not entries:
+                return intention
+            args.pop("with", None)
+        elif resolved == list(entries):
+            return intention
+        else:
+            args["with"] = resolved
+        return Intention(intention.actor, intention.kind, args,
+                         intention.expected_version, inner=intention.inner,
+                         interrupt=intention.interrupt,
+                         uninterruptable=intention.uninterruptable)
+
     def _stranger_token_blocked(self, actor: ActorState, volume: str) -> str | None:
         """Why `陌生人` cannot be called on right now, or None when it can
         (V4-AGENT-INTERFACE §2: an open place, normal volume)."""
@@ -1928,6 +2612,27 @@ class World:
             return "whisper"
         if not self.locations[actor.location].open:
             return "closed"
+        return None
+
+    def pool_entry_for_alias(self, location_id: str, name: str) -> Mapping[str, Any] | None:
+        """The extra-pool entry of `location_id` that declares `name` as an
+        alias (ticket 88), or None.
+
+        A seed may register a location extra with `aliases:` (e.g.
+        `aliases: [老板娘]`) so that naming that role in `speak.to` brings that
+        character, not a random passer-by from the same pool. An alias is a
+        name for an unspawned character only: once someone is physically here
+        (or a real actor carries that name), ordinary person resolution wins.
+        """
+        location = self.locations.get(location_id)
+        if location is None:
+            return None
+        for entry in location.extras:
+            aliases = entry.get("aliases") or ()
+            if isinstance(aliases, str):
+                aliases = (aliases,)
+            if name in {str(alias) for alias in aliases}:
+                return entry
         return None
 
     def _canonicalize_speech(self, actor: ActorState, intention: Intention,
@@ -1957,6 +2662,10 @@ class World:
         undelivered: list[dict[str, str]] = []
         unresolved: list[str] = []
         known: list[str] = []
+        # Ticket 88: names answered by a location's extra pool (see
+        # `pool_entry_for_alias`) route to the extras machinery exactly like
+        # the room token `陌生人`, but remember which alias was named.
+        alias_hits: list[str] = []
         strangers = False
         stranger_reason: str | None = None
         for name in requested:
@@ -1971,6 +2680,18 @@ class World:
                     undelivered.append({"name": name, "reason": reason})
                 continue
             resolved, note = self._resolve_person(actor, name, seen_here)
+            if resolved is None and self.pool_entry_for_alias(actor.location, name) is not None:
+                reason = self._stranger_token_blocked(actor, volume)
+                if reason is None:
+                    alias_hits.append(name)
+                    continue
+                why = ("耳语不会传给尚未出现的路人" if reason == "whisper"
+                       else "当前地点封闭，未出场的人听不到这里的话")
+                raise ActionRejected(
+                    f"「{name}」现在不在这里：{why}。"
+                    f"可以改成对这里已登记的路人搭话："
+                    f"{self._tool_call_json('speak', {'to': ['陌生人'], 'text': args.get('text', ''), 'volume': 'normal'})}，"
+                    "或直接在开放地点正常音量说话。")
             if resolved is None:
                 unresolved.append(note or f"unknown name '{name}'")
                 undelivered.append({"name": name, "reason": "unknown"})
@@ -1983,7 +2704,7 @@ class World:
                 undelivered.append({
                     "name": resolved,
                     "reason": "left" if seen_here and resolved in seen_here else "absent"})
-        if requested and not delivered and not strangers and not known:
+        if requested and not delivered and not strangers and not known and not alias_hits:
             # Nothing in the list exists: no addressee survived resolution, so
             # there is no partial delivery to make. Keep the rejection (an
             # unknown name is never silently rewritten, and the words are not
@@ -2009,7 +2730,7 @@ class World:
                          "unknown_recipient": any(_unknown_name_note(note)
                                                   for note in unresolved)})
         if requested or "to" in args:
-            args["to"] = delivered + (["陌生人"] if strangers else [])
+            args["to"] = delivered + (["陌生人"] if strangers else []) + alias_hits
         if undelivered:
             args["undelivered"] = undelivered
         return Intention(intention.actor, intention.kind, args,
@@ -2096,6 +2817,92 @@ class World:
                       if location == actor.location)
         return here, sorted(actor.inventory)
 
+    def _notes_here(self, actor: ActorState) -> list[dict[str, Any]]:
+        """Persistent notes lying at the actor's location (ticket 88).
+
+        Perceived as ids, never as text: a note's content is read with `read`.
+        Burn-on-read notes are deliberately absent — they are not entities and
+        never belong to an actor who was already in the room."""
+        return [{"id": str(note.get("id")), "author": note.get("author"),
+                 "left_at": note.get("left_at")}
+                for note in sorted(self.persistent_notes.values(),
+                                   key=lambda row: str(row.get("id")))
+                if str(note.get("location")) == actor.location
+                and self._note_carrier(str(note.get("id"))) is None]
+
+    def _takeable_here(self, actor: ActorState) -> list[str]:
+        """What is physically here AND may be picked up (ticket 83)."""
+        return [item for item in self._present_items(actor)[0]
+                if item not in self.fixed_items]
+
+    def _item_claimant(self, actor: ActorState, item: str) -> str | None:
+        """Who is already moving `item` out of its place right now, or None.
+
+        票 98（E102）：一件东西的归属只在**完成时**写进世界，所以 `item_locations`
+        回答不了“它现在还是不是没人拿”——同一个 tick 里的两次提交都看到它在桌上。
+        在途状态就是各自 actor 的 `current_action`/`pending`（随检查点保存在 actor
+        上）。能把它从原地挪走的动作有两个：`take`，以及 `give` 的“就地拿起再递出”
+        分支（那时东西还在原地、不在发起者背包里）——两个都算占用。
+        """
+        for other in self.actors.values():
+            if other.id == actor.id:
+                continue
+            for slot in (other.current_action, other.pending):
+                payload = (slot or {}).get("payload") or {}
+                if str(payload.get("item")) != item:
+                    continue
+                action = payload.get("action")
+                if action == "take":
+                    return other.id
+                if action == "give" and item not in other.inventory:
+                    return other.id
+        return None
+
+    def _take_rejection(self, actor: ActorState, item: str,
+                        held: list[str]) -> ActionRejected:
+        """Where the thing actually is, when it is not here to take (E102).
+
+        The old line said only “这里没有「X」可拿”, which in window 5 07:23
+        (`give 一份餐食`) and 17:57 (`take 一份晚饭`) hid the real fact —
+        someone present had just picked it up. A taker needs to know whether
+        it left the world or moved into somebody's hands."""
+        holder = next((other.id for other in self.actors.values()
+                       if item in other.inventory), None)
+        where = self.item_locations.get(item)
+        if holder is not None:
+            message = f"「{item}」已经不在{actor.location}了：现在在{holder}手上。"
+        elif where is not None:
+            message = f"「{item}」现在在{where}，不在这里。"
+        elif self._is_entity(item):
+            message = f"「{item}」现在不在世上任何地方了（已经被拿走或销毁）。"
+        else:
+            # 从来没登在世上的一件东西（票 60 的内部陈设、票 65 的绳子）：
+            # 不能说它“被拿走或销毁”了——那是凭空给世界添了一段历史。
+            message = f"这里没有「{item}」可拿。"
+        takeable = self._takeable_here(actor)
+        message += (f"这里能拿的：{', '.join(takeable) or '没有'}。"
+                    f"你拿着的：{', '.join(held) or '没有'}。")
+        return ActionRejected(
+            message,
+            alternatives=[f"take {present}" for present in takeable],
+            context={"item": item, "held_by": holder, "location": where,
+                     "takeable_here": takeable})
+
+    def _reject_fixed_item(self, actor: ActorState, item: str) -> None:
+        """Ticket 83: a 固定陈设 (shelf, chest freezer, the 关东煮 pot) is
+        present and described, but it never enters an inventory and never
+        leaves its place — so take, the at-hand branch of give, and trash all
+        refuse it here instead of moving it. The reason is the seed's
+        `fixed_reason`, or a plain statement that it is a fixture."""
+        reason = (self.fixed_items[item] or "这是固定陈设").rstrip("。；，")
+        takeable = self._takeable_here(actor)
+        raise ActionRejected(
+            f"「{item}」拿不走：{reason}。它一直在{actor.location}，只能就地看着、"
+            f"问起或使用。这里能拿的：{', '.join(takeable) or '没有'}。",
+            alternatives=[f"take {name}" for name in takeable],
+            context={"item": item, "reason": "fixed_fixture", "fixed_reason": reason,
+                     "takeable_here": takeable})
+
     def _reachable(self, actor: ActorState) -> list[str]:
         return sorted(target for (source, target) in self.routes if source == actor.location)
 
@@ -2142,9 +2949,10 @@ class World:
                       if source == actor.location and self.locations[target].open)
 
     def _available_readables(self, actor: ActorState) -> list[str]:
-        """Readable entities (documents or items with content) that are
+        """Readable entities (documents, or persistent notes) that are
         currently held or here — the only reads a suggestion may offer."""
-        return sorted(entity for entity in self.document_defs
+        return sorted(entity for entity in
+                      set(self.document_defs) | set(self.persistent_notes)
                       if self.available_now(actor.id, entity))
 
     def _hearing_actors(self, actor_id: str, payload: Mapping[str, Any]) -> set[str]:

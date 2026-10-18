@@ -1,5 +1,6 @@
 import unittest
 import json
+from copy import deepcopy
 from unittest.mock import patch, Mock
 from datetime import datetime, timedelta
 from harness.kernel import ActionRejected, ActorState, Intention, LocationState, World
@@ -121,6 +122,24 @@ class WorldTests(unittest.TestCase):
         w.advance()
         replayed = replay_world(self.world(), w.replayable_log())
         self.assertIn("item_given", [event["kind"] for event in replayed.replayable_log()])
+
+    def test_world_deepcopy_survives_and_event_ids_stay_unique(self):
+        # Ticket 71: Python 3.14 dropped itertools.count pickling, so the
+        # replay/checkpoint deepcopy of the world raised
+        # `TypeError: cannot pickle 'itertools.count' object`.
+        w = self.world()
+        w.submit(Intention("a", "text", {"target": "b", "text": "hi"}, w.version))
+        w.advance()
+        original_ids = [e.id for e in w.event_log]
+        clone = deepcopy(w)
+        clone.submit(Intention("a", "text", {"target": "b", "text": "again"}, clone.version))
+        clone.advance()
+        # The fork carries copies of the original events and keeps allocating
+        # monotonically from where the counter stood — no restart, no reuse.
+        self.assertEqual([e.id for e in clone.event_log],
+                         list(range(1, len(clone.event_log) + 1)))
+        self.assertEqual(len(clone.event_log), 2 * len(original_ids))
+        self.assertEqual([e.id for e in w.event_log], original_ids)
 
     def test_interaction_results_are_private_but_knock_reaches_closed_occupant(self):
         w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
@@ -335,27 +354,66 @@ class WorldTests(unittest.TestCase):
     def test_invalid_ledger_query_does_not_consume_quota(self):
         w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
                   actors=[ActorState("陈默", "room")], locations=[LocationState("room")])
-        fact_table_owner = Ledger({"known": "answer"})
+        # 票 95（E95）：事实表从逐字匹配改为确定性的归一化/关键词匹配，所以这条
+        # 夹具用互不包含的中文问句——它钉的仍然是“表外问题不吞额度”。
+        fact_table_owner = Ledger({"红色哨子在哪里？": "老家属院的地下室"})
         fact_table_owner.accept(w, "陈默", "ambiguous-obligations")
         with self.assertRaises(ActionRejected):
-            fact_table_owner.query(w, "陈默", "unknown")
+            fact_table_owner.query(w, "陈默", "今天的课表在哪间教室？")
         self.assertEqual(fact_table_owner.queries_used, 0)
-        fact_table_owner.query(w, "陈默", "known")
+        fact_table_owner.query(w, "陈默", "红色哨子在哪里？")
 
-    def test_ledger_reward_is_emitted_only_after_seeded_objective_condition(self):
+    def test_a_correct_answer_does_not_settle_the_case(self):
+        """票 93（用户裁定）：结案 ≠ 首次命中。
+
+        命中只发一条 `system_answer`（问题与答案），案子照旧开着——结案要等种子
+        排程的结算节拍（`Ledger.settle`）；否则首次答对就把案子关了，后面的
+        `limit` 分支永远不可达，而文档写的是“查询次数硬上限”。
+
+        票 95（E95）：命中之后另有一条只给提问者的 `system_dialogue` 审计事件，
+        所以“没有报酬”看的是事件种类而不是“最后一条是不是答案”。
+        """
         w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
                   actors=[ActorState("陈默", "room")], locations=[LocationState("room")])
-        fact_table_owner = Ledger({"known": "answer"})
+        fact_table_owner = Ledger({"红色哨子在哪里？": "老家属院的地下室"})
         accepted = fact_table_owner.accept(w, "陈默", "ambiguous-obligations")
         self.assertEqual(fact_table_owner.status, "accepted")
         self.assertNotIn("reward_granted", accepted.payload)
-        answer = fact_table_owner.query(w, "陈默", "known")
+        answer = fact_table_owner.query(w, "陈默", "红色哨子在哪里？")
         self.assertEqual(answer.kind, "system_answer")
-        self.assertEqual(fact_table_owner.status, "completed")
-        reward = w.event_log[-1]
+        self.assertFalse([e for e in w.event_log
+                          if e.kind in {"system_reward_granted", "system_penalty_applied"}],
+                         "答对之后没有报酬/惩罚事件（结案还未到）")
+        audit = w.event_log[-1]
+        self.assertEqual(audit.kind, "system_dialogue")
+        self.assertTrue(audit.payload["matched"])
+        self.assertEqual(audit.payload["answer_event_id"], answer.id)
+        self.assertEqual(audit.visible_to, frozenset({"陈默"}))
+        self.assertEqual(fact_table_owner.status, "accepted")
+        self.assertFalse(fact_table_owner.reward_granted)
+        self.assertEqual(fact_table_owner.last_answer_event_id, answer.id)
+
+    def test_the_seeded_settlement_closes_the_case_and_grants_the_reward_once(self):
+        """票 93：种子结算事件到达才 `closed`，报酬只发一次、只给受约束角色。"""
+        w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
+                  actors=[ActorState("陈默", "room"), ActorState("林瑶", "room")],
+                  locations=[LocationState("room")])
+        fact_table_owner = Ledger({"known": "answer"}, {"settle_on": "ledger_settlement"})
+        fact_table_owner.accept(w, "陈默", "ambiguous-obligations")
+        answer = fact_table_owner.query(w, "陈默", "known")
+        reward = fact_table_owner.settle(w)
+        self.assertEqual(fact_table_owner.status, "closed")
+        self.assertTrue(fact_table_owner.reward_granted)
         self.assertEqual(reward.kind, "system_reward_granted")
-        self.assertEqual(reward.payload["condition"], "correct objective fact query")
         self.assertEqual(reward.payload["reward"], "one narrow objective clarification")
+        self.assertEqual(reward.payload["evidence_event_id"], answer.id,
+                         "报酬的凭据指向案子里那条答案")
+        self.assertEqual(reward.visible_to, frozenset({"陈默"}), "报酬只投给受约束角色")
+        self.assertIsNone(fact_table_owner.settle(w), "同一个案子只结一次")
+        self.assertEqual([e.kind for e in w.event_log].count("system_reward_granted"), 1)
+        with self.assertRaises(ActionRejected) as closed:
+            fact_table_owner.query(w, "陈默", "known")
+        self.assertEqual(closed.exception.context["ledger"], "closed")
 
     def test_ledger_penalty_is_an_auditable_consequence_of_voluntary_decline(self):
         w = World(start=datetime.fromisoformat("2026-01-01T00:00:00+00:00"),

@@ -63,7 +63,10 @@ SCHEMAS: dict[str, dict[str, Any]] = {
     "flashback": {"type": "object", "required": ["entity"],
                   "properties": {"entity": _STR},
                   "additionalProperties": False},
-    "wait": _schema(duration_seconds=_INT),
+    "wait": {"type": "object", "required": ["duration_seconds"],
+             "properties": {"duration_seconds": _INT,
+                            "sleep": {"type": "boolean"}},
+             "additionalProperties": False},
     # volume: whisper needs the co-located "to" list (kernel validates it).
     # Both volume and to are optional; only text is required.
     "speak": {"type": "object", "required": ["text", "volume", "to"],
@@ -78,7 +81,13 @@ SCHEMAS: dict[str, dict[str, Any]] = {
                             "wait_response": {"type": "boolean"}},
              "additionalProperties": False},
     # V4-DESIGN §5.6: intent only - the walk time is the map's fact.
-    "move": _schema(target=_STR),
+    # 票 95（E96）：with = 同在此地的人，一起按发起者的路线走（扶/陪）。
+    # 票 98（E101）：with 允许空数组——空/空项等于“一个人走”，与不写 with 同义；
+    # 把 minItems 当校验把“独自走”判成错正是窗口 5 那 76 条拒绝的成因。
+    "move": {"type": "object", "required": ["target"],
+             "properties": {"target": _STR,
+                            "with": {"type": "array", "items": _STR}},
+             "additionalProperties": False},
     "take": _ONE_ITEM,
     "place": _ONE_ITEM,
     "continue_action": _NO_ARGS,
@@ -86,7 +95,16 @@ SCHEMAS: dict[str, dict[str, Any]] = {
     "knock": _ONE_TARGET,
     "give": _schema(target=_STR, item=_STR),
     "read": _ONE_ITEM_CONTENT,
-    "leave_note": _schema(text={"type": "string", "minLength": 1}),
+    # Ticket 88: `persist: true` keeps the written record as an addressable,
+    # re-readable note instead of the burn-on-read room message; the default
+    # stays exactly as it was (ruling 2026-09-22).
+    # 票 95（E98）：on = 写进手边一份既有文书的某一栏（一条批注），与 persist
+    # 互斥；文字只追加、不覆盖别人写的条目。
+    "leave_note": {"type": "object", "required": ["text"],
+                   "properties": {"text": {"type": "string", "minLength": 1},
+                                  "persist": {"type": "boolean"},
+                                  "on": _STR},
+                   "additionalProperties": False},
     "trash": _ONE_ITEM,
 }
 
@@ -112,6 +130,14 @@ def wire_parameters(kind: str) -> dict[str, Any]:
 
 WIRE_PARAMETERS: dict[str, dict[str, Any]] = {
     kind: wire_parameters(kind) for kind in SCHEMAS}
+
+NO_MECHANISM_IN_SPEECH = (
+    "不要向他人描述引擎机制（事件、便条生命周期、工具名称）；只说你做了什么、谁看见了什么。")
+"""票 101（E108）：窗口 6 19:12 陈默当众说“只生成了下一位进入者才看得到的字条”。
+
+那句话在机制上是对的（那张字条确实只给后到者），正因为对，才证明它是从提示语/回执
+里推出来的引擎知识，而不是任何世界内的感知。这条规矩只加在 MC 的工具说明上：NPC
+与路人各有自己的出场提示（`npc_agent`），不重复。"""
 
 # 每个工具的中文一句话说明（docs §2）。注意：每个调用的 arguments 都必须带
 # 非空 inner——这一动作当下的心声（感受、意图、为什么）；缺 inner 或空 inner
@@ -141,8 +167,11 @@ _TOOL_DESCRIPTIONS: dict[str, str] = {
     "flashback":
         "手动闪回：关于某个地点/物品/人物/事件，把你知道的和亲历过的都翻出来——先是你自己记的事"
         "（前史、旧账、心结），再是这段日子里的经历。名字可用别名（如\"老街坊\"）。想不起某段往事时用",
-    "wait": "唯一的时间流逝工具；时长向上取整到 tick 倍数；等待期间事件照常投递。只在没有正在执行的动作、也没有待处理打断时调用。普通动作会自动完成，不要在忙时再提交 wait；被打断的动作才用 continue_action/abandon_action。想干等或边等边想时用",
+    "wait": "唯一的时间流逝工具；时长向上取整到 tick 倍数；等待期间事件照常投递。只在没有正在执行的动作、也没有待处理打断时调用。普通动作会自动完成，不要在忙时再提交 wait；被打断的动作才用 continue_action/abandon_action。想干等或边等边想时用"
+            "。要睡觉、要睡到明早、要守到某个时刻就用 sleep=true 的 wait（例如 {\"name\": \"wait\", \"arguments\": {\"duration_seconds\": 28800, \"sleep\": true}}）："
+            "睡眠的时长上限远高于普通等待（单次最长 12 小时），睡着时世界照旧走；被叫、被敲醒、被碰到就会提前结束——睡着的人看不出在睡，但叫得醒",
     "speak": "对指定的人开口：to=在场的谁（可多个；也可以是 [\"陌生人\"] 在开放地点向路人搭话；封闭地点或 whisper 无人能听见，不能如此搭话）。"
+             "to 也可以写世界内一个会回话的对话者的名字（它自报过名字、或某条事件里点名告诉你能对它说话时）：那就是对它说话，不是对在场的人。"
              "有什么话一次性说完——一个 speak 调用说完完整的话，不要一句一句地连发多个 speak。"
 
              "volume=normal 大家都听得见（to 记录话是对谁说的）；volume=whisper 仅 to 名单听得见。"
@@ -154,13 +183,40 @@ _TOOL_DESCRIPTIONS: dict[str, str] = {
              "默认 wait_response=true：短信送达后自动原地等回应（约 2 分钟，对方回复会立刻叫醒你）——"
              "对方看到、想到、再回，最快也要两三分钟；发完就走用 wait_response=false",
     "move": "只用于地图中的大地点（世界消息 @地点、你知道的 location 行）：target=地点全名。"
-            "不要用来靠近柜子、桌子、服务台、房间角落或物品——同一地点内无需 move，直接 read/take/knock/leave_note",
-    "take": "拿起一件在这里的物品",
+            "不要用来靠近柜子、桌子、服务台、房间角落或物品——同一地点内无需 move，直接 read/take/knock/leave_note。"
+            "要扶/陪某人一起走：with=[同在此地的名字]——引擎按你的路线带他一起逐段走；"
+            "他仍然自己看、自己说，途中自己走开就不再跟着；他正被不能打断的事锁住时这趟走不了。"
+            "**一个人走就只写 target，省略 with**——不要写空的 with、空字符串或“自己/我”之类的占位符。",
+    "take": "拿起一件在这里的物品；嘴上说“我去拿”不会让东西到你手里，要拿到就得真的调用它。"
+             "一件东西只有一个归属：别人正在拿这一件时你会被拒绝并被告知在谁手里，"
+             "被拿走了就问那个人要，不要重复 take 同一件。",
     "place": "把身上的一件物品放在当前地点——他人可见可拿；不是丢弃",
-    "give": "把身上的一件物品递给在场的某人",
-    "leave_note": "留一张字条在当前地点，写给之后进入的人。字条是房间留言，不是物品：留条时在场的人只看见有人留了字条，看不到内容。"
-                  "作者本人再次进入不算读者；每张字条都等到第一位非作者进入者私下看到全文，然后阅后即焚。若同时多人进入，按事件顺序先进入者独得。"
-                  "私下投递附有引擎记录的作者和留条时间，不是正文的一部分。想再留一条就再次调用 leave_note；递到手上用 give",
+    "give": "把身上的一件物品递给在场的某人；东西只在这次调用之后才到对方手里"
+            "——嘴上说“我给你”不会让任何东西移动；给不了就直说给不了。"
+            "就在你手边（当前地点）的东西也可以直接递，引擎当成一次拿起再递出。"
+            "写在纸上的一份文稿（例如 note-<你>-1）也在可递之列：递过去就是递那张纸，"
+            "对方从此拿得到、读得到它。字条不在你手上就递不了——先让它到你手上。",
+    # E85（报 81 报告）：写记录的动作一度读起来不像能写记录——林瑶 08:34 真的用它
+    # 写了 400 字，第 08:53 起却说"不把留字条当成完成"，13:13 拿着纸笔写道
+    # "没有可用工具把个人事实记录实际写入纸面"。动作本身不需要任何持有物，
+    # 说明因此必须先把"写记录"说出口，再讲投递规则，并明说纸笔不是前提。
+    "leave_note": "写记录/留字条：把你此刻要说的事实写成文字留在当前地点；之后进入这里的人会读到它。"
+                  "要留一份书面记录（比如写在纸上）就是这个动作。"
+                  "不需要先拿到纸笔或其他持有物——写下这段文字不取决于你身上有什么；"
+                  "但要想把它亲手交给别人，就得把它写在一张纸上（见下面 on=<纸张名>）。"
+                  "要在手边一份既有文书上补写/签名（比如在表格里填自己那一栏、写一句核对结果），"
+                  "加 on=<文书的正式名>：文字作为一条批注追加进那份文书，别人写的条目不会被覆盖；"
+                  "**不写 on（也不要写空的 on）就是留一份新文稿**，on 与 persist 只能选一个；"
+                  "同地点的人只看见你写了这一笔，内容要 read 那份文书才看得到。文书必须在你所在的地点或你手上。"
+                  "要写在手边一张白纸（空白纸这类）上，加 on=<纸张名>：那张纸就成了你手里的一份文稿"
+                  "（带编号，如 note-<你>-1），可以 read，也可以 give 给在场的别人——这是亲手交出一份说明的路。"
+                  "投递规则：默认（persist=false）留条时在场的人只看见有人写了东西，看不到内容；作者本人再次进入不算读者；"
+                  "每段文字都等到第一位非作者进入者私下看到全文，然后阅后即焚（若同时多人进入，按事件顺序先进入者独得）。"
+                  "persist=true 时留下的是一份留得住的文稿（带编号，如 note-<你>-1）：它一直留在当前地点，"
+                  "在场的人和之后来的人都能用 read <编号> 读到全文，可以读多次；要把话交到目标地点就走这条——"
+                  "把说明留在对方会看的那张桌上，而不是交给某个人。"
+                  "私下投递附有引擎记录的作者和时间，不是正文的一部分。要放到别人手上用 give，不要用 leave_note 代替当面交付"
+                  + NO_MECHANISM_IN_SPEECH,
     "read": "读一份手边的内容型物品；正文和已有批注只在 tool 结果里给你自己看。他人只看见你在读",
     "knock": "敲一个关闭地点的门，探里面有没有人",
     "continue_action": "无损继续一个明确显示为被打断且待处理的动作（arguments={}）。普通动作会自动完成；忙碌不是打断，不要用 continue_action，也不要忙时调用 wait。",

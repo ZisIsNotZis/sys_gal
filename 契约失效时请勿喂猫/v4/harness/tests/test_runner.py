@@ -350,18 +350,26 @@ class RunnerTests(unittest.TestCase):
 
         agents = {actor: (Recorder() if actor == "陈默" else agent) for actor in world.actors}
         trace = Trace("v2-test", "system-reward-feedback")
-        Runner(world, agents, states, trace,  # type: ignore[arg-type]
-               Ledger({"Where is the red whistle?": "old neighborhood basement"})).run(
+        ledger = Ledger({"Where is the red whistle?": "old neighborhood basement"})
+        Runner(world, agents, states, trace, ledger).run(  # type: ignore[arg-type]
                    stop_at=datetime.fromisoformat("2026-03-16T07:01:00+00:00"), max_turns=20)
         # v4 (V4-DESIGN §2): system outcomes are not receipts either - they
         # arrive as events in the actor's perception, narrated by prompt.py.
-        self.assertEqual([event.kind for event in world.event_log if event.kind.startswith("system_")],
-                         ["system_case_accepted", "system_answer", "system_reward_granted"])
+        # 票 93（用户裁定）：答对只产生 system_answer——结案与报酬要等种子排程的
+        # 结算节拍（`Ledger.settle`），所以这里先只有答复这一笔。
+        # 票 95（E95）：每次对话（含额度用尽后的拒绝）都留一条只给提问者的
+        # `system_dialogue` 审计事件；它不渲染成任何一句话。
+        system_events = [event for event in world.event_log if event.kind.startswith("system_")]
+        self.assertEqual([event.kind for event in system_events if event.kind != "system_dialogue"],
+                         ["system_case_accepted", "system_answer"])
+        audits = [event for event in system_events if event.kind == "system_dialogue"]
+        self.assertEqual(sum(1 for event in audits if event.payload["matched"]), 1)
+        self.assertEqual({event.visible_to for event in audits}, {frozenset({"陈默"})})
+        self.assertEqual(ledger.status, "accepted", "首次命中不结案")
         from harness.prompt import render_world_message
         rendered = [render_world_message(t["perception"], [])
                     for t in trace.agent_turns if t["actor"] == "陈默"]
-        # 这个测试自建 Ledger 用默认英文 case 文本。
-        self.assertTrue(any("one narrow objective clarification" in text for text in rendered),
+        self.assertTrue(any("old neighborhood basement" in text for text in rendered),
                         rendered)
         # the auto-accepted case event is a startup fact (committed before any
         # turn); the query-chain events must all be turn-recorded.
@@ -370,6 +378,15 @@ class RunnerTests(unittest.TestCase):
                            and event.kind != "system_case_accepted"}
         recorded_ids = {event_id for turn in trace.agent_turns for event_id in turn["event_ids"]}
         self.assertTrue(turn_system_ids <= recorded_ids)
+        # 结算节拍到达：结案，报酬仍走既有 system_reward_granted 私有投递。
+        ledger.settle(world)
+        reward = world.event_log[-1]
+        self.assertEqual((reward.kind, ledger.status),
+                         ("system_reward_granted", "closed"))
+        self.assertEqual(reward.visible_to, frozenset({"陈默"}), "报酬只给他本人")
+        # 这个测试自建 Ledger 用默认英文 case 文本。
+        self.assertIn("one narrow objective clarification",
+                      render_world_message(world.poll("陈默"), []))
 
     def test_system_feedback_uses_configured_name_not_hardcoded_label(self):
         world = create_world()

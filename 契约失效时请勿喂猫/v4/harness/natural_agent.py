@@ -45,6 +45,16 @@ UNSPOKEN_CONTENT_NOTE = (
     "也没有广播给任何人。要说出口请用 speak 工具（当面说）；要给不在身边的人"
     "发消息用 text 工具。")
 
+# 票 91（E93）：一整个回合只有想法、零个工具调用。世界照旧往前走一拍、什么也
+# 没发生（V4-AGENT-INTERFACE §4），但窗口 3 的 08:42–09:04 里没有人把这件事告诉
+# 角色：陈默把台账的三条款在正文里答了五遍，每次都像已经答过了。这条反馈只说
+# 清上一回合的后果并指出两个出路（工具、或明确 wait），不代替他动作、不惩罚他。
+NO_ACTION_NOTE = (
+    "【上一回合】你只写了心里的想法，没有调用任何工具——世界没有因为那段想法改变，"
+    "时间照常过去了。要把话说出口用 speak/text，要做事用相应的工具；确实只想待在"
+    "原地，就用 wait 明确占住这段时间。")
+NO_ACTION_STREAK_NOTE = "（这已经是连续第 {streak} 个这样的回合。）"
+
 
 class V4Session:
     """One actor's v4-protocol conversation: system prompt verbatim, world
@@ -173,6 +183,16 @@ class V4Session:
         transitional self-correction (after the tool results, same ordering
         rule as note_private_content)."""
         self.messages.append({"role": "user", "content": UNSPOKEN_CONTENT_NOTE})
+
+    def note_no_action(self, streak: int = 1) -> None:
+        """票 91（E93）：上一回合只有正文、零调用。把这一回合的后果告给下一回合。
+
+        与 ticket 56/64 同一位置、同一条排序规则（在 tool 结果之后）。有界：每次
+        只追加一条，且只在对方还在连续空转时追加——一旦有调用就不再加。"""
+        text = NO_ACTION_NOTE
+        if streak > 1:
+            text += NO_ACTION_STREAK_NOTE.format(streak=streak)
+        self.messages.append({"role": "user", "content": text})
 
     def _maybe_compact(self) -> None:
         if sum(len(str(m.get("content", ""))) for m in self.messages) <= self.compaction_threshold:

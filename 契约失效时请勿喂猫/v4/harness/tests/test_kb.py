@@ -6,6 +6,7 @@ engine semantics; text keys are needles.
 """
 
 import unittest
+from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 
 from harness.kb import (ALWAYS_OPEN_LIMIT, ActorKB, format_reminder_time, hits,
@@ -308,6 +309,19 @@ class PersistenceTests(unittest.TestCase):
         kb.due_lines(T0, "", limit=8)
         kb.on_compaction()
         self.assertIsNone(kb._rows[frozenset({"唐小岚"})].last_shown)
+
+    def test_deepcopy_keeps_shown_seq_allocating(self):
+        # Ticket 71: Python 3.14 dropped itertools.count pickling, so deepcopy
+        # of an ActorKB raised TypeError; the clone must copy the counter
+        # position and keep allocating monotonically, independently.
+        kb = ActorKB("唐小岚", seed_rows(), T0)
+        kb.due_lines(T0, "", limit=8)
+        clone = deepcopy(kb)
+        # snapshot() consumes one value and reports it, so equal counters stay
+        # equal through a snapshot, and only the clone keeps allocating after.
+        self.assertEqual(clone.snapshot()["shown_seq"], kb.snapshot()["shown_seq"])
+        clone.due_lines(T0, "陈默", limit=8)
+        self.assertGreater(clone.snapshot()["shown_seq"], kb.snapshot()["shown_seq"])
 
 
 class Ticket59UpdateMemoryErgonomicsTests(unittest.TestCase):

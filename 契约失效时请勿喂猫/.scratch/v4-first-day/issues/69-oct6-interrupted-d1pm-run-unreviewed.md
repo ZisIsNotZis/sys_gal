@@ -1,6 +1,6 @@
 # 69 — 2026-10-06 的 d1-pm 半成品 run 被中断且未按协议复盘
 
-Status: ready-for-agent
+Status: wontfix
 Need-review: yes
 Need-test-cases: no
 
@@ -35,3 +35,21 @@ Need-test-cases: no
 3. 决定工件去留：保留为诊断样本并标注"半成品"，或按需清理（不得删除仍在
    引用的证据）。
 4. 若发现新的 D1 缺陷，转成独立票据或并入 issue 70 的根因清单。
+
+## Comments
+
+### 2026-10-16 — 工件丢失核实；declared missing；复盘义务转由 M1.4/M1.5 承担（agent）
+
+**复行核实证据（2026-10-16，本机）**：
+
+- `find /home/z/vibe/sys_gal -type d -name runs` → 无命中：`v4/` 下已无 `runs/` 目录（`ls v4/` 仅 checkpoints/docs/harness/logs/scripts/world）。
+- `find /home/z/vibe/sys_gal \( -name 'real-20261005*' -o -name 'real-20261006*' -o -name 'd1-pm*' \)` → 无命中：本票引用的 `real-20261006T102015…` 工件与 checkpoint、以及 10-05 完整工件 `real-20261005T005934…`，均不在磁盘上。
+- `ls v4/logs/` → 仅 `gate-d1-pm.txt`；本票引用的 `v4/logs/drive.log` 亦已不存在。
+- `ls v4/checkpoints/` → 仅 `d1-am.json`（14,323,341 B，mtime 2026-10-16 08:24）；无 d1-pm checkpoint、无 archive。
+- git：仓库仅一个快照提交 `ea47781`（2026-10-15 15:21:48 +0800，"Record v4 work state and ignore interrupted run outputs"），提交信息自述 d1-pm checkpoint 与 driver 启动日志"on disk but ignored"（未纳入版本控制）——其后工件从磁盘被删，无法从版本历史找回。
+
+**声明**：10-05 完整工件与 10-06 中断工件均为 **declared missing**，本票要求的运行后分析对象已不存在，不可复盘。
+
+**处置**：复盘义务不消失，转由 **M1.4**（从 `checkpoints/d1-am.json` 或原始种子重跑 d1-pm，产出唯一新工件 + `checkpoints/d1-pm.json`）与 **M1.5**（对新工件的运行后分析，含中断/失败边界检查）承担。相应地，本票原本可能携带的 D1 下午缺陷新证据改由 issue 70 的根因报告（`reports/70-d1pm-anchor-root-causes.md`）以静态证据补足——该报告已注明哪些判断因轨迹丢失而"不可建立"。
+
+**Status 改为 wontfix 的理由**：复盘对象（工件）已丢失且不可再生，本票的原始诉求无法执行；这是对象消失，不是放弃复盘义务——义务已显式转至 M1.4/M1.5。`Need-review: yes` 保留，供独立复核本 Comments 的证据与处置。

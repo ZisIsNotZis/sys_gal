@@ -1182,3 +1182,418 @@ class SeedRegisterContentTests(unittest.TestCase):
             for banned in self.BANNED:
                 self.assertNotIn(banned, content,
                                  f"{name} content must not assert how it was lost")
+
+
+class LedgerSettlementSeedTests(unittest.TestCase):
+    """票 93：`system.settle_on` 点的是种子排程里真实存在的那条结算事件。
+
+    点错一个名字的后果是案子**永不结案**（报酬也不发），而且要到运行到那一天才
+    看得出来；所以这条契约在加载时就检查：名字必须能在 `scheduled:` 里找到。
+    """
+
+    def _pack(self, directory, *, settle_on, scheduled):
+        import yaml
+        root = Path(directory)
+        (root / "locations").mkdir(parents=True)
+        (root / "locations" / "room.md").write_text("# room\n\n一间屋子。\n", encoding="utf-8")
+        manifest = {
+            "schema_version": 1,
+            "clock": {"start": "2026-03-16T07:00:00+08:00",
+                      "stop": "2026-03-16T09:00:00+08:00"},
+            "system": {"name": "台账", "bound_actor": "aa", "settle_on": settle_on},
+            "locations": [{"id": "room"}],
+            "actors": [{"id": "aa", "location": "room"}],
+            "items": [], "documents": [], "routes": [], "barriers": [],
+            "scheduled": scheduled,
+            "kb": {"aa": [{"keys": ["aa"], "desc": "我，aa。"}]},
+        }
+        (root / "manifest.yml").write_text(
+            yaml.safe_dump(manifest, allow_unicode=True), encoding="utf-8")
+        return root
+
+    def test_a_settle_on_naming_no_scheduled_event_fails_the_load(self):
+        with TemporaryDirectory() as directory:
+            root = self._pack(directory, settle_on="ledger_settlement",
+                              scheduled=[{"event": "morning_bell",
+                                          "time": "2026-03-16T08:00:00+08:00"}])
+            with self.assertRaisesRegex(ValueError, "system.settle_on"):
+                load_world_pack(root)
+
+    def test_a_settle_on_naming_a_real_event_loads(self):
+        with TemporaryDirectory() as directory:
+            root = self._pack(directory, settle_on="ledger_settlement",
+                              scheduled=[{"event": "ledger_settlement",
+                                          "time": "2026-03-16T08:00:00+08:00"}])
+            self.assertEqual(load_world_pack(root).system["settle_on"],
+                             "ledger_settlement")
+
+
+class LedgerFactsSeedTests(unittest.TestCase):
+    """票 95（E95）：真种子的事实条目必须保留 `{answer, keywords}` 形状。
+
+    `world_loader` 的 strip 循环曾对每条 facts 值直接 `strip_refs(value)`，而
+    `strip_refs` 对 dict 做 `str()`：mapping 被 stringify 成 Python 字典字面量，
+    于是 `Ledger.fact_keywords` 全空（关键词匹配在真种子上完全不生效），并且
+    台账会把那串 dict 字面量当作答案投给角色。这支种子级守卫钉住形状。
+    """
+
+    def test_the_seeded_fact_entries_keep_their_keyword_shape(self):
+        pack = load_world_pack(ROOT / "world")
+        facts = pack.system.get("facts") or {}
+        self.assertTrue(facts, "真种子必须有事实表")
+        for key, entry in facts.items():
+            self.assertIsInstance(entry, Mapping, f"{key} 被 stringify 了：{entry!r}")
+            self.assertIsInstance(entry.get("answer"), str, key)
+            self.assertNotIn("{'", entry["answer"], f"{key} 的答案成了 dict 字面量")
+            self.assertIsInstance(entry.get("keywords"), list, key)
+            self.assertTrue(entry["keywords"], f"{key} 没有 keywords，只能用原问句命中")
+            self.assertTrue(all(isinstance(word, str) and word.strip()
+                                for word in entry["keywords"]), key)
+            self.assertTrue(all("[[" not in word for word in entry["keywords"]), key)
+
+
+class PrimitiveSufficiencyTests(unittest.TestCase):
+    """Ticket 77 — 原语充分性审计：三个 M1.5 死循环族是否需要新原语。
+
+    Each test below encodes one observed loop with **existing** seed concepts
+    and passes without any engine change. They exist to keep the engine's
+    primitive set minimal: a future proposal to add a look/call/spawn verb has
+    to explain why these encodings fail, not the other way round.
+
+    The evidence in each case is a pair: the negative fixture (the same
+    engine, a pack without the declaration) reproduces the loop's dead end,
+    and the positive fixture (with the declaration) makes the same actor's
+    affordances contain a legal, executable action.
+    """
+
+    def _pack(self, directory, body: str) -> Path:
+        root = Path(directory) / "world"
+        for category in ("locations", "characters", "items", "documents"):
+            (root / category).mkdir(parents=True)
+        for location in ("教学楼", "半坡咖啡馆", "通宵值班室"):
+            (root / "locations" / f"{location}.md").write_text(
+                f"# {location}\n\n一间屋子。\n", encoding="utf-8")
+        (root / "characters" / "aa.md").write_text("A", encoding="utf-8")
+        (root / "manifest.yml").write_text(
+            "schema_version: 1\n"
+            "clock: {start: '2026-03-16T07:00:00+08:00', "
+            "stop: '2026-03-16T23:00:00+08:00'}\n"
+            "locations: [{id: 教学楼}, {id: 半坡咖啡馆}, {id: 通宵值班室}]\n"
+            "actors: [{id: aa, location: 教学楼}]\n"
+            "kb:\n  aa:\n    - {keys: [aa], desc: '我，aa。'}\n" + body,
+            encoding="utf-8")
+        return root
+
+    def test_a_notice_board_is_a_document_and_read_already_covers_it(self):
+        """公告栏：`read` 的可用对象来自 document_defs（kernel._available_readables）。
+
+        Negative fixture: a place whose prose and notices talk about a board
+        but nothing is registered — `read 公告栏` is the artifact's dead end
+        ("这里没有这样一件能读的文书", error turns #329/355/362/…).
+        Positive fixture: the same board declared as a `documents:` row — the
+        actor standing there has `read` in its affordances, the read produces a
+        `document_read`, and staying put for `reading_seconds` auto-reads it.
+        No new verb, no new event kind.
+        """
+        board = ("documents:\n"
+                 "- {id: 教学楼公告栏, title: 教学楼公告栏, location: 教学楼,\n"
+                 "   reading_seconds: 30,\n"
+                 "   content: 玻璃罩下压着三张纸：《台风纪念活动通知》招志愿者整理老照片；\n"
+                 "     一张课程表；一张过期的停电通知。}\n")
+        with TemporaryDirectory() as directory:
+            root = self._pack(directory, "items: []\ndocuments: []\nroutes: []\n"
+                                          "barriers: []\nscheduled: []\n")
+            (root / "documents" / "教学楼公告栏.md").write_text(
+                "# 教学楼公告栏\n\n正门内侧的玻璃公告栏。\n", encoding="utf-8")
+            dead_end = load_world_pack(root).build_world()
+            self.assertNotIn({"kind": "read", "item": "教学楼公告栏"},
+                             dead_end.affordances("aa"))
+            with self.assertRaises(ActionRejected) as caught:
+                dead_end.submit(Intention("aa", "read", {"item": "教学楼公告栏"},
+                                          dead_end.version))
+            self.assertIn("这里没有", caught.exception.message)
+
+        with TemporaryDirectory() as directory:
+            root = self._pack(directory, "items: []\nroutes: []\nbarriers: []\n"
+                                          "scheduled: []\n" + board)
+            (root / "documents" / "教学楼公告栏.md").write_text(
+                "# 教学楼公告栏\n\n正门内侧的玻璃公告栏。\n", encoding="utf-8")
+            world = load_world_pack(root).build_world()
+            self.assertIn({"kind": "read", "item": "教学楼公告栏"},
+                          world.affordances("aa"))
+            world.submit(Intention("aa", "read", {"item": "教学楼公告栏"}, world.version))
+            world.advance()
+            read = [e for e in world.event_log if e.kind == "document_read"]
+            self.assertEqual(len(read), 1)
+            self.assertIn("老照片", read[0].payload["content"])
+            # 停留即读：站够 reading_seconds 也算读过（ticket 49 的既有路径）。
+            stayed = load_world_pack(root).build_world()
+            stayed.poll("aa")
+            stayed.advance(until=datetime.fromisoformat(
+                "2026-03-16T07:01:00+08:00"))
+            stayed.poll("aa")
+            auto = [e for e in stayed.event_log if e.kind == "document_read"]
+            self.assertEqual(len(auto), 1)
+            self.assertTrue(auto[0].payload["auto"])
+
+    def test_stock_and_fixtures_are_item_descriptions_in_perception(self):
+        """库存/陈设：物品描述已经随在场进入知觉（_visible_descriptions）。
+
+        The artifact's 关东煮库存 stalemate and the 热水壶 hunt were people
+        asking each other about a thing in the room they could not describe.
+        A fixture declared as an `items:` row is delivered as an objective
+        description on first sight and recorded as an observation row; nothing
+        needs to be "examined". A menu/price list that must be *read* is a
+        `documents:` row (previous test).
+        """
+        with TemporaryDirectory() as directory:
+            root = self._pack(directory, (
+                "items:\n"
+                "- {id: 关东煮锅, location: 半坡咖啡馆, readable: false,\n"
+                "   readable_reason: 一口关东煮锅，没有可读的正文。}\n"
+                "documents: []\nroutes: []\nbarriers: []\nscheduled: []\n"))
+            (root / "items" / "关东煮锅.md").write_text(
+                "# 关东煮锅\n\n格子锅里还剩六串：萝卜两份、豆腐四份，汤正开着。\n",
+                encoding="utf-8")
+            world = load_world_pack(root).build_world()
+            world.actors["aa"].location = "半坡咖啡馆"
+            perceived = world.poll("aa")
+            self.assertIn("关东煮锅", perceived["descriptions"])
+            self.assertIn("萝卜两份", perceived["descriptions"]["关东煮锅"])
+            self.assertIn("萝卜两份",
+                          world.actors["aa"].observed["关东煮锅"]["objective"],
+                          "the description is the actor's own memory row")
+            # It is a prop, not a document: `read` states that and still
+            # offers an executable move instead of the artifact's dead end.
+            with self.assertRaises(ActionRejected) as caught:
+                world.submit(Intention("aa", "read", {"item": "关东煮锅"},
+                                       world.version))
+            self.assertIn("实物", caught.exception.message)
+            self.assertTrue(caught.exception.alternatives)
+
+    def test_a_duty_clerk_is_an_existing_actor_and_absence_leaves_a_record(self):
+        """值班干事：不需要排程生成的现场人物。
+
+        The d1-pm miss (林瑶 16:13–16:55 away, 16:20 面核 broadcast with no
+        in-world host and nothing to perceive on returning) is encoded with
+        two existing concepts: (a) the host is an ordinary `actors:` row
+        (V4-CAST §1 NPC tier — event-driven, woken by a scheduled `target`
+        row), and (b) the occasion leaves an artifact on the scene through the
+        existing `add_document` effect, which a later arriver perceives and
+        reads. Both are seed declarations; the engine is untouched.
+        """
+        with TemporaryDirectory() as directory:
+            root = self._pack(directory, (
+                "items: []\n"
+                "documents:\n"
+                "- {id: 审计面核记录, title: 审计面核记录, reading_seconds: 20,\n"
+                "   content: 16:20 面核：审计包逐项核对，缺项当场记下，不补写。}\n"
+                "routes:\n"
+                "- {from: 半坡咖啡馆, to: 教学楼, duration_seconds: 420}\n"
+                "- {from: 教学楼, to: 半坡咖啡馆, duration_seconds: 420}\n"
+                "barriers: []\n"
+                "scheduled:\n"
+                "- {time: '2026-03-16T16:20:00+08:00', event: audit_pack_review,\n"
+                "   target: [值班干事乙],\n"
+                "   notice: 值班干事乙按规程把审计包摊开逐项核对，当场留痕。,\n"
+                "   effects: [{op: add_document, id: 审计面核记录, location: 教学楼}]}\n"))
+            (root / "characters" / "bb.md").write_text("B", encoding="utf-8")
+            (root / "characters" / "值班干事乙.md").write_text("C", encoding="utf-8")
+            (root / "documents" / "审计面核记录.md").write_text(
+                "# 审计面核记录\n\n摊在长桌上的一页纸。\n", encoding="utf-8")
+            manifest = root / "manifest.yml"
+            manifest.write_text(
+                manifest.read_text(encoding="utf-8").replace(
+                    "actors: [{id: aa, location: 教学楼}]",
+                    "actors: [{id: aa, location: 教学楼},\n"
+                    "         {id: bb, location: 半坡咖啡馆},\n"
+                    "         {id: 值班干事乙, location: 教学楼, role: npc}]",
+                    1).replace(
+                    "kb:\n  aa:\n    - {keys: [aa], desc: '我，aa。'}\n",
+                    "kb:\n  aa:\n    - {keys: [aa], desc: '我，aa。'}\n"
+                    "  bb:\n    - {keys: [bb], desc: '我，bb。'}\n"
+                    "  值班干事乙:\n    - {keys: [值班干事乙], desc: '我，值班干事乙。'}\n",
+                    1), encoding="utf-8")
+            world = load_world_pack(root).build_world()
+            # (a) the host is a real actor the cast already contains, and the
+            # scheduled row (existing `target`) is what wakes it.
+            self.assertEqual(world.actors["值班干事乙"].role, "npc")
+            self.assertIn("值班干事乙", world.poll("aa")["nearby_actors"])
+            self.assertNotIn("审计面核记录", world.item_locations,
+                             "the record appears only when the occasion runs")
+            wake = world.advance(until=datetime.fromisoformat(
+                "2026-03-16T16:21:00+08:00"))
+            self.assertTrue(any(e.kind == "world_event"
+                                and e.payload.get("event") == "audit_pack_review"
+                                for e in wake))
+            self.assertEqual(world.item_locations["审计面核记录"], "教学楼")
+            # (b) someone who arrives late still perceives the occasion's
+            # evidence and can read it — no "核对进行中" state needed.
+            world.submit(Intention("bb", "move", {"target": "教学楼"}, world.version))
+            world.advance()
+            perceived = world.poll("bb")
+            self.assertIn("审计面核记录", perceived["descriptions"])
+            self.assertIn({"kind": "read", "item": "审计面核记录"},
+                          world.affordances("bb"))
+
+    def test_the_night_dead_end_is_a_missing_route_not_a_missing_verb(self):
+        """12345 借电话：死胡同是种子缺一个世界内出口。
+
+        Negative fixture: the stuck actor's affordances contain no place to
+        spend the night, and `text 12345` is refused (the existing `text`
+        contract: a message needs an addressable person) — the 21:30–22:00
+        "borrow a phone" loop, reproduced.
+        Positive fixture: one route to a place that serves the need, plus the
+        location's own description naming it, gives the same actor an
+        executable `move` and the caller nothing to invent.
+
+        Residual (recorded, deliberately not implemented): a literal phone call
+        to a non-person endpoint is not expressible today. The minimal
+        generalisation would be to widen `text`'s target class from actors to
+        a registered non-person endpoint (kernel `_raw_duration` text branch +
+        `_resolve_person`), not to add a `call` verb; that needs its own ticket
+        and is not required to close this loop.
+        """
+        with TemporaryDirectory() as directory:
+            root = self._pack(directory, "items: []\ndocuments: []\n"
+                                          "routes: []\nbarriers: []\nscheduled: []\n")
+            stuck = load_world_pack(root).build_world()
+            self.assertNotIn({"kind": "move", "target": "通宵值班室"},
+                             stuck.affordances("aa"),
+                             "with no route there is no exit in the world")
+            with self.assertRaises(ActionRejected) as caught:
+                stuck.submit(Intention("aa", "text", {"target": "12345",
+                                                      "text": "夜里哪儿能待？"},
+                                       stuck.version))
+            self.assertIn("12345", caught.exception.message)
+            self.assertIn("recipient_candidates", caught.exception.context,
+                          "the refusal still names who can actually be reached")
+
+        with TemporaryDirectory() as directory:
+            root = self._pack(directory, (
+                "items: []\ndocuments: []\n"
+                "routes:\n"
+                "- {from: 教学楼, to: 通宵值班室, duration_seconds: 600}\n"
+                "- {from: 通宵值班室, to: 教学楼, duration_seconds: 600}\n"
+                "barriers: []\nscheduled: []\n"))
+            (root / "locations" / "通宵值班室.md").write_text(
+                "# 通宵值班室\n\n门一直开着，值班台后能登记夜里无处可去的人。\n",
+                encoding="utf-8")
+            exit_world = load_world_pack(root).build_world()
+            self.assertIn({"kind": "move", "target": "通宵值班室"},
+                          exit_world.affordances("aa"),
+                          "one seeded route gives the loop its in-world exit")
+            self.assertIn("登记",
+                          exit_world.entity_descriptions["通宵值班室"],
+                          "and the place itself says what it is for")
+
+
+class PlaceBoundDocumentTests(unittest.TestCase):
+    """票 91 §3 裁定（报 90 §8 / 票 86 §5）：文书能不能被拿走是**种子的事实**。
+
+    窗口 2/3 的 `take` 拒绝文案把 `公告栏`、`学生会审计通知`、`学生会审计包` 与
+    可拿的 `场地申请表` 列在同一张"这里能拿的"清单里。裁定：文书默认是一张纸，
+    可拿（`场地申请表` 就是让人自取的）；一块钉在墙上的公告栏、一张贴在板上的
+    通知由种子声明 `takeable: false` + `fixed_reason`，与既有 `items:` 的固定陈设
+    同一机制——`take`/`give`/`trash` 结构化拒绝，拒绝理由用种子写的那句话，
+    候选项里也不再出现它。引擎不猜哪个名字"听起来像板"。
+    """
+
+    def _pack(self, directory, *, board_takeable=None):
+        import yaml
+        root = Path(directory)
+        for category in ("locations", "items", "documents"):
+            (root / category).mkdir(parents=True)
+        (root / "locations" / "room.md").write_text(
+            "# room\n\n一间办公室，门边挂着一块板，桌上有一张空白表。\n",
+            encoding="utf-8")
+        (root / "documents" / "公告栏.md").write_text(
+            "# 公告栏\n\n门边那块板，上面钉着这周的通知。\n", encoding="utf-8")
+        (root / "documents" / "场地申请表.md").write_text(
+            "# 场地申请表\n\n一张空白表格，自己取了填。\n", encoding="utf-8")
+        board = {"id": "公告栏", "title": "公告栏", "content": "板上钉着本周通知。",
+                 "reading_seconds": 5, "location": "room"}
+        if board_takeable is not None:
+            board["takeable"] = board_takeable
+            board["fixed_reason"] = "它钉在门边的墙上"
+        manifest = {
+            "schema_version": 1,
+            "clock": {"start": "2026-03-16T07:00:00+08:00",
+                      "stop": "2026-03-16T08:00:00+08:00"},
+            "locations": [{"id": "room"}],
+            "actors": [{"id": "aa", "location": "room"}],
+            "items": [],
+            "documents": [board,
+                          {"id": "场地申请表", "title": "场地申请表",
+                           "content": "一格一格等着填。", "reading_seconds": 5,
+                           "location": "room"}],
+            "routes": [], "barriers": [], "scheduled": [],
+            "kb": {"aa": [{"keys": ["aa"], "desc": "我，aa。"}]},
+        }
+        (root / "manifest.yml").write_text(
+            yaml.safe_dump(manifest, allow_unicode=True), encoding="utf-8")
+        return root
+
+    def test_a_declared_place_bound_document_is_not_a_take_candidate(self):
+        with TemporaryDirectory() as directory:
+            root = self._pack(directory, board_takeable=False)
+            world = load_world_pack(root).build_world()
+            takeable = [row["item"] for row in world.affordances("aa")
+                        if row["kind"] == "take"]
+            self.assertNotIn("公告栏", takeable,
+                             "钉在墙上的板不在可拿清单里（票 86 §5 的原症状）")
+            self.assertIn("场地申请表", takeable, "可移动的纸仍然可拿")
+            with self.assertRaises(ActionRejected) as caught:
+                world.submit(Intention("aa", "take", {"item": "公告栏"}, world.version))
+            self.assertIn("它钉在门边的墙上", caught.exception.message)
+            self.assertNotIn("公告栏", caught.exception.context["takeable_here"])
+            self.assertIn("场地申请表", caught.exception.context["takeable_here"])
+            self.assertEqual(world.item_locations["公告栏"], "room",
+                             "拒绝什么都不改变：板还在原处")
+            self.assertNotIn("公告栏", world.actors["aa"].inventory)
+
+    def test_an_undeclared_document_is_still_movable_paper(self):
+        """缺省即现状：没写 `takeable` 的文书照旧可以拿起来（不悄悄改语义）。"""
+        with TemporaryDirectory() as directory:
+            root = self._pack(directory)
+            world = load_world_pack(root).build_world()
+            self.assertIn({"kind": "take", "item": "公告栏"}, world.affordances("aa"))
+            world.submit(Intention("aa", "take", {"item": "公告栏"}, world.version))
+            world.advance()
+            self.assertIn("公告栏", world.actors["aa"].inventory)
+            self.assertNotIn("公告栏", world.item_locations)
+
+    def test_the_three_seeded_boards_are_fixed_fixtures(self):
+        """票 93：真种子里的三块公告栏都是钉住的陈设，不是能卷走的纸。
+
+        票 91 §1.3 的裁定把“哪个听起来像板”交给种子判断：文书默认是一张可拿的
+        纸（`场地申请表` 就是让人自取的），板与贴着的通知由种子写
+        `takeable: false` + `fixed_reason`。这里读的是真种子——三块板开局都在
+        原处、`take` 候选里没有它们、拒绝理由用种子那句原文，而 `read` 照旧可用：
+        钉住的是“能不能拿走”，不是“能不能看”。
+        """
+        world = load_world_pack(ROOT / "world").build_world()
+        boards = {"公告栏": "学生会办公室", "教学楼公告栏": "教学楼",
+                  "女生宿舍公告栏": "女生宿舍"}
+        reader = world.actors["林瑶"]
+        for board, place in boards.items():
+            self.assertEqual(world.item_locations[board], place,
+                             f"{board} 开局就在它该在的地方")
+            self.assertIn(board, world.fixed_items, f"{board} 是钉住的陈设")
+            reason = world.fixed_items[board]
+            self.assertTrue(reason.strip(), f"{board} 带一句固定的理由")
+            reader.location = place
+            self.assertNotIn({"kind": "take", "item": board},
+                             world.affordances("林瑶"),
+                             f"钉住的 {board} 不在“这里能拿的”里面")
+            self.assertIn({"kind": "read", "item": board},
+                          world.affordances("林瑶"),
+                          f"{board} 照旧可以就地看着读")
+            with self.assertRaises(ActionRejected) as caught:
+                world.submit(Intention("林瑶", "take", {"item": board}, world.version))
+            self.assertIn(reason, caught.exception.message,
+                          "拒绝理由用的是种子写的那句话")
+            self.assertNotIn(board, caught.exception.context["takeable_here"])
+            self.assertEqual(world.item_locations[board], place,
+                             "拒绝什么都不改变：板还在原处")
+            self.assertNotIn(board, reader.inventory)

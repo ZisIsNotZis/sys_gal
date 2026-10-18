@@ -26,6 +26,19 @@ non-blocking `warning:` lines, as are two ticket-61/62 silent-default traps: a
 placed document whose body asserts a concrete state while naming no
 `known_to` (ticket 61), and a concept whose `desc` states a status/conclusion
 while `known_to` hands it to many actors (ticket 62).
+
+Ticket 78 adds a second, separate channel — the seed *contract* gates (G1–G4),
+computed by :func:`contract_gate_findings` and printed by the same command.
+The name contract above asks "is this name resolvable?"; the contract gates ask
+"can the world actually deliver what the seed asserts?": G1 an acting person in
+a scheduled notice must be a real actor (or the sentence is rewritten as a
+visible absence); G2 a role noun must be a registered name or be declared
+generic in `role_prose:`; G3 every location and every item/document must be
+reachable; G4 a prose-announced interaction must land on an existing affordance
+class (a read wants a document, a seen/taken thing wants an item, a contacted
+person wants an actor or KB contact). The two channels are kept separate so each
+one's history is checkable on its own: the CLI is the pre-run gate and fails
+when either reports.
 """
 
 from __future__ import annotations
@@ -34,11 +47,13 @@ import argparse
 import re
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from harness.world_loader import (  # noqa: E402
-    _CONCRETE_PROP_WORDS, load_world_pack, ref_names, strip_refs)
+    _COMPLETENESS_STATES, _CONCRETE_PROP_WORDS, load_world_pack, ref_names,
+    strip_refs)
 from harness.kb import normalize  # noqa: E402
 
 # Surname table for 姓+身份 patterns (李阿姨, 方老师, 郑大爷, ...).
@@ -725,6 +740,629 @@ def contact_symmetry_warnings(world_root: str | Path) -> list[str]:
             "或在 B 的行里说明为何单向）"]
 
 
+# ---------------------------------------------------------------------------
+# Ticket 78: 种子契约四门（G1 施动者绑定 / G2 角色名词 / G3 可达性 / G4 动作覆盖）
+#
+# 上面那套契约问“这个名字能不能解析”；四门问“世界能不能兑现作者写的事”。
+# 四门只读种子，不改世界包，也不替作者做决定：每条违规给出所在行与两条合法改法。
+# 名字解析契约与四门分成两条通道（main() 同时跑、都判失败），因为二者的历史
+# 各自可核：前者防“提到一个不存在的东西”，后者防“写下一件世界做不到的事”。
+# ---------------------------------------------------------------------------
+
+# G1/G2 的角色类名词（后缀表）。一个作者写下的“谁在做什么”，若这个“谁”不是一个
+# 真实演员，世界就无法让这件事发生（G1）；若它连注册名都不是，读到它的人也没有任何
+# 可解析的东西（G2）。词表是受控的，不做逐名词 NLP：
+# 只收“以职务/身份指人”的词，亲属称谓（爷爷/儿子）和泛称（同学/老人）不收——
+# 后者会把大半篇散文都点成违规，把门变成噪音。
+_ROLE_NOUNS: tuple[str, ...] = (
+    "值班干事", "干事", "值班员", "值班人", "值班学生", "值班同学", "宿管阿姨",
+    "宿管助理", "值班宿管助理", "食堂大妈", "老板娘", "店员", "兼职店员",
+    "管理员", "馆员", "学生馆员", "编辑", "记者", "代表", "老师", "师傅",
+    "保安", "科员", "主任", "负责人", "班长", "辅导员", "主席", "学姐",
+    "学长", "阿姨", "大爷", "大妈", "大叔", "大姐",
+)
+# 施动线索：角色词之后、同一个分句里出现这些动词，才算“某人在做某事”。
+_AGENT_VERBS: tuple[str, ...] = (
+    "把", "说", "按", "递", "交", "送", "打", "来", "去", "走", "叫", "问",
+    "拿", "摊", "核", "签", "通", "拒", "收", "进", "出", "站", "坐", "带",
+    "拦", "催", "翻", "贴", "挂", "查", "看", "喊", "跑", "举", "搬", "抬",
+    "念", "写", "听", "返岗", "值班", "当班", "盘点", "答应", "通知", "报备",
+    "解释", "交代",
+)
+# G1 的第三条合法路：可观测缺席写法——种子不声称有人在场执行，而是说清这个人不在。
+_ABSENCE_FORMS: tuple[str, ...] = (
+    "请假", "不在", "缺席", "没来", "未到", "没到", "离校", "外出", "下班",
+    "回老家", "未见", "已离",
+)
+# “不代表你已到场”里的“代表”是动词：前面的否定/助动词把它从人名挡回动词。
+_VERB_PREFIX_CHARS = frozenset("不没未别可能要想敢需用来代被让给")
+# 引号内是某个已建模角色说的话（转述），不是世界的客观陈述：G1 只看引号外。
+_QUOTED_RE = re.compile(r"'[^']*'|\"[^\"]*\"|“[^”]*”|「[^」]*」|‘[^’]*’")
+_CLAUSE_BREAK_RE = re.compile(r"[。，；！？：\n]|——")
+_ROLE_PROSE_KEY = "role_prose"
+
+# G4：需要交互才能兑现的概念（受控词表 + 号码）。正文提到它，就等于向角色承诺了
+# 一次动作；而引擎的动作目标只有既有几类：read 的目标是文书（kernel.py:728），
+# “看见/拿”的对象是 items（描述走知觉），去的地方是可达 locations（G3），联系的
+# 对象是 actors 或 KB 联系人行。词表因此必须落到这几类上，不许自创新的概念类别。
+_INTERACTION_KINDS: dict[str, tuple[str, ...]] = {
+    "read": ("公告栏", "布告栏", "通告栏", "告示栏", "黑板报", "排班表", "值班表", "价目表"),
+    "examine": ("热水壶", "饮水机", "关东煮", "冰柜", "货架", "柜台", "储物柜",
+                "信箱", "售货机", "例汤", "菜牌", "菜谱"),
+    "call": ("电话", "内线", "热线", "总机", "分机"),
+}
+# 一个“打电话”的提法只有在同一分句里带拨打/报备线索时才算承诺了一条通信路径；
+# 否则“妈妈来电话”这类叙述会被整篇误点。
+_CALL_CUES: tuple[str, ...] = ("拨", "打", "致电", "报备", "热线", "号码", "总机", "分机")
+_PHONE_NUMBER_RE = re.compile(r"(?<![\d\-])\d{5,}(?![\d\-])")
+# G3 第二臂：正文要角色“去”的地方。引擎的 move 目标只能是注册地点，所以这类
+# 提法必须落到一个有路由的 location 上；一个只有概念（kind: place）却没有 location
+# 与路的地方，角色永远走不到（票 78：后街糕点铺）。
+_DESTINATION_CUES: tuple[str, ...] = ("去", "回", "前往", "走去", "赶往", "走进", "直奔")
+_INTERACTION_LABELS: dict[str, str] = {
+    "read": "读",
+    "examine": "看见/拿",
+    "call": "联系",
+}
+_INTERACTION_FIXES: dict[str, str] = {
+    "read": ("read 的目标只能是文书：把它登记成 documents: 条目（给 title/content/"
+             "location，正文就是张贴或写在上面的内容），或者把这句话改成不承诺可读"),
+    "examine": ("能被看见/拿取的东西必须是 items: 条目（带 location 与 known_to；"
+                "描述走知觉与 observed），或者把这句话改成不承诺可以查看/取用"),
+    "call": ("要联系的对象必须是 actors: 里的角色，或在某角色的 KB 里有一条联系人行"
+             "（contacts:），否则角色拨打时世界没有可回应的对方"),
+}
+
+
+class _Authored(NamedTuple):
+    """一段模型会看到的作者正文，以及它所属的行。行上的 `role_prose:` 就是
+    “这些角色词在本行是泛称集合”的声明。
+
+    用 NamedTuple 而不是 dataclass：测试按既有习惯以 importlib 在没有登记
+    sys.modules 的模块里执行本文件，py3.14 的 dataclass 会因此取不到模块字典。"""
+
+    source: str
+    label: str
+    section: str
+    key: str
+    text: str
+    generic: tuple[str, ...] = ()
+
+
+def _generic_declaration(row: object) -> tuple[str, ...]:
+    """行上的 `role_prose:` 声明：本行的角色词是泛称集合，不是具体某人。"""
+    if not isinstance(row, dict):
+        return ()
+    raw = row.get(_ROLE_PROSE_KEY)
+    if raw is None:
+        return ()
+    if isinstance(raw, str):
+        raw = [raw]
+    if not isinstance(raw, (list, tuple)):
+        return ()
+    return tuple(str(token).strip() for token in raw if str(token).strip())
+
+
+def _authored_texts(pack, root: Path) -> list[_Authored]:
+    """作者正文的单一口径：排程通知、概念 desc/memory、kb 行、item/document 正文、
+    地点 rules 与 extras 注记，以及 characters|items|documents|locations|
+    organizations 的 .md 正文。G2 与 G4 共用这一份语料，两门就不会各扫一套。"""
+    manifest = pack.manifest
+    rows: dict[str, dict[str, object]] = {}
+    for section in ("locations", "actors", "items", "documents"):
+        for row in manifest.get(section, ()) or ():
+            rows.setdefault(str(row.get("id")), row)
+    texts: list[_Authored] = []
+
+    def add(source: str, label: str, section: str, key: object, text: object,
+            row: object = None) -> None:
+        body = str(text)
+        if not body.strip():
+            return
+        texts.append(_Authored(source, label, section, str(key), body,
+                               _generic_declaration(row)))
+
+    for row in manifest.get("scheduled", ()) or ():
+        add("manifest.yml", f"scheduled {row.get('event')}", "scheduled",
+            row.get("event"), row.get("notice", ""), row)
+    for row in manifest.get("concepts", ()) or ():
+        label = f"concept {row.get('id')}"
+        add("manifest.yml", f"{label} desc", "concepts", row.get("id"),
+            row.get("desc", ""), row)
+        for owner, memory in (row.get("memory") or {}).items():
+            add("manifest.yml", f"{label} memory[{owner}]", "concepts",
+                row.get("id"), memory, row)
+    for actor, kb_rows in (manifest.get("kb") or {}).items():
+        for index, row in enumerate(kb_rows or (), 1):
+            keys = sorted(str(key) for key in (row.get("keys") or ()))
+            add("manifest.yml", f"kb[{actor}] {keys}", "kb", f"{actor}#{index}",
+                row.get("desc", ""), row)
+    for section in ("items", "documents"):
+        for row in manifest.get(section, ()) or ():
+            entity = str(row.get("id"))
+            for field in ("content", "desc"):
+                add("manifest.yml", f"{section[:-1]} {entity} {field}", section,
+                    entity, row.get(field, ""), row)
+    for row in manifest.get("locations", ()) or ():
+        place = str(row.get("id"))
+        for index, rule in enumerate(row.get("rules", ()) or ()):
+            add("manifest.yml", f"location {place} rules[{index}]", "locations",
+                place, rule, row)
+        for extra in row.get("extras", ()) or ():
+            # fragment 本身就是“这个地点常出现的陌生人”的声明，不扫；注记扫。
+            add("manifest.yml", f"location {place} extras knowledge_notes",
+                "locations", place, extra.get("knowledge_notes", ""), row)
+    for pattern in ("characters/*.md", "items/*.md", "documents/*.md",
+                    "locations/*.md", "organizations/*.md"):
+        for path in sorted(root.glob(pattern)):
+            relative = str(path.relative_to(root))
+            add(relative, relative, "", path.stem,
+                path.read_text(encoding="utf-8"), rows.get(path.stem))
+    return texts
+
+
+def _blank_quotes(text: str) -> str:
+    """引号里的话是某个角色的转述，不是世界的客观陈述。"""
+    return _QUOTED_RE.sub(lambda match: "\u0001" * len(match.group(0)), text)
+
+
+def _mask_names(text: str, names: set[str] | frozenset[str]) -> str:
+    """把已解析的名字整段吃掉，只剩没被任何名字覆盖的文本。"""
+    body = text
+    for name in sorted(names, key=len, reverse=True):
+        if len(name) >= 2:
+            body = body.replace(name, "\u0002" * len(name))
+    return body
+
+
+def _clause_bounds(text: str, start: int, end: int) -> tuple[int, int]:
+    """包含 [start, end) 的分句边界。"""
+    left = 0
+    for match in _CLAUSE_BREAK_RE.finditer(text[:start]):
+        left = match.end()
+    right = len(text)
+    for match in _CLAUSE_BREAK_RE.finditer(text, end):
+        right = match.start()
+        break
+    return left, right
+
+
+def _role_hits(body: str) -> list[tuple[int, str]]:
+    """角色词的位置与词本身，长词优先（值班干事吃掉底下的干事）。"""
+    hits: list[tuple[int, str]] = []
+    for token in _ROLE_NOUNS:
+        start = body.find(token)
+        while start >= 0:
+            hits.append((start, token))
+            start = body.find(token, start + len(token))
+    hits.sort(key=lambda hit: (hit[0], -len(hit[1])))
+    kept: list[tuple[int, str]] = []
+    for position, token in hits:
+        if kept and position < kept[-1][0] + len(kept[-1][1]):
+            continue
+        kept.append((position, token))
+    return kept
+
+
+def bare_role_tokens(text: str, declared: set[str]) -> list[str]:
+    """G2：正文里既没注册、也不被任何注册名覆盖的角色类名词。
+
+    否定/助动词前面的“代表/负责”是动词（“不代表你已到场”），不是人在做事。"""
+    body = _mask_names(strip_refs(text), declared)
+    tokens: list[str] = []
+    for position, token in _role_hits(body):
+        if position and body[position - 1] in _VERB_PREFIX_CHARS:
+            continue
+        if token not in tokens:
+            tokens.append(token)
+    return tokens
+
+
+def _acting_role_tokens(text: str, bound: set[str]) -> list[str]:
+    """G1：在排程通知里“做某事”的角色类名词。
+
+    只把真实演员从正文里抹掉，其余角色词都保留——注册成概念并不等于世界有人能兑现
+    它（这正是 G1 比 G2 严的地方）。"""
+    body = _mask_names(_blank_quotes(strip_refs(text)), bound)
+    tokens: list[str] = []
+    for position, token in _role_hits(body):
+        end = position + len(token)
+        left, right = _clause_bounds(body, position, end)
+        clause = body[left:right]
+        if any(form in clause for form in _ABSENCE_FORMS):
+            continue  # 可观测缺席写法：不声称有人在场执行
+        if position and body[position - 1] in _VERB_PREFIX_CHARS:
+            continue  # “不代表你已到场”里的“代表”是动词
+        if not any(verb in body[end:right] for verb in _AGENT_VERBS):
+            continue
+        tokens.append(token)
+    return tokens
+
+
+def _bound_agents(pack) -> set[str]:
+    """一条排程能兑现的施动者：真实演员。
+
+    地点 extras 的 fragment 不算——“这个地点常出现的陌生人”由引擎按需临时邀请，
+    没有在场保证、没有库存、也不会把一个结果留在现场，承担不了广播里的一件事。
+    票 77b 已裁定这条编码：事件宿主是既有 `actors:` 行（V4-CAST §1 NPC 层），
+    不新增原语。"""
+    return {str(actor["id"]) for actor in pack.actors}
+
+
+def schedule_agent_findings(pack, root: Path) -> list[str]:
+    """G1 施动者绑定：排程通知里“某人做某事”的人必须是一个真实演员。
+
+    排程通知是世界的客观陈述、广播给所有人；它一旦说“值班干事把审计包摊开核对”，
+    世界就得真有这个人做得成这件事。把名字注册成概念不算（概念没有双手），地点
+    extras 也不算（见 :func:`_bound_agents`）。合法的两条路是绑定既有 actor，
+    或把这件事写成可观测的缺席。
+    """
+    findings: list[str] = []
+    rows = _manifest_rows(root)
+    declared = _declared(pack)
+    bound = _bound_agents(pack)
+    for row in pack.manifest.get("scheduled", ()) or ():
+        event = str(row.get("event"))
+        notice = str(row.get("notice", ""))
+        if not notice.strip():
+            continue
+        for token in sorted(set(_acting_role_tokens(notice, bound))):
+            findings.append(
+                f"G1 {_row_line(rows, 'scheduled', event, token, declared)}: "
+                f"scheduled {event}: 施动者 {token!r} 没绑定任何演员 —— "
+                f"排程通知是客观陈述，{token} 做的事必须有人真的能做："
+                f"① 把这句的主语换成 actors: 里的真实角色（事件宿主就是既有 actor，"
+                f"票 77b）；② 或改用可观测缺席写法（{token}不在/请假/没来），"
+                "不声称有人在场执行；地点 extras 不算绑定（临时邀请的陌生人，"
+                "没有在场保证、库存与留痕）")
+    return findings
+
+
+def role_prose_findings(pack, root: Path) -> list[str]:
+    """G2 角色名词扫描：正文里的角色类名词要么是注册名，要么在本行声明为泛称。"""
+    declared = _declared(pack)
+    rows = _manifest_rows(root)
+    findings: list[str] = []
+    for text in _authored_texts(pack, root):
+        for token in bare_role_tokens(text.text, declared):
+            if any(token in generic or generic in token for generic in text.generic):
+                continue
+            findings.append(
+                f"G2 {_text_line(root, rows, text, token, declared)}: {text.label}: 角色类名词 "
+                f"{token!r} 既没注册，也没声明是泛称 —— 二选一："
+                f"① 注册成概念并在正文里写成 [[{token}]]"
+                f"（kind: person 是具体某人，kind: generic 是“谁都可以”的泛称）；"
+                f"② 在本行的 {_ROLE_PROSE_KEY}: 里声明它是泛称集合"
+                f"（{_ROLE_PROSE_KEY}: [{token}]），表示这个人不是具体某人")
+    return findings
+
+
+def _route_graph(pack) -> dict[str, set[str]]:
+    graph: dict[str, set[str]] = {str(row["id"]): set() for row in pack.locations}
+    for row in pack.routes:
+        graph.setdefault(str(row["from"]), set()).add(str(row["to"]))
+    return graph
+
+
+def _walk_from(graph: dict[str, set[str]], start: str) -> set[str]:
+    seen = {start}
+    pending = [start]
+    while pending:
+        for neighbour in graph.get(pending.pop(), ()):
+            if neighbour not in seen:
+                seen.add(neighbour)
+                pending.append(neighbour)
+    return seen
+
+
+def _mc_reachability(pack) -> dict[str, set[str]]:
+    """每个 MC 从自己出发点按路由图能走到的地点集合。"""
+    graph = _route_graph(pack)
+    starts = sorted({str(row["location"]) for row in pack.actors
+                     if str(row.get("role", "mc")) == "mc"})
+    starts = starts or sorted({str(row["location"]) for row in pack.actors})
+    return {start: _walk_from(graph, start) for start in starts}
+
+
+def _reachable_locations(pack) -> set[str]:
+    reachable: set[str] = set()
+    for seen in _mc_reachability(pack).values():
+        reachable |= seen
+    return reachable
+
+
+def _entity_paths(pack) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+    """(实体 -> 出现过的地点, 实体 -> 携带它的角色)。开局位置、背包与排程投放
+    都算“出现过的地点”，所以一个今天才被放进档案室的册子也有路径。"""
+    places: dict[str, set[str]] = {}
+    carriers: dict[str, set[str]] = {}
+    location_ids = {str(row["id"]) for row in pack.locations}
+    for kind in ("items", "documents"):
+        for row in getattr(pack, kind):
+            entity = str(row["id"])
+            places.setdefault(entity, set())
+            carriers.setdefault(entity, set())
+            if row.get("location") is not None:
+                places[entity].add(str(row["location"]))
+    for row in pack.actors:
+        for item in row.get("inventory", ()):
+            carriers.setdefault(str(item), set()).add(str(row["id"]))
+    for row in pack.scheduled:
+        for effect in row.get("effects", ()) or ():
+            if not isinstance(effect, dict):
+                continue
+            place = str(effect.get("location"))
+            if (str(effect.get("op", "")) in {"add_item", "add_document", "move_item"}
+                    and place in location_ids):
+                places.setdefault(str(effect.get("id")), set()).add(place)
+    return places, carriers
+
+
+def _has_a_path(entity: str, places: dict[str, set[str]], carriers: dict[str, set[str]],
+                reachable: set[str], actor_places: dict[str, str]) -> bool:
+    if any(place in reachable for place in places.get(entity, ())):
+        return True
+    return any(actor_places.get(actor) in reachable
+               for actor in carriers.get(entity, ()))
+
+
+def destination_findings(pack, root: Path) -> list[str]:
+    """G3 第二臂：正文要角色“去”的地方必须是一个注册 location（有路由）。
+
+    引擎的 move 目标只能是 locations（G3 第一臂保证它可达）。一个地方若只作为
+    `kind: place` 的概念存在——后街糕点铺——角色会被常驻任务派去，却得到一个
+    “不是一个你知道的地方”的拒绝，而且没有任何人能指路（票 78 报告 §2.4-2）。
+    远程地点（remote: true）是种子显式声明的“只通电话”，不算漏。"""
+    places = {concept["name"] for concept in pack.concepts if concept["kind"] == "place"}
+    places.update(alias for concept in pack.concepts if concept["kind"] == "place"
+                  for alias in concept["aliases"])
+    location_ids = {str(row["id"]) for row in pack.locations}
+    places -= location_ids
+    if not places:
+        return []
+    findings: list[str] = []
+    declared = _declared(pack)
+    rows = _manifest_rows(root)
+    for text in _authored_texts(pack, root):
+        body = strip_refs(text.text)
+        for name in sorted(places, key=len, reverse=True):
+            for cue in _DESTINATION_CUES:
+                start = body.find(cue + name)
+                if start < 0:
+                    continue
+                findings.append(
+                    f"G3 {_text_line(root, rows, text, name, declared)}: {text.label}: "
+                    f"正文派角色去 {name!r}，但它只是一个 kind: place 的概念，"
+                    "不是注册地点、也没有路由 —— 要么把它注册成 locations: 行并加"
+                    "双向 routes，要么把这句话改成不需要走过去（电话/托人带话），"
+                    "或删掉这条派工")
+                break
+    return findings
+
+
+def reachability_findings(pack, root: Path) -> list[str]:
+    """G3 可达性：每个注册地点、每件注册物件都得有一条走得通的获取/读取路径。
+
+    远程地点（`remote: true`，只通电话/消息）本身就是“走不到”，由种子显式声明，
+    故不按步行判；但放在那里的物件没有路径，照样要报。"""
+    findings: list[str] = []
+    per_mc = _mc_reachability(pack)
+    reachable = _reachable_locations(pack)
+    for row in pack.locations:
+        place = str(row["id"])
+        if row.get("remote"):
+            continue
+        lost = [start for start, seen in per_mc.items() if place not in seen]
+        if lost:
+            findings.append(
+                f"G3 location {place}: 路由图上从 MC 出发点 {'、'.join(lost)} 都走不到 —— "
+                f"加一条双向 routes: `- {{from: 已有地点, to: {place}, "
+                "duration_seconds: N}}` 与反向，或把它声明成 remote: true"
+                "（仅电话/消息可达），或从种子里删掉")
+    places, carriers = _entity_paths(pack)
+    actor_places = {str(row["id"]): str(row["location"]) for row in pack.actors}
+    for kind in ("items", "documents"):
+        for row in getattr(pack, kind):
+            entity = str(row["id"])
+            if row.get("completeness") in _COMPLETENESS_STATES:
+                continue  # expectation/belief/missing：作者已声明它此刻不在手上
+            if _has_a_path(entity, places, carriers, reachable, actor_places):
+                continue
+            where = sorted(places.get(entity, ())) or sorted(carriers.get(entity, ()))
+            findings.append(
+                f"G3 {kind[:-1]} {entity}: 没有任何走得通的获取/读取路径"
+                f"（出现在 {where or '无处'}）—— 放在可达地点、放进可达角色的 "
+                "inventory、用 scheduled 的 add_item/add_document 投放到可达地点，"
+                "或在该行声明 completeness: expectation/belief/missing")
+    findings.extend(destination_findings(pack, root))
+    return findings
+
+
+def _contact_targets(pack) -> set[str]:
+    """正文可以要求角色去“联系”的对象：actors 的名字，以及每个角色 KB 里那条
+    联系人行的对方与别名（contacts:，加载时展开成 !contact 行）。"""
+    targets = {str(row["id"]) for row in pack.actors}
+    for rows in pack.contacts.values():
+        for row in rows:
+            targets.add(str(row["of"]))
+            targets.update(str(alias) for alias in row.get("as", ()))
+    return targets
+
+
+def _interaction_mentions(text: str) -> list[tuple[str, str, str]]:
+    """(交互类别, 概念词, 所在分句) —— 正文向角色承诺的交互。
+
+    ``read``/``examine`` 按受控词表匹配；“打电话”只有同一分句里带拨打/报备线索
+    才算承诺了一条通信路径（否则“妈妈来电话”这类叙述会被整篇误点），号码按字面
+    取出。"""
+    body = strip_refs(text)
+    mentions: list[tuple[str, str, str]] = []
+    for kind, nouns in _INTERACTION_KINDS.items():
+        for noun in nouns:
+            for match in re.finditer(re.escape(noun), body):
+                left, right = _clause_bounds(body, match.start(), match.end())
+                clause = body[left:right]
+                if kind == "call" and not any(cue in clause for cue in _CALL_CUES):
+                    continue
+                mentions.append((kind, noun, clause))
+                break
+    for number in _PHONE_NUMBER_RE.findall(body):
+        position = body.find(number)
+        left, right = _clause_bounds(body, position, position + len(number))
+        mentions.append(("call", number, body[left:right]))
+    return mentions
+
+
+def interaction_findings(pack, root: Path) -> list[str]:
+    """G4 动作覆盖：正文要角色去交互的东西，必须落在既有的动作目标类上。
+
+    引擎只有几类目标，正文不能凭空多要一类：``read`` 的目标是文书
+    （:meth:`harness.kernel.World._available_readables`，即 documents 与带 content
+    的 items），被看见/拿取的东西必须是 items（描述走知觉与 observed），去的地方是
+    可达 locations（G3 判），联系的对象是 actors 或 KB 联系人行。正文提到一个“需要
+    交互”的东西却不属于任何既有类别，就是角色会反复追问路人、世界答不出来的那一族。
+    匹配用整名（不吃子串）：一锅关东煮不是“一碗关东煮”，货架也不是货架上的货。"""
+    findings: list[str] = []
+    reachable = _reachable_locations(pack)
+    places, carriers = _entity_paths(pack)
+    actor_places = {str(row["id"]): str(row["location"]) for row in pack.actors}
+
+    def reachable_names(names: set[str]) -> set[str]:
+        return {name for name in names
+                if _has_a_path(name, places, carriers, reachable, actor_places)}
+
+    declared = _declared(pack)
+    readable = reachable_names(
+        {str(row["id"]) for row in pack.documents}
+        | {str(row["id"]) for row in pack.items
+           if str(row.get("content", "")).strip() and row.get("readable") is not False})
+    examinable = reachable_names({str(row["id"]) for row in pack.items})
+    contacts = _contact_targets(pack)
+
+    rows = _manifest_rows(root)
+    for text in _authored_texts(pack, root):
+        for kind, token, clause in _interaction_mentions(text.text):
+            if kind == "read" and token in readable:
+                continue
+            if kind == "examine" and token in examinable:
+                continue
+            if kind == "call" and any(target in clause for target in contacts):
+                continue
+            findings.append(
+                f"G4 {_text_line(root, rows, text, token, declared)}: {text.label}: 正文提到 "
+                f"{token!r}，等于要求角色去「{_INTERACTION_LABELS[kind]}」它，"
+                f"但它不属于任何一种既有动作目标 —— {_INTERACTION_FIXES[kind]}")
+    return findings
+
+
+def contract_gate_findings(world_root: str | Path) -> list[str]:
+    """Ticket 78 的四门：G1 施动者绑定 / G2 角色名词 / G3 可达性 / G4 动作覆盖。
+
+    与 :func:`lint` 分开成一条通道：`lint` 判“名字是否可解析”，四门判“世界能不能
+    兑现作者写下的事”。CLI 同时跑两条通道并都判失败——预跑门禁因此一条命令生效。"""
+    root = Path(world_root)
+    try:
+        pack = load_world_pack(root)
+    except ValueError as exc:
+        return [f"world pack violates the seed contract: {exc}"]
+    findings: list[str] = []
+    findings.extend(schedule_agent_findings(pack, root))
+    findings.extend(role_prose_findings(pack, root))
+    findings.extend(reachability_findings(pack, root))
+    findings.extend(interaction_findings(pack, root))
+    return findings
+
+
+# --- 违规坐标：只为把违规指到行上，不参与任何判定 -------------------------------
+_TOP_LEVEL_KEY_RE = re.compile(r"^([a-z_]+):\s*$")
+_ROW_ANCHOR_RE = re.compile(r"^- (?:id|event):\s*(?P<value>.+?)\s*$")
+_KB_ANCHOR_RE = re.compile(r"^  (\S+):\s*$")
+_ANCHOR_SECTIONS = frozenset({"locations", "actors", "items", "documents",
+                              "scheduled", "concepts", "kb"})
+
+
+class _ManifestRow(NamedTuple):
+    """manifest.yml 的一行及其所属的行首：只为把违规指到行上，不参与判定。"""
+
+    section: str
+    key: str
+    row_start: int
+    line_number: int
+    line: str
+
+
+def _manifest_rows(root: Path) -> list[_ManifestRow]:
+    path = root / "manifest.yml"
+    if not path.is_file():
+        return []
+    rows: list[_ManifestRow] = []
+    current: tuple[str, str, int] | None = None
+    section = ""
+    kb_actor = ""
+    kb_index = 0
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        top = _TOP_LEVEL_KEY_RE.match(line)
+        if top:
+            section = top.group(1)
+            current = None
+            continue
+        anchor = _ROW_ANCHOR_RE.match(line)
+        key = anchor.group("value").strip("'\"") if anchor else ""
+        if not anchor and section == "kb":
+            kb = _KB_ANCHOR_RE.match(line)
+            if kb:
+                kb_actor = kb.group(1)
+                kb_index = 0
+                current = ("kb", f"{kb_actor}#0", number)
+                rows.append(_ManifestRow(*current, number, line))
+                continue
+            if line.startswith("  - "):
+                kb_index += 1
+                current = ("kb", f"{kb_actor}#{kb_index}", number)
+                rows.append(_ManifestRow(*current, number, line))
+                continue
+        if anchor and section in _ANCHOR_SECTIONS:
+            current = (section, key, number)
+            rows.append(_ManifestRow(*current, number, line))
+            continue
+        if current is not None:
+            rows.append(_ManifestRow(*current, number, line))
+    return rows
+
+
+def _row_line(rows: list[_ManifestRow], section: str, key: str, needle: str,
+              declared: set[str]) -> str:
+    """某个 manifest 行里出现 needle 的行号（找不到就回到该行的行首）。
+
+    kb 的一个角色下面有多行，所以先按行首分组：命中在哪一组的哪一行就说哪一行。
+    注册名先抹掉——“下棋大爷”坐在 known_to 里不算正文提到了“大爷”。"""
+    spans: dict[int, list[_ManifestRow]] = {}
+    for row in rows:
+        if row.section == section and row.key == key:
+            spans.setdefault(row.row_start, []).append(row)
+    for group in spans.values():
+        for row in group:
+            if needle in _mask_names(strip_refs(row.line), declared):
+                return f"manifest.yml:{row.line_number}"
+    if spans:
+        return f"manifest.yml:{next(iter(spans))}"
+    return "manifest.yml"
+
+
+def _text_line(root: Path, rows: list[_ManifestRow], text: _Authored,
+               needle: str, declared: set[str]) -> str:
+    """一段作者正文在源文件里的行号：manifest 按所属行定位，.md 按“没被注册名
+    覆盖的那一处”定位（标题里的名字不算——它是定义，不是正文提到的人）。"""
+    if text.source == "manifest.yml":
+        return _row_line(rows, text.section, text.key, needle, declared)
+    path = root / text.source
+    if path.is_file():
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if needle in _mask_names(strip_refs(line), declared):
+                return f"{text.source}:{number}"
+    return text.source
+
+
 def sources_md(root: Path) -> list[tuple[str, str]]:
     return [(str(path.relative_to(root)), path.read_text(encoding="utf-8"))
             for pattern in _PROSE_GLOBS
@@ -774,6 +1412,7 @@ def main() -> int:
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
     findings = lint(args.world)
+    contract = contract_gate_findings(args.world)
     try:
         warnings = collision_warnings(args.world)
     except ValueError:
@@ -799,6 +1438,11 @@ def main() -> int:
         print(f"seed lint FAILED ({len(findings)} unregistered name(s)):")
         for finding in findings:
             print("  " + finding)
+    if contract:
+        print(f"seed contract FAILED ({len(contract)} violation(s), G1-G4):")
+        for finding in contract:
+            print("  " + finding)
+    if findings or contract:
         return 1
     print("seed lint OK: every named thing resolves to an entity or concept")
     return 0

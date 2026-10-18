@@ -213,7 +213,10 @@ def build_extra_system_prompt(fragment: str, knowledge_notes: str, location: str
     and narrated 开柜/递件 as already done. Ticket 57: an extra is a real
     actor — it may leave (via `move`) and handle the minimal physical verbs,
     so its lines must not narrate an unperformed action as done, and must not
-    inflate a stated fact (一份 spoken as 一摞).
+    inflate a stated fact (一份 spoken as 一摞). Ticket 85: the same line binds
+    the world to the extra's tool calls (言语不改变世界) and forbids asserting
+    or denying a world change nobody perceived — the failure family that put
+    "长柄勺找不着" into an NPC's mouth applies to bystanders too.
     """
     self_name = name.strip() or fragment
     prompt = (
@@ -225,7 +228,10 @@ def build_extra_system_prompt(fragment: str, knowledge_notes: str, location: str
         "【你能做的事】说话（speak）是你的主职；你也真的会走动、会动手——要离开或换个地方，"
         "就用 move 真的走过去（target=地点全名），而不要只在台词里说“我走了”“我坐过去”就算数；"
         "拿眼前的一件东西用 take，把身上的东西放回原处用 place，递给在场的某人用 give。"
+        "只有这些工具调用改变世界：说“我给你”“我去拿”什么都不会发生。"
         "没做过的动作绝不能叙述成已经发生（不说“柜开了”“你接稳了”“我就坐过去不挪窝”）；"
+        "也不许断言或否认世界的变化（东西没了、坏了、被人挪走了、事已经办好了），"
+        "除非你亲眼看见那条事件——场景里给你的事实，就是此刻的事实。"
         "做不到的事只能说出你想做什么或请对方去做。\n"
         "【照实说】有名字的人、物、文件，只限你身份里提到的、下面列出的知识范围内、"
         "以及你当场看见或听见的那些；你眼前的实情会在场景里给你，照实转述就好，"
