@@ -149,6 +149,13 @@ open/close/add_item/add_document/move_item/remove_item，没有 actor-move。
 
 ## Comments
 
+- 2026-10-19（用户裁定后的纠正，见票 114/115）：
+  - §1 的字段 `sheets` 与“最后一张变成文稿”的说法被纠正：字段改名 `count`（件数就是
+    件数），回执与注释改成“拿走一张 / 这沓用完了”，文稿从一开始就是作者手上另一样东西。
+  - §5 的 `artifacts.tsv` + `scripts/artifacts.py`（清单 + 复制到第二块盘）被撤销：
+    “几十 MB 不进 git”这个前提不成立，改成一件事一个紧凑形态（`*.jsonl.zst`，zstd -19）
+    直接进 git。相关文件已删除，预跑门改为 `pack_trajectory.py check`。
+
 - 2026-10-19：`NoteDeliveryGates` 的四支旧断言（“那张纸已经写满了字，不再是空白纸”）
   与“写一张少一张”直接冲突。改法是保留它守护的性质（文稿是真实体、可读、可递、
   重放同 id 同手、缺的那一张不会复活），把“纸被整件吞掉”换成“张数减少 1 且纸仍可写”，

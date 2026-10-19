@@ -8067,7 +8067,7 @@ class NoteDeliveryGates(unittest.TestCase):
         self.assertIn(note_id, world.actors["陈默"].inventory, "写好的纸在他手上")
         # 票 113（112 §E1）：种子里的「空白纸」是一沓（`sheets: 12`）——写一张只少
         # 一张，纸本身仍是可用的纸；耗尽之前它不能被说成“已经写满了”。
-        self.assertEqual(world.item_sheets["空白纸"], 11, "写一张只少一张")
+        self.assertEqual(world.item_counts["空白纸"], 11, "写一张只少一张")
         self.assertEqual(world.item_locations.get("空白纸"), "学生会办公室",
                          "一沓纸还在桌上，别人还能接着写")
         self.assertIn({"kind": "read", "item": note_id}, world.affordances("陈默"))
@@ -8132,7 +8132,7 @@ class NoteDeliveryGates(unittest.TestCase):
         self.assertIn(note_id, replayed.actors["辅导员"].inventory,
                       "递出的字条必须随事件重建在同一只手上")
         self.assertNotIn(note_id, replayed.actors["陈默"].inventory)
-        self.assertEqual(replayed.item_sheets["空白纸"], 11,
+        self.assertEqual(replayed.item_counts["空白纸"], 11,
                          "被写掉的那一张不能又变回空白纸：张数随事件重建")
         self.assertEqual(replayed.persistent_notes[note_id]["text"], self.TEXT)
         replayed.submit(Intention("辅导员", "read", {"item": note_id}, replayed.version))

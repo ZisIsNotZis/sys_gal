@@ -169,8 +169,8 @@ class WorldPack:
                          if row.get("takeable") is False},
             routes=routes, sound_barriers=barriers, scheduled=self.scheduled,
             # 票 113（112 §E1）：一沓纸的张数由种子声明，运行中写在世界状态里。
-            item_sheets={str(row["id"]): int(row["sheets"])
-                         for row in self.items if row.get("sheets") is not None},
+            item_counts={str(row["id"]): int(row["count"])
+                         for row in self.items if row.get("count") is not None},
             document_defs=document_defs,
             entity_descriptions=DescriptionStore({name: self.descriptions[name] for name in
                                                    ("locations", "items", "documents")}),
@@ -691,11 +691,11 @@ def _validate(fields: dict[str, tuple[dict[str, Any], ...]], manifest: dict[str,
             raise ValueError(f"entity {row['id']} has unknown location")
         # 票 113（112 §E1）：一件纸有几张。写错形状就是一个沉默的“写不完的纸”，
         # 所以在装载期就大声失败，而不是等写到第三张才发现。
-        sheets = row.get("sheets")
-        if sheets is not None and (not isinstance(sheets, int)
-                                   or isinstance(sheets, bool) or sheets < 1):
+        count = row.get("count")
+        if count is not None and (not isinstance(count, int)
+                                  or isinstance(count, bool) or count < 1):
             raise ValueError(
-                f"entity {row['id']} sheets must be a positive integer: {sheets!r}")
+                f"entity {row['id']} count must be a positive integer: {count!r}")
         if "known_to" in row and not isinstance(row["known_to"], list):
             raise ValueError("known_to must be a list")
         if any(actor not in actors for actor in row.get("known_to", ())):

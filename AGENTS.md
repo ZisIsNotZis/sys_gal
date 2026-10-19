@@ -53,15 +53,17 @@ cd 契约失效时请勿喂猫/v4
 python3 -m unittest discover -s harness/tests -p 'test_*.py'
 python3 -m unittest discover -s scripts -p 'test_*.py'
 python3 scripts/seed_lint.py --verbose
-python3 scripts/artifacts.py check
+python3 scripts/pack_trajectory.py check
 ```
 
-`runs/` and `checkpoints/` JSON are kept out of git by size, so a run's evidence is
-only durable once it is archived: after every run, `scripts/artifacts.py archive`
-copies the new artefacts to the declared second home and records path/size/sha256
-in `v4/artifacts.tsv`; `check` verifies every declared artefact. A claim whose
-artefact is declared but missing is unverifiable — the previous acceptance run's
-whole trajectory was lost this way (ticket 113).
+A run's evidence lives in git as its packed form `runs/<run-id>.jsonl.zst` (one
+record per line, `zstd -19`, nothing trimmed: every event, turn, session and KB row
+is there; only a checkpoint's embedded copy of the same run's trajectory is
+dropped and restored on unpack). The raw `.json` stays local and can be
+regenerated. After every run, `scripts/pack_trajectory.py pack`; `check` fails on an
+unpacked run, a stale pack, or a pack that does not unpack to the original. A claim
+whose artefact exists in neither form is unverifiable — the previous acceptance
+run's whole trajectory was lost that way (tickets 113/114).
 
 A new in-world name that is not in `world/manifest.yml` (entities or
 `concepts:`) fails the lint by design — register it instead of leaving it as

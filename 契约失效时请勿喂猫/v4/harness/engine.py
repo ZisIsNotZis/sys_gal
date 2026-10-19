@@ -1400,14 +1400,14 @@ class AsyncEngine:
             note_event = next((event for event in events
                               if (event.payload or {}).get("note")), None)
             note_id = str(note_event.payload.get("note")) if note_event is not None else ""
-            sheets_left = ((note_event.payload or {}).get("sheets_left")
+            count_left = ((note_event.payload or {}).get("count_left")
                            if note_event is not None else None)
             return self._leave_note_yield(world, actor_id,
                                           persist=bool(args.get("persist")),
                                           note_id=note_id,
                                           on=str(args.get("on") or ""),
-                                          sheets_left=(int(sheets_left)
-                                                       if sheets_left is not None else None))
+                                          count_left=(int(count_left)
+                                                       if count_left is not None else None))
         if name == "trash":
             return "已销毁。"
         if name == "place":
@@ -1438,7 +1438,7 @@ class AsyncEngine:
     def _leave_note_yield(self, world: World, actor_id: str, *,
                           persist: bool = False, note_id: str = "",
                           on: str = "",
-                          sheets_left: int | None = None) -> str:
+                          count_left: int | None = None) -> str:
         """Ticket 44: the receipt must state the note's real audience.
 
         A note's semantics (user ruling 2026-09-22) are: the first non-author
@@ -1460,7 +1460,9 @@ class AsyncEngine:
         票 95（E98）：`on` 是写在既有文书上的那一栏——一条追加的批注，不是字条。
 
         票 113（112 §E1）：`on` 是一沓纸时，回执要说清“这张纸还剩几张”——
-        旧回执不说，作者就以为整沓纸都变成了自己手里这一份。"""
+        旧回执不说，作者就以为整沓纸都变成了自己手里这一份：所以他不会再想到
+        “桌上还有纸，别人也能写”。张数只是张数——写一张少一张，写好的那句话是
+        另一样东西，不是纸“变成”了别的什么。"""
         actor = world.actors[actor_id]
         present = sorted(other.id for other in world.actors.values()
                          if other.id != actor_id and other.location == actor.location)
@@ -1476,14 +1478,14 @@ class AsyncEngine:
                             "他们看见你在上面写了字，但不会自动看到你写的正文。")
             return receipt
         if persist:
-            if on and sheets_left is not None:
+            if on and count_left is not None:
                 # 票 113（112 §E1）：写在一张纸上——这份文稿在作者手上，纸是耗材。
                 receipt = (f"这份书面记录写在「{on}」的一张纸上，现在在你手里"
                            + (f"（编号 {note_id}）" if note_id else "")
                            + "。"
-                           + (f"那沓纸还剩 {sheets_left} 张，别人拿去还能接着写。"
-                              if sheets_left > 0
-                              else "那是最后一张——那张纸从此就是这份文稿。"))
+                           + (f"那沓还剩 {count_left} 张，别人拿去还能接着写。"
+                              if count_left > 0
+                              else "那是这沓的最后一张——这沓纸用完了。"))
                 if note_id:
                     receipt += (f"读到全文用 {World._tool_call_json('read', {'item': note_id})}"
                                 "；要把它交出去，用 give 交到对方手上——留在这里不算交件。")
