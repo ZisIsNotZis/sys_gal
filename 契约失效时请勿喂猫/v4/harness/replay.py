@@ -118,12 +118,18 @@ def _apply_consequence(world: World, event: Event) -> None:
                 "left_at": event.time.isoformat()}
             sheet = str(payload.get("on") or "")
             if sheet and sheet not in world.document_defs:
-                # 票 101（E105b）：这张纸被写成了这份文稿——它不再是一张空白纸，
-                # 文稿在作者手上（与 `_complete` 的 leave_note 分支一致）。
+                # 票 101（E105b）：这张纸被写成了这份文稿；票 113（112 §E1）：
+                # 一沓纸写一张只少一张，剩 ≥1 张时纸本身还是原来那张（位置与
+                # 持有关系都不变），只剩最后一张时它才变成这份文稿。
                 writer = world.actors.get(str(event.actor))
-                for actor in world.actors.values():
-                    actor.inventory.discard(sheet)
-                world.item_locations.pop(sheet, None)
+                left = int(payload.get("sheets_left", 0))
+                if left > 0:
+                    world.item_sheets[sheet] = left
+                else:
+                    world.item_sheets.pop(sheet, None)
+                    for actor in world.actors.values():
+                        actor.inventory.discard(sheet)
+                    world.item_locations.pop(sheet, None)
                 if writer is not None:
                     writer.inventory.add(note_id)
         else:

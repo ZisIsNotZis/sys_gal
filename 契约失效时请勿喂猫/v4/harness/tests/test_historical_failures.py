@@ -8033,7 +8033,7 @@ class NoteDeliveryGates(unittest.TestCase):
     签名、亲手交给辅导员"）因此在世界里**结构上不可达**。修法不新增动作种类：
     ① `give` 的目标物 = item ∪ 已存在的便条 id（便条本来就在世界上，递它就是递纸），
     持有关系沿用背包（→ replay 可重建），完成时字条随收件人移动；
-    ② `leave_note on=<空白纸>` 把那张纸写成一份带编号的文稿（可读、可递），纸被用掉；
+    ② `leave_note on=<空白纸>` 把那张纸写成一份带编号的文稿（可读、可递）；
     ③ 拒绝回执不再拿无关文书当替代。
     """
 
@@ -8043,6 +8043,11 @@ class NoteDeliveryGates(unittest.TestCase):
         world = load_story_pack().build_world()
         world.actors["陈默"].location = "学生会办公室"
         world.actors["辅导员"].location = "学生会办公室"
+        # 票 113（112 §E1/E2）：种子的排程现在会把值班 npc 放到岗位上
+        # （`place_actor`），而 `advance()` 不带上限会走完整个排程——19:00 的收件档
+        # 会把辅导员从这间屋子挪回她的办公室。这条门禁测的是“写好的纸能不能递
+        # 出去”，场景由测试自己摆定，所以清掉排程。
+        world._queue.clear()
         return world
 
     def _written_sheet(self, world):
@@ -8060,7 +8065,11 @@ class NoteDeliveryGates(unittest.TestCase):
                       "手边的空白纸必须是一个真的能写的目标")
         note_id = self._written_sheet(world)
         self.assertIn(note_id, world.actors["陈默"].inventory, "写好的纸在他手上")
-        self.assertNotIn("空白纸", world.item_locations, "那张纸已经写满了字，不再是空白纸")
+        # 票 113（112 §E1）：种子里的「空白纸」是一沓（`sheets: 12`）——写一张只少
+        # 一张，纸本身仍是可用的纸；耗尽之前它不能被说成“已经写满了”。
+        self.assertEqual(world.item_sheets["空白纸"], 11, "写一张只少一张")
+        self.assertEqual(world.item_locations.get("空白纸"), "学生会办公室",
+                         "一沓纸还在桌上，别人还能接着写")
         self.assertIn({"kind": "read", "item": note_id}, world.affordances("陈默"))
         self.assertIn({"kind": "give", "target": "辅导员", "item": note_id},
                       world.affordances("陈默"), "拿着它就该能在选项里递给面前的人")
@@ -8123,7 +8132,8 @@ class NoteDeliveryGates(unittest.TestCase):
         self.assertIn(note_id, replayed.actors["辅导员"].inventory,
                       "递出的字条必须随事件重建在同一只手上")
         self.assertNotIn(note_id, replayed.actors["陈默"].inventory)
-        self.assertNotIn("空白纸", replayed.item_locations, "被写掉的那张纸不能又变回空白纸")
+        self.assertEqual(replayed.item_sheets["空白纸"], 11,
+                         "被写掉的那一张不能又变回空白纸：张数随事件重建")
         self.assertEqual(replayed.persistent_notes[note_id]["text"], self.TEXT)
         replayed.submit(Intention("辅导员", "read", {"item": note_id}, replayed.version))
         replayed.advance()

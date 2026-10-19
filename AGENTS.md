@@ -51,8 +51,17 @@ run:
 ```text
 cd 契约失效时请勿喂猫/v4
 python3 -m unittest discover -s harness/tests -p 'test_*.py'
+python3 -m unittest discover -s scripts -p 'test_*.py'
 python3 scripts/seed_lint.py --verbose
+python3 scripts/artifacts.py check
 ```
+
+`runs/` and `checkpoints/` JSON are kept out of git by size, so a run's evidence is
+only durable once it is archived: after every run, `scripts/artifacts.py archive`
+copies the new artefacts to the declared second home and records path/size/sha256
+in `v4/artifacts.tsv`; `check` verifies every declared artefact. A claim whose
+artefact is declared but missing is unverifiable — the previous acceptance run's
+whole trajectory was lost this way (ticket 113).
 
 A new in-world name that is not in `world/manifest.yml` (entities or
 `concepts:`) fails the lint by design — register it instead of leaving it as

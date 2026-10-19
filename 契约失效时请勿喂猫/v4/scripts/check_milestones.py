@@ -493,11 +493,50 @@ def _d1_linyao_self_audit(ev, turns, sess):
 
 
 # ---------------------------------------------------------------- day 2
+D2_STATEMENT_RECIPIENT = "辅导员"
+# 3/17 08:00 的缺件清点是“按时”的时点：交在这一档之内（含清点那一小时）才算按期，
+# 之后交的是交件但是迟到，不计入（票 113 = 112 §D1-3-E8）。
+D2_STATEMENT_DUE = "09:00:00"
+# D2 的“非任务私人对话”要排除案子上的词：这些词出现在 D1 的每一条同场对话里，
+# 不排除就回到“随便一句任务话就 PASS”（票 113 = 112 §D1-3-E7）。
+D2_TASK_WORDS = ("台账", "登记", "审计", "说明", "材料", "导出件", "字条",
+                 "催办", "核对", "程序", "签字", "收件", "清点", "缺件",
+                 "值班", "档案", "纸", "证明", "备份", "章")
+
+
 def _d2_audit_statement_filed(ev, turns, sess):
-    lines = [(t, a, x) for t, a, x in _day_texts(ev, 2)
-             if "书面说明" in x or ("说明" in x and "提交" in x)]
-    ok = len(lines) >= 1
-    evd = f"{len(lines)} 条提交/说明相关发言（{lines[0][0] if lines else '-'} {lines[0][1] if lines else '-'}）"
+    """审计书面说明按时提交——以交付物为证（票 113 = 112 §D1-3-E8）。
+
+    旧判据只数当天发言里同时出现“说明”与“提交”（或“书面说明”）：一条
+    “我还没提交说明”就能 PASS，一份真文稿当面交上去却不一定算。新判据沿用 D1
+    的“交付类判据以物为证”：某人 `leave_note` 写出、正文读作“个人情况说明／
+    情况说明／书面说明”的文稿，本人 `item_given` 交到辅导员手上，且发生在 08:00
+    缺件清点这一档之内（≤09:00）。迟到、只说不交、交的别人的稿子都不算。"""
+    notes = _d1_note_index(ev)
+    deliveries = []
+    for e in _day_events(ev, 2):
+        if e.get("kind") != "item_given":
+            continue
+        pay = e.get("payload") or {}
+        note = notes.get(str(pay.get("item") or ""))
+        if not note or not note["word"]:
+            continue
+        giver = str(pay.get("from") or e.get("actor") or "")
+        if giver != note["actor"] or str(pay.get("to") or "") != D2_STATEMENT_RECIPIENT:
+            continue
+        deliveries.append((str(e.get("time", ""))[11:19], note["actor"],
+                           note["word"], note["time"][11:16]))
+    on_time = [row for row in deliveries if row[0] <= D2_STATEMENT_DUE]
+    late = [row for row in deliveries if row[0] > D2_STATEMENT_DUE]
+    ok = bool(on_time)
+    if ok:
+        evd = f"{len(on_time)} 份《说明》在清点档内交到{D2_STATEMENT_RECIPIENT}手上：" + "、".join(
+            f"{a}（{t[:5]} 交，{w}，{written} 写成）" for t, a, w, written in on_time)
+    else:
+        evd = (f"无一份在 {D2_STATEMENT_DUE[:5]} 前以交付物为证交到{D2_STATEMENT_RECIPIENT}手上"
+               f"（清点档为 08:00–{D2_STATEMENT_DUE[:5]}）")
+    if late:
+        evd += "；迟到不计：" + "、".join(f"{a}（{t[:5]} 交）" for t, a, _, _ in late)
     return ok, evd
 
 
@@ -980,8 +1019,42 @@ def _d1_comedy_review():
 
 
 def _d2_romance_private_talk(ev, turns, sess):
-    ok, evd = _same_place_exchanged(ev, 2, None, "陈默", "林瑶")
-    return ok, "首次私人对话（非任务）：" + evd
+    """恋爱轴 day-2 节拍：第一次**非任务**的私人对话（票 113 = 112 §D1-3-E7）。
+
+    旧判据是 `_same_place_exchanged`——只要两人同场且互有发言。D1 里已有 65 条
+    这样的回合，全部是任务性对话（催办单、纸、核实、老周），所以旧判据进 D2 的
+    第一个同场回合就 PASS，而“第一次非任务私人对话”可以完全没发生。
+
+    新判据要两件事同时成立，二者都直接读世界事件：私密（那条发言的 `heard`
+    只有对方——说这话时在场没有第三个人）与非任务（正文不含案子上的词）。
+    双方各至少一条。"""
+    private: dict[str, list[tuple[str, str]]] = {"陈默": [], "林瑶": []}
+    for e in _day_events(ev, 2):
+        if e.get("kind") != "speech":
+            continue
+        who = str(e.get("actor"))
+        if who not in private:
+            continue
+        pay = e.get("payload") or {}
+        heard = {str(name) for name in (pay.get("heard") or ())}
+        text = str(pay.get("text") or "")
+        if not text.strip() or not (heard & {"陈默", "林瑶"}):
+            continue
+        if heard - {"陈默", "林瑶"}:      # 有第三个人听见，不是私人对话
+            continue
+        if any(word in text for word in D2_TASK_WORDS):
+            continue
+        private[who].append((e["time"][11:16], text))
+    ok = bool(private["陈默"]) and bool(private["林瑶"])
+    if ok:
+        first = min(private["陈默"][0][0], private["林瑶"][0][0])
+        evd = (f"无第三人在场的非任务对话：陈默×{len(private['陈默'])} / "
+               f"林瑶×{len(private['林瑶'])} 条（{first} 起）")
+    else:
+        missing = "、".join(name for name, rows in private.items() if not rows) or "双方"
+        evd = (f"缺 {missing} 的无第三人在场非任务发言（陈默×{len(private['陈默'])} / "
+               f"林瑶×{len(private['林瑶'])}）——同场任务性对话不算私人对话")
+    return ok, evd
 
 
 def _d2_comedy_review():

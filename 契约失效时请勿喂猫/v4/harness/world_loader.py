@@ -168,6 +168,9 @@ class WorldPack:
                          for row in self.items + self.documents
                          if row.get("takeable") is False},
             routes=routes, sound_barriers=barriers, scheduled=self.scheduled,
+            # 票 113（112 §E1）：一沓纸的张数由种子声明，运行中写在世界状态里。
+            item_sheets={str(row["id"]): int(row["sheets"])
+                         for row in self.items if row.get("sheets") is not None},
             document_defs=document_defs,
             entity_descriptions=DescriptionStore({name: self.descriptions[name] for name in
                                                    ("locations", "items", "documents")}),
@@ -648,6 +651,7 @@ def _validate(fields: dict[str, tuple[dict[str, Any], ...]], manifest: dict[str,
 
     locations = unique(fields["locations"], "id", "locations")
     actors = unique(fields["actors"], "id", "actors")
+    roles = {str(row["id"]): str(row.get("role", "mc")) for row in fields["actors"]}
     items = unique(fields["items"], "id", "items")
     documents = unique(fields["documents"], "id", "documents")
     if not documents.isdisjoint(locations):
@@ -685,6 +689,13 @@ def _validate(fields: dict[str, tuple[dict[str, Any], ...]], manifest: dict[str,
     for row in fields["items"] + fields["documents"]:
         if row.get("location") is not None and row["location"] not in locations:
             raise ValueError(f"entity {row['id']} has unknown location")
+        # 票 113（112 §E1）：一件纸有几张。写错形状就是一个沉默的“写不完的纸”，
+        # 所以在装载期就大声失败，而不是等写到第三张才发现。
+        sheets = row.get("sheets")
+        if sheets is not None and (not isinstance(sheets, int)
+                                   or isinstance(sheets, bool) or sheets < 1):
+            raise ValueError(
+                f"entity {row['id']} sheets must be a positive integer: {sheets!r}")
         if "known_to" in row and not isinstance(row["known_to"], list):
             raise ValueError("known_to must be a list")
         if any(actor not in actors for actor in row.get("known_to", ())):
@@ -747,6 +758,18 @@ def _validate(fields: dict[str, tuple[dict[str, Any], ...]], manifest: dict[str,
                 if op in {"add_item", "add_document", "move_item"}:
                     if str(effect.get("location")) not in locations:
                         raise ValueError(f"scheduled effect {op} references an unknown location")
+            elif op == "place_actor":
+                # 票 113（112 §E2）：把值班 npc 放到岗位上。只允许 npc——把玩家
+                # 角色“放”到某处就是替他做主，那是剧本，不是世界。
+                who = str(effect.get("id"))
+                if who not in actors:
+                    raise ValueError(f"scheduled effect place_actor references an unknown actor: {who}")
+                if str(effect.get("location")) not in locations:
+                    raise ValueError("scheduled effect place_actor references an unknown location")
+                if roles.get(who) != "npc":
+                    raise ValueError(
+                        f"scheduled effect place_actor may only move an npc: {who} "
+                        f"is {roles.get(who, 'mc')}")
             else:
                 raise ValueError(f"scheduled effect has unknown op: {op or '<missing>'}")
     defined = items | documents
@@ -898,6 +921,8 @@ def _validate_descriptions(fields: dict[str, tuple[dict[str, Any], ...]],
         readable = row.get("readable")
         if readable is not None and not isinstance(readable, bool):
             raise ValueError(f"item {entity} readable must be true or false: {readable!r}")
+        # 票 113（112 §E1）：一件纸有几张。一沓纸写一张只少一张；不写 = 一张。
+        # 形状校验在 `_validate`（装载期统一入口），这里只管正文与可读性。
         if readable is False:
             if "content" in row:
                 raise ValueError(

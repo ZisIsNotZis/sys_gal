@@ -1397,12 +1397,17 @@ class AsyncEngine:
                 content = f"{content}\n（记录上还有：{notes}）" if content else notes
             return content or "（这份记录没有可读的正文。）"
         if name == "leave_note":
-            note_id = next((str(event.payload.get("note")) for event in events
-                            if (event.payload or {}).get("note")), "")
+            note_event = next((event for event in events
+                              if (event.payload or {}).get("note")), None)
+            note_id = str(note_event.payload.get("note")) if note_event is not None else ""
+            sheets_left = ((note_event.payload or {}).get("sheets_left")
+                           if note_event is not None else None)
             return self._leave_note_yield(world, actor_id,
                                           persist=bool(args.get("persist")),
                                           note_id=note_id,
-                                          on=str(args.get("on") or ""))
+                                          on=str(args.get("on") or ""),
+                                          sheets_left=(int(sheets_left)
+                                                       if sheets_left is not None else None))
         if name == "trash":
             return "已销毁。"
         if name == "place":
@@ -1432,7 +1437,8 @@ class AsyncEngine:
 
     def _leave_note_yield(self, world: World, actor_id: str, *,
                           persist: bool = False, note_id: str = "",
-                          on: str = "") -> str:
+                          on: str = "",
+                          sheets_left: int | None = None) -> str:
         """Ticket 44: the receipt must state the note's real audience.
 
         A note's semantics (user ruling 2026-09-22) are: the first non-author
@@ -1452,11 +1458,13 @@ class AsyncEngine:
         it in at the desk" is expressible without a new action.
 
         票 95（E98）：`on` 是写在既有文书上的那一栏——一条追加的批注，不是字条。
-        """
+
+        票 113（112 §E1）：`on` 是一沓纸时，回执要说清“这张纸还剩几张”——
+        旧回执不说，作者就以为整沓纸都变成了自己手里这一份。"""
         actor = world.actors[actor_id]
         present = sorted(other.id for other in world.actors.values()
                          if other.id != actor_id and other.location == actor.location)
-        if on:
+        if on and on in world.document_defs:
             definition = world.document_defs.get(on, {})
             title = str(definition.get("title", on))
             receipt = (f"你已经把这段话写进《{title}》——作为一条批注追加进去，"
@@ -1468,12 +1476,24 @@ class AsyncEngine:
                             "他们看见你在上面写了字，但不会自动看到你写的正文。")
             return receipt
         if persist:
-            receipt = (f"书面记录已留在{actor.location}"
-                       + (f"（编号 {note_id}）" if note_id else "") +
-                       "。它不会消失，也不会被谁读走：留在这里的人和之后来到这里的人都能"
-                       "读到全文，可以读多次。"
-                       + (f"读到全文用 {World._tool_call_json('read', {'item': note_id})}。"
-                          if note_id else ""))
+            if on and sheets_left is not None:
+                # 票 113（112 §E1）：写在一张纸上——这份文稿在作者手上，纸是耗材。
+                receipt = (f"这份书面记录写在「{on}」的一张纸上，现在在你手里"
+                           + (f"（编号 {note_id}）" if note_id else "")
+                           + "。"
+                           + (f"那沓纸还剩 {sheets_left} 张，别人拿去还能接着写。"
+                              if sheets_left > 0
+                              else "那是最后一张——那张纸从此就是这份文稿。"))
+                if note_id:
+                    receipt += (f"读到全文用 {World._tool_call_json('read', {'item': note_id})}"
+                                "；要把它交出去，用 give 交到对方手上——留在这里不算交件。")
+            else:
+                receipt = (f"书面记录已留在{actor.location}"
+                           + (f"（编号 {note_id}）" if note_id else "") +
+                           "。它不会消失，也不会被谁读走：留在这里的人和之后来到这里的人都能"
+                           "读到全文，可以读多次。"
+                           + (f"读到全文用 {World._tool_call_json('read', {'item': note_id})}。"
+                              if note_id else ""))
             if present:
                 receipt += (f" 现在同在{actor.location}的还有：{'、'.join(present)}——"
                             "他们也读得到这份记录。要当面把东西交到某人手上仍然用 give。")

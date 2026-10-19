@@ -1,6 +1,11 @@
 .tmp/
 __pycache__/
-契约失效时请勿喂猫/**/runs/
+# 轨迹工件（整份轨迹与检查点，几 MB～几十 MB 一件）不进 git，但它们**不是**可丢弃的：
+# v4/artifacts.tsv 登记每件的 路径 / 字节数 / sha256 / 第二处持久位置，
+# v4/scripts/artifacts.py archive 负责归档，check 负责核对（预跑门的一环）。
+# 只按大小挡，不按目录挡：同一目录里的小文本（门禁读数、md5 快照）照常入库。
+契约失效时请勿喂猫/**/runs/*.json
+契约失效时请勿喂猫/**/checkpoints/*.json
 
 # Common local caches and temporary workspaces
 node_modules/
@@ -18,7 +23,4 @@ worktrees/
 .env.*
 !.env.example
 *.log
-
-# Keep the interrupted, unreviewed d1-pm checkpoint local; issue 69 tracks its analysis.
-/契约失效时请勿喂猫/v4/checkpoints/d1-pm.json
 /契约失效时请勿喂猫/v4/logs/drive-boot.txt

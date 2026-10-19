@@ -1,8 +1,19 @@
 # 112 — D1 全天验收运行（第 3 次）发现
 
-Status: needs-triage
+Status: ready-for-agent
 Need-review: yes
-Need-test-cases: pending triage
+Need-test-cases: partial（E1/E2/E7/E8 已落地，见票 113）
+
+> 分诊（2026-10-19）：E1（纸的容量）、E2（收件人在岗）、E7/E8（两条 D2 判据）
+> 已在票 113 修完并配机械夹具。剩下的可直接交 agent 的：E9（妈妈“挨户问”没有
+> 第二户可敲，种子层）。需人裁定的：E4（老周 22:00 无住处）与 E5（班长 19:14 后
+> 消失）在 D2 种子里是“收尾或记账悬置”，两条都改变 D2 的开场事实，不能由 agent
+> 自定。E10–E16 纹理项可带债进 M2。
+>
+> 证据状态：本票引用的工件 `v4/runs/real-20261018T113143+0800-…json` 与
+> `runs/day1-acceptance3-md5-before.txt` **已不在磁盘上**（`runs/` 当时被整体
+> gitignore，文件被删后无从复核）。工件持久化已由票 113 修好，但这一件找不回来；
+> 下文所有读数只能引用报告，无法再对原始轨迹复核。
 
 > 输入：`reports/m1-day1-acceptance3.md`、工件 `v4/runs/real-20261018T113143+0800-2394677-796309042.json`
 > （原始种子 07:00→22:00 一次跑完，`stop_at_reached`，wall 3724.4s，5435 事件 / 1571 回合；

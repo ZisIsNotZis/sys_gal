@@ -294,6 +294,14 @@ def apply_world_effects(world: "World", payload: Mapping[str, Any]) -> None:
             world.item_locations[str(effect["id"])] = str(effect["location"])
         elif op == "remove_item":
             world.item_locations.pop(str(effect["id"]), None)
+            world.item_sheets.pop(str(effect["id"]), None)
+        elif op == "place_actor":
+            # 票 113（112 §E2）：一个值班岗位就位。只用于 npc（装载器已禁止对 mc
+            # 用这一手），它陈述的是“这段时间她在这个岗位上”这个制度事实，
+            # 不是替角色做主：她做不做、说什么、还去不去别处仍由她自己的回合定。
+            actor = world.actors.get(str(effect["id"]))
+            if actor is not None:
+                actor.location = str(effect["location"])
 
 
 class World:
@@ -312,6 +320,7 @@ class World:
                  scheduled: Iterable[Mapping[str, Any]] | None = None,
                  document_defs: Mapping[str, Mapping[str, Any]] | None = None,
                  copy_material_items: Iterable[str] | None = None,
+                 item_sheets: Mapping[str, int] | None = None,
                  entity_descriptions: Mapping[str, str] | None = None,
                  entity_access: Mapping[str, Iterable[str]] | None = None,
                  public_knowledge: Mapping[str, str] | None = None,
@@ -335,6 +344,12 @@ class World:
         self.sound_barriers = dict(sound_barriers or {})
         self.document_defs = {str(k): dict(v) for k, v in (document_defs or {}).items()}
         self.copy_material_items = set(copy_material_items or ())
+        # 票 113（112 §E1）：一件纸有几张。缺省不写 = 一张纸一件（旧语义，写一次
+        # 就用完，那张纸从此就是写好的文稿）。种子给一沓纸写 `sheets: N` 之后，
+        # 写一张只少一张，纸仍然是纸，别人还能接着用——这是“一沓”在
+        # “一个 id = 一样东西”里的正确落法，而不是再造 N 个 id。
+        self.item_sheets = {str(key): int(value)
+                            for key, value in (item_sheets or {}).items()}
         self.entity_descriptions = dict(entity_descriptions or {})
         # `entity_access` is the manifest `known_to` map: awareness only. It
         # drives name/recall resolution (``aware_of``) and never grants
@@ -448,6 +463,7 @@ class World:
                                  "notes": [dict(x) for x in value.notes]}
                           for key, value in self.locations.items()},
             "item_locations": dict(self.item_locations),
+            "item_sheets": dict(self.item_sheets),
             "document_defs": copy.deepcopy(self.document_defs),
             # Ticket 88: persistent notes are world state, so they and their id
             # counter ride the checkpoint; an older checkpoint simply has no
@@ -530,6 +546,11 @@ class World:
             self.item_locations = dict(state["item_locations"]); self.document_defs = copy.deepcopy(state["document_defs"])
             self.persistent_notes = {str(key): dict(value)
                                      for key, value in (state.get("persistent_notes") or {}).items()}
+            # 票 113：一张纸上还剩几张是**世界状态**，所以随检查点走；旧检查点没有
+            # 这一栏，退回种子的容量（写过的纸在旧局里本来就已经被消耗掉了）。
+            self.item_sheets = ({str(key): int(value)
+                                 for key, value in state["item_sheets"].items()}
+                                if "item_sheets" in state else dict(source.item_sheets))
             self._note_serial = int(state.get("next_note_serial", 1))
             self.event_log = events; self._cursor = {str(k): int(v) for k, v in state["cursor"].items()}
             self.history_log = [
@@ -999,6 +1020,11 @@ class World:
                 # 票 101（E105b）：写在一张白纸上——校验已经确认它是纸（`_writable_sheets`），
                 # 产物就是一份带编号的文稿（等同于 persist），而不是批注。
                 action_payload["persist"] = True
+                # 票 113（112 §E1）：这一张纸写完之后还剩几张。一沓纸（种子写
+                # `sheets: N`）写一张只少一张，纸本身仍是纸；没写 sheets 的
+                # 单张纸照旧写一次就用完。
+                action_payload["sheets_left"] = max(
+                    self.item_sheets.get(str(on), 1) - 1, 0)
             if action_payload.get("persist"):
                 # Ticket 88: the id of a persistent note is fixed at submit, so the
                 # started event (which the tool receipt reads) and the completion
@@ -2098,6 +2124,21 @@ class World:
             return None
         return str(entry.get("objective") or "") or None
 
+    def _consume_sheet(self, actor: ActorState, sheet: str, left: int) -> int:
+        """把一张纸写成文稿之后，这张纸还剩几张（票 113）。
+
+        `left` 是提交时按容量定下的余数（随事件走，所以重放不需要猜）。
+        `left > 0`：纸还是纸，位置与持有关系都不动；`left == 0`：这张纸用完了，
+        它从此就是那份文稿——原地的库存出账，持有者手上也不再是空白纸。"""
+        if left > 0:
+            self.item_sheets[sheet] = left
+            return left
+        self.item_sheets.pop(sheet, None)
+        for other in self.actors.values():
+            other.inventory.discard(sheet)
+        self.item_locations.pop(sheet, None)
+        return 0
+
     def _complete(self, actor_id: str, payload: Mapping[str, Any]) -> None:
         if actor_id not in self.actors:
             # Defensive: a despawned extra's leftover job must not crash the
@@ -2164,10 +2205,10 @@ class World:
                     "text": text, "left_at": self.now.isoformat()}
                 sheet = str(payload.get("on") or "")
                 if sheet:
-                    # 票 101（E105b）：字是写在这一张纸上的——这张纸从此就是这份文稿
-                    # （可读、可递），它不再是空白的了：纸进作者手上，原地的库存出账。
-                    a.inventory.discard(sheet)
-                    self.item_locations.pop(sheet, None)
+                    # 票 113（112 §E1）：写一张就少一张。一沓纸（种子 `sheets: N`）
+                    # 写完之后仍是原来那张可用的纸（在持有者手上或原地），别人拿
+                    # 去还能写；用到最后一张时，这张纸才变成那份文稿本身。
+                    self._consume_sheet(a, sheet, int(payload.get("sheets_left", 0)))
                     a.inventory.add(note_id)
             else:
                 note = {"author": actor_id, "text": text,
@@ -2176,6 +2217,7 @@ class World:
         elif kind == "trash":
             item = str(payload["item"])
             self.item_locations.pop(item, None)
+            self.item_sheets.pop(item, None)
             a.inventory.discard(item)
             self.persistent_notes.pop(item, None)
         elif kind == "give":
@@ -2257,6 +2299,10 @@ class World:
             if intention.get("persist"):
                 payload["persist"] = True
                 payload["note"] = str(intention.get("note", ""))
+            if intention.get("sheets_left") is not None:
+                # 票 113：写完之后这张纸上还剩几张——提交时定下、随事件走，
+                # 所以回执、重放与中途检查点看到的是同一个数。
+                payload["sheets_left"] = int(intention["sheets_left"])
             return payload
         if kind in {"trash"}:
             # these payloads carry no "target" key; the item is carried so a
