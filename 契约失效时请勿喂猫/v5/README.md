@@ -23,6 +23,17 @@ cat stories/s2_borrow_note/runs/d.md          # 故事视图（当场说破那�
 cat stories/s2_borrow_note/runs/d.context.md  # 每一回合"他当时知道什么"
 ```
 
+## 模型试点（M3）
+
+```bash
+python3 scripts/anti_cheat.py --verbose          # 反作弊三检：无祈使句、无天意事件、结局不唯一
+python3 -m stories.s2_borrow_note.agent_run github_copilot/gpt-6-luna 4
+```
+
+每次运行写进 `stories/s2_borrow_note/runs/agent-<时间>-<pid>-<标签>/`（唯一目录，绝不覆盖）：
+`transcript.md` 故事视图、`context.md` 每回合的完整上下文与模型原始工具调用、`run.json`+`events.jsonl` 可重放记录。
+第一份对照实验的读法见 `docs/V5-M3-PILOT.md`。
+
 ## 三条反向门（M1 的验收）
 
 1. **摸与读不留痕**：读只写进读者的记忆，被读的纸一点都不变。

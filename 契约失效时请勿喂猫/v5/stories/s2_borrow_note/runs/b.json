@@ -1,0 +1,613 @@
+{
+ "events": [
+  {
+   "id": 1,
+   "at": 1170,
+   "kind": "intent",
+   "actor": "jia",
+   "what": "unlock",
+   "atoms": [
+    {
+     "op": "set",
+     "e": "drawer",
+     "k": "locked",
+     "v": false
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1170,
+     "v": "你打开了抽屉的锁。"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1170,
+     "v": "甲打开了抽屉的锁。"
+    },
+    {
+     "op": "remember",
+     "e": "bing",
+     "at": 1170,
+     "v": "甲打开了抽屉的锁。"
+    },
+    {
+     "op": "clock",
+     "to": 1171
+    }
+   ],
+   "note": {
+    "target": "drawer",
+    "digest_after": "292fce7d5c5d7cf356712ce75beb25268ce6f8059b8271d0271bfd9bd4dcc2cc"
+   }
+  },
+  {
+   "id": 2,
+   "at": 1171,
+   "kind": "intent",
+   "actor": "jia",
+   "what": "open",
+   "atoms": [
+    {
+     "op": "set",
+     "e": "drawer",
+     "k": "closed",
+     "v": false
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1171,
+     "v": "你打开抽屉，里面是：借条。"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1171,
+     "v": "甲打开了抽屉。"
+    },
+    {
+     "op": "remember",
+     "e": "bing",
+     "at": 1171,
+     "v": "甲打开了抽屉。"
+    },
+    {
+     "op": "clock",
+     "to": 1172
+    }
+   ],
+   "note": {
+    "target": "drawer",
+    "digest_after": "331d18ffd46c345a880db3a02b3a8fa5bf38070fb0e4fe74b00339cc3775e475"
+   }
+  },
+  {
+   "id": 3,
+   "at": 1172,
+   "kind": "intent",
+   "actor": "jia",
+   "what": "take",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "iou",
+     "to": "jia"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1172,
+     "v": "你拿起了借条。"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1172,
+     "v": "甲拿起了借条。"
+    },
+    {
+     "op": "remember",
+     "e": "bing",
+     "at": 1172,
+     "v": "甲拿起了借条。"
+    },
+    {
+     "op": "clock",
+     "to": 1173
+    }
+   ],
+   "note": {
+    "target": "iou",
+    "digest_after": "c15b76463782b9bf263b1f1d4af1a9264644d42d4f16073000377debab0a13f6"
+   }
+  },
+  {
+   "id": 4,
+   "at": 1173,
+   "kind": "intent",
+   "actor": "jia",
+   "what": "place",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "iou",
+     "to": "room"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1173,
+     "v": "你把借条放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1173,
+     "v": "甲把借条放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "bing",
+     "at": 1173,
+     "v": "甲把借条放在了这儿。"
+    },
+    {
+     "op": "clock",
+     "to": 1174
+    }
+   ],
+   "note": {
+    "target": "iou",
+    "digest_after": "b1a99db57249c99ca953f991cc8bc2649d5eec92baa3174b36926821c4ab9a8d"
+   }
+  },
+  {
+   "id": 5,
+   "at": 1174,
+   "kind": "intent",
+   "actor": "jia",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "jia",
+     "to": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1174,
+     "v": "你到了楼道。"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1174,
+     "v": "甲走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bing",
+     "at": 1174,
+     "v": "甲走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1176
+    }
+   ],
+   "note": {
+    "target": "hall",
+    "digest_after": "e06b5ee4e0a782bb02bdf913a04c1ec947e74bc70ad4f525742e4e9885979f52"
+   }
+  },
+  {
+   "id": 6,
+   "at": 1176,
+   "kind": "intent",
+   "actor": "bing",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "bing",
+     "to": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "bing",
+     "at": 1176,
+     "v": "你到了楼道。"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1176,
+     "v": "丙走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1176,
+     "v": "丙走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1178
+    }
+   ],
+   "note": {
+    "target": "hall",
+    "digest_after": "e6397b1cf4ff2da97ed587c34a6b34d5840722f58fc1b79ce440a33264720fbd"
+   }
+  },
+  {
+   "id": 7,
+   "at": 1178,
+   "kind": "intent",
+   "actor": "yi",
+   "what": "take",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "eraser",
+     "to": "yi"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1178,
+     "v": "你拿起了橡皮。"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1178,
+     "v": "乙拿起了橡皮。"
+    },
+    {
+     "op": "remember",
+     "e": "bing",
+     "at": 1178,
+     "v": "乙拿起了橡皮。"
+    },
+    {
+     "op": "clock",
+     "to": 1179
+    }
+   ],
+   "note": {
+    "target": "eraser",
+    "digest_after": "7f65c5e573f9ecb16ff9aa8efde3cc3b5b5dda72807a596a616957fe846e5424"
+   }
+  },
+  {
+   "id": 8,
+   "at": 1179,
+   "kind": "intent",
+   "actor": "yi",
+   "what": "erase",
+   "atoms": [
+    {
+     "op": "set",
+     "e": "iou",
+     "k": "marks",
+     "v": [
+      {
+       "text": "甲",
+       "ink": "ink",
+       "style": "jia_hand"
+      }
+     ]
+    },
+    {
+     "op": "set",
+     "e": "iou",
+     "k": "smudge",
+     "v": true
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1179,
+     "v": "你擦掉了借条上铅笔写的那一笔，纸面上留下一片灰。"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1179,
+     "v": "乙在擦借条。"
+    },
+    {
+     "op": "remember",
+     "e": "bing",
+     "at": 1179,
+     "v": "乙在擦借条。"
+    },
+    {
+     "op": "clock",
+     "to": 1181
+    }
+   ],
+   "note": {
+    "target": "iou",
+    "digest_after": "ff4bf008efb85dc93e4be5b15d7340ccae0c98625c1970e2e554e635bb99d8c8"
+   }
+  },
+  {
+   "id": 9,
+   "at": 1181,
+   "kind": "intent",
+   "actor": "yi",
+   "what": "take",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "pencil",
+     "to": "yi"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1181,
+     "v": "你拿起了铅笔。"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1181,
+     "v": "乙拿起了铅笔。"
+    },
+    {
+     "op": "remember",
+     "e": "bing",
+     "at": 1181,
+     "v": "乙拿起了铅笔。"
+    },
+    {
+     "op": "clock",
+     "to": 1182
+    }
+   ],
+   "note": {
+    "target": "pencil",
+    "digest_after": "66ef27e0cab433a278bcdf8cfb08b5fe3636b835884b3c123366faf10d0fc6a0"
+   }
+  },
+  {
+   "id": 10,
+   "at": 1182,
+   "kind": "intent",
+   "actor": "yi",
+   "what": "write",
+   "atoms": [
+    {
+     "op": "set",
+     "e": "iou",
+     "k": "marks",
+     "v": [
+      {
+       "text": "甲",
+       "ink": "ink",
+       "style": "jia_hand"
+      },
+      {
+       "text": "今借到现金三千元，三个月内归还。",
+       "ink": "graphite",
+       "style": "yi_hand"
+      }
+     ]
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1182,
+     "v": "你在借条上添了一笔：「今借到现金三千元，三个月内归还。」"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1182,
+     "v": "乙在借条上写字。"
+    },
+    {
+     "op": "remember",
+     "e": "bing",
+     "at": 1182,
+     "v": "乙在借条上写字。"
+    },
+    {
+     "op": "clock",
+     "to": 1184
+    }
+   ],
+   "note": {
+    "target": "iou",
+    "digest_after": "17fe6f832453512a694a796f86b27a8e3d22f20095f975fd5e619d0437cba84b"
+   }
+  },
+  {
+   "id": 11,
+   "at": 1184,
+   "kind": "intent",
+   "actor": "yi",
+   "what": "place",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "pencil",
+     "to": "room"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1184,
+     "v": "你把铅笔放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1184,
+     "v": "乙把铅笔放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "bing",
+     "at": 1184,
+     "v": "乙把铅笔放在了这儿。"
+    },
+    {
+     "op": "clock",
+     "to": 1185
+    }
+   ],
+   "note": {
+    "target": "pencil",
+    "digest_after": "0e32b401a8d63aff1525d975bd4c5121f5a0631d678d35c264fe7f6cc34b0250"
+   }
+  },
+  {
+   "id": 12,
+   "at": 1185,
+   "kind": "intent",
+   "actor": "yi",
+   "what": "place",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "eraser",
+     "to": "room"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1185,
+     "v": "你把橡皮放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1185,
+     "v": "乙把橡皮放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "bing",
+     "at": 1185,
+     "v": "乙把橡皮放在了这儿。"
+    },
+    {
+     "op": "clock",
+     "to": 1186
+    }
+   ],
+   "note": {
+    "target": "eraser",
+    "digest_after": "cf9c760fb47beeb2cb91aaec9e618d35259ad59cc3a8f5d8dc4603724ad042a2"
+   }
+  },
+  {
+   "id": 13,
+   "at": 1186,
+   "kind": "intent",
+   "actor": "jia",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "jia",
+     "to": "room"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1186,
+     "v": "你到了出租屋。"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1186,
+     "v": "甲走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bing",
+     "at": 1186,
+     "v": "甲走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1188
+    }
+   ],
+   "note": {
+    "target": "room",
+    "digest_after": "2a563cdf213a88aa3fe9c25e9479ffa4a1dfb0807a51480c2b451c7ee926df2b"
+   }
+  },
+  {
+   "id": 14,
+   "at": 1188,
+   "kind": "intent",
+   "actor": "jia",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1188,
+     "v": "你读着借条：「甲今借到现金三千元，三个月内归还。」"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1188,
+     "v": "甲在看借条。"
+    },
+    {
+     "op": "remember",
+     "e": "bing",
+     "at": 1188,
+     "v": "甲在看借条。"
+    },
+    {
+     "op": "clock",
+     "to": 1189
+    }
+   ],
+   "note": {
+    "target": "iou",
+    "digest_after": "f8caf03e87ebdff06321254eccb4ade3a8df9d741392095ccb8681ad170432ce"
+   }
+  },
+  {
+   "id": 15,
+   "at": 1189,
+   "kind": "refused",
+   "actor": "jia",
+   "what": "place",
+   "atoms": [],
+   "note": {
+    "reason": "借条不在你手里",
+    "hints": [],
+    "requested": {
+     "target": "借条",
+     "to": "抽屉"
+    },
+    "digest_after": "f8caf03e87ebdff06321254eccb4ade3a8df9d741392095ccb8681ad170432ce"
+   }
+  }
+ ],
+ "summary": {
+  "借条在谁那里": "出租屋",
+  "借条上有几笔字": 2,
+  "纸面上有擦痕": true,
+  "读出来的全文": "甲今借到现金三千元，三个月内归还。",
+  "丙认出是乙的字": false,
+  "甲说不出是谁写的": false,
+  "有人当场说话": 0,
+  "结局": "乙擦掉数目重写了一个，没人发现"
+ }
+}

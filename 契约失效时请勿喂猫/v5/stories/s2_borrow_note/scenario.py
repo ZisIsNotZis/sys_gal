@@ -133,6 +133,19 @@ def summary(run: Run) -> dict[str, Any]:
     said = [r for r in run.receipts if r.ok and r.what == "speak"]
     bing_memory = " ".join(text for _at, text in w.memory.get("bing", []))
     jia_memory = " ".join(text for _at, text in w.memory.get("jia", []))
+    scripted = {
+        "a": "谁也没改，甲手里多了一张抄件",
+        "b": "乙擦掉数目重写了一个，没人发现",
+        "c": "乙添了一条利息，丙认出来了，但没说",
+        "d": "乙添了一条利息，丙当场说破，甲却说不出是谁写的",
+    }
+    # 模型自己走的路径没有预设结局：结局必须由事实拼出来
+    decided = scripted.get(run.variant) or (
+        f"借条上留下 {len(marks)} 笔字"
+        + (f"，当场开口 {len(said)} 次" if said else "，没有人开口")
+        + ("，丙认出了那是谁的字" if "像是乙的字" in bing_memory else "")
+        + ("，甲到最后也不知道是谁写的" if "说不出是谁写的" in jia_memory else "")
+    )
     return {
         "借条在谁那里": w.entities[w.container("iou")].name if w.container("iou") else "不在",
         "借条上有几笔字": len(marks),
@@ -142,10 +155,5 @@ def summary(run: Run) -> dict[str, Any]:
         "丙认出是乙的字": "像是乙的字" in bing_memory,
         "甲说不出是谁写的": "说不出是谁写的" in jia_memory,
         "有人当场说话": len(said),
-        "结局": {
-            "a": "谁也没改，甲手里多了一张抄件",
-            "b": "乙擦掉数目重写了一个，没人发现",
-            "c": "乙添了一条利息，丙认出来了，但没说",
-            "d": "乙添了一条利息，丙当场说破，甲却说不出是谁写的",
-        }[run.variant],
+        "结局": decided,
     }

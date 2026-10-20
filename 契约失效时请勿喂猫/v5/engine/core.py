@@ -26,11 +26,12 @@ class Entity:
 class World:
     """世界状态：实体、状态键、包含树、时钟、排程、心智的记忆与知识。"""
 
-    def __init__(self, start: int = 0):
+    def __init__(self, start: int = 0, date: str = ""):
         self.entities: dict[str, Entity] = {}
         self.state: dict[str, dict[str, Any]] = {}
         self.parent: dict[str, str] = {}
         self.clock: int = start
+        self.date: str = date
         self.schedule: list[list[Any]] = []
         self.seq: int = 0
         self.memory: dict[str, list[list[Any]]] = {}
@@ -133,6 +134,7 @@ class World:
             "state": {k: dict(sorted(v.items())) for k, v in sorted(self.state.items())},
             "parent": dict(sorted(self.parent.items())),
             "clock": self.clock,
+            "date": self.date,
             "schedule": sorted([[w, json.dumps(e, ensure_ascii=False, sort_keys=True)]
                                 for w, _, e in self.schedule]),
             "memory": {k: list(v) for k, v in sorted(self.memory.items())},

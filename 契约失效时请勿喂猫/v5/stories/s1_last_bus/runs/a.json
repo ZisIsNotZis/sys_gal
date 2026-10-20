@@ -1,0 +1,691 @@
+{
+ "events": [
+  {
+   "id": 1,
+   "at": 1350,
+   "kind": "intent",
+   "actor": "jia",
+   "what": "examine",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1350,
+     "v": "你细看：车外（站台的水泥地，雨被风推着斜着落）；车厢（灯管有一支在闪）；驾驶室（玻璃上蒙着一层水汽；门关着；玻璃后面有个人影）；那个人（四十上下，穿一件洗旧的外套）；通知（边角卷了的打印纸；印上去的）；包（拉链头磨得发亮；封着口）。"
+    },
+    {
+     "op": "clock",
+     "to": 1351
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "32cae210dd31a29bb1bcba8d6428a6cb1dd91feccb615ec79792966115c123cd"
+   }
+  },
+  {
+   "id": 2,
+   "at": 1351,
+   "kind": "intent",
+   "actor": "jia",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1351,
+     "v": "你读着通知：「本车为末班车，终点站后不再发车。」"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1351,
+     "v": "那个人在看通知。"
+    },
+    {
+     "op": "clock",
+     "to": 1352
+    }
+   ],
+   "note": {
+    "target": "notice",
+    "digest_after": "3cdfef665a8a11945d2bd589361927c3286db5eb0a426a1444a5ed383433177a"
+   }
+  },
+  {
+   "id": 3,
+   "at": 1352,
+   "kind": "intent",
+   "actor": "yi",
+   "what": "open",
+   "atoms": [
+    {
+     "op": "set",
+     "e": "bag",
+     "k": "closed",
+     "v": false
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1352,
+     "v": "你打开包，里面是：药盒。"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1352,
+     "v": "那个人打开了包。"
+    },
+    {
+     "op": "clock",
+     "to": 1353
+    }
+   ],
+   "note": {
+    "target": "bag",
+    "digest_after": "93c3ee80f01f6d9a49caf9d9322270bc5b03564a58f5094bcb1d2f0d32497aec"
+   }
+  },
+  {
+   "id": 4,
+   "at": 1353,
+   "kind": "intent",
+   "actor": "yi",
+   "what": "take",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "pillbox",
+     "to": "yi"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1353,
+     "v": "你拿起了药盒。"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1353,
+     "v": "那个人拿起了药盒。"
+    },
+    {
+     "op": "clock",
+     "to": 1354
+    }
+   ],
+   "note": {
+    "target": "pillbox",
+    "digest_after": "484d8e9f9c21c8b25de7a94d7a080804d077014189a642b2d07a0d26bba993fb"
+   }
+  },
+  {
+   "id": 5,
+   "at": 1354,
+   "kind": "intent",
+   "actor": "yi",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1354,
+     "v": "你读着药盒：「每日两次，饭后。」"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1354,
+     "v": "那个人在看药盒。"
+    },
+    {
+     "op": "clock",
+     "to": 1355
+    }
+   ],
+   "note": {
+    "target": "pillbox",
+    "digest_after": "4f5df54ca45ce491c041be95b7e53e1917193087c66310d78f142ea355ba3725"
+   }
+  },
+  {
+   "id": 6,
+   "at": 1355,
+   "kind": "intent",
+   "actor": "yi",
+   "what": "place",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "pillbox",
+     "to": "bag"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1355,
+     "v": "你把药盒放进了包里。"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1355,
+     "v": "那个人把药盒放在了包。"
+    },
+    {
+     "op": "clock",
+     "to": 1356
+    }
+   ],
+   "note": {
+    "target": "pillbox",
+    "digest_after": "bdc0cd1298310b006b5d733d4316c4b765451d7d7fb0b14d8d81e5d82376421d"
+   }
+  },
+  {
+   "id": 7,
+   "at": 1356,
+   "kind": "intent",
+   "actor": "yi",
+   "what": "place",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "bag",
+     "to": "car"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1356,
+     "v": "你把包放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1356,
+     "v": "那个人把包放在了这儿。"
+    },
+    {
+     "op": "clock",
+     "to": 1357
+    }
+   ],
+   "note": {
+    "target": "bag",
+    "digest_after": "5ac763102fa4019dc7913fe81ae5bdd76512aeb6d5fab6b2e1f8ef8a9bcead8c"
+   }
+  },
+  {
+   "id": 8,
+   "at": 1357,
+   "kind": "world",
+   "actor": null,
+   "what": "arrive",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1357,
+     "seq": 1
+    },
+    {
+     "op": "flag",
+     "k": "last_stop",
+     "v": "第一站"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1357,
+     "v": "车停了一下：第一站。"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1357,
+     "v": "车停了一下：第一站。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1357,
+     "v": "车停了一下：第一站。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "arrive",
+     "place": "car",
+     "station": "第一站"
+    },
+    "digest_after": "5d47a599bb51781c1547b998c32fc54a085603dcb2a5293430d996ef80bbea59"
+   }
+  },
+  {
+   "id": 9,
+   "at": 1357,
+   "kind": "intent",
+   "actor": "yi",
+   "what": "wait",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1357,
+     "v": "你等着。"
+    },
+    {
+     "op": "clock",
+     "to": 1358
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "5aa86adf2b5a4033dd60d212f73545195a152127af21105bda18a72d9ecf8821"
+   }
+  },
+  {
+   "id": 10,
+   "at": 1358,
+   "kind": "intent",
+   "actor": "yi",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "yi",
+     "to": "outside"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1358,
+     "v": "你到了车外。"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1358,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1358,
+     "v": "那个人走了出去。"
+    },
+    {
+     "op": "clock",
+     "to": 1360
+    }
+   ],
+   "note": {
+    "target": "outside",
+    "digest_after": "429b9e5bee1c37abf6ae9842535a870537082b582f7f0f27bdb6d2a607bf4d8d"
+   }
+  },
+  {
+   "id": 11,
+   "at": 1360,
+   "kind": "intent",
+   "actor": "jia",
+   "what": "touch",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1360,
+     "v": "你碰了碰包，它没有因此改变。"
+    }
+   ],
+   "note": {
+    "target": "bag",
+    "digest_after": "d74532b4888330854b1d7d7c06f0b0aa38aa28793f39cd5589186dda27635806"
+   }
+  },
+  {
+   "id": 12,
+   "at": 1360,
+   "kind": "intent",
+   "actor": "jia",
+   "what": "take",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "bag",
+     "to": "jia"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1360,
+     "v": "你拿起了包。"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1360,
+     "v": "那个人拿起了包。"
+    },
+    {
+     "op": "clock",
+     "to": 1361
+    }
+   ],
+   "note": {
+    "target": "bag",
+    "digest_after": "c5777b529e31d55df8f1445a66360a5394190fce224a7d5838a8dcae6add1633"
+   }
+  },
+  {
+   "id": 13,
+   "at": 1361,
+   "kind": "refused",
+   "actor": "jia",
+   "what": "give",
+   "atoms": [],
+   "note": {
+    "reason": "司机你现在看不见",
+    "hints": [
+     "你知道它，但它不在眼前：司机"
+    ],
+    "requested": {
+     "target": "包",
+     "to": "司机"
+    },
+    "digest_after": "c5777b529e31d55df8f1445a66360a5394190fce224a7d5838a8dcae6add1633"
+   }
+  },
+  {
+   "id": 14,
+   "at": 1361,
+   "kind": "intent",
+   "actor": "jia",
+   "what": "knock",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1361,
+     "v": "你敲了敲驾驶室的门。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1361,
+     "v": "驾驶室的门被人从外面敲了几下。"
+    },
+    {
+     "op": "clock",
+     "to": 1362
+    }
+   ],
+   "note": {
+    "target": "cab",
+    "digest_after": "13680ad2203714525b156c78b8874219f7a450d59bd888001053a4e63f3688af"
+   }
+  },
+  {
+   "id": 15,
+   "at": 1362,
+   "kind": "intent",
+   "actor": "jia",
+   "what": "wait",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1362,
+     "v": "你等着。"
+    },
+    {
+     "op": "clock",
+     "to": 1363
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "222892d1fbd9aaf9bf0a4877ffbe56f9f3ca182ed4f8272b275542fa04f796a5"
+   }
+  },
+  {
+   "id": 16,
+   "at": 1363,
+   "kind": "intent",
+   "actor": "jia",
+   "what": "open",
+   "atoms": [
+    {
+     "op": "set",
+     "e": "cab",
+     "k": "door",
+     "v": "open"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1363,
+     "v": "你推开了驾驶室的门。"
+    },
+    {
+     "op": "clock",
+     "to": 1364
+    }
+   ],
+   "note": {
+    "target": "cab",
+    "digest_after": "43983ab606a35a8eed23939b3f6e17ddc7b1cb4655b6781884054dec341e80c9"
+   }
+  },
+  {
+   "id": 17,
+   "at": 1364,
+   "kind": "intent",
+   "actor": "jia",
+   "what": "give",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "bag",
+     "to": "driver"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1364,
+     "v": "你把包交给了司机。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1364,
+     "v": "那个人把包递给了你。"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1364,
+     "v": "那个人把手里的东西递给了那个人。"
+    },
+    {
+     "op": "clock",
+     "to": 1365
+    }
+   ],
+   "note": {
+    "target": "bag",
+    "digest_after": "7ad90bcdbf15358706b12d3b622f56641555699447cb2b32758e3b359652a970"
+   }
+  },
+  {
+   "id": 18,
+   "at": 1365,
+   "kind": "world",
+   "actor": null,
+   "what": "arrive",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1365,
+     "seq": 2
+    },
+    {
+     "op": "flag",
+     "k": "last_stop",
+     "v": "第二站"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1365,
+     "v": "车停了一下：第二站。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1365,
+     "v": "车停了一下：第二站。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "arrive",
+     "place": "car",
+     "station": "第二站"
+    },
+    "digest_after": "8257f1460d255108b9e92740b09831362a3727eb0c4fd971489e49c51fd1310e"
+   }
+  },
+  {
+   "id": 19,
+   "at": 1365,
+   "kind": "intent",
+   "actor": "jia",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "jia",
+     "to": "outside"
+    },
+    {
+     "op": "remember",
+     "e": "jia",
+     "at": 1365,
+     "v": "你到了车外。"
+    },
+    {
+     "op": "remember",
+     "e": "yi",
+     "at": 1365,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1365,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1367
+    }
+   ],
+   "note": {
+    "target": "outside",
+    "digest_after": "a797d4f6e6bb4397b0800e98e6b53e7733898d0102a1ce674c6ee9754fc289de"
+   }
+  },
+  {
+   "id": 20,
+   "at": 1373,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 1373
+    }
+   ],
+   "note": {
+    "digest_after": "8bae0e09c3633be2c6d77e01c54c67649902e0099bea2665f0827100bbff549d"
+   }
+  },
+  {
+   "id": 21,
+   "at": 1373,
+   "kind": "world",
+   "actor": null,
+   "what": "arrive",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1373,
+     "seq": 3
+    },
+    {
+     "op": "flag",
+     "k": "last_stop",
+     "v": "第三站"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1373,
+     "v": "车停了一下：第三站。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "arrive",
+     "place": "car",
+     "station": "第三站"
+    },
+    "digest_after": "4c461f0d0f9622fede61ab8628168b8c091c7a12620589fd464f4224860bb395"
+   }
+  },
+  {
+   "id": 22,
+   "at": 1373,
+   "kind": "world",
+   "actor": null,
+   "what": "stops",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1373,
+     "seq": 4
+    },
+    {
+     "op": "flag",
+     "k": "stopped",
+     "v": true
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1373,
+     "v": "终点站到了，司机熄了火，车厢的灯灭了一半。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "stops",
+     "place": "car"
+    },
+    "digest_after": "686784ec6ef2fed6b482d55a1e12a3c953159146b68393f7cdb0cea16f4851f5"
+   }
+  }
+ ],
+ "ending": {
+  "包在谁那里": "司机",
+  "药盒在谁那里": "包",
+  "甲在": "车外",
+  "司机在": "驾驶室",
+  "车已经到终点": true,
+  "结局": "甲把包交给了司机"
+ }
+}

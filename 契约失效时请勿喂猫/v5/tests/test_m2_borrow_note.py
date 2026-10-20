@@ -183,6 +183,29 @@ class RecognitionTests(unittest.TestCase):
         self.assertNotIn("author", world.state["iou"])
 
 
+class ReferenceTests(unittest.TestCase):
+    """人用描述性说法指东西：引擎要能听懂「手里的空白纸」「桌子底下那只铁皮抽屉」。"""
+
+    def test_a_descriptive_phrase_resolves_to_the_thing(self):
+        world = _world()
+        log = EventLog()
+        submit(world, log, "jia", "unlock", {"target": "桌子底下那只铁皮抽屉"})
+        self.assertFalse(world.get("drawer", "locked"))
+        submit(world, log, "jia", "open", {"target": "那个抽屉"})
+        self.assertFalse(world.get("drawer", "closed"))
+
+    def test_in_hand_phrasing_prefers_what_you_hold(self):
+        world = _world()
+        log = EventLog()
+        submit(world, log, "jia", "unlock", {"target": "抽屉"})
+        submit(world, log, "jia", "open", {"target": "抽屉"})
+        submit(world, log, "jia", "take", {"target": "借条"})
+        receipt = submit(world, log, "jia", "place",
+                         {"target": "手里的借条", "to": "出租屋"})
+        self.assertTrue(receipt.ok, receipt.reason)
+        self.assertEqual(world.container("iou"), "room")
+
+
 class SchemaTests(unittest.TestCase):
     def test_an_unknown_seed_field_fails_loudly(self):
         seed = {

@@ -25,7 +25,7 @@ class GlanceTests(unittest.TestCase):
 
     def test_glance_says_when_where_who_and_what_is_in_hand(self):
         g = glance(self.world, "yi")
-        self.assertEqual(g["time"], "22:30")
+        self.assertEqual(g["time"], "2026-03-15 22:30")   # 一个人知道自己站在哪一天
         self.assertEqual(g["place"], "车厢")
         self.assertEqual(g["hands"], ["包"])
         self.assertTrue(any("那个人" in item for item in g["here"]))

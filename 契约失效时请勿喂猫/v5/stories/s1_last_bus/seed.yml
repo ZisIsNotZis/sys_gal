@@ -1,5 +1,6 @@
 story: s1-last-bus
 # 22:30 的末班车。三站路，一个人把包留在了座位上。
+date: 2026-03-15
 start_clock: 1350
 
 places:

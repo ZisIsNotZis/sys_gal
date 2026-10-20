@@ -26,7 +26,7 @@ def glance(world: World, actor: str) -> dict[str, Any]:
     ent = world.entities[actor]
     place = world.place_of(actor)
     return {
-        "time": clock_label(world.clock),
+        "time": (f"{world.date} " if world.date else "") + clock_label(world.clock),
         "place": world.entities[place].name if place else "不知何处",
         "here": [describe(world, e, actor) for e in visible(world, actor)],
         "hands": [world.entities[c].name for c in world.children(actor)],

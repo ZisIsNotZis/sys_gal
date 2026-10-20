@@ -4,8 +4,8 @@ __pycache__/
 # runs/<run-id>.jsonl.zst（一行一条记录 + zstd -19，内容一条不少），由
 # v4/scripts/pack_trajectory.py 生成与核对，预跑门前置检查会挡住“未打包/过期”。
 # 只按大小挡，不按目录挡：同一目录里的紧凑工件与小文本（门禁读数、md5 快照）照常入库。
-契约失效时请勿喂猫/**/runs/*.json
-契约失效时请勿喂猫/**/checkpoints/*.json
+契约失效时请勿喂猫/v4/**/runs/*.json
+契约失效时请勿喂猫/v4/**/checkpoints/*.json
 
 # Common local caches and temporary workspaces
 node_modules/

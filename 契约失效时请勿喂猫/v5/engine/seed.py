@@ -32,7 +32,7 @@ def _check_shape(section: str, row: dict[str, Any]) -> None:
 
 
 def build(seed: dict[str, Any]) -> World:
-    world = World(start=int(seed.get("start_clock", 0)))
+    world = World(start=int(seed.get("start_clock", 0)), date=str(seed.get("date", "")))
     rows: list[dict[str, Any]] = []
     for section in ("places", "people", "objects"):
         for row in seed.get(section, []):

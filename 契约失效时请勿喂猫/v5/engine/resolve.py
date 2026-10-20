@@ -73,17 +73,52 @@ class Resolution:
         return self.ok
 
 
-def _matches(world: World, viewer: str, eid: str, ref: str) -> bool:
+_NOISE = ("我的", "你的", "他的", "她的", "手里的", "手上", "桌上的", "眼前的", "地上的",
+          "那个", "这个", "那张", "这张", "那只", "这只", "那份", "这份", "的")
+
+
+def normalize(ref: str) -> str:
+    """人用描述性说法指东西：去掉限定词，再拿来匹配。"""
+    text = ref.strip()
+    changed = True
+    while changed:
+        changed = False
+        for noise in _NOISE:
+            if text.startswith(noise) and len(text) > len(noise):
+                text = text[len(noise):]
+                changed = True
+    return text.strip()
+
+
+def _score(world: World, viewer: str, eid: str, ref: str) -> int:
+    """3 = 名字正好对上；2 = 说法里含有名字；1 = 名字里含有说法。"""
     ent = world.entities[eid]
-    ref = ref.strip()
     if ent.kind == "person" and eid != viewer and eid not in world.knowledge.get(viewer, []):
-        return ref in ("那个人", "有人", "这个人")
-    return ref in (ent.name, ent.id) or ref in ent.aliases
+        return 3 if ref in ("那个人", "有人", "这个人") else 0
+    ref = normalize(ref)
+    if ref in (ent.name, ent.id) or ref in ent.aliases:
+        return 3
+    if len(ref) >= 2 and ref in ent.name:
+        return 2
+    if len(ent.name) >= 2 and ent.name in ref:
+        return 2
+    if len(ref) >= 2 and ref in (ent.prose or ""):
+        return 1
+    return 0
 
 
 def resolve(world: World, actor: str, ref: str) -> Resolution:
     """把一个指称解析成实体，只允许用该角色此刻能看见或已知的东西。"""
-    cands = [e for e in visible(world, actor) if _matches(world, actor, e, ref)]
+    scored = [(e, _score(world, actor, e, ref)) for e in visible(world, actor)]
+    cands = [e for e, score in scored if score > 0]
+    best = max((score for _e, score in scored), default=0)
+    if best:
+        in_hand = "手里" in ref or "手上" in ref
+        top = [e for e, score in scored if score == best]
+        if in_hand:
+            held = [e for e in top if world.container(e) == actor]
+            top = held or top
+        cands = sorted(top)
     if not cands:
         known = known_but_unseen(world, actor, ref)
         if known:

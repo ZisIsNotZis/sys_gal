@@ -113,11 +113,11 @@ def play(variant: str = "a", seed_path: Path = DEFAULT_SEED) -> Run:
 
     for event in advance_idle(world, log, EFFECTS):
         run.items.append(_world_item(event))
-    run.summary = ending(run)
+    run.summary = summary(run)
     return run
 
 
-def ending(run: Run) -> dict[str, Any]:
+def summary(run: Run) -> dict[str, Any]:
     w = run.world
 
     def where(eid: str) -> str:

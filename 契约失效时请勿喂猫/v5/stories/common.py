@@ -99,6 +99,8 @@ def context_view(run: Any) -> str:
         if item["decided_by"] == "script":
             lines += [f"这一步由脚本指定（第 {item['step']} 步），不是他读了上文之后的决定。", ""]
         lines += ["```", render_block(item["context"]), "```", ""]
+        if item.get("raw"):
+            lines.append(f"- 模型的工具调用：`{item['raw']}`")
         if item["ok"]:
             for text in item["texts"]:
                 lines.append(f"- 结果：{text}")

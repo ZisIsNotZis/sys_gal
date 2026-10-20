@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 from engine.core import World
@@ -481,7 +482,7 @@ _CONCEPTS = [
     Rule("open", STORY, _open_when, _open_atoms, _open_render, cost=1, hints=_open_hints),
     Rule("knock", STORY, _knock_when, _knock_atoms, _knock_render, cost=1),
     Rule("move", STORY, _move_when, _move_atoms, _move_render, cost=2),
-    Rule("wait", STORY, _wait_when, _wait_atoms, _wait_render, cost=1),
+    Rule("wait", STORY, _wait_when, _wait_atoms, _wait_render, cost=1, entity_args=()),
     Rule("write", ("s2_borrow_note", "s3_night_market", "s4_night_shift",
                    "s5_wedding", "s7_campus_12d"),
          _write_when, _write_atoms, _write_render, cost=2, hints=_write_hints,
@@ -497,8 +498,42 @@ _CONCEPTS = [
          _recognize_when, _recognize_atoms, _recognize_render, cost=2),
     Rule("speak", ("s1_last_bus", "s2_borrow_note", "s3_night_market",
                    "s5_wedding", "s7_campus_12d"),
-         _speak_when, _speak_atoms, _speak_render, cost=1),
+         _speak_when, _speak_atoms, _speak_render, cost=1, entity_args=()),
 ]
 
+#: 给模型看的一句话说明。工具表由这里生成，所以每个动词都必须有一句。
+DOCS = {
+    "examine": "把眼前的东西看到能看清细节的程度（不读内容）",
+    "read": "读出纸上的字；只有你自己知道内容",
+    "touch": "碰一下，什么也不会改变",
+    "take": "把东西拿到手里",
+    "place": "把手里的东西放下（放到某处或某个容器里）",
+    "give": "把手里的东西递给眼前的某个人",
+    "open": "打开容器或一扇门",
+    "knock": "敲某间屋子的门；里面的人会听见",
+    "move": "走到另一个地方",
+    "wait": "等一会儿，什么也不做",
+    "write": "在某张纸上添一笔字（用你手里的笔）",
+    "erase": "用橡皮擦掉铅笔写的字，会留下擦痕",
+    "copy": "用复写纸把一份纸上的字复写下来（要空白纸）",
+    "unlock": "用钥匙打开某把锁",
+    "recognize": "盯着纸上的字迹看：你能认出是谁的字吗",
+    "speak": "说一句话，在场的人都听得见",
+}
+
+LABELS = {"examine": "细看", "read": "读", "touch": "碰", "take": "拿起", "place": "放下",
+          "give": "交给", "open": "打开", "knock": "敲门", "move": "走过去", "wait": "等",
+          "write": "写", "erase": "擦掉", "copy": "复写", "unlock": "开锁",
+          "recognize": "认字", "speak": "说话"}
+
+#: 除目标之外还需要的参数。指称类参数由引擎解析成世界里的东西。
+PARAMS = {
+    "write": (("text", "要写上去的字", True), ("with", "用哪支笔", False)),
+    "speak": (("text", "你要说的话", True),),
+    "place": (("to", "放到哪里", True),),
+    "give": (("to", "交给谁", True),),
+}
+
 for _rule in _CONCEPTS:
-    register(_rule)
+    register(replace(_rule, doc=DOCS[_rule.verb], params=PARAMS.get(_rule.verb, ()),
+                     label=LABELS[_rule.verb]))

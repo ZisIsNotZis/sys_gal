@@ -13,7 +13,7 @@ from pathlib import Path
 
 from engine.events import dump_log
 
-from .scenario import ending, play
+from .scenario import play, summary
 from .transcript import DECIDERS, context_view, digest_row, transcript
 
 
@@ -26,7 +26,7 @@ def main(argv: list[str] | None = None) -> int:
         (out / f"{variant}.md").write_text(transcript(run), encoding="utf-8")
         (out / f"{variant}.context.md").write_text(context_view(run), encoding="utf-8")
         (out / f"{variant}.json").write_text(
-            json.dumps({"events": run.log.to_json(), "ending": ending(run)}, ensure_ascii=False, indent=1),
+            json.dumps({"events": run.log.to_json(), "summary": summary(run)}, ensure_ascii=False, indent=1),
             encoding="utf-8",
         )
         (out / f"{variant}.events.json").write_text(dump_log(run.log), encoding="utf-8")

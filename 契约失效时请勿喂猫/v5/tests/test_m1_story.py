@@ -9,7 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import library  # noqa: F401
-from stories.s1_last_bus.scenario import ending, play
+from stories.s1_last_bus.scenario import play, summary
 from stories.s1_last_bus.transcript import transcript
 
 
@@ -19,11 +19,11 @@ class StoryTests(unittest.TestCase):
         cls.runs = {v: play(v) for v in ("a", "b", "c")}
 
     def test_three_paths_reach_three_different_endings(self):
-        ends = {v: ending(run)["结局"] for v, run in self.runs.items()}
+        ends = {v: summary(run)["结局"] for v, run in self.runs.items()}
         self.assertEqual(len(set(ends.values())), 3, ends)
-        self.assertEqual(ending(self.runs["a"])["包在谁那里"], "司机")
-        self.assertEqual(ending(self.runs["b"])["药盒在谁那里"], "甲")
-        self.assertEqual(ending(self.runs["c"])["包在谁那里"], "车厢")
+        self.assertEqual(summary(self.runs["a"])["包在谁那里"], "司机")
+        self.assertEqual(summary(self.runs["b"])["药盒在谁那里"], "甲")
+        self.assertEqual(summary(self.runs["c"])["包在谁那里"], "车厢")
 
     def test_every_path_runs_to_the_end_of_the_world(self):
         for variant, run in self.runs.items():

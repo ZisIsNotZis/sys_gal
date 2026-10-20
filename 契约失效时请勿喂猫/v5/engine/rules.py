@@ -42,6 +42,9 @@ class Rule:
     cost: int = 1
     hints: Callable[[Ctx], list[str]] | None = None
     entity_args: tuple[str, ...] = ("target",)   # 这些参数是世界的指称，由引擎解析
+    doc: str = ""                                # 一句话说明（给模型看，也给人看）
+    label: str = ""                              # 给人看的动词名（中文）
+    params: tuple[tuple[str, str, bool], ...] = ()   # (名字, 说明, 是否必填)
 
 
 def register(rule: Rule) -> Rule:
