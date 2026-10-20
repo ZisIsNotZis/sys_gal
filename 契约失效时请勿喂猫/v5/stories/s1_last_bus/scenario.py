@@ -40,6 +40,7 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("jia", "take", {"target": "包"}),
         ("jia", "give", {"target": "包", "to": "司机"}),
         ("jia", "knock", {"target": "驾驶室"}),
+        ("jia", "wait", {}),
         ("jia", "open", {"target": "驾驶室"}),
         ("jia", "give", {"target": "包", "to": "司机"}),
         ("jia", "move", {"target": "车外"}),
@@ -88,7 +89,7 @@ def play(variant: str = "a", seed_path: Path = DEFAULT_SEED) -> Run:
     log = EventLog()
     run = Run(variant=variant, world=world, log=log)
 
-    for actor, verb, args in SCRIPTS[variant]:
+    for step, (actor, verb, args) in enumerate(SCRIPTS[variant], start=1):
         for event in drain(world, log, EFFECTS):
             run.items.append(_world_item(event))
         context = block(world, actor)
@@ -103,7 +104,9 @@ def play(variant: str = "a", seed_path: Path = DEFAULT_SEED) -> Run:
             "ok": receipt.ok, "texts": list(receipt.texts),
             "reason": receipt.reason, "hints": list(receipt.hints), "note": receipt.note,
             "context": context,
-            "context_used": False,   # 脚本演员不读上下文：这是 M1 的诚实标记，M3 换成模型后为 True
+            "context_used": False,      # 脚本演员不读上下文；M3 换成模型后为 True
+            "decided_by": "script",    # M1 全部由脚本指定；M3 会出现 "agent"
+            "step": step,
         })
 
     for event in advance_idle(world, log, EFFECTS):

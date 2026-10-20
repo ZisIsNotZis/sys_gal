@@ -30,7 +30,7 @@ def glance(world: World, actor: str) -> dict[str, Any]:
         "place": world.entities[place].name if place else "不知何处",
         "here": [describe(world, e, actor) for e in visible(world, actor)],
         "hands": [world.entities[c].name for c in world.children(actor)],
-        "self": ent.prose,
+        "self": ent.identity or ent.prose,
     }
 
 

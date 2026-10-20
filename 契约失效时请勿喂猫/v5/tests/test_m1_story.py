@@ -30,8 +30,8 @@ class StoryTests(unittest.TestCase):
             self.assertTrue(run.world.flags.get("stopped"), variant)
             self.assertGreaterEqual(len(run.receipts), 12, variant)
 
-    def test_variant_a_is_a_fifteen_turn_story(self):
-        self.assertEqual(len(self.runs["a"].receipts), 16)
+    def test_variant_a_takes_seventeen_actions(self):
+        self.assertEqual(len(self.runs["a"].receipts), 17)
 
     def test_the_mid_story_refusal_is_natural_and_actionable(self):
         run = self.runs["a"]
@@ -39,6 +39,26 @@ class StoryTests(unittest.TestCase):
         self.assertEqual(len(refused), 1)
         self.assertIn("看不见", refused[0].reason)
         self.assertTrue(refused[0].hints)
+
+    def test_every_action_is_marked_with_who_decided_it(self):
+        text = transcript(self.runs["a"])
+        self.assertIn("`[世界]`", text)
+        self.assertIn("`[脚本]`", text)
+        self.assertIn("0 个为 `[角色]`", text)      # M1 没有任何动作是角色自己决定的
+        turns = [i for i in self.runs["a"].items if i["kind"] == "turn"]
+        self.assertTrue(all(i["decided_by"] == "script" for i in turns))
+        self.assertTrue(all(i["context_used"] is False for i in turns))
+
+    def test_the_driver_exists_before_he_is_named(self):
+        """司机的存在必须是甲感知到的人影，而不是读者替他补的常识。"""
+        first = [i for i in self.runs["a"].items if i["kind"] == "turn"][0]
+        self.assertTrue(any("人影" in item for item in first["context"]["glance"]["here"]))
+
+    def test_knocking_is_followed_by_waiting_not_by_instant_entry(self):
+        verbs = [i["verb"] for i in self.runs["a"].items if i["kind"] == "turn"]
+        self.assertIn("knock", verbs)
+        self.assertEqual(verbs[verbs.index("knock") + 1], "wait")
+        self.assertGreater(verbs.index("open", verbs.index("knock")), verbs.index("knock"))
 
     def test_transcript_reads_in_plain_language(self):
         text = transcript(self.runs["a"])

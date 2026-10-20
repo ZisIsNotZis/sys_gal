@@ -14,7 +14,7 @@ from pathlib import Path
 from engine.events import dump_log
 
 from .scenario import ending, play
-from .transcript import context_view, digest_row, transcript
+from .transcript import DECIDERS, context_view, digest_row, transcript
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -31,7 +31,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         (out / f"{variant}.events.json").write_text(dump_log(run.log), encoding="utf-8")
         row = digest_row(run)
-        print(f"{variant}: {row['turns']} 回合 / {row['events']} 事件 / {row['ending']['结局']}")
+        print(f"{variant}: {row['turns']} 动作 / {row['events']} 事件 / {row['decided']} / {row['ending']['结局']}")
         print(f"  轨迹：{out / f'{variant}.md'}")
     return 0
 

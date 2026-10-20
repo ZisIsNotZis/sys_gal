@@ -19,6 +19,7 @@ def _register_all() -> None:
     register_state_renderer("closed", lambda v: "封着口" if v else "")
     register_state_renderer("door", lambda v: "门关着" if v == "closed" else "门开着")
     register_state_renderer("portable", None)
+    register_state_renderer("silhouette", lambda v: "玻璃后面有个人影" if v else "")
     register_state_renderer("presence", None)
 
 

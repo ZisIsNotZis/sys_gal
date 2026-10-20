@@ -40,6 +40,11 @@ class GlanceTests(unittest.TestCase):
         self.assertIn("上面有字", text)
         self.assertNotIn("终点站后不再发车", text)
 
+    def test_glance_carries_your_own_first_person_identity(self):
+        g = glance(self.world, "yi")
+        self.assertIn("守夜", g["self"])
+        self.assertIn("守夜", render_block(block(self.world, "yi")))
+
     def test_glance_is_closed_door_honest(self):
         g = glance(self.world, "jia")
         self.assertTrue(any("门关着" in item for item in g["here"]))

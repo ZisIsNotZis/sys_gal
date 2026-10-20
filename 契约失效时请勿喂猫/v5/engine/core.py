@@ -20,6 +20,7 @@ class Entity:
     name: str
     prose: str = ""
     aliases: tuple[str, ...] = ()
+    identity: str = ""        # 第一人称的自我描述：系统提示里"你是谁"那一段
 
 
 class World:
@@ -125,7 +126,7 @@ class World:
     # ---- 审计用摘要
     def digest(self) -> str:
         payload = {
-            "entities": {k: [v.kind, v.name, list(v.aliases), v.prose]
+            "entities": {k: [v.kind, v.name, list(v.aliases), v.prose, v.identity]
                          for k, v in sorted(self.entities.items())},
             "state": {k: dict(sorted(v.items())) for k, v in sorted(self.state.items())},
             "parent": dict(sorted(self.parent.items())),

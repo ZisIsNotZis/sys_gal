@@ -33,7 +33,8 @@ def build(seed: dict[str, Any]) -> World:
             world.add(
                 Entity(id=row["id"], kind=row["kind"], name=row["name"],
                        prose=row.get("prose", ""),
-                       aliases=tuple(row.get("aliases", ()))),
+                       aliases=tuple(row.get("aliases", ())),
+                       identity=row.get("identity", "")),
                 parent=parent,
                 state=row.get("state"),
             )

@@ -14,7 +14,7 @@ places:
     parent: car
     name: 驾驶室
     prose: 玻璃上蒙着一层水汽
-    state: {door: closed}
+    state: {door: closed, silhouette: true}
 
 people:
   - id: jia
