@@ -14,7 +14,7 @@ from pathlib import Path
 from engine.events import dump_log
 
 from .scenario import ending, play
-from .transcript import digest_row, transcript
+from .transcript import context_view, digest_row, transcript
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -24,6 +24,7 @@ def main(argv: list[str] | None = None) -> int:
     for variant in variants:
         run = play(variant)
         (out / f"{variant}.md").write_text(transcript(run), encoding="utf-8")
+        (out / f"{variant}.context.md").write_text(context_view(run), encoding="utf-8")
         (out / f"{variant}.json").write_text(
             json.dumps({"events": run.log.to_json(), "ending": ending(run)}, ensure_ascii=False, indent=1),
             encoding="utf-8",

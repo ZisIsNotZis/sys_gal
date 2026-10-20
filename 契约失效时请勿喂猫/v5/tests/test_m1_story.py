@@ -43,8 +43,8 @@ class StoryTests(unittest.TestCase):
     def test_transcript_reads_in_plain_language(self):
         text = transcript(self.runs["a"])
         self.assertIn("## 结局", text)
-        self.assertIn("看了看周围", text)
-        self.assertNotIn("look", text)
+        self.assertIn("细看", text)
+        self.assertNotIn("examine", text)
         self.assertNotIn("give", text)
         self.assertNotIn("None", text)
 

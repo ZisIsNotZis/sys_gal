@@ -15,9 +15,10 @@ python3 scripts/v5_lint.py
 # 引擎与故事的全部测试（含三条反向门与重放）
 python3 -m unittest discover -s tests -p 'test_*.py'
 
-# 跑三条路径，写出可通读的轨迹
+# 跑三条路径，写出可通读的轨迹 + 上下文审计视图
 python3 -m stories.s1_last_bus.run a b c
-cat stories/s1_last_bus/runs/a.md
+cat stories/s1_last_bus/runs/a.md          # 故事视图
+cat stories/s1_last_bus/runs/a.context.md  # 每一回合"他当时知道什么"
 ```
 
 ## 三条反向门（M1 的验收）
@@ -27,6 +28,10 @@ cat stories/s1_last_bus/runs/a.md
 3. **指称不到时可行动**：说一个不存在的地方，得到"眼前能看见什么"，而不是一句"找不到"。
 
 另有第四条：**轨迹只叙述有人感知到的事**，世界事件必须写明"谁感到"。
+
+## 智能体表面
+
+每个角色每回合的上下文由引擎生成并逐回合记录：**一眼**（时间、所在、眼前、手里）、**最近**（他自己感知到的几条）、**知道的事**（他相信的，可能错）、以及只在本人记忆里按字面检索的**回想**。纸上"有字"是看一眼就知道的，"写了什么"必须**读**——所以"读过"是有后果的动作，而不是自动知道的。
 
 ## 目录
 

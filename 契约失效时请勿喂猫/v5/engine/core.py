@@ -34,6 +34,7 @@ class World:
         self.seq: int = 0
         self.memory: dict[str, list[list[Any]]] = {}
         self.knowledge: dict[str, list[str]] = {}
+        self.beliefs: dict[str, list[list[str]]] = {}   # actor -> [[about, says], ...]
         self.flags: dict[str, Any] = {}
 
     # ---- P1 实体
@@ -57,6 +58,7 @@ class World:
         self.parent.pop(eid, None)
         self.memory.pop(eid, None)
         self.knowledge.pop(eid, None)
+        self.beliefs.pop(eid, None)
 
     def kind_of(self, eid: str) -> str | None:
         ent = self.entities.get(eid)
@@ -132,6 +134,7 @@ class World:
                                 for w, _, e in self.schedule]),
             "memory": {k: list(v) for k, v in sorted(self.memory.items())},
             "knowledge": {k: sorted(v) for k, v in sorted(self.knowledge.items())},
+            "beliefs": {k: [list(row) for row in v] for k, v in sorted(self.beliefs.items())},
             "flags": dict(sorted(self.flags.items())),
         }
         blob = json.dumps(payload, ensure_ascii=False, sort_keys=True)

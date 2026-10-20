@@ -54,7 +54,7 @@ class SeedTests(unittest.TestCase):
 
     def test_renderers_are_registered_not_hardcoded(self):
         self.assertIn("inscription", STATE_RENDERERS)
-        self.assertIsNone(STATE_RENDERERS["portable"])   # 物性，不可见
+        self.assertEqual(STATE_RENDERERS["portable"], (None, None))   # 物性，不可见
 
 
 class PrimitiveTests(unittest.TestCase):
@@ -73,8 +73,12 @@ class PrimitiveTests(unittest.TestCase):
             apply_atom(self.world, {"op": "teleport", "e": "jia"})
 
     def test_describe_is_physics_only(self):
-        text = describe(self.world, "notice")
-        self.assertIn("上面写着", text)
+        glimpse = describe(self.world, "notice")
+        text = describe(self.world, "notice", detail=True)
+        self.assertIn("上面有字", glimpse)
+        self.assertNotIn("末班车", glimpse)
+        self.assertIn("印上去的", text)
+        self.assertNotIn("末班车", text)   # 内容只能由"读"得到
         for word in ("作者", "写于", "谁写的", "读者"):
             self.assertNotIn(word, text)
 

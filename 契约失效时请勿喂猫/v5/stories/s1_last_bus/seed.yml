@@ -21,24 +21,35 @@ people:
     parent: car
     name: 甲
     prose: 外套半湿，坐在靠门的位置
+    identity: 你二十七岁，做一份和表格打交道的差事。你不爱管别人的事，但也不愿意看着东西被人丢在那儿没人管。
     knows: [car, cab, outside, notice, bag, driver]
+    believes:
+      - {about: notice, says: 这辆车今天最后一趟，之后没车了}
+      - {about: driver, says: 司机姓刘，跑这条线很多年了}
   - id: yi
     parent: car
     name: 乙
     prose: 四十上下，穿一件洗旧的外套
+    identity: 你四十出头，今晚要去医院替人守夜。有些事你不想解释，也没打算解释。
     knows: [car, bag, pillbox, outside]
+    believes:
+      - {about: pillbox, says: 药是按点吃的，不能断}
+      - {about: bag, says: 包里没有值钱的东西，丢了也不可惜}
   - id: driver
     parent: cab
     name: 司机
     prose: 五十来岁，一直盯着前面的雨
+    identity: 你跑末班车第八年。车上发生的事你不问，但落到你手上的东西你得有个交代。
     knows: [car, cab, outside]
+    believes:
+      - {about: car, says: 这一趟是三站，之后回场}
 
 objects:
   - id: notice
     parent: car
     name: 通知
     prose: 边角卷了的打印纸
-    state: {inscription: "本车为末班车，终点站后不再发车。"}
+    state: {inscription: "本车为末班车，终点站后不再发车。", medium: printed}
   - id: bag
     parent: yi
     name: 包
@@ -48,7 +59,7 @@ objects:
     parent: bag
     name: 药盒
     prose: 白色的一小盒
-    state: {inscription: "每日两次，饭后。", portable: true}
+    state: {inscription: "每日两次，饭后。", medium: handwritten, portable: true}
 
 schedule:
   - {at: 1357, effect: {kind: arrive, place: car, station: 第一站}}

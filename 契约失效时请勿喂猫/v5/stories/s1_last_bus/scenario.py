@@ -14,6 +14,7 @@ from engine.core import World
 from engine.events import Event, EventLog
 from engine.rules import Receipt, advance_idle, drain, submit
 from engine.seed import load
+from engine.surface import block
 from library import EFFECTS
 
 DEFAULT_SEED = Path(__file__).with_name("seed.yml")
@@ -32,7 +33,7 @@ _YI_PACKS_UP: list[tuple[str, str, dict[str, Any]]] = [
 SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
     # A：把它交给司机（中间先失败一次：门关着，看不见人）
     "a": [
-        ("jia", "look", {}),
+        ("jia", "examine", {}),
         ("jia", "read", {"target": "通知"}),
         *_YI_PACKS_UP,
         ("jia", "touch", {"target": "包"}),
@@ -45,7 +46,7 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
     ],
     # B：打开它，把药盒带走
     "b": [
-        ("jia", "look", {}),
+        ("jia", "examine", {}),
         ("jia", "read", {"target": "通知"}),
         *_YI_PACKS_UP,
         ("jia", "touch", {"target": "包"}),
@@ -56,7 +57,7 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
     ],
     # C：什么都不做，坐到终点
     "c": [
-        ("jia", "look", {}),
+        ("jia", "examine", {}),
         ("jia", "read", {"target": "通知"}),
         *_YI_PACKS_UP,
         ("jia", "wait", {}),
@@ -90,6 +91,7 @@ def play(variant: str = "a", seed_path: Path = DEFAULT_SEED) -> Run:
     for actor, verb, args in SCRIPTS[variant]:
         for event in drain(world, log, EFFECTS):
             run.items.append(_world_item(event))
+        context = block(world, actor)
         receipt = submit(world, log, actor, verb, dict(args))
         run.receipts.append(receipt)
         target = receipt.event.note.get("target") if receipt.event else None
@@ -100,6 +102,8 @@ def play(variant: str = "a", seed_path: Path = DEFAULT_SEED) -> Run:
             "to": dict(args).get("to", ""),
             "ok": receipt.ok, "texts": list(receipt.texts),
             "reason": receipt.reason, "hints": list(receipt.hints), "note": receipt.note,
+            "context": context,
+            "context_used": False,   # 脚本演员不读上下文：这是 M1 的诚实标记，M3 换成模型后为 True
         })
 
     for event in advance_idle(world, log, EFFECTS):

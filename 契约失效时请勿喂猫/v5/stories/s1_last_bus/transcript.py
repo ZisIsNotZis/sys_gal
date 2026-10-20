@@ -7,10 +7,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from engine.surface import render_block
+
 from .scenario import Run, ending
 
 
-VERBS = {"look": "看了看周围", "read": "读", "touch": "碰了碰", "take": "拿起",
+VERBS = {"examine": "细看", "read": "读", "touch": "碰了碰", "take": "拿起",
          "place": "放下", "give": "交给", "open": "打开", "knock": "敲了敲",
          "move": "走向", "wait": "等着"}
 
@@ -66,6 +68,28 @@ def transcript(run: Run) -> str:
 
     lines += [f"- {k}：{show(v)}" for k, v in end.items() if k != "结局"]
     lines += ["", f"{end['结局']}。", ""]
+    return "\n".join(lines)
+
+
+def context_view(run: Run) -> str:
+    """审计视图：每一回合，这个角色当时拿到的全部上下文。"""
+    w = run.world
+    lines = ["# 《末班车》上下文审计", "",
+             "脚本演员不读这些上下文（`context_used: false`）；这一份只为回答"
+             "「他当时知道什么」，以及 M3 换成模型后同一份块直接喂进去。", ""]
+    for item in run.items:
+        if item["kind"] != "turn":
+            continue
+        stamp = clock_label(item["at"])
+        actor = w.entities[item["actor"]].name
+        lines += [f"## {stamp} {actor}：{VERBS.get(item['verb'], item['verb'])} {item.get('target','')}", "",
+                  "```", render_block(item["context"]), "```", ""]
+        if item["ok"]:
+            for text in item["texts"]:
+                lines.append(f"- 结果：{text}")
+        else:
+            lines.append(f"- 没成：{item['reason']}")
+        lines.append("")
     return "\n".join(lines)
 
 

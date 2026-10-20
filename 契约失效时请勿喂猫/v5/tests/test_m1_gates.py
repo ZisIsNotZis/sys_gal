@@ -73,14 +73,18 @@ class Gate2NoProvenance(unittest.TestCase):
             for word in PROVENANCE_WORDS:
                 self.assertNotIn(word, text, f"渲染里出现了来源元数据：{text}")
 
-    def test_a_paper_carries_only_what_is_written_on_it(self):
+    def test_a_paper_carries_only_physical_facts(self):
         world = load(DEFAULT_SEED)
-        self.assertEqual(set(world.state["notice"]), {"inscription"})
+        keys = set(world.state["notice"])
+        self.assertEqual(keys, {"inscription", "medium"})
+        for forbidden in ("author", "by", "written_by", "read_by", "date", "signature"):
+            self.assertNotIn(forbidden, keys)
 
     def test_reading_returns_only_the_inscription(self):
         run = play("a")
         first = [item for item in run.items if item["kind"] == "turn" and item["verb"] == "read"][0]
         self.assertEqual(first["texts"], ["你读着通知：「本车为末班车，终点站后不再发车。」"])
+        self.assertNotIn("印上去的", first["texts"][0])
 
     def test_transcript_never_explains_who_wrote_anything(self):
         text = transcript(play("a"))

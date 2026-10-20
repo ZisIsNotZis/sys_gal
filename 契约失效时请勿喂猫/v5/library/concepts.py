@@ -46,21 +46,22 @@ def _room(world: World, eid: str) -> str | None:
 
 # ---------- 十个动词
 
-def _look_when(ctx: Ctx) -> str | None:
+def _examine_when(ctx: Ctx) -> str | None:
     return None
 
 
-def _look_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+def _examine_atoms(ctx: Ctx) -> list[dict[str, Any]]:
     return []
 
 
-def _look_render(ctx: Ctx) -> list[tuple[str, str]]:
+def _examine_render(ctx: Ctx) -> list[tuple[str, str]]:
+    """细看：把眼前的东西看到能看清字的程度（内容仍要 read 才算读过）。"""
     w = ctx.world
     seen = [e for e in visible(w, ctx.actor)]
     if not seen:
         return [(ctx.actor, "你什么也没看见。")]
-    parts = [describe(w, e, ctx.actor) for e in seen]
-    return [(ctx.actor, "你看见：" + "；".join(parts) + "。")]
+    parts = [describe(w, e, ctx.actor, detail=True) for e in seen]
+    return [(ctx.actor, "你细看：" + "；".join(parts) + "。")]
 
 
 def _read_when(ctx: Ctx) -> str | None:
@@ -268,7 +269,7 @@ def _wait_render(ctx: Ctx) -> list[tuple[str, str]]:
 
 
 _CONCEPTS = [
-    Rule("look", STORY, _look_when, _look_atoms, _look_render, cost=1),
+    Rule("examine", STORY, _examine_when, _examine_atoms, _examine_render, cost=1),
     Rule("read", STORY, _read_when, _read_atoms, _read_render, cost=1, hints=_read_hints),
     Rule("touch", STORY, _touch_when, _touch_atoms, _touch_render, cost=0),
     Rule("take", STORY, _take_when, _take_atoms, _take_render, cost=1),

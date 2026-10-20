@@ -38,6 +38,8 @@ def build(seed: dict[str, Any]) -> World:
                 state=row.get("state"),
             )
             world.knowledge.setdefault(row["id"], []).extend(row.get("knows", []))
+            world.beliefs.setdefault(row["id"], []).extend(
+                [[b["about"], b["says"]] for b in row.get("believes", [])])
             pending.remove(row)
             progressed = True
         if not progressed:
