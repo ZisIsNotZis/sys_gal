@@ -54,7 +54,7 @@ S4 与 S5 刻意同尺度、不同压力：**同规模对照**是库通用性最
 
 里程碑之外的内部工作包在同一里程碑内并行，不必逐个向用户同步。
 
-**当前状态**：M0 交付物已写成——`V5-PRIMITIVES.md`、`V5-LAYERS.md`、`V5-SCENES.md` 与本文件；零代码。
+**当前状态**：M0 已交付（`V5-PRIMITIVES.md`、`V5-LAYERS.md`、`V5-SCENES.md` 与本文件）；M1 已实现，等用户门——《末班车》三条路径跑通、回放逐字节一致、四条反向门绿，`python3 -m unittest discover -s tests` 35 项全过，`python3 scripts/v5_lint.py` 通过。
 
 ## 4. 并行轨道
 

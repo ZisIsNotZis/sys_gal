@@ -87,13 +87,14 @@ v5/
 │   ├── concepts/
 │   └── CHANGELOG.md
 ├── stories/
-│   ├── s1-last-bus/         # 《末班车》：种子 + 卡司 + 验收 + runs/
-│   ├── s2-borrow-note/      # 《借条》
-│   ├── s3-night-market/     # 《夜市》
-│   ├── s4-night-shift/      # 《夜班》
-│   ├── s5-wedding/          # 《婚礼》
-│   ├── s6-parcel-station/   # 《快递站》
-│   └── s7-campus-12d/       # 《契约失效时请勿喂猫》
+│   ├── s1_last_bus/         # 《末班车》：种子 + 卡司 + 验收 + runs/
+│   ├── s2_borrow_note/      # 《借条》
+│   ├── s3_night_market/     # 《夜市》
+│   ├── s4_night_shift/      # 《夜班》
+│   ├── s5_wedding/          # 《婚礼》
+│   ├── s6_parcel_station/   # 《快递站》
+│   └── s7_campus_12d/       # 《契约失效时请勿喂猫》
+# 目录名用下划线：它们是 Python 包，才能被测试与检查器导入。
 ├── scripts/          # lint、检查器、打包、运行入口
 ├── runs/             # 打包后的轨迹工件（入 git）
 └── docs/             # 本目录：原始集、三层、场景清单、路线图

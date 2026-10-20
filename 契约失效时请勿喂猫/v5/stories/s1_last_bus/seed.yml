@@ -1,0 +1,57 @@
+story: s1-last-bus
+# 22:30 的末班车。三站路，一个人把包留在了座位上。
+start_clock: 1350
+
+places:
+  - id: outside
+    name: 车外
+    prose: 站台的水泥地，雨被风推着斜着落
+  - id: car
+    parent: outside
+    name: 车厢
+    prose: 灯管有一支在闪
+  - id: cab
+    parent: car
+    name: 驾驶室
+    prose: 玻璃上蒙着一层水汽
+    state: {door: closed}
+
+people:
+  - id: jia
+    parent: car
+    name: 甲
+    prose: 外套半湿，坐在靠门的位置
+    knows: [car, cab, outside, notice, bag, driver]
+  - id: yi
+    parent: car
+    name: 乙
+    prose: 四十上下，穿一件洗旧的外套
+    knows: [car, bag, pillbox, outside]
+  - id: driver
+    parent: cab
+    name: 司机
+    prose: 五十来岁，一直盯着前面的雨
+    knows: [car, cab, outside]
+
+objects:
+  - id: notice
+    parent: car
+    name: 通知
+    prose: 边角卷了的打印纸
+    state: {inscription: "本车为末班车，终点站后不再发车。"}
+  - id: bag
+    parent: yi
+    name: 包
+    prose: 拉链头磨得发亮
+    state: {closed: true, portable: true}
+  - id: pillbox
+    parent: bag
+    name: 药盒
+    prose: 白色的一小盒
+    state: {inscription: "每日两次，饭后。", portable: true}
+
+schedule:
+  - {at: 1357, effect: {kind: arrive, place: car, station: 第一站}}
+  - {at: 1365, effect: {kind: arrive, place: car, station: 第二站}}
+  - {at: 1373, effect: {kind: arrive, place: car, station: 第三站}}
+  - {at: 1373, effect: {kind: stops, place: car}}
