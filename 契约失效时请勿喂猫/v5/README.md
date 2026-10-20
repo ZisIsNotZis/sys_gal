@@ -4,21 +4,23 @@ v5 不是 v4 的续集，是同一实验室的**重造**：引擎只保留十条
 
 ## 现在能跑什么
 
-M1 已交付：引擎骨架（实体、状态、包含、时间、事件、感知投递、心智、意愿、规则、命名解析）+ 《末班车》三条脚本路径。
+- **M1**：引擎骨架（实体、状态、包含、时间、事件、感知投递、心智、意愿、规则、命名解析）+ 《末班车》三条脚本路径。
+- **M2**：库 v0 —— 16 个动词（读写、拿放、给、开、敲、走、等、细看、擦、复写、开锁、认字、说话）+ 《借条》四条脚本路径。**认字只靠知识**：纸只给墨色与字形，谁写的要靠人自己认。
 
 ```bash
 cd 契约失效时请勿喂猫/v5
 
-# 结构检查（状态键与渲染成对、引擎不含故事名词、孤儿概念、脚本只用库动词）
-python3 scripts/v5_lint.py
+# 结构检查（状态键与渲染成对、引擎不含故事名词、种子字段严格、孤儿概念、脚本只用库动词）
+python3 scripts/v5_lint.py --strict
 
 # 引擎与故事的全部测试（含三条反向门与重放）
 python3 -m unittest discover -s tests -p 'test_*.py'
 
-# 跑三条路径，写出可通读的轨迹 + 上下文审计视图
+# 跑路径，写出可通读的轨迹 + 上下文审计视图
 python3 -m stories.s1_last_bus.run a b c
-cat stories/s1_last_bus/runs/a.md          # 故事视图
-cat stories/s1_last_bus/runs/a.context.md  # 每一回合"他当时知道什么"
+python3 -m stories.s2_borrow_note.run a b c d
+cat stories/s2_borrow_note/runs/d.md          # 故事视图（当场说破那条）
+cat stories/s2_borrow_note/runs/d.context.md  # 每一回合"他当时知道什么"
 ```
 
 ## 三条反向门（M1 的验收）

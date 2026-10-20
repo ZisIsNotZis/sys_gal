@@ -52,7 +52,7 @@ class Gate1NoTrace(unittest.TestCase):
         log = EventLog()
         before = {p: list(m) for p, m in world.memory.items()}
         submit(world, log, "jia", "read", {"target": "通知"})
-        notice_text = world.get("notice", "inscription")
+        notice_text = "".join(m["text"] for m in world.get("notice", "marks"))
         self.assertIn(notice_text, world.memory["jia"][-1][1])
         for person, rows in world.memory.items():
             if person == "jia":
@@ -76,7 +76,7 @@ class Gate2NoProvenance(unittest.TestCase):
     def test_a_paper_carries_only_physical_facts(self):
         world = load(DEFAULT_SEED)
         keys = set(world.state["notice"])
-        self.assertEqual(keys, {"inscription", "medium"})
+        self.assertEqual(keys, {"marks"})
         for forbidden in ("author", "by", "written_by", "read_by", "date", "signature"):
             self.assertNotIn(forbidden, keys)
 

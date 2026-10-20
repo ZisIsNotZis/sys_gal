@@ -53,7 +53,7 @@ class SeedTests(unittest.TestCase):
         self.assertEqual(problems, [], problems)
 
     def test_renderers_are_registered_not_hardcoded(self):
-        self.assertIn("inscription", STATE_RENDERERS)
+        self.assertIn("marks", STATE_RENDERERS)
         self.assertEqual(STATE_RENDERERS["portable"], (None, None))   # 物性，不可见
 
 
@@ -86,14 +86,16 @@ class PrimitiveTests(unittest.TestCase):
         """引擎不许认识故事名词。单字中文名（甲、乙、包）会与常用字撞车，只查两字以上与 id。"""
         import re
         import yaml
-        seed = yaml.safe_load(DEFAULT_SEED.read_text(encoding="utf-8"))
-        names = {n for n in entity_names(seed) if len(n) >= 2}
+        names: set[str] = set()
+        for seed_path in sorted((Path(__file__).resolve().parents[1] / "stories").glob("*/seed.yml")):
+            names |= entity_names(yaml.safe_load(seed_path.read_text(encoding="utf-8")))
+        names = {n for n in names if len(n) >= 2}
         engine_dir = Path(__file__).resolve().parents[1] / "engine"
         for path in engine_dir.glob("*.py"):
             source = path.read_text(encoding="utf-8")
             for name in sorted(names):
                 if re.fullmatch(r"[a-z_]+", name):
-                    hit = re.search(rf"\b{name}\b", source)
+                    hit = re.search(rf"[\"']{name}[\"']", source)
                 else:
                     hit = name in source
                 self.assertFalse(

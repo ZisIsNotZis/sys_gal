@@ -76,6 +76,8 @@ class Run:
     log: EventLog
     items: list[dict[str, Any]] = field(default_factory=list)
     receipts: list[Receipt] = field(default_factory=list)
+    title: str = "《末班车》"
+    summary: dict[str, Any] = field(default_factory=dict)
 
 
 def _world_item(event: Event) -> dict[str, Any]:
@@ -111,6 +113,7 @@ def play(variant: str = "a", seed_path: Path = DEFAULT_SEED) -> Run:
 
     for event in advance_idle(world, log, EFFECTS):
         run.items.append(_world_item(event))
+    run.summary = ending(run)
     return run
 
 

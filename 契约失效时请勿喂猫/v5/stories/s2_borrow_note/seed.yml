@@ -1,0 +1,89 @@
+story: s2-borrow-note
+# 19:30 的出租屋。一张借条，一杯没动的水，三个人。
+start_clock: 1170
+
+places:
+  - id: hall
+    name: 楼道
+    prose: 声控灯坏了一半，脚下有一层薄灰
+  - id: room
+    parent: hall
+    name: 出租屋
+    prose: 一张方桌，两把椅子，窗帘拉着
+
+people:
+  - id: jia
+    parent: room
+    name: 甲
+    prose: 三十出头，把外套搭在椅背上
+    identity: 你借钱给熟人从来不写利息。你不喜欢麻烦，也不喜欢被当成好欺负的人。
+    knows: [iou, key, drawer, room, hall, pen, pencil, yi, bing]
+    state: {hand: jia_hand}
+    believes:
+      - {about: iou, says: 借条上写的是一千，三个月还}
+  - id: yi
+    parent: room
+    name: 乙
+    prose: 二十七八，一直没脱外套
+    identity: 你手头紧，但不想欠人情欠得太久。有些字你写得比谁都快。
+    knows: [iou, room, hall, pen, pencil, eraser, jia, bing]
+    state: {hand: yi_hand}
+    believes:
+      - {about: iou, says: 借条上写的是一千，我没打算赖}
+  - id: bing
+    parent: room
+    name: 丙
+    prose: 四十上下，坐在靠门那把椅子上
+    identity: 你在这栋楼住了十年，谁的字你都认得。你不爱多事，但你看得见。
+    reads_hands: {jia_hand: jia, yi_hand: yi}
+    knows: [iou, room, hall, jia, yi]
+    state: {hand: bing_hand}
+    believes:
+      - {about: iou, says: 借条是甲写的，字往右歪}
+
+objects:
+  - id: drawer
+    parent: room
+    name: 抽屉
+    prose: 桌子底下那只铁皮抽屉
+    state: {closed: true, locked: true}
+  - id: iou
+    parent: drawer
+    name: 借条
+    prose: 一张对折过的横格纸
+    state:
+      marks:
+        - {text: "今借到现金一千元，三个月内归还。", ink: graphite, style: jia_hand}
+        - {text: "甲", ink: ink, style: jia_hand}
+      accepts: [ink, graphite]
+      portable: true
+  - id: room_key
+    parent: jia
+    name: 钥匙
+    prose: 一把小铁钥匙
+    state: {opens: drawer, portable: true}
+  - id: pen
+    parent: room
+    name: 钢笔
+    prose: 笔帽上有一道裂
+    state: {implement: ink, portable: true}
+  - id: pencil
+    parent: room
+    name: 铅笔
+    prose: 削得很短了
+    state: {implement: graphite, portable: true}
+  - id: eraser
+    parent: room
+    name: 橡皮
+    prose: 一块擦得发黑的橡皮
+    state: {erases: true, portable: true}
+  - id: carbon
+    parent: room
+    name: 复写纸
+    prose: 一张用过几次的蓝复写纸
+    state: {copies: true, portable: true}
+  - id: blank
+    parent: room
+    name: 空白纸
+    prose: 一张没用过的横格纸
+    state: {accepts: [ink, graphite], portable: true}

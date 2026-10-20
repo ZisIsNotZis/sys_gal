@@ -41,6 +41,7 @@ class Rule:
     render: Callable[[Ctx], list[tuple[str, str]]]
     cost: int = 1
     hints: Callable[[Ctx], list[str]] | None = None
+    entity_args: tuple[str, ...] = ("target",)   # 这些参数是世界的指称，由引擎解析
 
 
 def register(rule: Rule) -> Rule:
@@ -61,19 +62,19 @@ class Receipt:
     event: Event | None = None
 
 
-def _resolve_args(world: World, actor: str, verb: str,
+def _resolve_args(world: World, actor: str, verb: str, rule: "Rule",
                   args: dict[str, Any]) -> Resolution | None:
     out = dict(args)
-    if "target" in out:
-        res = resolve_place(world, actor, out["target"]) if verb == "move" else resolve(world, actor, out["target"])
+    for name in rule.entity_args:
+        if name not in out:
+            continue
+        if name == "target" and verb == "move":
+            res = resolve_place(world, actor, out[name])
+        else:
+            res = resolve(world, actor, out[name])
         if not res:
             return res
-        out["target"] = res.eid
-    if "to" in out:
-        res = resolve(world, actor, out["to"])
-        if not res:
-            return res
-        out["to"] = res.eid
+        out[name] = res.eid
     args.clear()
     args.update(out)
     return None
@@ -86,7 +87,7 @@ def submit(world: World, log: EventLog, actor: str, verb: str,
         raise KeyError(f"库里没有这个动词：{verb}")
     rule = REGISTRY[verb]
     raw = dict(args)
-    bad = _resolve_args(world, actor, verb, raw)
+    bad = _resolve_args(world, actor, verb, rule, raw)
     if bad is not None:
         event = Event(id=log.next_id(), at=world.clock, kind="refused", actor=actor,
                       what=verb, atoms=(), note={"reason": bad.reason,

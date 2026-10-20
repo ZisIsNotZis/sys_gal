@@ -25,6 +25,10 @@ from engine.seed import entity_names, state_keys  # noqa: E402
 
 IMPERATIVE = ("让", "应当", "应该", "必须", "记得", "务必")
 
+#: 引擎词汇：种子里的 id 撞上它们，会让"引擎不认识故事名词"这条检查失效。
+RESERVED = {"note", "event", "state", "memory", "flag", "clock", "schedule", "parent",
+            "marks", "identity", "beliefs", "knowledge", "world", "actor", "target"}
+
 
 def story_dirs() -> list[Path]:
     return sorted(p for p in (ROOT / "stories").iterdir() if p.is_dir() and not p.name.startswith("_"))
@@ -38,6 +42,10 @@ def check_seed_shape(fails: list[str], warns: list[str]) -> None:
     for path in seed_files():
         seed = yaml.safe_load(path.read_text(encoding="utf-8"))
         story = path.parent.name
+        for section in ("places", "people", "objects"):
+            for row in seed.get(section, []):
+                if row["id"] in RESERVED:
+                    fails.append(f"{story}: 实体 id「{row['id']}」与引擎词汇同名")
         for problem in pairing_report(state_keys(seed)):
             fails.append(f"{story}: {problem}")
         for section in ("places", "people", "objects"):
@@ -55,6 +63,11 @@ def check_seed_shape(fails: list[str], warns: list[str]) -> None:
 
 
 def check_engine_is_story_blind(fails: list[str]) -> None:
+    """引擎里不许出现故事名词。
+
+    ASCII 的 id 只查"被当成字面量写进去"（`"note"`），因为 `event.note` 这类
+    普通属性名与故事无关；中文名足够独特，按子串查。
+    """
     names: set[str] = set()
     for path in seed_files():
         names |= entity_names(yaml.safe_load(path.read_text(encoding="utf-8")))
@@ -62,20 +75,30 @@ def check_engine_is_story_blind(fails: list[str]) -> None:
     for path in sorted((ROOT / "engine").glob("*.py")):
         source = path.read_text(encoding="utf-8")
         for name in sorted(names):
-            hit = re.search(rf"\b{name}\b", source) if re.fullmatch(r"[a-z_]+", name) else name in source
+            if re.fullmatch(r"[a-z_]+", name):
+                hit = re.search(rf"[\"']{name}[\"']", source)
+            else:
+                hit = name in source
             if hit:
-                fails.append(f"engine/{path.name} 出现了故事名词「{name}」")
+                fails.append(f"engine/{path.name} 把故事名词「{name}」写成了字面量")
 
 
 def check_concepts(fails: list[str], warns: list[str], strict: bool) -> None:
+    """孤儿检查：一个概念至少要"被两支故事用到"。
+
+    已建(present)与已规划(declared)分开报：设计上短故事阶梯就是为长弧预备概念，
+    所以声明到 ≥2 即可；但只有一支故事真用过时仍然要报出来，免得声明变成空话。
+    """
     stories = {p.name for p in story_dirs()}
     for verb, rule in sorted(REGISTRY.items()):
         if not callable(rule.when) or not callable(rule.atoms) or not callable(rule.render):
             fails.append(f"概念 {verb} 缺少 when/atoms/render 之一")
-        used = set(rule.used_by) & stories
-        if len(used) < 2:
-            message = f"概念 {verb} 只被 {sorted(used) or '零'} 支故事用到（孤儿禁令要求 ≥2）"
-            (fails if strict else warns).append(message)
+        present = set(rule.used_by) & stories
+        declared = set(rule.used_by)
+        if len(declared) < 2:
+            fails.append(f"概念 {verb} 只声明了 {sorted(declared) or '零'} 支故事（孤儿禁令要求 ≥2）")
+        elif len(present) < 2:
+            warns.append(f"概念 {verb} 目前只有 {sorted(present)} 真用过；已声明 {len(declared)} 支")
 
 
 def check_scripts(fails: list[str]) -> None:

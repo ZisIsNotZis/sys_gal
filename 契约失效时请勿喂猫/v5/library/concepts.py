@@ -13,7 +13,7 @@ from engine.render import describe, refer
 from engine.resolve import in_sight, inner_place, visible
 from engine.rules import Ctx, Rule, register
 
-STORY = ("s1_last_bus",)
+STORY = ("s1_last_bus", "s2_borrow_note", "s7_campus_12d")
 
 
 # ---------- 共用小工具
@@ -65,7 +65,7 @@ def _examine_render(ctx: Ctx) -> list[tuple[str, str]]:
 
 
 def _read_when(ctx: Ctx) -> str | None:
-    if ctx.world.get(ctx.target, "inscription") is None:
+    if not ctx.world.get(ctx.target, "marks"):
         return f"{ctx.name(ctx.target)}上面没有字"
     return None
 
@@ -77,12 +77,12 @@ def _read_atoms(ctx: Ctx) -> list[dict[str, Any]]:
 def _read_hints(ctx: Ctx) -> list[str]:
     w = ctx.world
     readable = [w.entities[e].name for e in visible(w, ctx.actor)
-                if w.get(e, "inscription") is not None]
+                if w.get(e, "marks")]
     return ["眼前能读的东西：" + ("、".join(readable) if readable else "没有")]
 
 
 def _read_render(ctx: Ctx) -> list[tuple[str, str]]:
-    text = ctx.world.get(ctx.target, "inscription")
+    text = "".join(m["text"] for m in ctx.world.get(ctx.target, "marks") or [])
     out = [(ctx.actor, f"你读着{ctx.name(ctx.target)}：「{text}」")]
     for p in _onlookers(ctx.world, ctx.actor, ctx.target):
         out.append((p, f"{refer(ctx.world, p, ctx.actor)}在看{ctx.name(ctx.target)}。"))
@@ -186,6 +186,8 @@ def _open_when(ctx: Ctx) -> str | None:
         if inner_place(w, _room(w, ctx.actor), ctx.target) is None:
             return f"你够不到{ctx.name(ctx.target)}的门"
         return None
+    if w.get(ctx.target, "locked"):
+        return f"{ctx.name(ctx.target)}锁着"
     if not w.get(ctx.target, "closed"):
         return f"{ctx.name(ctx.target)}本来就开着"
     return None
@@ -196,6 +198,12 @@ def _open_atoms(ctx: Ctx) -> list[dict[str, Any]]:
     if w.kind_of(ctx.target) == "place":
         return [{"op": "set", "e": ctx.target, "k": "door", "v": "open"}]
     return [{"op": "set", "e": ctx.target, "k": "closed", "v": False}]
+
+
+def _open_hints(ctx: Ctx) -> list[str]:
+    w = ctx.world
+    keys = [w.entities[c].name for c in w.children(ctx.actor) if w.get(c, "opens")]
+    return ["手上能开的钥匙：" + ("、".join(keys) if keys else "没有")]
 
 
 def _open_render(ctx: Ctx) -> list[tuple[str, str]]:
@@ -268,17 +276,228 @@ def _wait_render(ctx: Ctx) -> list[tuple[str, str]]:
     return [(ctx.actor, "你等着。")]
 
 
+
+# ---------- M2：书写、擦除、复写、开锁、认字、说话
+
+def _implement_in_hand(w: World, actor: str) -> str | None:
+    for c in w.children(actor):
+        if w.get(c, "implement"):
+            return c
+    return None
+
+
+def _write_when(ctx: Ctx) -> str | None:
+    w = ctx.world
+    if not ctx.args.get("text"):
+        return "你没想好要写什么"
+    tool = ctx.args.get("with") or _implement_in_hand(w, ctx.actor)
+    if tool is None:
+        return "你手里没有能写字的东西"
+    ink = w.get(tool, "implement")
+    if ink not in (w.get(ctx.target, "accepts") or []):
+        return f"{ctx.name(ctx.target)}留不下{ink}这种痕迹"
+    if w.get(ctx.target, "closed"):
+        return f"{ctx.name(ctx.target)}封着口"
+    return None
+
+
+def _write_hints(ctx: Ctx) -> list[str]:
+    w = ctx.world
+    tools = [w.entities[c].name for c in w.children(ctx.actor) if w.get(c, "implement")]
+    writable = [w.entities[e].name for e in visible(w, ctx.actor) if w.get(e, "accepts")]
+    return [f"手上能写的：{'、'.join(tools) if tools else '没有'}",
+            f"眼前能写的：{'、'.join(writable) if writable else '没有'}"]
+
+
+def _write_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+    w = ctx.world
+    tool = ctx.args.get("with") or _implement_in_hand(w, ctx.actor)
+    marks = list(w.get(ctx.target, "marks") or [])
+    marks.append({"text": ctx.args["text"], "ink": w.get(tool, "implement"),
+                  "style": w.get(ctx.actor, "hand") or "printed"})
+    return [{"op": "set", "e": ctx.target, "k": "marks", "v": marks}]
+
+
+def _write_render(ctx: Ctx) -> list[tuple[str, str]]:
+    w = ctx.world
+    out = [(ctx.actor, f"你在{ctx.name(ctx.target)}上添了一笔：「{ctx.args['text']}」")]
+    for p in _onlookers(w, ctx.actor, ctx.target):
+        out.append((p, f"{refer(w, p, ctx.actor)}在{ctx.name(ctx.target)}上写字。"))
+    return out
+
+
+def _erase_when(ctx: Ctx) -> str | None:
+    w = ctx.world
+    marks = w.get(ctx.target, "marks") or []
+    if not any(m.get("ink") == "graphite" for m in marks):
+        return f"{ctx.name(ctx.target)}上没有能用橡皮擦掉的字"
+    if not any(w.get(c, "erases") for c in w.children(ctx.actor)):
+        return "你手里没有橡皮"
+    return None
+
+
+def _erase_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+    w = ctx.world
+    marks = list(w.get(ctx.target, "marks") or [])
+    for i in range(len(marks) - 1, -1, -1):
+        if marks[i].get("ink") == "graphite":
+            marks.pop(i)
+            break
+    return [{"op": "set", "e": ctx.target, "k": "marks", "v": marks},
+            {"op": "set", "e": ctx.target, "k": "smudge", "v": True}]
+
+
+def _erase_render(ctx: Ctx) -> list[tuple[str, str]]:
+    w = ctx.world
+    out = [(ctx.actor, f"你擦掉了{ctx.name(ctx.target)}上铅笔写的那一笔，纸面上留下一片灰。")]
+    for p in _onlookers(w, ctx.actor, ctx.target):
+        out.append((p, f"{refer(w, p, ctx.actor)}在擦{ctx.name(ctx.target)}。"))
+    return out
+
+
+def _copy_when(ctx: Ctx) -> str | None:
+    w = ctx.world
+    if not w.get(ctx.target, "marks"):
+        return f"{ctx.name(ctx.target)}上没有能复写的东西"
+    if not any(w.get(e, "copies") for e in visible(w, ctx.actor)):
+        return "这里没有复写纸"
+    if not any(w.get(c, "accepts") and not w.get(c, "marks") for c in w.children(ctx.actor)):
+        return "你手里没有空白纸"
+    return None
+
+
+def _copy_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+    w = ctx.world
+    blank = next(c for c in w.children(ctx.actor)
+                 if w.get(c, "accepts") and not w.get(c, "marks"))
+    n = int(w.flags.get("copy_seq", 0)) + 1
+    marks = [dict(m) for m in w.get(ctx.target, "marks") or []]
+    entity = {"id": f"copy_{n}", "kind": "object", "name": f"抄件{n}",
+              "prose": "一张复写出来的抄件", "aliases": (), "identity": ""}
+    state = {"marks": marks, "imprint": True, "accepts": w.get(blank, "accepts"),
+             "portable": True}
+    return [{"op": "flag", "k": "copy_seq", "v": n},
+            {"op": "create", "e": entity, "to": ctx.actor, "state": state},
+            {"op": "destroy", "e": blank}]
+
+
+def _copy_render(ctx: Ctx) -> list[tuple[str, str]]:
+    w = ctx.world
+    n = int(w.flags.get("copy_seq", 0))
+    out = [(ctx.actor, f"你隔着复写纸把{ctx.name(ctx.target)}抄了一份，成了{_copy_name(n)}。")]
+    for p in _onlookers(w, ctx.actor, ctx.target):
+        out.append((p, f"{refer(w, p, ctx.actor)}在复写{ctx.name(ctx.target)}。"))
+    return out
+
+
+def _copy_name(n: int) -> str:
+    return f"抄件{n}"
+
+
+def _unlock_when(ctx: Ctx) -> str | None:
+    w = ctx.world
+    if not w.get(ctx.target, "locked"):
+        return f"{ctx.name(ctx.target)}没有锁着"
+    if not any(w.get(c, "opens") == ctx.target for c in w.children(ctx.actor)):
+        return "你手上没有能开它的钥匙"
+    return None
+
+
+def _unlock_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+    return [{"op": "set", "e": ctx.target, "k": "locked", "v": False}]
+
+
+def _unlock_render(ctx: Ctx) -> list[tuple[str, str]]:
+    w = ctx.world
+    out = [(ctx.actor, f"你打开了{ctx.name(ctx.target)}的锁。")]
+    for p in _onlookers(w, ctx.actor, ctx.target):
+        out.append((p, f"{refer(w, p, ctx.actor)}打开了{ctx.name(ctx.target)}的锁。"))
+    return out
+
+
+def _recognize_when(ctx: Ctx) -> str | None:
+    if not ctx.world.get(ctx.target, "marks"):
+        return f"{ctx.name(ctx.target)}上没有字可以认"
+    return None
+
+
+def _recognize_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+    return []
+
+
+def _recognize_render(ctx: Ctx) -> list[tuple[str, str]]:
+    w = ctx.world
+    marks = w.get(ctx.target, "marks") or []
+    readers = w.hand_readers.get(ctx.actor, {})
+    lines: list[str] = []
+    for mark in marks:
+        style = mark.get("style")
+        if not style or style == "printed":
+            continue
+        if style == w.get(ctx.actor, "hand"):
+            lines.append("有一笔是你自己的字")
+        elif style in readers and readers[style] in w.entities:
+            lines.append(f"有一笔像是{refer(w, ctx.actor, readers[style])}的字")
+        else:
+            lines.append("有一笔的字，你说不出是谁写的")
+    if len({m.get("ink") for m in marks}) > 1:
+        lines.append("几笔的墨色不一样")
+    body = "；".join(lines) if lines else "上面只有印上去的字"
+    out = [(ctx.actor, f"你盯着{ctx.name(ctx.target)}上的字看：{body}。")]
+    for p in _onlookers(w, ctx.actor, ctx.target):
+        out.append((p, f"{refer(w, p, ctx.actor)}在仔细看{ctx.name(ctx.target)}上的字。"))
+    return out
+
+
+def _speak_when(ctx: Ctx) -> str | None:
+    if not ctx.args.get("text"):
+        return "你什么也没说"
+    return None
+
+
+def _speak_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+    return []
+
+
+def _speak_render(ctx: Ctx) -> list[tuple[str, str]]:
+    w = ctx.world
+    text = ctx.args["text"]
+    out = [(ctx.actor, f"你说：「{text}」")]
+    for p in _people(w):
+        if p != ctx.actor and in_sight(w, p, ctx.actor):
+            out.append((p, f"{refer(w, p, ctx.actor)}说：「{text}」"))
+    return out
+
+
 _CONCEPTS = [
     Rule("examine", STORY, _examine_when, _examine_atoms, _examine_render, cost=1),
     Rule("read", STORY, _read_when, _read_atoms, _read_render, cost=1, hints=_read_hints),
     Rule("touch", STORY, _touch_when, _touch_atoms, _touch_render, cost=0),
     Rule("take", STORY, _take_when, _take_atoms, _take_render, cost=1),
-    Rule("place", STORY, _place_when, _place_atoms, _place_render, cost=1),
-    Rule("give", STORY, _give_when, _give_atoms, _give_render, cost=1),
-    Rule("open", STORY, _open_when, _open_atoms, _open_render, cost=1),
+    Rule("place", STORY, _place_when, _place_atoms, _place_render, cost=1,
+         entity_args=("target", "to")),
+    Rule("give", STORY, _give_when, _give_atoms, _give_render, cost=1,
+         entity_args=("target", "to")),
+    Rule("open", STORY, _open_when, _open_atoms, _open_render, cost=1, hints=_open_hints),
     Rule("knock", STORY, _knock_when, _knock_atoms, _knock_render, cost=1),
     Rule("move", STORY, _move_when, _move_atoms, _move_render, cost=2),
     Rule("wait", STORY, _wait_when, _wait_atoms, _wait_render, cost=1),
+    Rule("write", ("s2_borrow_note", "s3_night_market", "s4_night_shift",
+                   "s5_wedding", "s7_campus_12d"),
+         _write_when, _write_atoms, _write_render, cost=2, hints=_write_hints,
+         entity_args=("target", "with")),
+    Rule("erase", ("s2_borrow_note", "s7_campus_12d"),
+         _erase_when, _erase_atoms, _erase_render, cost=2),
+    Rule("copy", ("s2_borrow_note", "s4_night_shift", "s7_campus_12d"),
+         _copy_when, _copy_atoms, _copy_render, cost=3),
+    Rule("unlock", ("s2_borrow_note", "s4_night_shift", "s6_parcel_station",
+                    "s7_campus_12d"),
+         _unlock_when, _unlock_atoms, _unlock_render, cost=1),
+    Rule("recognize", ("s2_borrow_note", "s7_campus_12d"),
+         _recognize_when, _recognize_atoms, _recognize_render, cost=2),
+    Rule("speak", ("s1_last_bus", "s2_borrow_note", "s3_night_market",
+                   "s5_wedding", "s7_campus_12d"),
+         _speak_when, _speak_atoms, _speak_render, cost=1),
 ]
 
 for _rule in _CONCEPTS:

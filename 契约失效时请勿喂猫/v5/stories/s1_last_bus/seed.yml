@@ -49,7 +49,8 @@ objects:
     parent: car
     name: 通知
     prose: 边角卷了的打印纸
-    state: {inscription: "本车为末班车，终点站后不再发车。", medium: printed}
+    state:
+      marks: [{text: "本车为末班车，终点站后不再发车。", ink: printed, style: printed}]
   - id: bag
     parent: yi
     name: 包
@@ -59,7 +60,9 @@ objects:
     parent: bag
     name: 药盒
     prose: 白色的一小盒
-    state: {inscription: "每日两次，饭后。", medium: handwritten, portable: true}
+    state:
+      marks: [{text: "每日两次，饭后。", ink: printed, style: printed}]
+      portable: true
 
 schedule:
   - {at: 1357, effect: {kind: arrive, place: car, station: 第一站}}

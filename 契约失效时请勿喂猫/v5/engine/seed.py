@@ -13,9 +13,30 @@ import yaml
 from .core import Entity, World
 
 
+#: 每个区段允许的字段。多写一个字段就是错误，不许静默丢弃。
+ALLOWED = {
+    "places": {"id", "name", "kind", "parent", "prose", "state", "aliases"},
+    "people": {"id", "name", "kind", "parent", "prose", "identity", "knows",
+               "believes", "reads_hands", "state", "aliases"},
+    "objects": {"id", "name", "kind", "parent", "prose", "state", "aliases"},
+}
+
+
+def _check_shape(section: str, row: dict[str, Any]) -> None:
+    extra = set(row) - ALLOWED[section]
+    if extra:
+        raise ValueError(
+            f"种子字段不认识：{section}.{row.get('id', '?')} 多了 {sorted(extra)}；"
+            f"允许的是 {sorted(ALLOWED[section])}"
+        )
+
+
 def build(seed: dict[str, Any]) -> World:
     world = World(start=int(seed.get("start_clock", 0)))
     rows: list[dict[str, Any]] = []
+    for section in ("places", "people", "objects"):
+        for row in seed.get(section, []):
+            _check_shape(section, row)
     for row in seed.get("places", []):
         rows.append({**row, "kind": row.get("kind", "place")})
     for row in seed.get("people", []):
@@ -39,6 +60,7 @@ def build(seed: dict[str, Any]) -> World:
                 state=row.get("state"),
             )
             world.knowledge.setdefault(row["id"], []).extend(row.get("knows", []))
+            world.hand_readers.setdefault(row["id"], {}).update(row.get("reads_hands", {}))
             world.beliefs.setdefault(row["id"], []).extend(
                 [[b["about"], b["says"]] for b in row.get("believes", [])])
             pending.remove(row)
