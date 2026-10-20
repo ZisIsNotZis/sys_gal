@@ -16,39 +16,36 @@
 | v1 | 历史归档 | 首个世界与角色草案；其文档不作为现行要求。 |
 | v2 | 历史归档 | 引入引擎契约与领域词汇；同上。 |
 | v3 | 历史归档 | story-neutral 引擎 + 世界包适配 + 大型运行；被 v4 取代。 |
-| **v4** | **主线（维护中）** | 中文沉浸接口、两层演员制、半天检查点、剧情锚点检查器；v5 的 M2 通过前仍是主线。 |
-| **v5** | **在建线（规格已冻结）** | 重写世界模型：十条原始项 + 库 + 种子；短故事阶梯 S1–S7。见 `v5/docs/V5-ROADMAP.md`。 |
+| v4 | 参考线（归档） | 中文沉浸接口、两层演员制、半天检查点、剧情锚点检查器；v5 的 M2 通过后不再演进，保留用于溯源与运行纪律的出处。 |
+| **v5** | **主线** | 重写世界模型：十条原始项 + 库 + 种子；短故事阶梯 S1–S7；M3 已有模型试点。见 `v5/README.md`。 |
 
-v4 是当前可跑的主线，v5 是正在建的新线（尚无代码，只有规格）。历史版本的 README/文档保留用于溯源，请勿据其判断当前行为。
+v5 是当前主线（进度见 `v5/docs/V5-ROADMAP.md`）；v4 已归档为参考，只在需要溯源运行纪律时读。v1–v3 历史归档，请勿据其判断当前行为。
 
 ## 目录结构
 
 ```
 契约失效时请勿喂猫/
 ├── README.md                 # 本文件：概览与 SSOT 地图
-├── ROADMAP.md                # 项目里程碑与工作包（交付计划）
-├── AGENTS.md                 # 本实验的运行后分析协议与预门（agent 必读）
+├── ROADMAP.md                # v4 线的历史计划（参考，不再演进）
 ├── v1/ v2/ v3/               # 历史版本（归档）
-├── v4/
-│   ├── docs/                 # v4 设计真理（见下方 SSOT 地图）
-│   ├── harness/              # story-neutral 引擎 + 运行/回放/检查器测试
-│   ├── world/                # 世界种子：manifest.yml + characters/ documents/ items/ locations/
-│   ├── scripts/              # seed_lint.py, check_milestones.py, mark_seed.py, 运行脚本
-│   ├── runs/                 # 运行工件（trajectory + checkpoint）；每次唯一，勿覆盖
-│   ├── checkpoints/          # 半天检查点存档 dN-am.json / dN-pm.json
-│   └── logs/                 # 推进器与门禁日志
-└── .scratch/                 # issue/工作记录（过程记录，非事实文档）
+├── v4/                       # 参考线（归档）：docs/ harness/ world/ scripts/ runs/ checkpoints/ logs/
+├── v5/                       # 主线：docs/ engine/ library/ stories/ scripts/ tests/
+└── ../AGENTS.md              # 运行后分析协议与预门（在仓库根；agent 必读）
 ```
 
 ## SSOT 地图（每份事实只有一个家）
 
 | 主题 | 权威文档 |
 | --- | --- |
-| 最终目标 / 设计原则 | `../../docs/PRINCIPLE.md` |
-| 领域词汇 | `../../CONTEXT.md` |
+| 最终目标 / 设计原则 | `../docs/PRINCIPLE.md` |
+| 领域词汇 | `../CONTEXT.md` |
 | v5 线的里程碑 / 故事阶梯 / 当前状态 | `v5/docs/V5-ROADMAP.md` |
 | v5 引擎的概念边界 | `v5/docs/V5-PRIMITIVES.md` |
-| 项目里程碑 / 工作包 / 当前进度（v4 线） | `ROADMAP.md` |
+| v5 三层与按需具体化 / 谁做的决定 | `v5/docs/V5-LAYERS.md` |
+| v5 场景清单（短故事与长弧的覆盖证明） | `v5/docs/V5-SCENES.md` |
+| v5 首份模型试点报告 | `v5/docs/V5-M3-PILOT.md` |
+| v4 线的历史计划（参考） | `ROADMAP.md` |
+| 版本线决策记录 | `../docs/adr/`（0002 起以 v5 为主线） |
 | 运行后分析协议 / 预门 / 中断续跑方法 | `AGENTS.md` |
 | v4 产品与交互物理（设计真理） | `v4/docs/V4-DESIGN.md` |
 | v4 引擎时序 / 并发 / 冻结语义 | `v4/docs/V4-ENGINE.md` |

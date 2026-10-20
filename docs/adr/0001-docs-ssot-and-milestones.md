@@ -18,7 +18,7 @@
 2. **SSOT 地图**：项目 `README.md` 维护"每份事实一个家"的地图；根
    `CONTEXT.md` 是共享词汇表；`docs/archive/` 与 `docs/reference/` 存放历史与
    非权威资料，明确标注不可作为现行要求。
-3. **版本归档**：只有 v4 是活动线；v1/v2/v3 的 README 加 HISTORICAL 横幅。
+3. **版本归档**：只有 v4 是活动线；v1/v2/v3 的 README 加 HISTORICAL 横幅。（此条已被 ADR 0002 取代：主线现为 v5。）
 4. **两种里程碑分层**：**剧情里程碑**（半天/逐日锚点，`V4-STORY-MILESTONES.md`
    + `check_milestones.py`）与**项目里程碑**（交付垂直切片，`ROADMAP.md`）分离，
    不可混称。

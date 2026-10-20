@@ -13,7 +13,10 @@ cd 契约失效时请勿喂猫/v5
 # 结构检查（状态键与渲染成对、引擎不含故事名词、种子字段严格、孤儿概念、脚本只用库动词）
 python3 scripts/v5_lint.py --strict
 
-# 引擎与故事的全部测试（含三条反向门与重放）
+# 反作弊三检（无具名祈使句、无天意事件、结局不唯一）
+python3 scripts/anti_cheat.py --verbose
+
+# 引擎与故事的全部测试（含四条反向门、重放、模型回路与反作弊探针）
 python3 -m unittest discover -s tests -p 'test_*.py'
 
 # 跑路径，写出可通读的轨迹 + 上下文审计视图
@@ -34,7 +37,7 @@ python3 -m stories.s2_borrow_note.agent_run github_copilot/gpt-6-luna 4
 `transcript.md` 故事视图、`context.md` 每回合的完整上下文与模型原始工具调用、`run.json`+`events.jsonl` 可重放记录。
 第一份对照实验的读法见 `docs/V5-M3-PILOT.md`。
 
-## 三条反向门（M1 的验收）
+## 四条反向门（M1 的验收）
 
 1. **摸与读不留痕**：读只写进读者的记忆，被读的纸一点都不变。
 2. **渲染没有来源**：轨迹里不出现作者、写于、读者；纸只带着它上面写的字。

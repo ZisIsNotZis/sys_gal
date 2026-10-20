@@ -65,9 +65,38 @@ unpacked run, a stale pack, or a pack that does not unpack to the original. A cl
 whose artefact exists in neither form is unverifiable — the previous acceptance
 run's whole trajectory was lost that way (tickets 113/114).
 
-A new in-world name that is not in `world/manifest.yml` (entities or
-`concepts:`) fails the lint by design — register it instead of leaving it as
-prose, so `flashback`/`recall`/the model all see the same names.
+### v5 gate
+
+The v5 line is the current main line and it runs providers through
+`stories/*/agent_run.py`. Its gate is the v5 suite plus the two structural
+checks; a red one is a block, and every provider run must land in a unique
+`runs/agent-<time>-<pid>-<tag>/` directory (never overwrite one):
+
+```text
+cd 契约失效时请勿喂猫/v5
+python3 -m unittest discover -s tests -p 'test_*.py'
+python3 scripts/v5_lint.py --strict
+python3 scripts/anti_cheat.py --verbose
+```
+
+`v5_lint` covers state-key/renderer pairing, a strict seed schema, the orphan
+rule (every library concept declared by ≥2 stories, with the number actually
+used reported separately), and the blindness gate (no story noun as a literal in
+`engine/`). `anti_cheat` covers the three anti-forcing checks: no imperative
+addressed to a named character, no destiny event (scheduled effects must be
+institution or physics, never an actor's action), and endings that are not
+unique. Each run's evidence is its `transcript.md` (story view with
+`[角色]`/`[脚本]`/`[世界]` markers), `context.md` (every turn's full context and
+the raw tool call), and `run.json`/`events.jsonl` (replayable). A run without
+`context.md` cannot answer "what did he know when he did that", so it is not
+evidence.
+
+A new in-world name that no seed declares is a defect on either line — register it
+instead of leaving it as prose, so the perceiver, the knowledge lookup and the
+model all see the same names. In v4 that means `world/manifest.yml` (entities or
+`concepts:`), enforced by `scripts/seed_lint.py`; in v5 it means the story's
+`seed.yml`, enforced by the strict schema in `engine/seed.py` plus the blindness
+check in `scripts/v5_lint.py`.
 
 ## Interrupted-run methodology
 

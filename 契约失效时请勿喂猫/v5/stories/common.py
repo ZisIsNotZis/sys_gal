@@ -86,10 +86,20 @@ def transcript(run: Any, title: str) -> str:
 
 
 def context_view(run: Any) -> str:
+    turns = _turns(run)
+    by_agent = any(i["decided_by"] == "agent" for i in turns)
+    by_script = any(i["decided_by"] == "script" for i in turns)
+    if by_agent and not by_script:
+        how = ("这一局的动作全部由模型决定（`decided_by: agent`，`context_used: true`）；"
+               "下面每个动作前，就是模型当时真正看到的东西，加上它给出的原始工具调用。")
+    elif by_script and not by_agent:
+        how = ("这一局的演员是脚本，不读这些上下文（`decided_by: script`）；"
+               "这一份回答的是「他当时知道什么」。")
+    else:
+        how = "这一局里脚本与模型的动作都有：`[脚本]` 不读上下文，`[角色]` 读了下面这一份。"
     lines = [f"# {run.title}上下文审计", "",
              "每个动作前，这个角色实际拿到的全部上下文。",
-             "M1/M2 的演员是脚本，不读这些上下文（`decided_by: script`）；这一份的作用是"
-             "回答「他当时知道什么」，以及 M3 换成模型后把同一份块直接喂进去。", ""]
+             how, ""]
     for item in _turns(run):
         stamp = clock_label(item["at"])
         actor = run.world.entities[item["actor"]].name
