@@ -43,7 +43,8 @@ Packages, in worksets (a workset is run in parallel, worksets in order):
 | 1 | `ledger` | v5 自己的历史失败台账 + 预门口径 | v5 gate green; 台账逐条映射到一个会失败的测试 | taken 2026-10-21; branch `pi-subagents/task-3-edfa688-7b3b-s0-t0`, merged `d8af14c` |
 | 1 | `s3` | S3《夜市》种子、卡司、四条归属路径（认账/推给下一个/拿不回来/当众澄清）、制度角色与当众-私下说的库增长 | v5 gate green; 四条路径的轨迹可通读 | taken 2026-10-21, beside ws1; branch `ws2-s3-recovered`, merged `a0e307a` |
 | — | `ws-review` | 独立复核 ws1 的三包与 `s3`，一个新上下文的复核者，覆盖面写明 | verdict per package | `pass` ×4 at `a0e307a`（复核者在 `8c8b881` 复跑门：132 tests / lint / anti_cheat 3 支） |
-| 1 | `fix-endings` | 让 claim 1 的"四条路四种结局"能被推翻：`结局` 由世界的事拼出，`ENDINGS` 删掉；`d` 改成 `a` 的结局时测试必须红 | `tests.test_m4_s3` 在 `/tmp` 副本的探针下变红；v5 gate 全绿；`runs/{a..d}` 重新生成后 `git status` 干净 | taken 2026-10-21, base `2af2880`, contract `work/fix-endings-contract.md` |
+| 1 | `fix-endings` | 让 claim 1 的"四条路四种结局"能被推翻：`结局` 由世界的事拼出，`ENDINGS` 删掉；`d` 改成 `a` 的结局时测试必须红 | `tests.test_m4_s3` 在 `/tmp` 副本的探针下变红；v5 gate 全绿；`runs/{a..d}` 重新生成后 `git status` 干净 | `bde3a7d`; 复核 `fail`（窄）：测试已能红，`anti_cheat.py:96` 的阈值仍是 `< 2`，同一个探针下它还是绿的 |
+| 1 | `fix-threshold` | 把 `anti_cheat` 的第三条检查修到和它自己那句话一样强：`len(variants)`，而不是 2 | 正确树通过；`d := a` 与四条合一两个探针下都非零退出 | taken 2026-10-21, contract `work/fix-threshold-contract.md` |
 | — | `milestone-review` | M4 三条判据的整体复核（不是逐包裁决之和） | verdict | claim 1、2 `reached`；claim 3 机制成立、前提不成立；一处不可失败的测试被查出来（见 Open） |
 | — | `docs-v5-shape` | `README.md`/`CONTEXT.md` 的运行与证据一节改成 v5 形状 | 两份文件里不存在指向 v4 为准的句子 | `fail` at `5578a8b`; repaired at `263fa0c` (`grep -n 'v4' CONTEXT.md README.md`: every hit says 参考) |
 
