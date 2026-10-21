@@ -14,6 +14,7 @@ R06 provider 空回复/挂死变成静默 wait 或无限等 .............. test_
 R07 反作弊第三检抓不住"结局唯一" .......................... test_r07_the_reachability_check_catches_a_unique_ending
 R08 排程效果没有处理器时被悄悄吃掉（P3：排程无后果） ........ test_r08_a_scheduled_effect_with_no_handler_is_a_loud_failure
 R09 拿走别人的东西没有被在场者看见（或被告知给看不见的人） .. test_r09_taking_from_another_persons_drawer_is_seen_only_by_those_who_can_see
+R10 "结局不唯一"的门槛被退回到 2（N 条路径 N-1 个结局照样过门） test_r10_the_uniqueness_threshold_scales_with_the_number_of_paths
 
 E01 引擎里出现故事名词（盲区） ............................ tests.test_m1_core.PrimitiveTests.test_engine_does_not_know_story_names；scripts/v5_lint.py check_engine_is_story_blind
 E02 状态键没有渲染（改了状态但看不见） .................... tests.test_m1_core.SeedTests.test_every_state_key_has_a_renderer；scripts/v5_lint.py
@@ -286,6 +287,32 @@ class HistoricalFailureLedger(unittest.TestCase):
         unseen = " ".join(text for _at, text in world.memory["bing"])
         self.assertIn("拿起了借条", seen)
         self.assertNotIn("拿起了", unseen)
+
+    def test_r10_the_uniqueness_threshold_scales_with_the_number_of_paths(self):
+        """【R10 结局门槛退回 2】路径多于结局时必须拒绝，门槛跟路径数走、不是常量 2。
+
+        观察自：commit 6063e1c 的复审（把 scripts/anti_cheat.py 的 len(distinct) < len(variants) 改回 len(distinct) < 2，133 条测试全绿）——旧门槛只抓得住"所有路径同一个结局"，抓不住"三条路径两个结局"。
+        没有它时：第三检可以被悄悄退回 2 而无人变红；一条故事写四条路径只走到两个结局，仍然过门，"结局"回到作者的断言。
+        """
+        def scenario_with(endings: dict[str, str]):
+            module = types.SimpleNamespace()
+            module.SCRIPTS = {variant: [] for variant in endings}
+            module.play = lambda variant: types.SimpleNamespace(variant=variant)
+            module.summary = lambda run: {"结局": endings[run.variant]}
+            return module
+
+        def check(endings: dict[str, str]) -> list[str]:
+            module = scenario_with(endings)
+            with mock.patch.object(anti_cheat.importlib, "import_module", return_value=module):
+                problems, _notes = anti_cheat.check_reachability("probe", False)
+            return problems
+
+        # 三条路径只走到两个结局：门槛若写死 2 就放行，按路径数比就拒绝。
+        two_of_three = check({"a": "谁也没改", "b": "谁也没改", "c": "借条到了乙手里"})
+        self.assertTrue(any("3 条路径只走到 2 个结局" in problem for problem in two_of_three), two_of_three)
+
+        # 对照：三条路径三个结局必须放行，否则上面那条只是被一个永远拒绝的检查满足。
+        self.assertEqual(check({"a": "谁也没改", "b": "借条到了乙手里", "c": "门开着"}), [])
 
 
 if __name__ == "__main__":
