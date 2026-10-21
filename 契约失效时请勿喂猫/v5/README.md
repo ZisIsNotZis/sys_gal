@@ -69,4 +69,4 @@ v5/
 
 ## 与 v4 的关系
 
-v4 仍是可跑的主线；v5 的 M2 通过后，v4 归档为参考。两边共用的运行纪律（唯一工件、检查点、重放、运行后分析）见仓库根的 `AGENTS.md` 与 `v5/docs/V5-ROADMAP.md`。
+v5 是当前主线，v4 已归档为参考线（`docs/adr/0002-v5-becomes-the-main-line.md`）。两边共用的运行纪律（唯一工件、检查点、重放、运行后分析）见仓库根的 `AGENTS.md` 与 `v5/docs/V5-ROADMAP.md`。

@@ -21,7 +21,7 @@ versioned scenario and harness work.
 ## Status and future
 
 This is an evolving research prototype, not a finished game or claim of human
-story quality. The current line is v4; the future goal is a reproducible
+story quality. The current line is v5 (`契约失效时请勿喂猫/v5`); the goal is a reproducible
 narrative laboratory where character behavior, knowledge, failures, and causal
 continuity can be inspected. See the project
 [ROADMAP](契约失效时请勿喂猫/ROADMAP.md) for where it stands.

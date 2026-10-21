@@ -13,8 +13,8 @@
 - **本实验（《契约失效时请勿喂猫》）**：一个 12 个模拟日的中文校园故事弧
   （2026-03-16 → 03-27）。权威：`契约失效时请勿喂猫/README.md`,
   `契约失效时请勿喂猫/v4/docs/V4-STORY-MILESTONES.md`。
-- **版本线 v1…v4**：依次迭代的实验版本。**只有 v4 是当前活动线**；v1/v2/v3
-  是历史归档，其文档不作为现行要求。
+- **版本线 v1…v5**：依次迭代的实验版本。**v5 是当前活动线**（`docs/adr/0002-v5-becomes-the-main-line.md`）；
+v4 及更早是参考/历史归档，其文档不作为现行要求。
 - **T-A（目标结局）**：弧线的目标结局"成功但有代价"——档案室记录缺失案按
   正式渠道了结、台账差异被解释或立案、2013 真相由人说出、恋爱线有明确终局、
   草稿命运被决定。权威：`V4-STORY-MILESTONES.md` §1。
@@ -43,6 +43,10 @@
   `V4-STORY-MILESTONES.md`。
 
 ## 运行与证据
+
+> 本节以下写的是 **v4 参考线**的形状。v5 的形状（`stories/*/runs/agent-<时间>-<pid>-<标签>/`
+> 四个文件、检查点与续跑、预门口径）以 `契约失效时请勿喂猫/v5/README.md` 与
+> `docs/PLAN.md` 为准。
 
 - **run / 轨迹（trajectory / artifact）**：一次 provider-backed 运行的完整记录
   （`v4/runs/<runid>.json` + `.checkpoint.json`），格式 `v3-trajectory-1`。每次
