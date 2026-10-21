@@ -1,0 +1,517 @@
+{
+ "events": [
+  {
+   "id": 1,
+   "at": 1080,
+   "kind": "world",
+   "actor": null,
+   "what": "post",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1080,
+     "seq": 1
+    },
+    {
+     "op": "move",
+     "e": "notice",
+     "to": "stall_area"
+    },
+    {
+     "op": "remember",
+     "e": "a",
+     "at": 1080,
+     "v": "有人把通知贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "b",
+     "at": 1080,
+     "v": "有人把通知贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "c",
+     "at": 1080,
+     "v": "有人把通知贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "warden",
+     "at": 1080,
+     "v": "有人把通知贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "neighbour",
+     "at": 1080,
+     "v": "有人把通知贴在了这里。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "post",
+     "place": "stall_area",
+     "item": "notice"
+    },
+    "digest_after": "a92bf866a93da39d6d2d7ddcd24bc2499bc0c1d17312212d7f18037b592594e2"
+   }
+  },
+  {
+   "id": 2,
+   "at": 1080,
+   "kind": "intent",
+   "actor": "warden",
+   "what": "impound",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "goods",
+     "to": "warden"
+    },
+    {
+     "op": "set",
+     "e": "register",
+     "k": "marks",
+     "v": [
+      {
+       "text": "收件记录",
+       "ink": "printed",
+       "style": "printed"
+      },
+      {
+       "text": "18:00 收：货（自摊区）",
+       "ink": "ink",
+       "style": "printed"
+      }
+     ]
+    },
+    {
+     "op": "remember",
+     "e": "warden",
+     "at": 1080,
+     "v": "你把货收走了，在本子上记了一行。"
+    },
+    {
+     "op": "remember",
+     "e": "a",
+     "at": 1080,
+     "v": "管理员把货收走了，在本子上记了一行。"
+    },
+    {
+     "op": "remember",
+     "e": "b",
+     "at": 1080,
+     "v": "管理员把货收走了，在本子上记了一行。"
+    },
+    {
+     "op": "remember",
+     "e": "c",
+     "at": 1080,
+     "v": "管理员把货收走了，在本子上记了一行。"
+    },
+    {
+     "op": "remember",
+     "e": "neighbour",
+     "at": 1080,
+     "v": "管理员把货收走了，在本子上记了一行。"
+    },
+    {
+     "op": "clock",
+     "to": 1081
+    }
+   ],
+   "note": {
+    "target": "goods",
+    "digest_after": "477cddd7c942678a68dd03e0ec9300f1417b66a81157d11dd1623f1e5d7fadc9"
+   }
+  },
+  {
+   "id": 3,
+   "at": 1081,
+   "kind": "intent",
+   "actor": "warden",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "warden",
+     "to": "market"
+    },
+    {
+     "op": "remember",
+     "e": "warden",
+     "at": 1081,
+     "v": "你到了夜市。"
+    },
+    {
+     "op": "remember",
+     "e": "a",
+     "at": 1081,
+     "v": "管理员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "b",
+     "at": 1081,
+     "v": "管理员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "c",
+     "at": 1081,
+     "v": "管理员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "neighbour",
+     "at": 1081,
+     "v": "管理员走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1083
+    }
+   ],
+   "note": {
+    "target": "market",
+    "digest_after": "9aac166a3079a8a8ebcbecc5af67c6963be540e899dc82f1dfb183dc6faec1e4"
+   }
+  },
+  {
+   "id": 4,
+   "at": 1083,
+   "kind": "intent",
+   "actor": "warden",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "warden",
+     "to": "office"
+    },
+    {
+     "op": "remember",
+     "e": "warden",
+     "at": 1083,
+     "v": "你到了管理处。"
+    },
+    {
+     "op": "remember",
+     "e": "a",
+     "at": 1083,
+     "v": "管理员走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "b",
+     "at": 1083,
+     "v": "管理员走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "c",
+     "at": 1083,
+     "v": "管理员走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "neighbour",
+     "at": 1083,
+     "v": "管理员走了出去。"
+    },
+    {
+     "op": "clock",
+     "to": 1085
+    }
+   ],
+   "note": {
+    "target": "office",
+    "digest_after": "5e983c92328bfb4dd52d8a60ccecdae8ec53f2b5315da50aaa975bb4de14af0c"
+   }
+  },
+  {
+   "id": 5,
+   "at": 1085,
+   "kind": "intent",
+   "actor": "warden",
+   "what": "place",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "goods",
+     "to": "office"
+    },
+    {
+     "op": "remember",
+     "e": "warden",
+     "at": 1085,
+     "v": "你把货放在了这儿。"
+    },
+    {
+     "op": "clock",
+     "to": 1086
+    }
+   ],
+   "note": {
+    "target": "goods",
+    "digest_after": "177636e70afd22b3bd01baa04d82ddbb7c444a261756af85d9b65a48dc6f0e44"
+   }
+  },
+  {
+   "id": 6,
+   "at": 1086,
+   "kind": "intent",
+   "actor": "warden",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "warden",
+     "to": "market"
+    },
+    {
+     "op": "remember",
+     "e": "warden",
+     "at": 1086,
+     "v": "你到了夜市。"
+    },
+    {
+     "op": "remember",
+     "e": "a",
+     "at": 1086,
+     "v": "管理员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "b",
+     "at": 1086,
+     "v": "管理员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "c",
+     "at": 1086,
+     "v": "管理员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "neighbour",
+     "at": 1086,
+     "v": "管理员走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1088
+    }
+   ],
+   "note": {
+    "target": "market",
+    "digest_after": "51266ace290779b7d0aacc75c6295a8686080162e9f4286a5b3ab0bef951cdf5"
+   }
+  },
+  {
+   "id": 7,
+   "at": 1088,
+   "kind": "intent",
+   "actor": "warden",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "warden",
+     "to": "stall_area"
+    },
+    {
+     "op": "remember",
+     "e": "warden",
+     "at": 1088,
+     "v": "你到了摊区。"
+    },
+    {
+     "op": "remember",
+     "e": "a",
+     "at": 1088,
+     "v": "管理员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "b",
+     "at": 1088,
+     "v": "管理员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "c",
+     "at": 1088,
+     "v": "管理员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "neighbour",
+     "at": 1088,
+     "v": "管理员走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1090
+    }
+   ],
+   "note": {
+    "target": "stall_area",
+    "digest_after": "1ccaf2d9b32889765ff79561857ee8e0468217bbd65da6ae850a16139f15368e"
+   }
+  },
+  {
+   "id": 8,
+   "at": 1090,
+   "kind": "intent",
+   "actor": "a",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "a",
+     "at": 1090,
+     "v": "你读着通知：「今日街道检查，本市场提前收摊；管理处随收摊关门。」"
+    },
+    {
+     "op": "remember",
+     "e": "b",
+     "at": 1090,
+     "v": "摊主甲在看通知。"
+    },
+    {
+     "op": "remember",
+     "e": "c",
+     "at": 1090,
+     "v": "摊主甲在看通知。"
+    },
+    {
+     "op": "remember",
+     "e": "warden",
+     "at": 1090,
+     "v": "摊主甲在看通知。"
+    },
+    {
+     "op": "remember",
+     "e": "neighbour",
+     "at": 1090,
+     "v": "摊主甲在看通知。"
+    },
+    {
+     "op": "clock",
+     "to": 1091
+    }
+   ],
+   "note": {
+    "target": "notice",
+    "digest_after": "2cb4492588f69053b46b23fa4a8c98246c4468fec77f765eb82272ba1afe8bf4"
+   }
+  },
+  {
+   "id": 9,
+   "at": 1091,
+   "kind": "intent",
+   "actor": "a",
+   "what": "speak",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "a",
+     "at": 1091,
+     "v": "你压低声音，对管理员说：「这摊是我的，货我认；条子在我手里，不用登记。」"
+    },
+    {
+     "op": "remember",
+     "e": "warden",
+     "at": 1091,
+     "v": "摊主甲压低声音，对你说：「这摊是我的，货我认；条子在我手里，不用登记。」"
+    },
+    {
+     "op": "remember",
+     "e": "b",
+     "at": 1091,
+     "v": "摊主甲和管理员凑在一起低声说话，你听不清内容。"
+    },
+    {
+     "op": "remember",
+     "e": "c",
+     "at": 1091,
+     "v": "摊主甲和管理员凑在一起低声说话，你听不清内容。"
+    },
+    {
+     "op": "remember",
+     "e": "neighbour",
+     "at": 1091,
+     "v": "摊主甲和管理员凑在一起低声说话，你听不清内容。"
+    },
+    {
+     "op": "clock",
+     "to": 1092
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "7e3c224213592447083f1df0ba54de0a5f28c10dfa806f25523950a60f6db6b6"
+   }
+  },
+  {
+   "id": 10,
+   "at": 1092,
+   "kind": "intent",
+   "actor": "warden",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "warden",
+     "at": 1092,
+     "v": "你读着收件记录：「收件记录18:00 收：货（自摊区）」"
+    },
+    {
+     "op": "remember",
+     "e": "a",
+     "at": 1092,
+     "v": "管理员在看收件记录。"
+    },
+    {
+     "op": "remember",
+     "e": "b",
+     "at": 1092,
+     "v": "管理员在看收件记录。"
+    },
+    {
+     "op": "remember",
+     "e": "c",
+     "at": 1092,
+     "v": "管理员在看收件记录。"
+    },
+    {
+     "op": "remember",
+     "e": "neighbour",
+     "at": 1092,
+     "v": "管理员在看收件记录。"
+    },
+    {
+     "op": "clock",
+     "to": 1093
+    }
+   ],
+   "note": {
+    "target": "register",
+    "digest_after": "929a81aed1fc43edb88581cbebcd356d53e787d8778b5a5acde25028c27ab9c2"
+   }
+  }
+ ],
+ "summary": {
+  "押金条最后在谁手里": "摊主甲",
+  "押金条经过谁的手": [
+   "摊主甲"
+  ],
+  "决定性那句话": "私下",
+  "结局落在收摊之前": true,
+  "收摊时间": 1110,
+  "结局": "认账：条子一直在甲手里，收摊前他私下认了这笔"
+ }
+}

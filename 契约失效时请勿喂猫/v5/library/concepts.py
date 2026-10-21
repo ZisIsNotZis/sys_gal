@@ -13,6 +13,7 @@ from engine.core import World
 from engine.render import describe, refer
 from engine.resolve import in_sight, inner_place, visible
 from engine.rules import Ctx, Rule, register
+from engine.surface import clock_label
 
 STORY = ("s1_last_bus", "s2_borrow_note", "s7_campus_12d")
 
@@ -184,6 +185,8 @@ def _open_when(ctx: Ctx) -> str | None:
     if w.kind_of(ctx.target) == "place":
         if w.get(ctx.target, "door") != "closed":
             return f"{ctx.name(ctx.target)}的门本来就开着"
+        if w.get(ctx.target, "locked"):
+            return f"{ctx.name(ctx.target)}锁着"
         if inner_place(w, _room(w, ctx.actor), ctx.target) is None:
             return f"你够不到{ctx.name(ctx.target)}的门"
         return None
@@ -461,12 +464,83 @@ def _speak_atoms(ctx: Ctx) -> list[dict[str, Any]]:
 
 
 def _speak_render(ctx: Ctx) -> list[tuple[str, str]]:
+    """当众说，在场的人都听见内容；带 to 就是私下，旁人只看见"两人在低声说话"。"""
     w = ctx.world
     text = ctx.args["text"]
+    to = ctx.args.get("to")
+    if to:
+        out = [(ctx.actor, f"你压低声音，对{refer(w, ctx.actor, to)}说：「{text}」"),
+               (to, f"{refer(w, to, ctx.actor)}压低声音，对你说：「{text}」")]
+        for p in _onlookers(w, ctx.actor, to):
+            if p == to:
+                continue
+            out.append((p, f"{refer(w, p, ctx.actor)}和{refer(w, p, to)}凑在一起低声说话，"
+                           "你听不清内容。"))
+        return out
     out = [(ctx.actor, f"你说：「{text}」")]
     for p in _people(w):
         if p != ctx.actor and in_sight(w, p, ctx.actor):
             out.append((p, f"{refer(w, p, ctx.actor)}说：「{text}」"))
+    return out
+
+
+# ---------- M4：制度角色（收）
+
+def _records_in_sight(w: World, actor: str) -> str | None:
+    for e in visible(w, actor):
+        if w.get(e, "records"):
+            return e
+    return None
+
+
+def _impound_when(ctx: Ctx) -> str | None:
+    w = ctx.world
+    if not w.get(ctx.actor, "institution"):
+        return "你在制度里没有这个身份，收不了东西"
+    if not w.get(ctx.target, "portable"):
+        return f"{ctx.name(ctx.target)}收不走"
+    if _holding(w, ctx.actor, ctx.target):
+        return f"{ctx.name(ctx.target)}已经在你手里"
+    if _records_in_sight(w, ctx.actor) is None:
+        return "这里没有能登记的本子"
+    if _implement_in_hand(w, ctx.actor) is None:
+        return "你手里没有能写字的笔"
+    return None
+
+
+def _impound_hints(ctx: Ctx) -> list[str]:
+    w = ctx.world
+    tools = [w.entities[c].name for c in w.children(ctx.actor) if w.get(c, "implement")]
+    books = [w.entities[e].name for e in visible(w, ctx.actor) if w.get(e, "records")]
+    return [f"手上能登记的笔：{'、'.join(tools) if tools else '没有'}",
+            f"眼前的登记本：{'、'.join(books) if books else '没有'}"]
+
+
+def _impound_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+    """收走一件东西，并在登记本上留下恰好一行。"""
+    w = ctx.world
+    book = _records_in_sight(w, ctx.actor)
+    tool = _implement_in_hand(w, ctx.actor)
+    src = w.container(ctx.target)
+    where = w.entities[src].name if src in w.entities else "不明"
+    rows = list(w.get(book, "marks") or [])
+    rows.append({"text": f"{clock_label(w.clock)} 收：{ctx.name(ctx.target)}（自{where}）",
+                 "ink": w.get(tool, "implement") or "ink", "style": "printed"})
+    return [{"op": "move", "e": ctx.target, "to": ctx.actor},
+            {"op": "set", "e": book, "k": "marks", "v": rows}]
+
+
+def _impound_render(ctx: Ctx) -> list[tuple[str, str]]:
+    w = ctx.world
+    name = ctx.name(ctx.target)
+    src = w.container(ctx.target)
+    out = [(ctx.actor, f"你把{name}收走了，在本子上记了一行。")]
+    if w.kind_of(src) == "person":
+        out.append((src, f"{refer(w, src, ctx.actor)}把你的{name}收走了，在本子上记了一行。"))
+    for p in _onlookers(w, ctx.actor, ctx.target):
+        if p == src:
+            continue
+        out.append((p, f"{refer(w, p, ctx.actor)}把{name}收走了，在本子上记了一行。"))
     return out
 
 
@@ -498,7 +572,9 @@ _CONCEPTS = [
          _recognize_when, _recognize_atoms, _recognize_render, cost=2),
     Rule("speak", ("s1_last_bus", "s2_borrow_note", "s3_night_market",
                    "s5_wedding", "s7_campus_12d"),
-         _speak_when, _speak_atoms, _speak_render, cost=1, entity_args=()),
+         _speak_when, _speak_atoms, _speak_render, cost=1, entity_args=("to",)),
+    Rule("impound", ("s3_night_market", "s4_night_shift"),
+         _impound_when, _impound_atoms, _impound_render, cost=1, hints=_impound_hints),
 ]
 
 #: 给模型看的一句话说明。工具表由这里生成，所以每个动词都必须有一句。
@@ -518,18 +594,19 @@ DOCS = {
     "copy": "用复写纸把一份纸上的字复写下来（要空白纸）",
     "unlock": "用钥匙打开某把锁",
     "recognize": "盯着纸上的字迹看：你能认出是谁的字吗",
-    "speak": "说一句话，在场的人都听得见",
+    "speak": "说一句话：不带 to 就是当众说，在场的人都听得见；带 to 就只对那个人说，旁人只看见你们在低声说话",
+    "impound": "以制度身份把一件东西收走，并在登记本上记下一行",
 }
 
 LABELS = {"examine": "细看", "read": "读", "touch": "碰", "take": "拿起", "place": "放下",
           "give": "交给", "open": "打开", "knock": "敲门", "move": "走过去", "wait": "等",
           "write": "写", "erase": "擦掉", "copy": "复写", "unlock": "开锁",
-          "recognize": "认字", "speak": "说话"}
+          "recognize": "认字", "speak": "说话", "impound": "收"}
 
 #: 除目标之外还需要的参数。指称类参数由引擎解析成世界里的东西。
 PARAMS = {
     "write": (("text", "要写上去的字", True), ("with", "用哪支笔", False)),
-    "speak": (("text", "你要说的话", True),),
+    "speak": (("text", "你要说的话", True), ("to", "只对谁私下说；不说就是当众", False)),
     "place": (("to", "放到哪里", True),),
     "give": (("to", "交给谁", True),),
 }
