@@ -58,7 +58,7 @@ Packages, in worksets (a workset is run in parallel, worksets in order):
 
 - **M3 的签字在人手里** — `docs/plan/portfolio.md` files it under what waits on the person. Nothing here reconstructs it; M4 does not depend on it.
 - **物权 的第二次声明** — the concept returns when a second story needs a held-by relation that containment cannot carry.
-- **S3 的 `结局` 是手写标签，不是世界的事实** — `stories/s3_night_market/scenario.py:ENDINGS` 给四个变体各写了一句判词，`scripts/anti_cheat.py:94` 的"结局不唯一"读的正是这句话，所以那项检查在 S3 上读的是作者的标签；S1/S2 的 `summary` 由事实拼出来，S3 不是。`ws-review` 把它记为残余而不是判据违反（M4 的三条判据不含反作弊的第三条内部实现）。下一步：让 S3 的 `结局` 由 `world` 的持有链与话语公开性拼出，重跑 `anti_cheat` 看四句是否仍然互不相同；改动属于 `s3` 的下一个包，改完要重新复核。
+- **S3 的 `结局` 是手写标签，不是世界的事实** — `stories/s3_night_market/scenario.py:ENDINGS` 给四个变体各写了一句判词，`scripts/anti_cheat.py:94` 的"结局不唯一"读的正是这句话，所以那项检查在 S3 上读的是作者的标签；S1/S2 的 `summary` 由事实拼出来，S3 不是。`ws-review` 把它记为残余而不是判据违反（M4 的三条判据不含反作弊的第三条内部实现）。下一步：让 S3 的 `结局` 由 `world` 的持有链与话语公开性拼出，重跑 `anti_cheat` 看四句是否仍然互不相同；改动属于 `s3` 的下一个包，改完要重新复核。风险低：`summary` 的其余字段已经是世界派生的，四条路径的（持有者, 当众/私下, 收摊前/后）分别是 (甲,私下,是)、(丙,当众,是)、(管理处,私下,否)、(甲,当众,是)，四个元组互不相同，所以把 `结局` 改成拼出来的不会让这项检查变红。
 - **T-A 的正文只在参考线里** — `v5/docs/V5-ROADMAP.md` §3 M7 以"结局 T-A"引用它，两处都没有定义；`CONTEXT.md` 现在如实写着定义在 v4 的参考文档里。定稿与否留给 S7，与 M4 无关。
 
 ## Verifying M4
