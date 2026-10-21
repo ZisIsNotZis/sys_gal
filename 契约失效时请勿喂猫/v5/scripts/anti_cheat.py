@@ -93,7 +93,7 @@ def check_reachability(story: str, verbose: bool) -> tuple[list[str], list[str]]
         run = scenario.play(variant)
         endings[variant] = getattr(scenario, "summary", lambda r: {}) (run).get("结局", "未声明结局")
     distinct = set(endings.values())
-    if len(distinct) < 2:
+    if len(distinct) < len(variants):
         problems.append(f"{story}: {len(variants)} 条路径只走到 {len(distinct)} 个结局")
     if verbose:
         for variant, end in endings.items():
