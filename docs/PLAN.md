@@ -27,10 +27,12 @@ Milestone M4 is the next user-synchronisation point (`契约失效时请勿喂�
 ```text
 M4 (milestone)
 ├─ ws1-deadline ─┐
-├─ ws1-resume  ──┼─→ integration ─→ ws2-s3 ─→ milestone-review ─→ M4 report
-└─ ws1-ledger  ─┘                      ↑
-                                  (needs ws1-deadline)
+├─ ws1-resume  ──┤
+├─ ws1-ledger  ──┼─→ integration ─→ ws-review ─→ milestone-report ─→ M4
+└─ ws2-s3     ──┘
 ```
+
+`ws2-s3` runs beside workset 1 and not after it: its four paths express the closing-time consequence through an institution effect, not through an action interrupted in flight, so nothing it asserts depends on `deadline`'s code. The interrupt is `deadline`'s own test. The two packages were split by file area (`deadline` owns `engine/`; `s3` owns `library/`, `stories/s3_night_market/`, one new test file) so neither one's gate can read the other's half-done edit.
 
 Packages, in worksets (a workset is run in parallel, worksets in order):
 
@@ -39,8 +41,8 @@ Packages, in worksets (a workset is run in parallel, worksets in order):
 | 1 | `deadline` | 期限：到点触发、在飞动作与打断，四件套（失败场景、规则、渲染、测试） | v5 gate green; `V5-PRIMITIVES.md` §8 的中途打断暂缓条被关掉 | taken 2026-10-21 |
 | 1 | `resume` | 半天边界存档 + 因果续跑，从 v4 原样搬（不重造） | v5 gate green; 续跑后 event id/version 连续 | taken 2026-10-21 |
 | 1 | `ledger` | v5 自己的历史失败台账 + 预门口径 | v5 gate green; 台账逐条映射到一个会失败的测试 | taken 2026-10-21 |
-| 2 | `s3` | S3《夜市》种子、卡司、四条归属路径（认账/推给下一个/拿不回来/当众澄清）、制度角色与当众-私下说的库增长 | v5 gate green; 四条路径的轨迹可通读 | — |
-| — | `s3-review` | 独立复核 ws2 | verdict per `Review` | — |
+| 1 | `s3` | S3《夜市》种子、卡司、四条归属路径（认账/推给下一个/拿不回来/当众澄清）、制度角色与当众-私下说的库增长 | v5 gate green; 四条路径的轨迹可通读 | taken 2026-10-21, beside ws1 |
+| — | `ws-review` | 独立复核 ws1 的三包与 `s3`，一个新上下文的复核者，覆盖面写明 | verdict per package | — |
 | — | `milestone-review` | M4 三条判据的整体复核（不是逐包裁决之和） | verdict | — |
 | — | `docs-v5-shape` | `README.md`/`CONTEXT.md` 的运行与证据一节改成 v5 形状 | 两份文件里不存在指向 v4 为准的句子 | — |
 
