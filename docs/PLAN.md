@@ -17,8 +17,8 @@ Why this file exists: this directory has one owner (a manager), and this file is
 
 ## Where the convention breaks
 
-- `README.md` and `CONTEXT.md` were written for the v4 line. Claims about which line is current, and about the shape of run artefacts, are authority-marked at v5 and are stale elsewhere they survive in those two files (package `docs-v5-shape`, not started).
-- `契约失效时请勿喂猫/ROADMAP.md` and `CONTEXT.md` still cite `.scratch/` as the ticket tracker; v5 is exempt from it (decision below).
+- `契约失效时请勿喂猫/ROADMAP.md` is the v4 reference line's roadmap and still cites `.scratch/` as the tracker; the main line's roadmap is `契约失效时请勿喂猫/v5/docs/V5-ROADMAP.md`, and v5 is exempt from the tracker (decision below).
+- `docs/PRINCIPLE.md` and the `v4/` documents describe a three-actor MC/NPC/extra cast that v5 does not have; read them as principles, not as the current shape.
 
 ## Roadmap — M4 「半日 + S3《夜市》」
 
@@ -44,7 +44,7 @@ Packages, in worksets (a workset is run in parallel, worksets in order):
 | 1 | `s3` | S3《夜市》种子、卡司、四条归属路径（认账/推给下一个/拿不回来/当众澄清）、制度角色与当众-私下说的库增长 | v5 gate green; 四条路径的轨迹可通读 | taken 2026-10-21, beside ws1 |
 | — | `ws-review` | 独立复核 ws1 的三包与 `s3`，一个新上下文的复核者，覆盖面写明 | verdict per package | — |
 | — | `milestone-review` | M4 三条判据的整体复核（不是逐包裁决之和） | verdict | — |
-| — | `docs-v5-shape` | `README.md`/`CONTEXT.md` 的运行与证据一节改成 v5 形状 | 两份文件里不存在指向 v4 为准的句子 | — |
+| — | `docs-v5-shape` | `README.md`/`CONTEXT.md` 的运行与证据一节改成 v5 形状 | 两份文件里不存在指向 v4 为准的句子 | done 2026-10-21 |
 
 ## Decided
 
