@@ -1,0 +1,125 @@
+story: s3-night-market
+# 18:00 的夜市。一摊货被收走，押金条在几个人手里传过——谁最后拿着它，谁就得认这笔账。
+date: 2026-04-02
+start_clock: 1080
+
+places:
+  - id: market
+    name: 夜市
+    prose: 一条街两侧支着棚子，灯泡串横在头顶，脚下是踩实了的纸屑
+  - id: stall_area
+    parent: market
+    name: 摊区
+    prose: 塑料布上摆着没卖完的货，秤在最显眼的地方
+  - id: office
+    parent: market
+    name: 管理处
+    prose: 铁皮房，窗口上钉着一块写字板
+    state: {door: open}
+  - id: alley
+    parent: market
+    name: 巷口
+    prose: 垃圾桶旁边堆着几只空筐，风从巷子里出来
+  - id: next_stall
+    parent: market
+    name: 旁摊
+    prose: 隔壁摊子的灯比这边亮一点，人却少
+
+people:
+  - id: a
+    parent: stall_area
+    name: 摊主甲
+    prose: 一件洗得发白的围裙，手上沾着油
+    identity: 你在这条夜市摆了六年摊。押金条是你的，今晚被搬走的货也是你的；你不想多掏钱，也不想当着这么多人丢脸。
+    knows: [deposit_note, goods, register, notice, stall_area, market, office, alley, next_stall, warden, b, c, neighbour]
+    state: {hand: a_hand}
+    believes:
+      - {about: deposit_note, says: 押金条上印着收摊时凭条退押金}
+      - {about: goods, says: 那箱被搬走的货，本钱两百}
+
+  - id: b
+    parent: stall_area
+    name: 摊主乙
+    prose: 卫衣袖口卷到手肘，站姿一直换
+    identity: 你今晚替人看了半个钟头摊子，自己的摊在旁摊。别人的账落不到你头上，这一点你心里很清楚。
+    knows: [deposit_note, goods, register, stall_area, market, office, next_stall, a, c, warden, neighbour]
+    state: {hand: b_hand}
+    believes:
+      - {about: deposit_note, says: 押金条是甲那张，不是我的}
+      - {about: goods, says: 我只看了一会儿摊，货不是我的}
+
+  - id: c
+    parent: stall_area
+    name: 摊主丙
+    prose: 戴着一顶旧帽子，正把空筐往一起摞
+    identity: 你在巷口那头卖水果。这条街上的事你听见得多，沾手得少。
+    knows: [deposit_note, goods, register, stall_area, market, office, alley, a, b, warden, neighbour]
+
+  - id: warden
+    parent: stall_area
+    name: 管理员
+    prose: 蓝色马甲，腋下夹着一本硬皮本子，手里一支圆珠笔
+    identity: 你是这条夜市的管理员。今晚街道来检查，收得比平时早。你只认本子上写了的东西，嘴上说的都不算。
+    knows: [deposit_note, goods, register, notice, pen, stall_area, market, office, a, b, c, neighbour]
+    state: {institution: office, hand: warden_hand}
+    believes:
+      - {about: deposit_note, says: 条子在谁手里不作数，本子上记了才算}
+
+  - id: neighbour
+    parent: stall_area
+    name: 旁摊主
+    prose: 围裙上别着三支夹子，手里剥着橘子
+    identity: 你在隔壁摊卖袜子。这条街上谁欠谁一块钱你都知道，轮到自己头上的事反倒说不清。
+    knows: [deposit_note, goods, stall_area, market, office, a, b, c, warden]
+    believes:
+      - {about: deposit_note, says: 押金条我见过，在甲手里}
+
+objects:
+  - id: deposit_note
+    parent: a
+    name: 押金条
+    prose: 一张对折过几道的硬纸条
+    state:
+      marks: [{text: "今收摊位押金二百元，收摊时凭条退还。", ink: printed, style: printed}]
+      accepts: [ink]
+      portable: true
+
+  - id: goods
+    parent: stall_area
+    name: 货
+    prose: 一箱没卖完的东西，箱角被压瘪了
+    state: {portable: true}
+
+  - id: register
+    parent: warden
+    name: 收件记录
+    prose: 一本硬皮本子，纸边卷了起来
+    state:
+      marks: [{text: "收件记录", ink: printed, style: printed}]
+      accepts: [ink, graphite]
+      records: true
+      portable: true
+
+  - id: notice
+    parent: office
+    name: 通知
+    prose: 一张打印纸，四个角都用胶带粘过
+    state:
+      marks: [{text: "今日街道检查，本市场提前收摊；管理处随收摊关门。", ink: printed, style: printed}]
+      portable: true
+
+  - id: pen
+    parent: warden
+    name: 笔
+    prose: 一支按一下才出芯的圆珠笔
+    state: {implement: ink, portable: true}
+
+schedule:
+  # 开门时管理处把通知贴到摊区；内容只有去读才知道。
+  - {at: 1080, effect: {kind: post, place: stall_area, item: notice}}
+  # 到点提醒登记上的那个人，不提醒条子在谁手里。
+  - {at: 1100, effect: {kind: pickup_due, who: a, place: office}}
+  # 收摊：管理处到点关门上锁，不是谁的决定。
+  - {at: 1110, effect: {kind: close, place: office}}
+  # 次日开门。
+  - {at: 1920, effect: {kind: open, place: office}}

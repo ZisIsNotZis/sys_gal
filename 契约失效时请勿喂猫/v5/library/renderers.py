@@ -47,6 +47,8 @@ def _register_all() -> None:
     register_state_renderer("portable", None)
     register_state_renderer("silhouette", lambda v: "玻璃后面有个人影" if v else "")
     register_state_renderer("presence", None)
+    register_state_renderer("institution", None)  # 制度身份：改变能做什么，不是看见什么
+    register_state_renderer("records", None)      # 登记本：能往上记一行
 
 
 _register_all()
