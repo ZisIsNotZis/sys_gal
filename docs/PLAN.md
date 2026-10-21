@@ -44,7 +44,8 @@ Packages, in worksets (a workset is run in parallel, worksets in order):
 | 1 | `s3` | S3《夜市》种子、卡司、四条归属路径（认账/推给下一个/拿不回来/当众澄清）、制度角色与当众-私下说的库增长 | v5 gate green; 四条路径的轨迹可通读 | taken 2026-10-21, beside ws1; branch `ws2-s3-recovered`, merged `a0e307a` |
 | — | `ws-review` | 独立复核 ws1 的三包与 `s3`，一个新上下文的复核者，覆盖面写明 | verdict per package | `pass` ×4 at `a0e307a`（复核者在 `8c8b881` 复跑门：132 tests / lint / anti_cheat 3 支） |
 | 1 | `fix-endings` | 让 claim 1 的"四条路四种结局"能被推翻：`结局` 由世界的事拼出，`ENDINGS` 删掉；`d` 改成 `a` 的结局时测试必须红 | `tests.test_m4_s3` 在 `/tmp` 副本的探针下变红；v5 gate 全绿；`runs/{a..d}` 重新生成后 `git status` 干净 | `bde3a7d`; 复核 `fail`（窄）：测试已能红，`anti_cheat.py:96` 的阈值仍是 `< 2`，同一个探针下它还是绿的 |
-| 1 | `fix-threshold` | 把 `anti_cheat` 的第三条检查修到和它自己那句话一样强：`len(variants)`，而不是 2 | 正确树通过；`d := a` 与四条合一两个探针下都非零退出 | taken 2026-10-21, contract `work/fix-threshold-contract.md` |
+| 1 | `fix-threshold` | 把 `anti_cheat` 的第三条检查修到和它自己那句话一样强：`len(variants)`，而不是 2 | 正确树通过；`d := a` 与四条合一两个探针下都非零退出 | `6063e1c`; 复核 `pass`（探针只在那一行上咬） |
+| 1 | `pin-threshold` | 让套件自己抓住回归：把阈值退回 `2` 时必须有测试变红 | 在 `/tmp` 副本里把 `anti_cheat.py:96` 退回 `2`，`tests.test_historical_failures` 变红 | taken 2026-10-21, contract `work/pin-threshold-contract.md` |
 | — | `milestone-review` | M4 三条判据的整体复核（不是逐包裁决之和） | verdict | claim 1、2 `reached`；claim 3 机制成立、前提不成立；一处不可失败的测试被查出来（见 Open） |
 | — | `docs-v5-shape` | `README.md`/`CONTEXT.md` 的运行与证据一节改成 v5 形状 | 两份文件里不存在指向 v4 为准的句子 | `fail` at `5578a8b`; repaired at `263fa0c` (`grep -n 'v4' CONTEXT.md README.md`: every hit says 参考) |
 
@@ -61,9 +62,8 @@ Packages, in worksets (a workset is run in parallel, worksets in order):
 
 - **M3 的签字在人手里** — `docs/plan/portfolio.md` files it under what waits on the person. Nothing here reconstructs it; M4 does not depend on it.
 - **物权 的第二次声明** — the concept returns when a second story needs a held-by relation that containment cannot carry.
-- **`test_four_paths_reach_four_endings` 不可能失败** — 里程碑复核在隔离副本里把路径 `d` 的脚本换成 `a` 的，18/18 仍然全过：那条测试数的是 `summary()["结局"]` 的不同取值，而它就是 `ENDINGS[variant]` 这张按变体手写的四句表。同一个病在 `ws-review` 那里先露过一次（`anti_cheat` 的"结局不唯一"读的也是这句标签）。这是 M4 的判据 1 的**唯一把关处**，所以它是一个真缺陷，不是风格问题。修法见 `work/fix-endings-contract.md`；修复落在 `bde3a7d`（`ENDINGS`/`DECISIVE` 删除，`结局` 由末尾世界的四件事拼出），复核在另一次新上下文里进行。
 - **半天还不存在** — 里程碑复核：最长的脚本只走 13 分钟世界时间，1110 关、1920 再开的排程从未被再次进入；a/b/d 三条路在 18:12–18:14 就结束了，离 18:30 锁门还有十六分钟，所以期限在四条路里三条不做功，只在 c 里被动拦人。claim 3 的边界是 **S1 的 23 分钟中点**（`tests/test_m4_resume.py:half_day_clock`），没有任何测试对 S3 取检查点。"半天"目前是标签，不是这一局的形状。这是 M5 的入口条件，不是 M4 的判据违反：M4 的 claim 3 说的是续跑因果连续，机制成立且有负向对照。
-- **S3 的 `结局` 是手写标签，不是世界的事实** — `stories/s3_night_market/scenario.py:ENDINGS` 给四个变体各写了一句判词，`scripts/anti_cheat.py:94` 的"结局不唯一"读的正是这句话，所以那项检查在 S3 上读的是作者的标签；S1/S2 的 `summary` 由事实拼出来，S3 不是。`ws-review` 把它记为残余而不是判据违反（M4 的三条判据不含反作弊的第三条内部实现）。下一步：让 S3 的 `结局` 由 `world` 的持有链与话语公开性拼出，重跑 `anti_cheat` 看四句是否仍然互不相同；改动属于 `s3` 的下一个包，改完要重新复核。风险低：`summary` 的其余字段已经是世界派生的，四条路径的（持有者, 当众/私下, 收摊前/后）分别是 (甲,私下,是)、(丙,当众,是)、(管理处,私下,否)、(甲,当众,是)，四个元组互不相同，所以把 `结局` 改成拼出来的不会让这项检查变红。
+- **一条故事能不能写两条汇到同一结局的路** — `anti_cheat` 的第三条现在把"路径数"与"结局数"绑在一起（`len(distinct) < len(variants)`），所以一支故事不能再写两条殊途同归的路；要收敛只能把它们写成一条。复核者把它当**口味**上报，我把它原样转给 root：`anti_cheat.py:6` 的那句话本来就是这么写的（"每条被写出来的路径都必须能走到不同结局"），所以修的是实现而不是句子。我的建议是不改这条判据，把"想收敛"当成"一条路写了两遍"；若 root 认为该允许收敛，判据要改成落在**结局**上而不是**路径**上，那是判据的重写，不是这一层的自选。
 - **T-A 的正文只在参考线里** — `v5/docs/V5-ROADMAP.md` §3 M7 以"结局 T-A"引用它，两处都没有定义；`CONTEXT.md` 现在如实写着定义在 v4 的参考文档里。定稿与否留给 S7，与 M4 无关。
 
 ## Verifying M4
