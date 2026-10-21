@@ -57,7 +57,13 @@ S4 与 S5 刻意同尺度、不同压力：**同规模对照**是库通用性最
 
 **工作包的过程记录**：v5 不走票制（`.scratch/<feature>/`）。一个工作包的契约、证据与决定进它的提交信息与里程碑报告；`.scratch/` 只留给跑出来的缺陷。
 
-**当前状态**：M0/M1/M2 已完成；**M3 已跑出第一份模型试点**（`V5-M3-PILOT.md`）：同一世界、同一模型、只差两句"今晚的压力"的对照，12 个动作全部由模型自己决定（`[角色]`），工具表与系统提示由库和种子生成，反作弊三检可运行。`python3 -m unittest discover -s tests` **87 项全过**，`v5_lint --strict` 与 `anti_cheat.py` 通过。
+**当前状态**：M0/M1/M2 已完成；**M3 已跑出第一份模型试点**（`V5-M3-PILOT.md`）：同一世界、同一模型、只差两句"今晚的压力"的对照，12 个动作全部由模型自己决定（`[角色]`），工具表与系统提示由库和种子生成，反作弊三检可运行。**M4 的四包已合并**：期限（动作的区间与中途打断）、续跑（`engine/checkpoint.py`）、v5 自己的历史失败台账、S3《夜市》的种子与四条归属路径。读数不写在这里，跑这条命令即可：
+
+```text
+python3 -m unittest discover -s tests -p 'test_*.py' && python3 scripts/v5_lint.py --strict && python3 scripts/anti_cheat.py --verbose
+```
+
+三条验收各自的证据是 `tests/test_m4_s3.py`（每种归属物理可达、当众与私下的差）、`tests/test_m4_resume.py`（续跑因果连续）与 `tests/test_m4_deadline.py`（区间与截断）；里程碑的签字在人手里。
 
 ## 4. 并行轨道
 

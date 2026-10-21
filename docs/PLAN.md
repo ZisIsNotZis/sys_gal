@@ -44,7 +44,7 @@ Packages, in worksets (a workset is run in parallel, worksets in order):
 | 1 | `s3` | S3《夜市》种子、卡司、四条归属路径（认账/推给下一个/拿不回来/当众澄清）、制度角色与当众-私下说的库增长 | v5 gate green; 四条路径的轨迹可通读 | taken 2026-10-21, beside ws1; branch `ws2-s3-recovered`, merged `a0e307a` |
 | — | `ws-review` | 独立复核 ws1 的三包与 `s3`，一个新上下文的复核者，覆盖面写明 | verdict per package | taken 2026-10-21, contract `work/ws-review-contract.md`, rev `a0e307a` |
 | — | `milestone-review` | M4 三条判据的整体复核（不是逐包裁决之和） | verdict | — |
-| — | `docs-v5-shape` | `README.md`/`CONTEXT.md` 的运行与证据一节改成 v5 形状 | 两份文件里不存在指向 v4 为准的句子 | `fail` at `5578a8b`; repair is this advance's own work |
+| — | `docs-v5-shape` | `README.md`/`CONTEXT.md` 的运行与证据一节改成 v5 形状 | 两份文件里不存在指向 v4 为准的句子 | `fail` at `5578a8b`; repaired at `a412fc6` (`grep -n 'v4' CONTEXT.md README.md`: every hit says 参考) |
 
 ## Decided
 
@@ -58,8 +58,7 @@ Packages, in worksets (a workset is run in parallel, worksets in order):
 
 - **M3 的签字在人手里** — `docs/plan/portfolio.md` files it under what waits on the person. Nothing here reconstructs it; M4 does not depend on it.
 - **物权 的第二次声明** — the concept returns when a second story needs a held-by relation that containment cannot carry.
-- **`docs-v5-shape` 的 `done` 不成立** — 独立裁决 at `5578a8b`: `CONTEXT.md:20, 35, 38, 43` still name `V4-*` documents as 权威 (and lines 4–5 make them win on conflict), `README.md:15, 27` point at the v4 `ROADMAP.md` for milestones and where it stands, and `README.zh-CN.md:20` calls v4 the active line. The status line stays `fail` until the tree carries the criterion; the repair is this advance's own work, not a new package.
-- **v4 detail in `CONTEXT.md` is reference, not authority** — each v4-only entry (KB/`V4-AGENT-INTERFACE.md`, MC/NPC/extra/`V4-CAST.md`, 导演简报, 剧情锚点) either carries v5's counterpart in the same entry or says in one line that it describes the reference line.
+- **T-A 的正文只在参考线里** — `v5/docs/V5-ROADMAP.md` §3 M7 以"结局 T-A"引用它，两处都没有定义；`CONTEXT.md` 现在如实写着定义在 v4 的参考文档里。定稿与否留给 S7，与 M4 无关。
 
 ## Verifying M4
 
