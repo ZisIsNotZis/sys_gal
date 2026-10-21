@@ -1,6 +1,8 @@
 """《夜市》：M4 的脚本演员。
 
 四条路，四种结局：认账 / 推给下一个 / 拿不回来 / 当众澄清。
+结局由这一局末尾世界里的四件事拼出（条子在谁手里、经过谁的手、那句话是私下还是当众、
+落在收摊前还是收摊后），不按路径名查表：两条路在这四件事上相同就是同一个结局。
 脚本只证明"这件事物理上做得到"，不代表角色的意愿。
 
 三件被这条路测到的事：
@@ -86,21 +88,6 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
     ],
 }
 
-#: 每条路上"那句话"是哪一句，以及它是当众还是私下。
-#: 这里写的是脚本的声明；它成立不成立由 `tests/test_m4_s3.py` 自己验。
-DECISIVE: dict[str, str] = {
-    "a": "这摊是我的，货我认",
-    "b": "这摊今晚是乙替我看着的",
-    "c": "我收摊前来领",
-    "d": "这摊昨晚是乙看的",
-}
-
-ENDINGS = {
-    "a": "认账：条子一直在甲手里，收摊前他私下认了这笔",
-    "b": "推给下一个：条子当众从甲传到乙、再传到丙，谁也没认",
-    "c": "拿不回来：条子留在管理处，甲到的时候门已经锁了",
-    "d": "当众澄清：甲乙当众对质，管理员念了记录，条子回到甲手里",
-}
 
 
 @dataclass
@@ -132,6 +119,7 @@ def play(variant: str = "a", seed_path: Path = DEFAULT_SEED) -> Run:
         receipt = submit(world, log, actor, verb, dict(args))
         run.receipts.append(receipt)
         target = receipt.event.note.get("target") if receipt.event else None
+        holder = world.container(NOTE_ID)
         run.items.append({
             "kind": "turn", "at": receipt.event.at if receipt.event else world.clock,
             "actor": actor, "verb": verb,
@@ -141,8 +129,9 @@ def play(variant: str = "a", seed_path: Path = DEFAULT_SEED) -> Run:
             "reason": receipt.reason, "hints": list(receipt.hints), "note": receipt.note,
             "context": context, "context_used": False,
             "decided_by": "script", "step": step,
+            # 这一步做完，条子在谁手里（`结局` 与 `决定性那句话` 读的就是它）
+            "note_holder": holder,
         })
-        holder = world.container(NOTE_ID)
         if holder != run.note_trail[-1]:
             run.note_trail.append(holder)
     run.summary = summary(run)
@@ -169,6 +158,31 @@ def _close_at(run: Run) -> int | None:
     return None
 
 
+def _decisive_turn(run: Run) -> dict[str, Any] | None:
+    """决定性的一句话：拿着条子的那个人最后说的那句（说完条子还在他手里）。"""
+    spoke = [i for i in run.items if i["kind"] == "turn" and i["verb"] == "speak"]
+    holding = [i for i in spoke if i.get("note_holder") == i["actor"]]
+    chosen = holding or spoke
+    return chosen[-1] if chosen else None
+
+
+def _audience(turn: dict[str, Any] | None) -> str:
+    """那句话是说给一个人听的，还是在场的人都听见了。"""
+    if turn is None:
+        return "一句话也没说"
+    return f"只对{turn['to']}一个人说" if turn["to"] else "在场的人都听见"
+
+
+def _ending(facts: dict[str, Any], said: dict[str, Any] | None) -> str:
+    """结局只由 `facts` 里的四件事拼出；没有第五件，也不从路径名取。"""
+    before = facts["结局落在收摊之前"]
+    when = ("不知道收摊是什么时候" if before is None
+            else "落在收摊之前" if before else "落在收摊之后")
+    return (f"条子在{facts['押金条最后在谁手里']}，"
+            f"路上经过{'→'.join(facts['押金条经过谁的手'])}，"
+            f"{_audience(said)}，{when}")
+
+
 def summary(run: Run) -> dict[str, Any]:
     w = run.world
 
@@ -179,20 +193,16 @@ def summary(run: Run) -> dict[str, Any]:
         return w.entities[holder].name
 
     turns = [i for i in run.items if i["kind"] == "turn"]
-    phrase = DECISIVE.get(run.variant, "")
-    said = next((i for i in turns if i["verb"] == "speak" and phrase and phrase in
-                 " ".join(i["texts"])), None)
+    said = _decisive_turn(run)
     close_at = _close_at(run)
     last_at = turns[-1]["at"] if turns else None
-    return {
+    facts: dict[str, Any] = {
         "押金条最后在谁手里": where(NOTE_ID),
         "押金条经过谁的手": [w.entities[h].name if h in w.entities else "不在"
                              for h in run.note_trail],
         "决定性那句话": ("私下" if said["to"] else "当众") if said else "没有开口",
         "结局落在收摊之前": (last_at < close_at) if (last_at is not None and close_at is not None) else None,
         "收摊时间": close_at,
-        "结局": ENDINGS.get(run.variant) or (
-            f"条子在{where(NOTE_ID)}，开到收摊时一共说了 "
-            f"{sum(1 for i in turns if i['verb'] == 'speak')} 句话"
-        ),
     }
+    facts["结局"] = _ending(facts, said)
+    return facts

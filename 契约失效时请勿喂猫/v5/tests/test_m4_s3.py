@@ -22,6 +22,7 @@ from engine.rules import submit
 from engine.seed import load
 from library import EFFECTS
 from library.institutions import close
+from stories.s3_night_market import scenario
 from stories.s3_night_market.scenario import DEFAULT_SEED, NOTE_ID, play, summary
 
 VARIANTS = ("a", "b", "c", "d")
@@ -50,7 +51,30 @@ class StoryTests(unittest.TestCase):
         self.assertTrue({"摊主甲", "摊主乙", "摊主丙", "管理处"} <= handled, handled)
 
     def test_four_paths_reach_four_endings(self):
-        self.assertEqual(len({s["结局"] for s in self.sums.values()}), 4)
+        endings = {v: s["结局"] for v, s in self.sums.items()}
+        self.assertEqual(len(set(endings.values())), 4, endings)
+        # 结局是四件事的拼法，不是按路径名查的表：两条路若在这四件事上一模一样，
+        # 就必须算作同一个结局（否则“四种结局”只是把同一个结局换了个说法）。
+        facts = {v: (s["押金条最后在谁手里"], tuple(s["押金条经过谁的手"]),
+                     s["决定性那句话"], s["结局落在收摊之前"])
+                 for v, s in self.sums.items()}
+        self.assertEqual(len(set(endings.values())), len(set(facts.values())),
+                         f"结局数（{endings}）与世界事实组合数（{facts}）不一致")
+
+    def test_two_paths_that_end_the_same_way_count_as_one_ending(self):
+        """反证：把 `d` 的脚本换成 `a` 的，`d` 就必须按 `a` 的方式结束。
+
+        结局若还认得出路径名（即按变体手写的句子表），这条会红。
+        """
+        original = scenario.SCRIPTS["d"]
+        scenario.SCRIPTS["d"] = scenario.SCRIPTS["a"]
+        try:
+            aliased = summary(play("d"))
+        finally:
+            scenario.SCRIPTS["d"] = original
+        self.assertEqual(aliased["结局"], summary(play("a"))["结局"],
+                         "同一条脚本在两条路上结束得不一样：结局不是从世界算出来的")
+        self.assertEqual(aliased["决定性那句话"], "私下", aliased)
 
     def test_every_turn_is_marked_as_scripted(self):
         for run in self.runs.values():
