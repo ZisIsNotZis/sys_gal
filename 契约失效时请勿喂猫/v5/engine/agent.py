@@ -134,7 +134,8 @@ def agent_turn(world: World, log: EventLog, actor: str, provider: Any,
     receipt = submit(world, log, actor, decision.verb, dict(decision.args))
 
     result = ("；".join(receipt.texts) if receipt.ok
-              else "没成：" + receipt.reason + ("\n" + "\n".join(receipt.hints) if receipt.hints else ""))
+              else ("被打断了：" if receipt.interrupted else "没成：") + receipt.reason
+              + ("\n" + "\n".join(receipt.hints) if receipt.hints else ""))
     history.setdefault(actor, []).extend([
         {"role": "user", "content": context["turn"]},
         {"role": "assistant", "content": None,
