@@ -42,7 +42,7 @@ Packages, in worksets (a workset is run in parallel, worksets in order):
 | 1 | `resume` | 半天边界存档 + 因果续跑，从 v4 原样搬（不重造） | v5 gate green; 续跑后 event id/version 连续 | taken 2026-10-21; branch `pi-subagents/task-2-5d14cf4-6f34-s0-t0`, merged `7ebdde5` |
 | 1 | `ledger` | v5 自己的历史失败台账 + 预门口径 | v5 gate green; 台账逐条映射到一个会失败的测试 | taken 2026-10-21; branch `pi-subagents/task-3-edfa688-7b3b-s0-t0`, merged `d8af14c` |
 | 1 | `s3` | S3《夜市》种子、卡司、四条归属路径（认账/推给下一个/拿不回来/当众澄清）、制度角色与当众-私下说的库增长 | v5 gate green; 四条路径的轨迹可通读 | taken 2026-10-21, beside ws1; branch `ws2-s3-recovered`, merged `a0e307a` |
-| — | `ws-review` | 独立复核 ws1 的三包与 `s3`，一个新上下文的复核者，覆盖面写明 | verdict per package | taken 2026-10-21, contract `work/ws-review-contract.md`, rev `a0e307a` |
+| — | `ws-review` | 独立复核 ws1 的三包与 `s3`，一个新上下文的复核者，覆盖面写明 | verdict per package | `pass` ×4 at `a0e307a`（复核者在 `8c8b881` 复跑门：132 tests / lint / anti_cheat 3 支） |
 | — | `milestone-review` | M4 三条判据的整体复核（不是逐包裁决之和） | verdict | — |
 | — | `docs-v5-shape` | `README.md`/`CONTEXT.md` 的运行与证据一节改成 v5 形状 | 两份文件里不存在指向 v4 为准的句子 | `fail` at `5578a8b`; repaired at `a412fc6` (`grep -n 'v4' CONTEXT.md README.md`: every hit says 参考) |
 
@@ -58,6 +58,7 @@ Packages, in worksets (a workset is run in parallel, worksets in order):
 
 - **M3 的签字在人手里** — `docs/plan/portfolio.md` files it under what waits on the person. Nothing here reconstructs it; M4 does not depend on it.
 - **物权 的第二次声明** — the concept returns when a second story needs a held-by relation that containment cannot carry.
+- **S3 的 `结局` 是手写标签，不是世界的事实** — `stories/s3_night_market/scenario.py:ENDINGS` 给四个变体各写了一句判词，`scripts/anti_cheat.py:94` 的"结局不唯一"读的正是这句话，所以那项检查在 S3 上读的是作者的标签；S1/S2 的 `summary` 由事实拼出来，S3 不是。`ws-review` 把它记为残余而不是判据违反（M4 的三条判据不含反作弊的第三条内部实现）。下一步：让 S3 的 `结局` 由 `world` 的持有链与话语公开性拼出，重跑 `anti_cheat` 看四句是否仍然互不相同；改动属于 `s3` 的下一个包，改完要重新复核。
 - **T-A 的正文只在参考线里** — `v5/docs/V5-ROADMAP.md` §3 M7 以"结局 T-A"引用它，两处都没有定义；`CONTEXT.md` 现在如实写着定义在 v4 的参考文档里。定稿与否留给 S7，与 M4 无关。
 
 ## Verifying M4
