@@ -44,43 +44,40 @@ v4 及更早是参考/历史归档，其文档不作为现行要求。
 
 ## 运行与证据
 
-> 本节以下写的是 **v4 参考线**的形状。v5 的形状（`stories/*/runs/agent-<时间>-<pid>-<标签>/`
-> 四个文件、检查点与续跑、预门口径）以 `契约失效时请勿喂猫/v5/README.md` 与
-> `docs/PLAN.md` 为准。
-
-- **run / 轨迹（trajectory / artifact）**：一次 provider-backed 运行的完整记录
-  （`v4/runs/<runid>.json` + `.checkpoint.json`），格式 `v3-trajectory-1`。每次
-  调用必须产生唯一工件，绝不覆盖。
-- **provider**：模型上游（经本地 LiteLLM 代理）。瞬时故障常见，用带退避的
-  重试；预算是有限的，失联要有界放行。
-- **检查点（checkpoint）**：每批写入的完整运行快照（世界+runner+私有状态+
-  会话）。`harness.resume_run` 从检查点因果续跑（event id/version 连续）。
+- **run / 轨迹（trajectory / artifact）**：一次 provider-backed 运行的完整记录。v5 的
+  形状是 `stories/<story>/runs/agent-<时间>-<pid>-<标签>/` 四个文件：`transcript.md`
+  故事视图、`context.md` 每回合的完整上下文与原始工具调用、`run.json` 与
+  `events.jsonl` 可重放记录（权威：`契约失效时请勿喂猫/v5/README.md`）。每次调用必须
+  产生唯一工件，绝不覆盖；没有 `context.md` 的一局回答不了"他当时知道什么"，不算证据。
+  v4 参考线的形状是 `v4/runs/<runid>.json` 及其紧凑形态 `.jsonl.zst`。
+- **provider**：模型上游（经本地 LiteLLM 代理）。瞬时故障常见，用带退避的重试；
+  预算有限，失联要有界放行；重试预算耗尽的失败是终局，必须存成失败轨迹。
+- **检查点（checkpoint）**：一局在中途停下来还能因果接着跑的完整快照。v4 参考线的实现是
+  `v4/harness/resume_run.py` 从 `.checkpoint.json` 续跑；v5 的实现在里程碑 M4 的
+  `resume` 工作包里，形状以该模块的文档字符串为准。
 - **半天检查点（half-day checkpoint）**：弧线以半天为粒度推进（am=07:00–12:59,
-  pm=13:00–22:00，12 天×2=24 个）。跑到边界 → 存档检查点 → 过门 → 人工审阅 →
-  PASS 续跑 / FAIL 调种子并从上一个好检查点重跑。
-- **剧情锚点 / 路线 / 纹理（anchor / route / flavor）**：剧情里程碑的判定模型。
-  **锚点**=路线无关、必须达成的关键事实；**路线**=同一目标的多种合法走法，
-  任一成立即算通过；**纹理**=路线点缀，记录不裁决。权威：
-  `V4-STORY-MILESTONES.md` §2.1。
-- **剧情里程碑 vs 项目里程碑**：**剧情里程碑**是半天/逐日的剧情锚点，由
-  `scripts/check_milestones.py` 判定（`V4-STORY-MILESTONES.md`）。**项目里程碑**
-  是面向用户同步与验收的交付垂直切片（`ROADMAP.md`）。两者不可混称。
-- **预门（pre-run gate）**：大型 provider 运行前必须全绿的回归套件——历史失败
-  台账 `harness/tests/test_historical_failures.py` + 确定性终点门 + 种子自洽门
-  （`scripts/seed_lint.py`）。红即阻断。权威：`契约失效时请勿喂猫/AGENTS.md`。
-- **运行后分析（run analysis）**：每次 provider 运行后必须人工检查保存的轨迹，
-  以具体行为与因果问题开头，不以计数或 clean/failed 标签下结论。权威：
-  `契约失效时请勿喂猫/AGENTS.md`。
+  pm=13:00–22:00）。跑到边界 → 存档 → 过门 → 人工审阅 → 续跑或调种子重跑。v4 参考线
+  按 12 天×2 用满这一粒度；v5 的 M4 把它降到一个半日的单支故事（S3《夜市》）。
+- **剧情锚点 / 路线 / 纹理（anchor / route / flavor）**：**v4 参考线**的剧情里程碑判定
+  模型——锚点=路线无关且必须达成的事实，路线=同一目标的多种合法走法（任一成立即通过），
+  纹理=记录不裁决。权威：`v4/docs/V4-STORY-MILESTONES.md` §2.1。v5 用故事阶梯的
+  "必须能表达"清单与反作弊三检代替它（`v5/docs/V5-SCENES.md`、`v5/docs/V5-ROADMAP.md` §7）。
+- **预门（pre-run gate）**：大型 provider 运行前必须全绿的回归套件，红即阻断。v5 的预门是
+  v5 套件 + `scripts/v5_lint.py --strict` + `scripts/anti_cheat.py --verbose`，外加每支故事
+  自己的历史失败台账；v4 参考线的是它自己的台账 + 确定性终点门 + `scripts/seed_lint.py`。
+  权威：`AGENTS.md`。
+- **运行后分析（run analysis）**：每次 provider 运行后必须人工检查保存的轨迹，以具体行为与
+  因果问题开头，不以计数或 clean/failed 标签下结论。权威：`AGENTS.md`。
 
 ## 流程与文档
 
-- **Ticket / 工作记录**：变更与项目管理的**过程**记录（`.scratch/<feature>/`）。
-  记录契约、证据、命令/结果、变更、修订引用、决定与理由；append 风格。
+- **Ticket / 工作记录**：变更与项目管理的**过程**记录。v5 不走票制：一个工作包的契约、
+  证据与决定进它的提交信息和里程碑报告，`.scratch/` 只留给跑出来的缺陷
+  （权威：`v5/docs/V5-ROADMAP.md` §3）。v4 参考线的票在 `.scratch/<feature>/`。
 - **SSOT / fact doc**：当前事实的唯一权威文档。一份事实只有一个家；变更时
   原地重写，不留日期叙事、changelog、errata、"曾是 A 后改 B"、重复或冲突。
-- **Milestone（项目里程碑）**：预定的用户同步与有意义验收点，是一个可独立
-  判断的垂直切片。见 `ROADMAP.md`。
-- **Work Package（工作包）**：里程碑下一个内聚、可独立核对、可独立验收的
-  产出单元。见 `ROADMAP.md`。
+- **Milestone（项目里程碑）**：预定的用户同步与有意义验收点，是一个可独立判断的垂直切片。
+  本目录的里程碑与工作包在 `docs/PLAN.md`；v5 的八级里程碑在 `v5/docs/V5-ROADMAP.md` §3。
+- **Work Package（工作包）**：里程碑下一个内聚、可独立核对、可独立验收的产出单元。
 - **Independent Review（独立复核）**：用新上下文、只看最终工件与证据（不看
   执行者对话、不看完成声明）的技术验收。自动执行模式下每个工作包默认需要。
