@@ -20,6 +20,9 @@
 | `ws-review` dispatched | `cbf54bd` | the verdict on the four packages, by someone else |
 | `docs-v5-shape` repaired | `263fa0c` | item 3 |
 | `m4-milestone-review` dispatched | `3562e85` | the verdict on the three claims as a whole |
+| `ws-review` verdict landed | `a802289` | four `pass`, one residual kept, one reviewer claim refuted |
+| `milestone-review` verdict landed | `df26ef3` | claims 1 and 2 reached, 3 reached in mechanism only, one unfalsifiable test |
+| `fix-endings` dispatched | `20649f5` / `a4dd6c9` | the unfalsifiable test, with a probe that must go red |
 
 ## Gate after each merge (run from `契约失效时请勿喂猫/v5`)
 
@@ -30,6 +33,11 @@
 | `7ebdde5` | 104 OK | 通过（待补 5 项） | 通过（2 支故事） |
 | `d8af14c` | 114 OK | 通过（待补 5 项） | 通过（2 支故事） |
 | `a0e307a` | 132 OK | 通过（待补 5 项） | 通过（3 支故事） |
+
+## What the reviews said, in one line each
+
+- **ws-review** (`a0e307a`, re-gated at `8c8b881`): `deadline`, `resume`, `ledger`, `s3` all `pass`; its two mutation probes (unknown-effect guard, checkpoint `os.link`) are what separates a live test from a tautology. Two residuals: S3's `结局` is a hand-written label; the ledger's v4 citations point outside the repo. The second is refuted — `git ls-files 契约失效时请勿喂猫/v4 | wc -l` → 215, the file it named exists, and the reviewer's search used a path pattern that could not match.
+- **milestone-review**: claim 1 `reached` (with the note that 乙 never ends holding the note), claim 2 `reached` (leak mutation turns the test red), claim 3 `reached` for the mechanism and not for the premise — the boundary is S1's 23-minute midpoint and no test checkpoints S3. Defect: `test_four_paths_reach_four_endings` cannot fail (path `d` := path `a` → 18/18 green). Escalation: M5 must not claim all-day continuity before something cuts S3 at its 18:00→08:00 boundary — decided that way in `docs/PLAN.md` §Decided.
 
 ## Combined check at `a0e307a` — mine, not the sum of package verdicts
 
@@ -45,17 +53,17 @@ python3 -m stories.s3_night_market.run a b c d
 grep -rn "s3_night_market\|押金\|夜市" engine/   → no output (blindness gate at source)
 ```
 
-The four terminal holders are four different places and the four decisive sentences split two
-public and two private, so claim 1 and claim 2 are at least *exercised* by the integrated tree;
-whether they are *reached* is the milestone reviewer's verdict, not this file's.
+Note the shape of these four: three distinct terminal holders across four paths, and `a`/`d` differ
+by audience rather than by ownership. That is a fact about what the story proves, not a defect in it.
 
 ## What is still open
 
-- `ws-review` verdict per package, and `m4-milestone-review` on the three claims. Both contracts
-  are in `work/`, both reviewers run in a fresh context and neither repairs.
+- `fix-endings` in flight (`20649f5` contract, base `2af2880`); its verdict is the reviewer's, not
+  this file's. It needs one fresh review after it lands.
 - The milestone signature: root's, and above that the person's. Nothing here signs it.
 - Not pushed: `origin/master` is `81f4c9d`; this advance is local only, as the contract says.
 
 ## Next action
 
-Land both verdicts into `docs/PLAN.md`, then file the report to `inbox/` and return.
+Review `fix-endings` in a fresh context, land its verdict, then file the report to `inbox/` and
+return.
