@@ -1,4 +1,43 @@
-# state — advance of 2026-10-23 (resume from `71aa59d`, root's two answers)
+# state — advance of 2026-10-23 (second pass: the 「半日」 claim made true, resume from `e15345f`)
+
+## Terms
+
+- Contract: manager, sys_gal; root's instruction of 2026-10-23 withdrawing the person question about M4's signature; 25 minutes wall clock; idle machine time, no provider calls.
+- Base: `master` at `e15345f`; nothing fetched, pulled or switched.
+- Report filed to `mail/2026-10-23-half-day-claim-fixed.md`, `to: root`.
+
+## What this pass did
+
+| commit | what it is |
+| --- | --- |
+| `7ef0616` | the clock rolls the date across midnight (`clock_label(minutes, date)`, negative control in `tests/test_m5_cross_night.py`, ledger `R11`); `half_day_clock` → `mid_run_clock`; M4's third criterion reworded to name both evidences; three stories' script traces regenerated |
+| (this) | this file and the report rewritten against the tree |
+
+## Gate at `7ef0616` (cwd `契约失效时请勿喂猫/v5`)
+
+| check | reading |
+| --- | --- |
+| `python3 -m unittest discover -s tests -p 'test_*.py'` | 147 tests OK |
+| `python3 scripts/v5_lint.py --strict` | 通过（待补 5 项） |
+| `python3 scripts/anti_cheat.py --verbose` | 通过（3 支故事） |
+
+## Decided here (mine)
+
+- A wrong name is fixed, not signed. `半日` now names a crossing a reader can see on the trace; the label that was false is gone from the tests, and `checkpoint.save_new` no longer defaults to it.
+- The date roll belongs in `engine/surface.py` because that is the one place every view reads the clock through; the no-date branch stays as the negative control rather than as a supported way to render a crossing.
+- Script traces were regenerated because they had been produced by older code; provider traces were not, because they cannot be re-made and are evidence.
+
+## Open
+
+- M4's signature line is root's; nothing is blocked on it.
+- Density: the night is real and empty. The next package that fills it is M5's `s4-night-shop` / `s5-wedding`.
+- `stocktake` (quantity computed, not written by the script), the same-scale comparison, packed traces.
+- The provider authorization for 《末班车》's real-model run — asked in `mail/2026-10-23-actor-pilot-gate-and-m5.md`, still unanswered, not re-asked.
+- The taste call on two paths converging on one ending; the push; `R10`'s second half.
+
+## Next action
+
+No question is waiting on a person. The next package that needs nobody is `stocktake`, or `s4-night-shop` if density is preferred first — both are on `docs/PLAN.md`'s M5 table.
 
 ## Terms
 
