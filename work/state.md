@@ -38,3 +38,20 @@
 ## Next action
 
 Waits on root's answer to "may M5 begin", not on a timeout. If yes, the first M5 slice is the one that makes the night dense rather than merely continuous.
+
+## Advance of 2026-10-23 — the names the person could not read
+
+Root carried the pilot gate question up and the person could not read it: `M3`, `S1`, `S2` and `V5-ROADMAP.md:57` are record handles, not names of things. This advance fixes it in the tree, not in the next message.
+
+| commit | what it is |
+| --- | --- |
+| `74f542e` | V5 roadmap §2.2/§3 gain a 名字（对人怎么叫） column: every milestone named by what it proves, every story by title plus one clause of its situation; the status paragraph the person was pointed at leads with the names |
+| `63a55b9` | the pilot report's title says what the gate proves; its one internal M4 is named in place |
+| `b4396e7` | v5 front door: 玩具世界 / 库的第一次通用 / 演员试点 lead, codes follow |
+| `2e91fd0` | this layer's roadmap: 半日一局, 一日两个世界, 演员试点, 《夜市》 named where they stood as codes |
+| `0472e5b` | the rule itself, first line of `AGENTS.md`: 人读的东西先给名字，编号排在名字后面或干脆不出现 |
+| `f1fff42` | `mail/2026-10-23-m3-pilot-gate-question.md`: the gate question as one sentence, no code, to be carried up unchanged |
+
+The gate is not decided here. It is the person's and still open; the sentence only asks whether 《末班车》 needs a model run before the signature.
+
+Gate after the advance, from `契约失效时请勿喂猫/v5`: 137 tests OK, `v5_lint --strict` 通过（待补 5 项）, `anti_cheat --verbose` 通过（3 支故事）.
