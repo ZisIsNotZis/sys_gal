@@ -13,7 +13,7 @@ Why this file exists: this directory has one owner (a manager), and this file is
 
 - Read the roadmap below, take every package whose dependencies are met, and mark it taken here in the same act.
 - A package's contract, evidence and decision live in its commit message and in the milestone report; `.scratch/` is reserved for defects found by running (root's contract of 2026-10-21, §Q3).
-- Mail for this layer arrives in `inbox/` (four header lines: kind, from, spend, id); a message is deleted once its content has landed.
+- Mail for this layer arrives in `inbox/` (four header lines: kind, from, spend, id); a message is deleted once its content has landed. Reports **from** this layer live in `mail/`, addressed `to: root`.
 
 ## Where the convention breaks
 
@@ -47,6 +47,7 @@ Packages, in worksets (a workset is run in parallel, worksets in order):
 | 1 | `fix-threshold` | 把 `anti_cheat` 的第三条检查修到和它自己那句话一样强：`len(variants)`，而不是 2 | 正确树通过；`d := a` 与四条合一两个探针下都非零退出 | `6063e1c`; 复核 `pass`（探针只在那一行上咬） |
 | 1 | `pin-threshold` | 让套件自己抓住回归：把阈值退回 `2` 时必须有测试变红 | 在 `/tmp` 副本里把 `anti_cheat.py:96` 退回 `2`，`tests.test_historical_failures` 变红 | `aec870c`（`R10`）; 复核 `pass`：退回 2 时 133 绿、只有 R10 红，且与 R07 不重复 |
 | — | `milestone-review` | M4 三条判据的整体复核（不是逐包裁决之和） | verdict | claim 1、2 `reached`；claim 3 机制成立、前提不成立；一处不可失败的测试被查出来（见 Open） |
+| — | `cross-night` | M5 的入口条件：S3 真的跨过 18:30→次日 08:00 边界，并在夜里取检查点、次日续跑 | v5 gate green; `python3 -m unittest tests.test_m5_cross_night -v` 三条判据（过夜发生 / 夜里的检查点续跑因果连续 / 摘掉次日开门则条子留在管理处） | `9dc76d4`; 第五条路 `e`，`anti_cheat` 5 条路径 5 个结局；a–d 逐字节未动 |
 | — | `docs-v5-shape` | `README.md`/`CONTEXT.md` 的运行与证据一节改成 v5 形状 | 两份文件里不存在指向 v4 为准的句子 | `fail` at `5578a8b`; repaired at `263fa0c` (`grep -n 'v4' CONTEXT.md README.md`: every hit says 参考) |
 
 ## Decided
@@ -56,13 +57,14 @@ Packages, in worksets (a workset is run in parallel, worksets in order):
 - **v5 is exempt from the ticket tracker** — root, same contract, assent: agreed. A work package's contract, evidence and decision live in the commit message and in the milestone report; `.scratch/` is for defects found by running.
 - **v5 is the main line** — `docs/adr/0002-v5-becomes-the-main-line.md`, assent: agreed.
 - **M5 的入口条件包含"跨 S3 的 18:00→08:00 取检查点并续跑"** — 里程碑复核的升级项，我在此裁定：M5 要报"全天故事续跑连续"，就必须先在 S3 真实跨过半日边界，而不是拿 S1 的 23 分钟中点作证。理由：断点落在同一个半日内的续跑不检验跨日的前提（跨日才是 M5 要证的东西），而现在没有任何测试做过这件事。代价：一个小包，若 S3 的种子在跨日处没有可重入的排程，成本上升，届时报上去。
+- **S3 跨夜这条边界已经有人切了**（`9dc76d4`）—— 上面那条 M5 入口条件的物证落成：路 `e` 收摊时条子进管理处、门锁上，甲走开，世界自己走到 32:00 开门，第二天把条子领回来。跨夜那一段是脚本里的时间标记 `NIGHT`（`advance_idle`），不是动词，也没有人替角色做决定。判据在 `tests/test_m5_cross_night.py`：夜里的检查点续跑后账本与不中断的那本一字不差，摘掉次日开门则甲开不了门、条子留在管理处。
 - **Parallel writers get their own worktree, merged by this layer** — inference from `Git` (`one writer per area`, `worktree`, `integrator`): three packages editing one v5 tree would read each other's half-done edits while running the same gate, so the difference between their results would not come from the package. The manager holds the merge and runs the combined check.
 
 ## Open
 
 - **M3 的签字在人手里** — `docs/plan/portfolio.md` files it under what waits on the person. Nothing here reconstructs it; M4 does not depend on it.
 - **物权 的第二次声明** — the concept returns when a second story needs a held-by relation that containment cannot carry.
-- **半天还不存在** — 里程碑复核：最长的脚本只走 13 分钟世界时间，1110 关、1920 再开的排程从未被再次进入；a/b/d 三条路在 18:12–18:14 就结束了，离 18:30 锁门还有十六分钟，所以期限在四条路里三条不做功，只在 c 里被动拦人。claim 3 的边界是 **S1 的 23 分钟中点**（`tests/test_m4_resume.py:half_day_clock`），没有任何测试对 S3 取检查点。"半天"目前是标签，不是这一局的形状。这是 M5 的入口条件，不是 M4 的判据违反：M4 的 claim 3 说的是续跑因果连续，机制成立且有负向对照。
+- **半天还不存在（已被 `9dc76d4` 部分关闭）** — 里程碑复核当时的读数：最长的脚本只走 13 分钟世界时间，1110 关、1920 再开的排程从未被再次进入；a/b/d 三条路在 18:12–18:14 就结束了，离 18:30 锁门还有十六分钟，所以期限在四条路里三条不做功，只在 c 里被动拦人。claim 3 的边界是 **S1 的 23 分钟中点**（`tests/test_m4_resume.py:half_day_clock`），当时没有任何测试对 S3 取检查点。"半天"那时是标签，不是这一局的形状。这是 M5 的入口条件，不是 M4 的判据违反：M4 的 claim 3 说的是续跑因果连续，机制成立且有负向对照。**现在跨夜这段有了**（`9dc76d4`，路 `e`）；剩下的仍然是真的：过夜那 14 小时是空转的时间，不是被角色走出来的行为，"全天故事"还差 S5/S7 那一档的密集动作。
 - **一条故事能不能写两条汇到同一结局的路** — `anti_cheat` 的第三条现在把"路径数"与"结局数"绑在一起（`len(distinct) < len(variants)`），所以一支故事不能再写两条殊途同归的路；要收敛只能把它们写成一条。复核者把它当**口味**上报，我把它原样转给 root：`anti_cheat.py:6` 的那句话本来就是这么写的（"每条被写出来的路径都必须能走到不同结局"），所以修的是实现而不是句子。我的建议是不改这条判据，把"想收敛"当成"一条路写了两遍"；若 root 认为该允许收敛，判据要改成落在**结局**上而不是**路径**上，那是判据的重写，不是这一层的自选。
 - **`R10` 只钉住了"退回 2"这一种回退** — 复核者实测：把阈值改成一个常数 `3`，`R10` 仍然通过，因为它的判别式是那句 `"3 条路径只走到 2 个结局"`。再加一个用例（4 条路 / 3 个结局）就能把标题里"门槛跟路径数走"这一半也钉住。不是判据违反，是一颗便宜的补丁，留给下一个碰这个文件的人。
 - **`契约失效时请勿喂猫/.scratch/` 在 HEAD 上是 tracked** — 里面是 v3 时代的 `active-work.md` 与 `v3-harness-followups/issues/01–08.md`。本目录的规矩把 `.scratch/` 留给"跑出来的缺陷"（见 Decided），所以它不是违规；但它是旧缓冲的名字，谁下次碰它就把还有价值的搬走、没价值的带理由退役。不是 v5 的事，也不是 M4 的事。
@@ -77,6 +79,7 @@ Each claim is shown by a command that runs from the committed tree, in `契约�
 | 1 押金条每种归属物理可达 | `python3 -m unittest tests.test_m4_s3 -v`, plus the four `stories/s3_night_market/runs/{a,b,c,d}.md` transcripts |
 | 2 当众与私下信息差真实 | the `speak(to=…)` assertions inside `tests/test_m4_s3.py` |
 | 3 续跑因果连续 | `python3 -m unittest tests.test_m4_resume -v` |
+| 3 的前提（跨夜） | `python3 -m unittest tests.test_m5_cross_night -v` |
 | gate that must stay green beside them | `python3 -m unittest discover -s tests -p 'test_*.py' && python3 scripts/v5_lint.py --strict && python3 scripts/anti_cheat.py --verbose` |
 
 An independent verdict at `5578a8b` found all three unreached at that revision: no `stories/s3_night_market/`, `speak` taking only `text`, `0` hits for `checkpoint`/`resume` in `engine/`; and the whole of `s3` reachable only as an unreachable commit. The facts it opened are in `Open`; each closes only when the command above runs at a named revision.
