@@ -20,7 +20,7 @@ Why this file exists: this directory has one owner (a manager), and this file is
 - `契约失效时请勿喂猫/ROADMAP.md` is the v4 reference line's roadmap and still cites `.scratch/` as the tracker; the main line's roadmap is `契约失效时请勿喂猫/v5/docs/V5-ROADMAP.md`, and v5 is exempt from the tracker (decision below).
 - `docs/PRINCIPLE.md` and the `v4/` documents describe a three-actor MC/NPC/extra cast that v5 does not have; read them as principles, not as the current shape.
 
-## Roadmap — 半日一局：押金条在几个人手里传过，每一种归属都真的走得到，一局能从傍晚走到第二天早上（M4「半日 + S3《夜市》」）
+## Roadmap — 半日一局：押金条在几个人手里传过，每一种归属都真的走得到，一局能从傍晚走到第二天早上（M4「半日 + S3《夜市》」）— delivered, awaiting its signature
 
 Milestone 半日一局（M4） is the next user-synchronisation point (`契约失效时请勿喂猫/v5/docs/V5-ROADMAP.md` §3, row M4). Its acceptance is three observable claims: every ownership of the deposit note is physically reachable; the public/private information gap is real; a resume from a half-day boundary is causally continuous.
 
@@ -49,6 +49,27 @@ Packages, in worksets (a workset is run in parallel, worksets in order):
 | — | `milestone-review` | M4 三条判据的整体复核（不是逐包裁决之和） | verdict | claim 1、2 `reached`；claim 3 机制成立、前提不成立；一处不可失败的测试被查出来（见 Open） |
 | — | `cross-night` | 一日两个世界（M5）的入口条件：《夜市》（S3）真的跨过 18:30→次日 08:00 边界，并在夜里取检查点、次日续跑 | v5 gate green; `python3 -m unittest tests.test_m5_cross_night -v` 三条判据（过夜发生 / 夜里的检查点续跑因果连续 / 摘掉次日开门则条子留在管理处） | `9dc76d4`; 第五条路 `e`，`anti_cheat` 5 条路径 5 个结局；a–d 逐字节未动 |
 | — | `docs-v5-shape` | `README.md`/`CONTEXT.md` 的运行与证据一节改成 v5 形状 | 两份文件里不存在指向 v4 为准的句子 | `fail` at `5578a8b`; repaired at `263fa0c` (`grep -n 'v4' CONTEXT.md README.md`: every hit says 参考) |
+
+## Roadmap — 一日两个世界：便利店与宴会厅各自跑完一整天，同一套概念在两个世界都成立（M5）
+
+M5 is the next milestone on the approved list (`契约失效时请勿喂猫/v5/docs/V5-ROADMAP.md` §3, row M5). Its acceptance is four observable claims: two worlds each run a whole day and read through; the stocktake is computed from quantities rather than decided by the script; a same-scale comparison report; traces packed into git and verified. 半日一局（M4） is delivered and awaiting its signature, and that signature does not gate the packages below except where marked.
+
+```text
+M5 (milestone)
+├─ second-story-agent ─┐
+├─ s4-night-shop ──────┤
+├─ s5-wedding ─────────┼─→ stocktake ─→ comparison ─→ integration ─→ ws-review ─→ milestone-report ─→ M5
+└─ s1-model-report ────┘
+```
+
+| ws | package | delivers | acceptance command | status |
+| --- | --- | --- | --- | --- |
+| 1 | `second-story-agent` | `stories/agent_loop.py` — one model loop both stories share (《借条》's shell is thin, 《末班车》's shell points the same loop at the second seed); S1's ending composed from facts instead of looked up by script label; S1's stale script traces regenerated | `python3 -m unittest tests.test_m5_second_story_agent -v` (6 tests) + the v5 gate | taken and landed 2026-10-23; zero provider spend (MockProvider) |
+| 2 | `s1-model-report` | 《末班车》's real-model report, riding M5's ladder as the person placed it (2026-10-23) | a fresh `stories/s1_last_bus/runs/agent-*` directory with `decided_by: agent` on every turn, read against `AGENTS.md` | open — **needs a provider authorization**, which this advance did not have |
+| 2 | `s4-night-shop` / `s5-wedding` | the two same-scale worlds: shift handover, lock & key, quantity, crowd/rumour/record authority | two traces read through a whole day; `anti_cheat` still 3+ stories | open |
+| 3 | `stocktake` | the claim "盘点由数量算出而非剧本决定" as a test: change a count in the world, the stocktake reading changes; write a number in the script and it is not read | a negative control that goes red when the stocktake stops summing | open |
+| 3 | `comparison` | the same-scale comparison report of the two worlds | report + the two traces it cites | open |
+| — | `pack` | traces in git and a `check` that fails on a run directory without `context.md` | `python3 scripts/pack_trajectory.py check` | open |
 
 ## Decided
 

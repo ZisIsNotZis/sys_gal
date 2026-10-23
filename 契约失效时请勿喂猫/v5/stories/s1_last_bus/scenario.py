@@ -126,15 +126,24 @@ def summary(run: Run) -> dict[str, Any]:
             return "不在世界里"
         return w.entities[holder].name
 
+    scripted = {
+        "a": "甲把包交给了司机",
+        "b": "甲打开了包，把药盒带走",
+        "c": "甲什么也没做，包留在了车上",
+    }
+    # 模型自己走的路径没有预设结局：结局必须由事实拼出来（M5 的第二支故事先撞上了这条：
+    # 一份模型局用脚本的标签查结局，直接 KeyError）。
+    decided = scripted.get(run.variant) or (
+        f"包在{where('bag')}"
+        + ("，包还开着口" if not w.get("bag", "closed") else "")
+        + (f"，药盒在{where('pillbox')}" if where("pillbox") != where("bag") else "")
+        + ("，车已经到终点" if w.flags.get("stopped") else "，车还在路上")
+    )
     return {
         "包在谁那里": where("bag"),
         "药盒在谁那里": where("pillbox"),
         "甲在": where("jia"),
         "司机在": where("driver"),
         "车已经到终点": bool(w.flags.get("stopped")),
-        "结局": {
-            "a": "甲把包交给了司机",
-            "b": "甲打开了包，把药盒带走",
-            "c": "甲什么也没做，包留在了车上",
-        }[run.variant],
+        "结局": decided,
     }
