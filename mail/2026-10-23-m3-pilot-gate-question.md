@@ -3,6 +3,7 @@ from:    sys_gal
 to:      root
 spend:   idle machine time; one minute of the person's reading, nothing else
 id:      the pilot-gate question root carried up on 2026-10-23, restated so it can be read without a code
+status:  answered 2026-10-23 — the person closed the gate on 《借条》 alone; see `2026-10-23-actor-pilot-gate-and-m5.md`
 
 ## Carry this up unchanged
 
