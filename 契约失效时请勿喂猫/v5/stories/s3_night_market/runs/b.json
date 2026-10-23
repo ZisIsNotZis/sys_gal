@@ -80,7 +80,7 @@
        "style": "printed"
       },
       {
-       "text": "18:00 收：货（自摊区）",
+       "text": "2026-04-02 18:00 收：货（自摊区）",
        "ink": "ink",
        "style": "printed"
       }
@@ -123,7 +123,7 @@
    ],
    "note": {
     "target": "goods",
-    "digest_after": "477cddd7c942678a68dd03e0ec9300f1417b66a81157d11dd1623f1e5d7fadc9"
+    "digest_after": "e340cb660c8cd06d5accd4cdaccf64e19e702dd96f8936f20fb10ec5b6b2a277"
    }
   },
   {
@@ -175,7 +175,7 @@
    ],
    "note": {
     "target": "market",
-    "digest_after": "9aac166a3079a8a8ebcbecc5af67c6963be540e899dc82f1dfb183dc6faec1e4"
+    "digest_after": "fd86375ecd82197ef20501e4ddfc04c047bbeb45bccef0581a7782610161f2f0"
    }
   },
   {
@@ -227,7 +227,7 @@
    ],
    "note": {
     "target": "office",
-    "digest_after": "5e983c92328bfb4dd52d8a60ccecdae8ec53f2b5315da50aaa975bb4de14af0c"
+    "digest_after": "4dd52be5914ed919705baac4bf33ceed12f801b7039b58b678460a237ce135d3"
    }
   },
   {
@@ -255,7 +255,7 @@
    ],
    "note": {
     "target": "goods",
-    "digest_after": "177636e70afd22b3bd01baa04d82ddbb7c444a261756af85d9b65a48dc6f0e44"
+    "digest_after": "0b5194097385f5aa67a64a2ecb0f4dff0f876332f9308c1b6a84169459d4915a"
    }
   },
   {
@@ -307,7 +307,7 @@
    ],
    "note": {
     "target": "market",
-    "digest_after": "51266ace290779b7d0aacc75c6295a8686080162e9f4286a5b3ab0bef951cdf5"
+    "digest_after": "9df0b358b9cdc1a61c7b091b539244262b34edf52f034718d4b0ec62d207abd7"
    }
   },
   {
@@ -359,7 +359,7 @@
    ],
    "note": {
     "target": "stall_area",
-    "digest_after": "1ccaf2d9b32889765ff79561857ee8e0468217bbd65da6ae850a16139f15368e"
+    "digest_after": "e05cb7bbf69618d97c50c99f0d70dd408548cd2e83199e98da3169058c85d38d"
    }
   },
   {
@@ -406,7 +406,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "8678bc3095b2347e36e04cd8d2666410825b5a5e234f2f55457a85df62867536"
+    "digest_after": "aaf92f39ac0cc1b8113e4805b4e9225f761085a3d6e812b61b71dcd3885da9ae"
    }
   },
   {
@@ -458,7 +458,7 @@
    ],
    "note": {
     "target": "deposit_note",
-    "digest_after": "613f0c3a493fc0ab969229aece069c270810b0f28789e4ab2200a77eb1b87929"
+    "digest_after": "cb6d2d7884c79f03e3864ccc5bd381963059c638c7f53e78e5c9d68de24819c4"
    }
   },
   {
@@ -505,7 +505,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "688154e388490b52cab8e0f8d6f216df4d5c794be4e4c88bbbe1a1eab1e85ca2"
+    "digest_after": "64c1ff7f3b8155677183911a5a3e7e1b57e15ec9ce24ce89e764c6560a1c0049"
    }
   },
   {
@@ -557,7 +557,7 @@
    ],
    "note": {
     "target": "deposit_note",
-    "digest_after": "7ffe3bab7c1e75e8b6accf1627f7fa713035a34140d0bb7124aa212b4606cc4a"
+    "digest_after": "71552b6eb26192d1b8f214cf9565106031025d3cc6dab3b3795ba6f2970c18f7"
    }
   },
   {
@@ -604,7 +604,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "ab1fbe127142d954e495e5648dfbd864f9284c214faceba8d2760262d8869ee3"
+    "digest_after": "981e5c317cd139706e59377bdfc16f27b867832294739cef01ecb11f642aa6ad"
    }
   }
  ],

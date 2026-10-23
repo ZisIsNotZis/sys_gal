@@ -73,6 +73,7 @@ M5 (milestone)
 
 ## Decided
 
+- **判据改成说观察到的事** — 我改的，不是人给的：`半日一局` 的第三条判据原来只写"续跑因果连续"，而当时唯一的断点是《末班车》二十几分钟的中点，"半天"是名字，不是这一局的形状。两件事一起做：把不真的名字换成真的（`half_day_clock` → `mid_run_clock`，测试名跟着改），把缺失的能力补上（过夜之后时钟翻日，轨迹印 `2026-04-03 08:00`），再把判据写成两处证据各自在哪。代价：三支故事的脚本轨迹重新生成了一遍（它们本来就跑在旧代码上），s2 的 `digest_after` 因此全动——那是种子里的日期进摘要之后没再生成过的结果。
 - **演员试点：把脚本演员换成真模型，看这一局是被世界推动还是被作者推动（M3）关在《借条》一支故事上** — 人, answer of 2026-10-23, assent: agreed. The gate covers 《借条》's model report and the three anti-cheat checks; 《末班车》's model-driven report does **not** stand in front of the gate and moves into the next milestone's ladder (一日两个世界, M5), where the same world and the same checks run on a second story. Reason given to the person: one story already proves the mechanism can make a model walk its own path, and a second copy of the same proof belongs beside the next milestone rather than in front of the gate. Written where it is read: `契约失效时请勿喂猫/v5/docs/V5-ROADMAP.md` §3 and `V5-M3-PILOT.md` §七.
 - **M5 的阶梯里有一行是《末班车》的模型首轮报告** — inference from the person's answer above (the milestone, not the gate, is where the second story's model run lands); the milestone is M5 because it is the next one on the approved list whose acceptance already runs one set of concepts in two worlds. Cost if wrong: the report lands one milestone later than intended, and no checkpoint depends on it.
 - **半日一局 is the next milestone（M4）** — root, contract to this layer dated 2026-10-21, assent: agreed. The 演员试点's signature (把脚本演员换成真模型，看这一局是被世界推动还是被作者推动；M3) stays with the person and does not block it, whose skeleton is script-actor work needing no provider spend.
@@ -86,7 +87,7 @@ M5 (milestone)
 ## Open
 
 - **物权 的第二次声明** — the concept returns when a second story needs a held-by relation that containment cannot carry.
-- **半天还不存在（已被 `9dc76d4` 部分关闭）** — 里程碑复核当时的读数：最长的脚本只走 13 分钟世界时间，1110 关、1920 再开的排程从未被再次进入；a/b/d 三条路在 18:12–18:14 就结束了，离 18:30 锁门还有十六分钟，所以期限在四条路里三条不做功，只在 c 里被动拦人。claim 3 的边界是 **S1 的 23 分钟中点**（`tests/test_m4_resume.py:half_day_clock`），当时没有任何测试对 S3 取检查点。"半天"那时是标签，不是这一局的形状。这是 M5 的入口条件，不是 M4 的判据违反：M4 的 claim 3 说的是续跑因果连续，机制成立且有负向对照。**现在跨夜这段有了**（`9dc76d4`，路 `e`）；剩下的仍然是真的：过夜那 14 小时是空转的时间，不是被角色走出来的行为，"全天故事"还差 S5/S7 那一档的密集动作。
+- **半天这一段现在是真的，但它是空的** — 那一局真的从 18:30 走到次日 08:00（`9dc76d4`），轨迹上现在印着次日的日期（`engine/surface.py:clock_label` 给日期就翻日，`R11` 钉住）。名字与工件从此对得上，剩下的是密度：过夜那 14 小时里没有人做任何事，'全天故事'还差 S5/S7 那一档的密集动作。这不是判据违反，是 M5 的两个世界要填的东西。
 - **一条故事能不能写两条汇到同一结局的路** — `anti_cheat` 的第三条现在把"路径数"与"结局数"绑在一起（`len(distinct) < len(variants)`），所以一支故事不能再写两条殊途同归的路；要收敛只能把它们写成一条。复核者把它当**口味**上报，我把它原样转给 root：`anti_cheat.py:6` 的那句话本来就是这么写的（"每条被写出来的路径都必须能走到不同结局"），所以修的是实现而不是句子。我的建议是不改这条判据，把"想收敛"当成"一条路写了两遍"；若 root 认为该允许收敛，判据要改成落在**结局**上而不是**路径**上，那是判据的重写，不是这一层的自选。
 - **`R10` 只钉住了"退回 2"这一种回退** — 复核者实测：把阈值改成一个常数 `3`，`R10` 仍然通过，因为它的判别式是那句 `"3 条路径只走到 2 个结局"`。再加一个用例（4 条路 / 3 个结局）就能把标题里"门槛跟路径数走"这一半也钉住。不是判据违反，是一颗便宜的补丁，留给下一个碰这个文件的人。
 - **`契约失效时请勿喂猫/.scratch/` 在 HEAD 上是 tracked** — 里面是 v3 时代的 `active-work.md` 与 `v3-harness-followups/issues/01–08.md`。本目录的规矩把 `.scratch/` 留给"跑出来的缺陷"（见 Decided），所以它不是违规；但它是旧缓冲的名字，谁下次碰它就把还有价值的搬走、没价值的带理由退役。不是 v5 的事，也不是 M4 的事。
@@ -100,8 +101,8 @@ Each claim is shown by a command that runs from the committed tree, in `契约�
 | --- | --- |
 | 1 押金条每种归属物理可达 | `python3 -m unittest tests.test_m4_s3 -v`, plus the four `stories/s3_night_market/runs/{a,b,c,d}.md` transcripts |
 | 2 当众与私下信息差真实 | the `speak(to=…)` assertions inside `tests/test_m4_s3.py` |
-| 3 续跑因果连续 | `python3 -m unittest tests.test_m4_resume -v` |
-| 3 的前提（跨夜） | `python3 -m unittest tests.test_m5_cross_night -v` |
+| 3 续跑因果连续（一局的中途断点） | `python3 -m unittest tests.test_m4_resume -v` — the cut is `mid_run_clock()`, the midpoint of 《末班车》's 23 minutes, and it is named that way now |
+| 3 续跑因果连续（真的过夜 = the “半日” in the milestone's name） | `python3 -m unittest tests.test_m5_cross_night -v` — 18:30 → next-morning 08:00, and the morning reads `2026-04-03 08:00` on the trace instead of `32:00` |
 | gate that must stay green beside them | `python3 -m unittest discover -s tests -p 'test_*.py' && python3 scripts/v5_lint.py --strict && python3 scripts/anti_cheat.py --verbose` |
 
 An independent verdict at `5578a8b` found all three unreached at that revision: no `stories/s3_night_market/`, `speak` taking only `text`, `0` hits for `checkpoint`/`resume` in `engine/`; and the whole of `s3` reachable only as an unreachable commit. The facts it opened are in `Open`; each closes only when the command above runs at a named revision.

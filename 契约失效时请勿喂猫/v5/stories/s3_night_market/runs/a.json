@@ -80,7 +80,7 @@
        "style": "printed"
       },
       {
-       "text": "18:00 收：货（自摊区）",
+       "text": "2026-04-02 18:00 收：货（自摊区）",
        "ink": "ink",
        "style": "printed"
       }
@@ -123,7 +123,7 @@
    ],
    "note": {
     "target": "goods",
-    "digest_after": "477cddd7c942678a68dd03e0ec9300f1417b66a81157d11dd1623f1e5d7fadc9"
+    "digest_after": "e340cb660c8cd06d5accd4cdaccf64e19e702dd96f8936f20fb10ec5b6b2a277"
    }
   },
   {
@@ -175,7 +175,7 @@
    ],
    "note": {
     "target": "market",
-    "digest_after": "9aac166a3079a8a8ebcbecc5af67c6963be540e899dc82f1dfb183dc6faec1e4"
+    "digest_after": "fd86375ecd82197ef20501e4ddfc04c047bbeb45bccef0581a7782610161f2f0"
    }
   },
   {
@@ -227,7 +227,7 @@
    ],
    "note": {
     "target": "office",
-    "digest_after": "5e983c92328bfb4dd52d8a60ccecdae8ec53f2b5315da50aaa975bb4de14af0c"
+    "digest_after": "4dd52be5914ed919705baac4bf33ceed12f801b7039b58b678460a237ce135d3"
    }
   },
   {
@@ -255,7 +255,7 @@
    ],
    "note": {
     "target": "goods",
-    "digest_after": "177636e70afd22b3bd01baa04d82ddbb7c444a261756af85d9b65a48dc6f0e44"
+    "digest_after": "0b5194097385f5aa67a64a2ecb0f4dff0f876332f9308c1b6a84169459d4915a"
    }
   },
   {
@@ -307,7 +307,7 @@
    ],
    "note": {
     "target": "market",
-    "digest_after": "51266ace290779b7d0aacc75c6295a8686080162e9f4286a5b3ab0bef951cdf5"
+    "digest_after": "9df0b358b9cdc1a61c7b091b539244262b34edf52f034718d4b0ec62d207abd7"
    }
   },
   {
@@ -359,7 +359,7 @@
    ],
    "note": {
     "target": "stall_area",
-    "digest_after": "1ccaf2d9b32889765ff79561857ee8e0468217bbd65da6ae850a16139f15368e"
+    "digest_after": "e05cb7bbf69618d97c50c99f0d70dd408548cd2e83199e98da3169058c85d38d"
    }
   },
   {
@@ -406,7 +406,7 @@
    ],
    "note": {
     "target": "notice",
-    "digest_after": "2cb4492588f69053b46b23fa4a8c98246c4468fec77f765eb82272ba1afe8bf4"
+    "digest_after": "90f14d4b044f6f7f5f5595666961d232b9c9fbb548e77f26e56dcc9befe2ab68"
    }
   },
   {
@@ -453,7 +453,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "7e3c224213592447083f1df0ba54de0a5f28c10dfa806f25523950a60f6db6b6"
+    "digest_after": "695dc44df208a1446a70dc22bf4da0717bbf22f3124941f3aede1ec81ac2255f"
    }
   },
   {
@@ -467,7 +467,7 @@
      "op": "remember",
      "e": "warden",
      "at": 1092,
-     "v": "你读着收件记录：「收件记录18:00 收：货（自摊区）」"
+     "v": "你读着收件记录：「收件记录2026-04-02 18:00 收：货（自摊区）」"
     },
     {
      "op": "remember",
@@ -500,7 +500,7 @@
    ],
    "note": {
     "target": "register",
-    "digest_after": "929a81aed1fc43edb88581cbebcd356d53e787d8778b5a5acde25028c27ab9c2"
+    "digest_after": "72876964972a0ee447dfc2a094678e2fe7615deb6fe90e57e05d637af92a89d2"
    }
   }
  ],

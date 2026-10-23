@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import datetime
 from typing import Any
 
 from .core import World
@@ -18,15 +19,29 @@ from .render import describe, refer
 from .resolve import visible
 
 
-def clock_label(minutes: int) -> str:
-    return f"{minutes // 60:02d}:{minutes % 60:02d}"
+def clock_label(minutes: int, date: str = "") -> str:
+    """世界时钟的一段读法。给日期时，过了午夜就翻日——`1920` 是次日的 `08:00`，不是 `32:00`。
+
+    没有日期时只能给出从开局算起的时:分（`1920` → `32:00`）：手里没有日子，就没有日可翻。
+    这条分支不是备用的，它是负向对照——同一个数在两种读法下不一样，说明翻日是日期做的。
+    """
+    minutes = int(minutes)
+    if not date:
+        return f"{minutes // 60:02d}:{minutes % 60:02d}"
+    day, clock = divmod(minutes, 1440)
+    label = f"{clock // 60:02d}:{clock % 60:02d}"
+    try:
+        base = datetime.date.fromisoformat(date)
+    except ValueError:
+        return f"{date} {label}"
+    return f"{(base + datetime.timedelta(days=day)).isoformat()} {label}"
 
 
 def glance(world: World, actor: str) -> dict[str, Any]:
     ent = world.entities[actor]
     place = world.place_of(actor)
     return {
-        "time": (f"{world.date} " if world.date else "") + clock_label(world.clock),
+        "time": clock_label(world.clock, world.date),
         "place": world.entities[place].name if place else "不知何处",
         "here": [describe(world, e, actor) for e in visible(world, actor)],
         "hands": [world.entities[c].name for c in world.children(actor)],
@@ -36,7 +51,7 @@ def glance(world: World, actor: str) -> dict[str, Any]:
 
 def recent(world: World, actor: str, n: int = 6) -> list[str]:
     rows = world.memory.get(actor, [])
-    return [f"{clock_label(at)} {text}" for at, text in rows[-n:]]
+    return [f"{clock_label(at, world.date)} {text}" for at, text in rows[-n:]]
 
 
 def beliefs(world: World, actor: str) -> list[str]:
@@ -48,7 +63,7 @@ def recall(world: World, actor: str, query: str) -> list[str]:
     if not query:
         return []
     rows = world.memory.get(actor, [])
-    return [f"{clock_label(at)} {text}" for at, text in rows if query in text]
+    return [f"{clock_label(at, world.date)} {text}" for at, text in rows if query in text]
 
 
 def flashback(world: World, actor: str, about: str | None = None,
@@ -69,7 +84,7 @@ def flashback(world: World, actor: str, about: str | None = None,
             continue
         if keys and not any(k in text for k in keys):
             continue
-        out.append(f"{clock_label(at)} {text}")
+        out.append(f"{clock_label(at, world.date)} {text}")
     return out
 
 

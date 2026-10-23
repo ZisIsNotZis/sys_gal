@@ -9,7 +9,7 @@
 
     {
       "format": "v5-checkpoint-1",
-      "label": "half-day",              # 人读的断点名字，不参与还原
+      "label": "checkpoint",            # 人读的断点名字，不参与还原
       "clock": 1361,                    # 人读的时间；权威值是 world.clock
       "event_count": 24,                # 账本里已有几条 = 最后一个事件 id
       "events": [ ...Event.to_json()...],   # 账本前缀，id 必须 1..event_count 连续
@@ -204,7 +204,7 @@ def save(path: str | Path, payload: dict[str, Any]) -> Path:
 
 
 def save_new(directory: str | Path, world: World, log: EventLog, *,
-             label: str = "half-day", run_id: str | None = None) -> Path:
+             label: str = "checkpoint", run_id: str | None = None) -> Path:
     """取该目录下第一个空位写一个检查点，返回实际路径（同一 run_id 的序列号递增）。"""
     base = Path(directory)
     name = run_id or new_run_id()

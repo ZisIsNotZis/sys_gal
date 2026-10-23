@@ -15,6 +15,7 @@ R07 反作弊第三检抓不住"结局唯一" .......................... test_r0
 R08 排程效果没有处理器时被悄悄吃掉（P3：排程无后果） ........ test_r08_a_scheduled_effect_with_no_handler_is_a_loud_failure
 R09 拿走别人的东西没有被在场者看见（或被告知给看不见的人） .. test_r09_taking_from_another_persons_drawer_is_seen_only_by_those_who_can_see
 R10 "结局不唯一"的门槛被退回到 2（N 条路径 N-1 个结局照样过门） test_r10_the_uniqueness_threshold_scales_with_the_number_of_paths
+R11 过夜之后时钟读成 32:00、日期不翻（一局过了夜，读的人看不出来） test_r11_the_clock_rolls_the_date_when_the_world_crosses_midnight
 
 E01 引擎里出现故事名词（盲区） ............................ tests.test_m1_core.PrimitiveTests.test_engine_does_not_know_story_names；scripts/v5_lint.py check_engine_is_story_blind
 E02 状态键没有渲染（改了状态但看不见） .................... tests.test_m1_core.SeedTests.test_every_state_key_has_a_renderer；scripts/v5_lint.py
@@ -313,6 +314,28 @@ class HistoricalFailureLedger(unittest.TestCase):
 
         # 对照：三条路径三个结局必须放行，否则上面那条只是被一个永远拒绝的检查满足。
         self.assertEqual(check({"a": "谁也没改", "b": "借条到了乙手里", "c": "门开着"}), [])
+
+
+    def test_r11_the_clock_rolls_the_date_when_the_world_crosses_midnight(self):
+        """【R11 过夜之后日期不翻】世界时钟过了午夜，轨迹上必须读出"第二天早上"，不是 32:00。
+
+        观察自：2026-10-23 的复核——`半日一局` 的《夜市》路 e 在 1920 分钟（18:30 收摊、次日开门）处
+        把时间印成 `32:00`，日期停在前一天，于是"这一局真的过了夜"在轨迹上看不出来，只写在测试的断言里。
+        没有它时：一条真的跨了夜的路径，读者只能从 `32:00` 这个数字猜；任何"过了半天/过了夜"的说法
+        都退回成开发者口头的解释，而不是工件上看得见的事实。
+        """
+        from engine.surface import clock_label
+        # 有日期就翻日：1920 = 次日 08:00
+        self.assertEqual(clock_label(1920, "2026-04-02"), "2026-04-03 08:00")
+        self.assertEqual(clock_label(1920 + 2, "2026-04-02"), "2026-04-03 08:02")
+        # 没有日期就没有日可翻，仍然是那个难看的数——两读并存，说明翻日是日期做的
+        self.assertEqual(clock_label(1920), "32:00")
+        # 真的过夜那一局的故事视图里，次日的两个事件都带着次日的日期
+        from stories.s3_night_market.scenario import play
+        from stories.common import transcript
+        view = transcript(play("e"), "《夜市》路 e")
+        self.assertIn("2026-04-03 08:00", view)
+        self.assertNotIn("32:00", view)
 
 
 if __name__ == "__main__":

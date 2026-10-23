@@ -35,8 +35,13 @@ def run_steps(world, log, steps):
     return world, log
 
 
-def half_day_clock() -> int:
-    """半天断点：这一局时钟跨度的一半（这一局是脚本，跨度即它的时间长度）。"""
+def mid_run_clock() -> int:
+    """这一局的中途断点：脚本跨度的中点。
+
+    名字里没有"半天"二字，因为它不是半天：这一局世界时间只有二十几分钟。
+    真的半夜边界（18:30 收摊 → 次日 08:00 开门）在 `tests/test_m5_cross_night.py`
+    里检验，那一处才是"半日一局"里"半日"两个字的证据。
+    """
     start = load(DEFAULT_SEED).clock
     end = play("a").world.clock
     return start + (end - start) // 2
@@ -103,12 +108,12 @@ class CheckpointTests(unittest.TestCase):
         with self.assertRaises(checkpoint.CheckpointError):
             checkpoint.restore(dict(payload, format="v4-checkpoint-2"))
 
-    # ---- 4. M4 的主门：半天断点 → 检查点 → 续跑 → 账本连续、重放相等
-    def test_resume_from_the_half_day_checkpoint_is_causally_continuous(self):
-        boundary = half_day_clock()
+    # ---- 4. 中途断点 → 检查点 → 续跑 → 账本连续、重放相等
+    def test_resume_from_a_mid_run_checkpoint_is_causally_continuous(self):
+        boundary = mid_run_clock()
         steps = SCRIPTS["a"]
 
-        # (a) 走到半天断点，写检查点
+        # (a) 走到中途断点，写检查点
         world = load(DEFAULT_SEED)
         log = EventLog()
         cut = 0
@@ -118,8 +123,8 @@ class CheckpointTests(unittest.TestCase):
             cut = index
             if world.clock >= boundary:
                 break
-        self.assertGreaterEqual(world.clock, boundary, "没走到半天断点")
-        path = checkpoint.save_new(self.run_dir, world, log, label="half-day", run_id="half-day")
+        self.assertGreaterEqual(world.clock, boundary, "没走到中途断点")
+        path = checkpoint.save_new(self.run_dir, world, log, label="mid-run", run_id="mid-run")
         payload = checkpoint.load(path)
 
         # (b) 从检查点造一个全新的世界与账本；不许借原来的对象

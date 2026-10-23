@@ -524,7 +524,7 @@ def _impound_atoms(ctx: Ctx) -> list[dict[str, Any]]:
     src = w.container(ctx.target)
     where = w.entities[src].name if src in w.entities else "不明"
     rows = list(w.get(book, "marks") or [])
-    rows.append({"text": f"{clock_label(w.clock)} 收：{ctx.name(ctx.target)}（自{where}）",
+    rows.append({"text": f"{clock_label(w.clock, w.date)} 收：{ctx.name(ctx.target)}（自{where}）",
                  "ink": w.get(tool, "implement") or "ink", "style": "printed"})
     return [{"op": "move", "e": ctx.target, "to": ctx.actor},
             {"op": "set", "e": book, "k": "marks", "v": rows}]

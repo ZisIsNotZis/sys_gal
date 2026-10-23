@@ -80,7 +80,7 @@
        "style": "printed"
       },
       {
-       "text": "18:00 收：货（自摊区）",
+       "text": "2026-04-02 18:00 收：货（自摊区）",
        "ink": "ink",
        "style": "printed"
       }
@@ -123,7 +123,7 @@
    ],
    "note": {
     "target": "goods",
-    "digest_after": "477cddd7c942678a68dd03e0ec9300f1417b66a81157d11dd1623f1e5d7fadc9"
+    "digest_after": "e340cb660c8cd06d5accd4cdaccf64e19e702dd96f8936f20fb10ec5b6b2a277"
    }
   },
   {
@@ -175,7 +175,7 @@
    ],
    "note": {
     "target": "market",
-    "digest_after": "9aac166a3079a8a8ebcbecc5af67c6963be540e899dc82f1dfb183dc6faec1e4"
+    "digest_after": "fd86375ecd82197ef20501e4ddfc04c047bbeb45bccef0581a7782610161f2f0"
    }
   },
   {
@@ -227,7 +227,7 @@
    ],
    "note": {
     "target": "office",
-    "digest_after": "5e983c92328bfb4dd52d8a60ccecdae8ec53f2b5315da50aaa975bb4de14af0c"
+    "digest_after": "4dd52be5914ed919705baac4bf33ceed12f801b7039b58b678460a237ce135d3"
    }
   },
   {
@@ -255,7 +255,7 @@
    ],
    "note": {
     "target": "goods",
-    "digest_after": "177636e70afd22b3bd01baa04d82ddbb7c444a261756af85d9b65a48dc6f0e44"
+    "digest_after": "0b5194097385f5aa67a64a2ecb0f4dff0f876332f9308c1b6a84169459d4915a"
    }
   },
   {
@@ -307,7 +307,7 @@
    ],
    "note": {
     "target": "market",
-    "digest_after": "51266ace290779b7d0aacc75c6295a8686080162e9f4286a5b3ab0bef951cdf5"
+    "digest_after": "9df0b358b9cdc1a61c7b091b539244262b34edf52f034718d4b0ec62d207abd7"
    }
   },
   {
@@ -359,7 +359,7 @@
    ],
    "note": {
     "target": "stall_area",
-    "digest_after": "1ccaf2d9b32889765ff79561857ee8e0468217bbd65da6ae850a16139f15368e"
+    "digest_after": "e05cb7bbf69618d97c50c99f0d70dd408548cd2e83199e98da3169058c85d38d"
    }
   },
   {
@@ -406,7 +406,7 @@
    ],
    "note": {
     "target": "notice",
-    "digest_after": "2cb4492588f69053b46b23fa4a8c98246c4468fec77f765eb82272ba1afe8bf4"
+    "digest_after": "90f14d4b044f6f7f5f5595666961d232b9c9fbb548e77f26e56dcc9befe2ab68"
    }
   },
   {
@@ -453,7 +453,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "aa23f8b71c98ce941135baec1d04b59dfe0aeec255c1604dc463fa0c4465c181"
+    "digest_after": "3fc944108b6906b2f1ff8d37d301dac3c8a3efec1d417cc313cf8f81a4b9b538"
    }
   },
   {
@@ -479,12 +479,12 @@
        "style": "printed"
       },
       {
-       "text": "18:00 收：货（自摊区）",
+       "text": "2026-04-02 18:00 收：货（自摊区）",
        "ink": "ink",
        "style": "printed"
       },
       {
-       "text": "18:12 收：押金条（自摊主甲）",
+       "text": "2026-04-02 18:12 收：押金条（自摊主甲）",
        "ink": "ink",
        "style": "printed"
       }
@@ -527,7 +527,7 @@
    ],
    "note": {
     "target": "deposit_note",
-    "digest_after": "445efb8bb08ecf425481a627569470b14cf1d0d8a2a786dd44ac9fd42fce197c"
+    "digest_after": "7bb6e76ceaeec5091cc103118cd22313ad84e657585a7646f008da516a7aadde"
    }
   },
   {
@@ -579,7 +579,7 @@
    ],
    "note": {
     "target": "market",
-    "digest_after": "33f0076fa91f19b6d4bb4d56b4bcb96088908a8cae7479608ab8002abf04973f"
+    "digest_after": "a61e31d806ea2be77dde092d4ec45ce51e690d2212e1c30fb0a1164b86c42ac9"
    }
   },
   {
@@ -631,7 +631,7 @@
    ],
    "note": {
     "target": "office",
-    "digest_after": "e443e53276dd77c8f35f9e27bbd3fd319da61580d70d10885e005b8d0730244c"
+    "digest_after": "4a2002c8d925b08f9c757f32f9253fdd2b41f8b3f5aa3e336aac8d1e3f4c5595"
    }
   },
   {
@@ -659,7 +659,7 @@
    ],
    "note": {
     "target": "deposit_note",
-    "digest_after": "2029d8924c50e33466fde86d949d64e2fd2b035de88f3bff2613ae6d5168b655"
+    "digest_after": "e8328ea8ae19cc9b891555b8de8eb7dde7675499149ecf96399b3d58c743212a"
    }
   },
   {
@@ -711,7 +711,7 @@
    ],
    "note": {
     "target": "market",
-    "digest_after": "4b989d9bb927b5f891d15199942b81133a38f5ba6e74f3ae23a65f0167aa54f0"
+    "digest_after": "8d6f919b7f60f407ff74300cb37e113837abca8c7d0b808e5fbe232fa82fb2e3"
    }
   },
   {
@@ -739,7 +739,7 @@
      "who": "a",
      "place": "office"
     },
-    "digest_after": "a91ac20b7388f576ea584a49170a81ae83f42f2738ce9ed5267a0d61b41084c9"
+    "digest_after": "fad45019e0d9e93b1e68598097a54c5dd0f5a8c1f5bbc186aac3232c0daa8645"
    }
   },
   {
@@ -791,7 +791,7 @@
    ],
    "note": {
     "target": "alley",
-    "digest_after": "d20a043ac129fff2b84486726317a57e1b06d55ea61242c506bdc3b4359a9021"
+    "digest_after": "20367272b79a17ec558f02e9ea0af4ba6d08e560988514f337999a0eee820c9e"
    }
   },
   {
@@ -814,7 +814,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "54b553b26507aff78c7bc89dba19a0b4e292ed61d132304ec9846407d9574f5e"
+    "digest_after": "f37b9747003f1133370a3e3ad624a69200604610458aeb24707ecfa85ef8147d"
    }
   },
   {
@@ -837,7 +837,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "b9db7207f834c38a005c05eb8e5cc8e4705bcaa26887cd8d4c8ea3affb09e29d"
+    "digest_after": "a9c5cedce1b1de5a6bd8002b68246638d3d307a16cdb8f0db0c4888282d4c345"
    }
   },
   {
@@ -860,7 +860,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "b9c6deabb529fd5918fa3dbe66dd7fccd921416d1ffb1e6ff4f976a04e64cd16"
+    "digest_after": "c289ffcd486868c67df378a00119d6f69aede553256cf77788bbed95a8196c63"
    }
   },
   {
@@ -883,7 +883,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "0303b6a948ef37ffddf79d893e75b62c5f281d0cd4d5ab2158d776e17472f9bc"
+    "digest_after": "1145796b6ecc247ded7cb8ce53394f81280e66c9e686a2f804f8a9aebd589e1b"
    }
   },
   {
@@ -906,7 +906,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "99c1869b8d9110fefff1893f6711dd3a46e4398984092cb1b4c85bfe44b1996b"
+    "digest_after": "bc7716deb62979a40526c19531799b6b08f2528097a43305b782d016e58e50bf"
    }
   },
   {
@@ -929,7 +929,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "711e9740172a8f6637a3c14babcbc4d00fc446a475495d914bb3fc0b5929ab4b"
+    "digest_after": "9e0deb92b5d65264b82cbafc2250c3b0e44de12204a685e8f66d60eedfaa1dd8"
    }
   },
   {
@@ -952,7 +952,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "025eee7552d1e6e85135709dd3eb21c0eba2d8caaa092153ddb0274133d90609"
+    "digest_after": "41d499c1c6cc4c43d9f4d6df0523f8b4a0f2e272f80e001f59075d9b77b37a63"
    }
   },
   {
@@ -975,7 +975,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "b54b1f808ea723e90bf7a3a2987a73351343117424732861e9d590a009285d23"
+    "digest_after": "c79b162f913ce4d936e153580e0f4b781f3dd4dcad37bd2397a38fce02fa062a"
    }
   },
   {
@@ -1014,7 +1014,7 @@
      "kind": "close",
      "place": "office"
     },
-    "digest_after": "0b338cf0fc9f5bf46024c7d52de9c80c875056a71837c4d409c75f849b4ee0ab"
+    "digest_after": "b27b15a84cf19487a1f6abd7d83b619a1075d60d60ccb8225829e06f78b2aada"
    }
   },
   {
@@ -1060,7 +1060,7 @@
    ],
    "note": {
     "target": "market",
-    "digest_after": "7521bf6cc100c32e304720bc0d5284ee2573c2662d29d184824df1d19bedafb1"
+    "digest_after": "af4d859af07585c074769f028fbf5c2da40617d699b6475c72543d25ee187724"
    }
   },
   {
@@ -1076,7 +1076,7 @@
     "requested": {
      "target": "管理处"
     },
-    "digest_after": "7521bf6cc100c32e304720bc0d5284ee2573c2662d29d184824df1d19bedafb1"
+    "digest_after": "af4d859af07585c074769f028fbf5c2da40617d699b6475c72543d25ee187724"
    }
   },
   {
@@ -1094,7 +1094,7 @@
     "requested": {
      "target": "管理处"
     },
-    "digest_after": "7521bf6cc100c32e304720bc0d5284ee2573c2662d29d184824df1d19bedafb1"
+    "digest_after": "af4d859af07585c074769f028fbf5c2da40617d699b6475c72543d25ee187724"
    }
   },
   {
@@ -1135,7 +1135,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "686d1dbcc8321f07e721691043fd9e9000692e9b5a238e48956257d14f8a980c"
+    "digest_after": "d0f51a6a9b6d954f3717ae90c3f3cd499f07f43ac8f677de9211d1cb0008c576"
    }
   }
  ],

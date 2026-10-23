@@ -28,6 +28,7 @@ from engine.events import EventLog, dump_log, replay
 from engine.rules import advance_idle, drain, submit
 from engine.seed import load
 from library import EFFECTS
+from stories.common import transcript
 from stories.s3_night_market.scenario import DEFAULT_SEED, NIGHT, NOTE_ID, SCRIPTS, play
 
 STEPS = SCRIPTS["e"]
@@ -111,6 +112,26 @@ class NightBoundaryTests(unittest.TestCase):
         self.assertGreaterEqual(resumed_world.clock, OPEN_AT)
         self.assertEqual(resumed_world.get("office", "door"), "open")
         self.assertEqual(resumed_world.container(NOTE_ID), "a")
+
+    # ---- 2b. 过夜之后，时钟要说出"第二天早上" ---------------------------
+    def test_the_morning_after_the_night_reads_as_the_next_date(self):
+        """一局真的过了夜，读的人就该看出过了夜：`1920` 是 04-03 08:00，不是 `32:00`。
+
+        负向对照在最后两行：不把日期交给它，同一个数仍然读成 `32:00`——翻日是日期的
+        事，不是格式化凑出来的。
+        """
+        from engine.surface import clock_label
+        from stories.common import clock_label as story_clock
+
+        self.assertEqual(clock_label(OPEN_AT, "2026-04-02"), "2026-04-03 08:00")
+        self.assertEqual(story_clock(OPEN_AT, "2026-04-02"), "2026-04-03 08:00")
+        # 同一个数，没有日期就还是 32:00
+        self.assertEqual(clock_label(OPEN_AT), "32:00")
+
+        view = transcript(self.night, "《夜市》路 e")
+        self.assertIn("2026-04-03 08:00", view)       # 次日的开门与取条子
+        self.assertNotIn("32:00", view)               # 反面的名字不在了
+        self.assertIn("2026-04-02 18:", view)         # 当天那段还写着当天
 
     # ---- 3. 负向对照：拿掉次日开门，跨夜就白跨 --------------------------
     def test_without_the_next_morning_open_the_note_stays_in_the_office(self):

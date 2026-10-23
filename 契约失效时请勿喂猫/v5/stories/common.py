@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from engine.surface import render_block
+from engine.surface import clock_label, render_block
 
 DECIDERS = {"world": "世界", "script": "脚本", "agent": "角色"}
 
@@ -17,8 +17,6 @@ VERBS = {"examine": "细看", "read": "读", "touch": "碰了碰", "take": "拿�
          "copy": "复写", "unlock": "开锁", "recognize": "认字", "speak": "说"}
 
 
-def clock_label(minutes: int) -> str:
-    return f"{minutes // 60:02d}:{minutes % 60:02d}"
 
 
 def _turns(run: Any) -> list[dict[str, Any]]:
@@ -44,7 +42,7 @@ def transcript(run: Any, title: str) -> str:
         "",
     ]
     for item in run.items:
-        stamp = clock_label(item["at"])
+        stamp = clock_label(item["at"], run.world.date)
         if item["kind"] == "world":
             if not item["perceived"]:
                 lines.append(f"`[世界]` **{stamp}** · *（没有人感知到）*")
@@ -101,7 +99,7 @@ def context_view(run: Any) -> str:
              "每个动作前，这个角色实际拿到的全部上下文。",
              how, ""]
     for item in _turns(run):
-        stamp = clock_label(item["at"])
+        stamp = clock_label(item["at"], run.world.date)
         actor = run.world.entities[item["actor"]].name
         mark = DECIDERS[item["decided_by"]]
         lines += [f"## `[{mark}]` {stamp} {actor}：{VERBS.get(item['verb'], item['verb'])} "
