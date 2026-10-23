@@ -1,57 +1,45 @@
-# state — advance of 2026-10-21 (third pass, resume from `d02c395`)
+# state — advance of 2026-10-23 (resume from `2e91fd0`, the person's answer to the actor-pilot gate)
 
 ## Terms
 
-- Contract: manager, sys_gal; root's resume instruction of 2026-10-21; 25 minutes wall clock, no new package after 15; idle machine time, no provider calls.
-- Base: `master` at `d02c395`; nothing fetched, pulled or switched.
-- Outside me, untouched: the M3 gate verdict and the M4 acceptance. Neither was signed here.
-- Report filed to `mail/2026-10-21-m5-cross-night.md`, `to: root`.
+- Contract: manager, sys_gal; root's instruction of 2026-10-23 carrying the person's answer; 25 minutes wall clock, no new package after 15; idle machine time, no provider calls.
+- Base: `master` at `2e91fd0`; nothing fetched, pulled or switched.
+- Outside me, untouched: M4's signature and the push. Neither was signed or pushed here.
+- Report filed to `mail/2026-10-23-actor-pilot-gate-and-m5.md`, `to: root`.
 
 ## What this advance did
 
 | commit | what it is |
 | --- | --- |
-| `9dc76d4` | S3 crosses its 18:30→08:00 boundary: fifth path `e`, `NIGHT` time mark, `tests/test_m5_cross_night.py` with a negative control; `runs/e.*` added, a–d byte-identical |
-| (this) | `mail/` split from `inbox/` (outbound vs inbound, `git mv`, no content edited); `docs/PLAN.md` and this file rewritten against the tree |
+| `3a95a3e` | The actor-pilot gate closes on 《借条》 alone — the person's answer, landed in `v5/docs/V5-ROADMAP.md` §3, `V5-M3-PILOT.md` §七 and `PLAN.md` (Decided, not Open); the dangling `docs/plan/portfolio.md` pointer is gone |
+| `1253248` | M5's first package `second-story-agent`: `stories/agent_loop.py` (one loop, two stories), 《末班车》's shell and its ending composed from facts, S1's stale traces regenerated, `tests/test_m5_second_story_agent.py` (6 checks) |
+| (this) | this file rewritten against the tree; the report filed |
 
-## Gate at `9dc76d4` (cwd `契约失效时请勿喂猫/v5`)
+## Gate at `1253248` (cwd `契约失效时请勿喂猫/v5`)
 
 | check | reading |
 | --- | --- |
-| `python3 -m unittest discover -s tests -p 'test_*.py'` | 137 tests OK (was 134) |
+| `python3 -m unittest discover -s tests -p 'test_*.py'` | 143 tests OK (was 137) |
+| `python3 -m unittest tests.test_m5_second_story_agent -v` | 6 tests OK |
 | `python3 scripts/v5_lint.py --strict` | 通过（待补 5 项） |
 | `python3 scripts/anti_cheat.py --verbose` | 通过（3 支故事）；s3 five paths, five endings |
 
 ## Decided here (mine)
 
-- The night crossing is a script path, not a harness flag, so `anti_cheat` polices it and the fifth ending is the morning recovery. `NIGHT` is a time mark, not a verb — it enters no library, so it cannot become a story word the model sees.
-- Outbound reports go to `mail/`; `inbox/` is inbound only and emptied on landing. Root's instruction named `mail/`, and the two files sitting in `inbox/` were both addressed `to: root`, so the split is a filing correction rather than a rename of a working convention.
+- The gate's coverage is written where the milestone state lives, and the M3 acceptance text is left as the person's row had it. What the gate does not cover (no real model on 《末班车》) is written in `V5-M3-PILOT.md` §七 rather than left to be inferred.
+- The model loop lives in one place. Two copies would have made the second story pass a second set of checks, which is the opposite of what the person's placement asks for.
+- 《末班车》's ending is composed from world facts. Its old lookup by script label was a defect a model run hits immediately; fixing it changes no scripted sentence.
+- 《末班车》's committed traces were regenerated, because they predated two fixes and contradicted the code. Committed evidence moved, and the move is named in the commit and in the report.
 
-## Open, unchanged
+## Open, unchanged or new
 
-- The M4 signature (root's, then the person's); M3's verdict (the person's).
-- May M5 begin — asked of root in the report; my reading is yes on the mechanism.
+- M4's signature (root's, then the person's).
+- A provider authorization for 《末班车》's real-model run — the one thing M5's `s1-model-report` line needs.
+- M5's four acceptance claims: stocktake computed from quantities, two worlds read through a whole day, same-scale comparison, packed traces.
 - The taste call on two paths converging on one ending; the push.
-- `R10` pins only the reversion to `2`, not the general rule.
-- The night is empty: 14 in-world hours with nobody acting. Continuity proven, density not.
+- `R10` pins only the reversion to `2`.
+- The night is still empty: 14 in-world hours with nobody acting.
 
 ## Next action
 
-Waits on root's answer to "may M5 begin", not on a timeout. If yes, the first M5 slice is the one that makes the night dense rather than merely continuous.
-
-## Advance of 2026-10-23 — the names the person could not read
-
-Root carried the pilot gate question up and the person could not read it: `M3`, `S1`, `S2` and `V5-ROADMAP.md:57` are record handles, not names of things. This advance fixes it in the tree, not in the next message.
-
-| commit | what it is |
-| --- | --- |
-| `74f542e` | V5 roadmap §2.2/§3 gain a 名字（对人怎么叫） column: every milestone named by what it proves, every story by title plus one clause of its situation; the status paragraph the person was pointed at leads with the names |
-| `63a55b9` | the pilot report's title says what the gate proves; its one internal M4 is named in place |
-| `b4396e7` | v5 front door: 玩具世界 / 库的第一次通用 / 演员试点 lead, codes follow |
-| `2e91fd0` | this layer's roadmap: 半日一局, 一日两个世界, 演员试点, 《夜市》 named where they stood as codes |
-| `0472e5b` | the rule itself, first line of `AGENTS.md`: 人读的东西先给名字，编号排在名字后面或干脆不出现 |
-| `f1fff42` | `mail/2026-10-23-m3-pilot-gate-question.md`: the gate question as one sentence, no code, to be carried up unchanged |
-
-The gate is not decided here. It is the person's and still open; the sentence only asks whether 《末班车》 needs a model run before the signature.
-
-Gate after the advance, from `契约失效时请勿喂猫/v5`: 137 tests OK, `v5_lint --strict` 通过（待补 5 项）, `anti_cheat --verbose` 通过（3 支故事）.
+Waits on the provider authorization for `s1-model-report`, not on a timeout; if it does not come, the next package that needs nobody is `stocktake`, which is also where M5's first library question (quantity as first-class, or carried by the seed) is decided.
