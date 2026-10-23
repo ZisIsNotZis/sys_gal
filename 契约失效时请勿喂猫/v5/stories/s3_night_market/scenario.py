@@ -5,10 +5,16 @@
 落在收摊前还是收摊后），不按路径名查表：两条路在这四件事上相同就是同一个结局。
 脚本只证明"这件事物理上做得到"，不代表角色的意愿。
 
-三件被这条路测到的事：
+第一至第四条路都在收摊之前结束；第五条路 `e` 真的跨过 18:30→次日 08:00 的边界：
+收摊时条子已经进了管理处，甲当晚赶不回来，第二天门开了才把条子领回来。
+跨过去的那一段在脚本里是 `NIGHT`：世界自己走到下一个排程点（`advance_idle`），
+没有人替角色做决定。这是 M5 入口条件的物证——「半天」不再只是标签。
+
+四件被这条路测到的事：
 - 制度角色：只有 `institution` 身份的人能 `impound`，而且本子上恰好留一行；
 - 公开/私下：`speak` 带 `to` 时只有那个人听见内容，旁人只看见两人在低声说话；
-- 期限：管理处到点关门上锁，晚到的人在回执里撞上它。
+- 期限：管理处到点关门上锁，晚到的人在回执里撞上它；
+- 过夜：关掉的门次日自己开，条子隔了一夜才被领回来（`e`）。
 """
 
 from __future__ import annotations
@@ -19,7 +25,7 @@ from typing import Any
 
 from engine.core import World
 from engine.events import Event, EventLog
-from engine.rules import Receipt, drain, submit
+from engine.rules import Receipt, advance_idle, drain, submit
 from engine.seed import load
 from engine.surface import block
 from library import EFFECTS
@@ -40,6 +46,10 @@ _IMPOUND_GOODS: list[tuple[str, str, dict[str, Any]]] = [
     ("warden", "move", {"target": "夜市"}),
     ("warden", "move", {"target": "摊区"}),
 ]
+
+#: 脚本里的时间标记：这一段没有动作，世界自己走到下一个排程点（`advance_idle`）。
+#: 它不是一个动词，所以不进库、不进 lint 的动词表；它是路 e 跨夜唯一要做的事。
+NIGHT = "__night__"
 
 SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
     # A：甲私下认账——条子一直在他手里，话只让管理员一个人听见
@@ -86,6 +96,24 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("warden", "speak", {"text": "本子上记的是摊区，没写谁。"}),
         ("a", "speak", {"text": "我认：摊是我的，条子在我手里。"}),
     ],
+    # E：甲当晚赶不回来。条子收进管理处，门在收摊时锁上；甲走开，世界过夜，
+    # 次日 08:00 门自己开，甲回来开门把条子领回去。
+    "e": [
+        *_IMPOUND_GOODS,
+        ("a", "read", {"target": "通知"}),
+        ("a", "speak", {"text": "今晚我赶不回来，明早开门我来领。", "to": "管理员"}),
+        ("warden", "impound", {"target": "押金条"}),
+        ("warden", "move", {"target": "夜市"}),
+        ("warden", "move", {"target": "管理处"}),
+        ("warden", "place", {"target": "押金条", "to": "管理处"}),
+        ("a", "move", {"target": "巷口"}),
+        ("", NIGHT, {}),
+        ("a", "move", {"target": "夜市"}),
+        ("a", "move", {"target": "管理处"}),
+        ("a", "open", {"target": "管理处"}),
+        ("a", "take", {"target": "押金条"}),
+        ("a", "speak", {"text": "条子我领回来了。", "to": "管理员"}),
+    ],
 }
 
 
@@ -115,6 +143,10 @@ def play(variant: str = "a", seed_path: Path = DEFAULT_SEED) -> Run:
     for step, (actor, verb, args) in enumerate(SCRIPTS[variant], start=1):
         for event in drain(world, log, EFFECTS):
             run.items.append(_world_item(event))
+        if verb == NIGHT:
+            # 没有动作：时间自己走到下一个排程点，途中的世界事件照样入账与入册。
+            run.items.extend(_world_item(event) for event in advance_idle(world, log, EFFECTS))
+            continue
         context = block(world, actor)
         receipt = submit(world, log, actor, verb, dict(args))
         run.receipts.append(receipt)

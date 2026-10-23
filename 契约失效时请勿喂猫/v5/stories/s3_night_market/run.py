@@ -1,6 +1,6 @@
-"""跑四条路径，写出可通读的轨迹与上下文审计视图。
+"""跑五条路径，写出可通读的轨迹与上下文审计视图。
 
-用法（在 `v5/` 目录下）：python3 -m stories.s3_night_market.run a b c d
+用法（在 `v5/` 目录下）：python3 -m stories.s3_night_market.run a b c d e
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from .transcript import transcript
 
 
 def main(argv: list[str] | None = None) -> int:
-    variants = (argv if argv is not None else sys.argv[1:]) or ["a", "b", "c", "d"]
+    variants = (argv if argv is not None else sys.argv[1:]) or ["a", "b", "c", "d", "e"]
     out = Path(__file__).with_name("runs")
     out.mkdir(exist_ok=True)
     for variant in variants:
