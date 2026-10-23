@@ -1,3 +1,5 @@
+> **人读的东西先给名字，编号排在名字后面或干脆不出现** —— 里程碑用它证明了什么来叫（“演员试点：把脚本演员换成真模型，看这一局是被世界推动还是被作者推动”），故事用书名号加一句处境（“《末班车》：22:30 的末班车，三站路，一个人把包留在了座位上”）；`M3`、`S1`、`V5-ROADMAP.md:57` 这一类只是我自己的记录后缀，绝不单独落到人眼前。
+
 # Run analysis protocol
 
 After every provider-backed story run, manually inspect the saved trajectory before replying to the user. This is mandatory even when the process reaches the seeded endpoint.
