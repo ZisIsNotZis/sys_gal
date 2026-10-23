@@ -27,10 +27,21 @@ class Decision:
     args: dict[str, Any]
     raw: str = ""
     latency: float = 0.0
+    # 这一回 provider 自己报的用量；没有就留空，不猜。授权按钱算，账按 tokens 记。
+    usage: dict[str, int] = field(default_factory=dict)
 
 
 class ProviderError(RuntimeError):
     pass
+
+
+def _usage(raw: dict[str, Any]) -> dict[str, int]:
+    """provider 报的用量，归一成三个数；两种接口的键名都认（chat 与 responses）。"""
+    prompt = int(raw.get("prompt_tokens", raw.get("input_tokens", 0)) or 0)
+    completion = int(raw.get("completion_tokens", raw.get("output_tokens", 0)) or 0)
+    total = int(raw.get("total_tokens", 0) or 0) or prompt + completion
+    return {"prompt_tokens": prompt, "completion_tokens": completion,
+            "total_tokens": total}
 
 
 class DecisionParseError(RuntimeError):
@@ -82,7 +93,8 @@ class ChatProvider:
                 except json.JSONDecodeError as exc:
                     raise DecisionParseError(raw_call) from exc
                 return Decision(verb=call["function"]["name"], args=args,
-                                raw=raw_call, latency=round(time.time() - started, 2))
+                                raw=raw_call, latency=round(time.time() - started, 2),
+                                usage=_usage(payload.get("usage") or {}))
             except DecisionParseError:
                 raise
             except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError,

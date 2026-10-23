@@ -38,19 +38,52 @@ class AgentRun:
     title: str = ""
     summary: dict[str, Any] = field(default_factory=dict)
     messages: list[dict[str, Any]] = field(default_factory=list)
+    # 这一次运行的授权与账：谁批的、哪个模型、上限多少、最后花了多少 tokens、折多少钱。
+    # 空着就是没有授权，也就是脚本局或 MockProvider 局——那种局面不该有钱的账。
+    spend: dict[str, Any] = field(default_factory=dict)
+
+
+def _charge(run: AgentRun, usage: dict[str, int]) -> bool:
+    """把这一回合的用量记进运行账；返回是否已经越过授权上限。"""
+    account = run.spend
+    if not usage:
+        return False
+    account.setdefault("turns_billed", 0)
+    account.setdefault("prompt_tokens", 0)
+    account.setdefault("completion_tokens", 0)
+    account.setdefault("total_tokens", 0)
+    account["turns_billed"] += 1
+    account["prompt_tokens"] += usage.get("prompt_tokens", 0)
+    account["completion_tokens"] += usage.get("completion_tokens", 0)
+    account["total_tokens"] += usage.get("total_tokens", 0)
+    price_in = account.get("input_cost_per_token")
+    price_out = account.get("output_cost_per_token")
+    if price_in is None or price_out is None:
+        return False
+    spent = (account["prompt_tokens"] * price_in
+             + account["completion_tokens"] * price_out)
+    account["spent_usd"] = round(spent, 6)
+    ceiling = account.get("ceiling_usd")
+    return ceiling is not None and spent > ceiling
 
 
 def play(model: str, *, seed_path: Path, order: tuple[str, ...],
          summary: Callable[[Any], dict[str, Any]], title: str,
-         turns_each: int = 4, provider: Any | None = None) -> AgentRun:
+         turns_each: int = 4, provider: Any | None = None,
+         spend: dict[str, Any] | None = None) -> AgentRun:
     world = load(seed_path)
     log = EventLog()
-    run = AgentRun(variant=f"agent-{model}", world=world, log=log, title=title)
+    run = AgentRun(variant=f"agent-{model}", world=world, log=log, title=title,
+                   spend=dict(spend or {}))
     llm = provider or ChatProvider(model=model)
     history: dict[str, list[dict[str, Any]]] = {}
 
     for round_no in range(turns_each):
+        if run.spend.get("stopped_by"):
+            break
         for actor in order:
+            if run.spend.get("stopped_by"):
+                break
             for event in drain(world, log, EFFECTS):
                 run.items.append({"kind": "world", "at": event.at, "what": event.what,
                                   "perceived": [(a["e"], a["v"]) for a in event.atoms
@@ -65,7 +98,7 @@ def play(model: str, *, seed_path: Path, order: tuple[str, ...],
                     "texts": [], "reason": "模型的工具调用无法解析", "hints": [],
                     "note": {}, "context": block(world, actor), "context_used": True,
                     "decided_by": "agent", "step": step,
-                    "raw": exc.raw, "latency": 0.0, "prompt": {},
+                    "raw": exc.raw, "latency": 0.0, "prompt": {}, "usage": {},
                 })
                 continue
             run.receipts.append(turn.receipt)
@@ -83,24 +116,32 @@ def play(model: str, *, seed_path: Path, order: tuple[str, ...],
                 "decided_by": "agent", "step": step,
                 "raw": turn.decision.raw,
                 "latency": turn.decision.latency,
+                "usage": dict(turn.decision.usage),
                 "prompt": turn.context,
             })
             run.messages.append({"actor": actor, "at": turn.at,
                                  "system": turn.context["system"],
                                  "turn": turn.context["turn"],
                                  "messages": turn.messages})
+            if _charge(run, turn.decision.usage):
+                run.spend["stopped_by"] = "spend_ceiling"
     run.summary = summary(run)
     return run
 
 
 def write_artifacts(run: AgentRun, out: Path, transcript_title: str) -> Path:
-    """四个文件：故事视图、上下文审计、可重放账本、摘要。目录已由调用方算好（唯一）。"""
+    """四个文件：故事视图、上下文审计、可重放账本、摘要（授权与账在摘要里）。
+
+    目录已由调用方算好（唯一）；`run.json` 的 `spend` 是这次运行自己的账，
+    授权、模型、上限与真实花掉的 tokens 都在里面。
+    """
     out.mkdir(parents=True, exist_ok=False)
     (out / "transcript.md").write_text(transcript(run, transcript_title), encoding="utf-8")
     (out / "context.md").write_text(context_view(run), encoding="utf-8")
     (out / "events.jsonl").write_text(dump_log(run.log), encoding="utf-8")
     (out / "run.json").write_text(json.dumps({
         "summary": run.summary,
+        "spend": run.spend,
         "items": run.items,
         "digest": run.world.digest(),
     }, ensure_ascii=False, indent=1), encoding="utf-8")

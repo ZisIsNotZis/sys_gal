@@ -121,6 +121,44 @@ class SecondStoryArtifactTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 agent_run.write_artifacts(run, "mock")
 
+    def test_a_run_that_reports_usage_writes_down_what_it_spent(self):
+        script = [Decision(verb="examine", args={},
+                           usage={"prompt_tokens": 100, "completion_tokens": 10,
+                                  "total_tokens": 110}) for _ in range(3)]
+        run = agent_run.play_agents("mock/second-story", turns_each=1,
+                                    provider=MockProvider(script=list(script)),
+                                    spend={"granted_by": "test", "model": "mock/second-story",
+                                           "ceiling_cny": 2.0, "ceiling_usd": 0.3,
+                                           "input_cost_per_token": 1e-07,
+                                           "output_cost_per_token": 5e-07})
+        self.assertEqual(run.spend["turns_billed"], 3)
+        self.assertEqual(run.spend["prompt_tokens"], 300)
+        self.assertEqual(run.spend["completion_tokens"], 30)
+        self.assertAlmostEqual(run.spend["spent_usd"], 300 * 1e-07 + 30 * 5e-07)
+        self.assertNotIn("stopped_by", run.spend)
+        import unittest.mock as mock
+        with mock.patch.object(agent_run, "HERE", self.tmp):
+            out = agent_run.write_artifacts(run, "mock")
+        import json as _json
+        recorded = _json.loads((out / "run.json").read_text(encoding="utf-8"))
+        self.assertEqual(recorded["spend"]["granted_by"], "test")
+        self.assertEqual(recorded["spend"]["total_tokens"], 330)
+        self.assertEqual(recorded["spend"]["model"], "mock/second-story")
+
+    def test_a_run_stops_when_it_has_spent_its_ceiling(self):
+        script = [Decision(verb="examine", args={},
+                           usage={"prompt_tokens": 1000, "completion_tokens": 100,
+                                  "total_tokens": 1100}) for _ in range(6)]
+        run = agent_run.play_agents("mock/second-story", turns_each=2,
+                                    provider=MockProvider(script=list(script)),
+                                    spend={"ceiling_usd": 0.0001,
+                                           "input_cost_per_token": 1e-07,
+                                           "output_cost_per_token": 5e-07})
+        turns = [i for i in run.items if i["kind"] == "turn"]
+        self.assertEqual(run.spend["stopped_by"], "spend_ceiling")
+        self.assertEqual(len(turns), 1, "越过后不再动第二个回合")
+        self.assertGreater(run.spend["spent_usd"], 0.0001)
+
 
 if __name__ == "__main__":
     unittest.main()
