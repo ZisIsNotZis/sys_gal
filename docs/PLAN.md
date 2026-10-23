@@ -52,6 +52,8 @@ Packages, in worksets (a workset is run in parallel, worksets in order):
 
 ## Decided
 
+- **演员试点：把脚本演员换成真模型，看这一局是被世界推动还是被作者推动（M3）关在《借条》一支故事上** — 人, answer of 2026-10-23, assent: agreed. The gate covers 《借条》's model report and the three anti-cheat checks; 《末班车》's model-driven report does **not** stand in front of the gate and moves into the next milestone's ladder (一日两个世界, M5), where the same world and the same checks run on a second story. Reason given to the person: one story already proves the mechanism can make a model walk its own path, and a second copy of the same proof belongs beside the next milestone rather than in front of the gate. Written where it is read: `契约失效时请勿喂猫/v5/docs/V5-ROADMAP.md` §3 and `V5-M3-PILOT.md` §七.
+- **M5 的阶梯里有一行是《末班车》的模型首轮报告** — inference from the person's answer above (the milestone, not the gate, is where the second story's model run lands); the milestone is M5 because it is the next one on the approved list whose acceptance already runs one set of concepts in two worlds. Cost if wrong: the report lands one milestone later than intended, and no checkpoint depends on it.
 - **半日一局 is the next milestone（M4）** — root, contract to this layer dated 2026-10-21, assent: agreed. The 演员试点's signature (把脚本演员换成真模型，看这一局是被世界推动还是被作者推动；M3) stays with the person and does not block it, whose skeleton is script-actor work needing no provider spend.
 - **物权 does not enter the library** — root, same contract, assent: assumed. Placement is the seed layer, recorded in the lint as defined-at-use; S3's 押金条 and S4's 钥匙移交 are expressible with P3 containment. Reversal costs one concept added without its second declaring story.
 - **v5 is exempt from the ticket tracker** — root, same contract, assent: agreed. A work package's contract, evidence and decision live in the commit message and in the milestone report; `.scratch/` is for defects found by running.
@@ -62,7 +64,6 @@ Packages, in worksets (a workset is run in parallel, worksets in order):
 
 ## Open
 
-- **演员试点的签字在人手里（M3）** — `docs/plan/portfolio.md` files it under what waits on the person. Nothing here reconstructs it; 半日一局（M4） does not depend on it.
 - **物权 的第二次声明** — the concept returns when a second story needs a held-by relation that containment cannot carry.
 - **半天还不存在（已被 `9dc76d4` 部分关闭）** — 里程碑复核当时的读数：最长的脚本只走 13 分钟世界时间，1110 关、1920 再开的排程从未被再次进入；a/b/d 三条路在 18:12–18:14 就结束了，离 18:30 锁门还有十六分钟，所以期限在四条路里三条不做功，只在 c 里被动拦人。claim 3 的边界是 **S1 的 23 分钟中点**（`tests/test_m4_resume.py:half_day_clock`），当时没有任何测试对 S3 取检查点。"半天"那时是标签，不是这一局的形状。这是 M5 的入口条件，不是 M4 的判据违反：M4 的 claim 3 说的是续跑因果连续，机制成立且有负向对照。**现在跨夜这段有了**（`9dc76d4`，路 `e`）；剩下的仍然是真的：过夜那 14 小时是空转的时间，不是被角色走出来的行为，"全天故事"还差 S5/S7 那一档的密集动作。
 - **一条故事能不能写两条汇到同一结局的路** — `anti_cheat` 的第三条现在把"路径数"与"结局数"绑在一起（`len(distinct) < len(variants)`），所以一支故事不能再写两条殊途同归的路；要收敛只能把它们写成一条。复核者把它当**口味**上报，我把它原样转给 root：`anti_cheat.py:6` 的那句话本来就是这么写的（"每条被写出来的路径都必须能走到不同结局"），所以修的是实现而不是句子。我的建议是不改这条判据，把"想收敛"当成"一条路写了两遍"；若 root 认为该允许收敛，判据要改成落在**结局**上而不是**路径**上，那是判据的重写，不是这一层的自选。
