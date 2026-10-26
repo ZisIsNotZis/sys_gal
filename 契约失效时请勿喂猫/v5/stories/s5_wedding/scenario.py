@@ -63,6 +63,7 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("manager", "announce", {"text": "签到本上多了个名字，叫陈明，名单上没有这个人。谁见过？"}),
         ("best_man", "announce", {"text": "早上我看见一个穿灰夹克的男人从签到台那边过来。"}),
         ("bride", "hail", {"who": "穿灰夹克的男人", "text": "你就是本子上写的陈明？"}),
+        ("", DAY, {}),
     ],
     # B：记账的人看见了，但谁也没往下问；一天照常过完，22:00 散场
     "b": [
@@ -85,6 +86,7 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("bookkeeper", "erase", {"target": "签到本"}),
         ("bookkeeper", "place", {"target": "橡皮", "to": "签到台"}),
         ("bookkeeper", "announce", {"text": "没事了，本子上没多什么人。"}),
+        ("", DAY, {}),
     ],
     # D：记账的人私下告诉经理，经理转述给厅里的人，然后大家说好都不再提
     "d": [

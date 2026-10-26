@@ -982,6 +982,218 @@
     "target": null,
     "digest_after": "68a84a1fb0f7393d25773ace8da59e60aae27ad0e38e4fd253b7e94a80366b2e"
    }
+  },
+  {
+   "id": 16,
+   "at": 720,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 720
+    }
+   ],
+   "note": {
+    "digest_after": "0a39d91d89795423878716713c951d9571e4f58c879725e3176db023151ef8e5"
+   }
+  },
+  {
+   "id": 17,
+   "at": 720,
+   "kind": "world",
+   "actor": null,
+   "what": "post",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 720,
+     "seq": 1
+    },
+    {
+     "op": "move",
+     "e": "menu",
+     "to": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "post",
+     "place": "hall",
+     "item": "menu"
+    },
+    "digest_after": "81a83e78b0da1cd1557a91f3ba864e0904f1df417b9a523225a3cc3bad8ac64c"
+   }
+  },
+  {
+   "id": 18,
+   "at": 1320,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 1320
+    }
+   ],
+   "note": {
+    "digest_after": "debb1980c868510c23087b28fbc79ce2eff115ffc92eb732b19f44de7ed85c74"
+   }
+  },
+  {
+   "id": 19,
+   "at": 1320,
+   "kind": "world",
+   "actor": null,
+   "what": "close",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1320,
+     "seq": 2
+    },
+    {
+     "op": "set",
+     "e": "hall",
+     "k": "door",
+     "v": "closed"
+    },
+    {
+     "op": "set",
+     "e": "hall",
+     "k": "locked",
+     "v": true
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "close",
+     "place": "hall"
+    },
+    "digest_after": "86e7cad8a09b50291a201b4feed9acf60b75fedbf5942b2ca584c105dea4061a"
+   }
   }
  ],
  "summary": {
@@ -992,8 +1204,8 @@
   "对上时在哪": "厅内",
   "读过本子的人": 1,
   "本子改过": false,
-  "散场时间": "还没到散场",
-  "钟停在哪": "2026-05-20 09:22",
+  "散场时间": "2026-05-20 22:00",
+  "钟停在哪": "2026-05-20 22:00",
   "结局": "查出了是谁：新娘在厅内认出了那个穿灰夹克的，签到本上多出来的那一行总算有了主"
  }
 }

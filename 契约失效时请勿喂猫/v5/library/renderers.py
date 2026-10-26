@@ -49,6 +49,8 @@ def _register_all() -> None:
     register_state_renderer("presence", None)
     register_state_renderer("institution", None)  # 制度身份：改变能做什么，不是看见什么
     register_state_renderer("records", None)      # 登记本：能往上记一行
+    register_state_renderer("count", None)        # 份数：只有数过才知道
+    register_state_renderer("line_to", None)      # 电话接通的是谁：看不见，只在通话里存在
 
 
 _register_all()

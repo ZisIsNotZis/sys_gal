@@ -656,6 +656,206 @@
     "target": null,
     "digest_after": "d1c77c4125425b67a34d25da391f99b944dfb51c4bb12a25bffde07e28c77767"
    }
+  },
+  {
+   "id": 13,
+   "at": 720,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 720
+    }
+   ],
+   "note": {
+    "digest_after": "e62b1b54733413ce2be747b2dc7ce3417d521902dff31faa211bd9b101f7100d"
+   }
+  },
+  {
+   "id": 14,
+   "at": 720,
+   "kind": "world",
+   "actor": null,
+   "what": "post",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 720,
+     "seq": 1
+    },
+    {
+     "op": "move",
+     "e": "menu",
+     "to": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "post",
+     "place": "hall",
+     "item": "menu"
+    },
+    "digest_after": "e2f4ec260fc2dcebb876517594603a97f116fd0cad6819c29db9f74dbebb866d"
+   }
+  },
+  {
+   "id": 15,
+   "at": 1320,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 1320
+    }
+   ],
+   "note": {
+    "digest_after": "6f8e41af25ed3b30fe0e1f242e776a577ca738fa9c0ad0385a8c3020df82b1dd"
+   }
+  },
+  {
+   "id": 16,
+   "at": 1320,
+   "kind": "world",
+   "actor": null,
+   "what": "close",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1320,
+     "seq": 2
+    },
+    {
+     "op": "set",
+     "e": "hall",
+     "k": "door",
+     "v": "closed"
+    },
+    {
+     "op": "set",
+     "e": "hall",
+     "k": "locked",
+     "v": true
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "close",
+     "place": "hall"
+    },
+    "digest_after": "90af9a24d4be13b40797eb0ed69a093b1ef18bdf8b6900289e7645a52472ce29"
+   }
   }
  ],
  "summary": {
@@ -666,8 +866,8 @@
   "对上时在哪": "不知何处",
   "读过本子的人": 1,
   "本子改过": true,
-  "散场时间": "还没到散场",
-  "钟停在哪": "2026-05-20 09:18",
+  "散场时间": "2026-05-20 22:00",
+  "钟停在哪": "2026-05-20 22:00",
   "结局": "记录被改：签到本上那一行被擦掉了，纸面上留下一片灰；本子最后一行的字是「签到簿」"
  }
 }

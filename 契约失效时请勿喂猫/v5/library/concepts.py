@@ -12,7 +12,7 @@ from typing import Any
 
 from engine.core import World
 from engine.render import describe, refer
-from engine.resolve import in_sight, inner_place, visible
+from engine.resolve import hidden_by_container, in_sight, inner_place, resolve, visible
 from engine.rules import Ctx, Rule, register
 from engine.surface import clock_label
 
@@ -714,6 +714,205 @@ def _hail_render(ctx: Ctx) -> list[tuple[str, str]]:
     return out
 
 
+# ---------- M5：数量与盘点、锁与钥匙、交接、远程通道、承诺
+
+def _countable(world: World, eid: str) -> list[tuple[str, int]]:
+    """一个东西连同它里面看得见的份数；封着的容器里的份数数不到。"""
+    rows: list[tuple[str, int]] = []
+    if "count" in world.state.get(eid, {}):
+        rows.append((world.entities[eid].name, int(world.get(eid, "count"))))
+    for child in world.children(eid):
+        if hidden_by_container(world, child):
+            continue
+        rows += _countable(world, child)
+    return rows
+
+
+def _count_when(ctx: Ctx) -> str | None:
+    return None
+
+
+def _count_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+    return []
+
+
+def _count_render(ctx: Ctx) -> list[tuple[str, str]]:
+    rows = _countable(ctx.world, ctx.target)
+    if not rows:
+        return [(ctx.actor, f"你数了{ctx.name(ctx.target)}，里面没有可数的份数。")]
+    total = sum(n for _name, n in rows)
+    parts = "、".join(f"{name} {n}" for name, n in rows)
+    return [(ctx.actor, f"你数了{ctx.name(ctx.target)}：共 {total}（{parts}）。")]
+
+
+def _lock_when(ctx: Ctx) -> str | None:
+    w = ctx.world
+    if w.get(ctx.target, "locked"):
+        return f"{ctx.name(ctx.target)}已经锁着"
+    if not any(w.get(c, "opens") == ctx.target for c in w.children(ctx.actor)):
+        return "你手上没有能开它的钥匙"
+    return None
+
+
+def _lock_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+    w = ctx.world
+    if w.kind_of(ctx.target) == "place":
+        return [{"op": "set", "e": ctx.target, "k": "door", "v": "closed"},
+                {"op": "set", "e": ctx.target, "k": "locked", "v": True}]
+    return [{"op": "set", "e": ctx.target, "k": "closed", "v": True},
+            {"op": "set", "e": ctx.target, "k": "locked", "v": True}]
+
+
+def _lock_render(ctx: Ctx) -> list[tuple[str, str]]:
+    w = ctx.world
+    out = [(ctx.actor, f"你用钥匙把{ctx.name(ctx.target)}锁上了。")]
+    for p in _onlookers(w, ctx.actor, ctx.target):
+        out.append((p, f"{refer(w, p, ctx.actor)}把{ctx.name(ctx.target)}锁上了。"))
+    return out
+
+
+def _handover_when(ctx: Ctx) -> str | None:
+    w = ctx.world
+    if not w.get(ctx.target, "records"):
+        return f"{ctx.name(ctx.target)}不是能落笔的记录"
+    to = ctx.args["to"]
+    if w.kind_of(to) != "person":
+        return f"{ctx.name(to)}不能接班"
+    if not in_sight(w, ctx.actor, to):
+        return f"你看不见{ctx.name(to)}"
+    if not w.get(ctx.target, "accepts"):
+        return f"{ctx.name(ctx.target)}留不下字"
+    if _implement_in_hand(w, ctx.actor) is None:
+        return "你手里没有能写字的笔"
+    key = ctx.args.get("key")
+    if key is not None and not _holding(w, ctx.actor, key):
+        return f"{ctx.name(key)}不在你手里"
+    return None
+
+
+def _handover_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+    """在交接记录上落一行，并把钥匙交出去（钥匙是包含关系，不是一个状态键）。"""
+    w = ctx.world
+    to = ctx.args["to"]
+    key = ctx.args.get("key")
+    tool = _implement_in_hand(w, ctx.actor)
+    rows = list(w.get(ctx.target, "marks") or [])
+    line = f"{clock_label(w.clock, w.date)} 交班：{ctx.name(ctx.actor)}→{ctx.name(to)}"
+    if key is not None:
+        line += f"；钥匙：{ctx.name(key)}"
+    rows.append({"text": line, "ink": w.get(tool, "implement") or "ink",
+                 "style": w.get(ctx.actor, "hand") or "printed"})
+    atoms: list[dict[str, Any]] = [{"op": "set", "e": ctx.target, "k": "marks", "v": rows}]
+    if key is not None:
+        atoms.append({"op": "move", "e": key, "to": to})
+    return atoms
+
+
+def _handover_render(ctx: Ctx) -> list[tuple[str, str]]:
+    w = ctx.world
+    to = ctx.args["to"]
+    key = ctx.args.get("key")
+    tail = f"，把{ctx.name(key)}交给了{refer(w, ctx.actor, to)}" if key is not None else ""
+    out = [(ctx.actor, f"你在{ctx.name(ctx.target)}上记下一班{tail}。")]
+    out.append((to, f"{refer(w, to, ctx.actor)}在{ctx.name(ctx.target)}上记下一班"
+                    + (f"，把{ctx.name(key)}递给了你" if key is not None else "") + "。"))
+    for p in _onlookers(w, ctx.actor, to):
+        if p == to:
+            continue
+        out.append((p, f"{refer(w, p, ctx.actor)}和{refer(w, p, to)}交接了一班。"))
+    return out
+
+
+def _phone_end(world: World, actor: str, ref: Any) -> str | None:
+    """电话的两端都能用：店里的人从眼前拿起它，另一头的人在通话里够到它。"""
+    if ref:
+        res = resolve(world, actor, str(ref))
+        if res and res.ok and world.get(res.eid, "line_to"):
+            return res.eid
+    for eid in world.entities:
+        if world.get(eid, "line_to") and str(ref) in (world.entities[eid].name, eid):
+            return eid
+    return None
+
+
+def _call_when(ctx: Ctx) -> str | None:
+    if not ctx.args.get("text"):
+        return "你什么也没说"
+    phone = _phone_end(ctx.world, ctx.actor, ctx.args.get("target"))
+    if phone is None:
+        return "这里没有能通话的东西"
+    remote = ctx.world.get(phone, "line_to")
+    if ctx.actor != remote and not in_sight(ctx.world, ctx.actor, phone):
+        return f"你够不到{ctx.name(phone)}"
+    return None
+
+
+def _call_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+    return []
+
+
+def _call_render(ctx: Ctx) -> list[tuple[str, str]]:
+    """远程通道：两头都听得到声音，谁都看不见对面。"""
+    w = ctx.world
+    phone = _phone_end(w, ctx.actor, ctx.args.get("target"))
+    text = ctx.args["text"]
+    remote = w.get(phone, "line_to")
+    name = ctx.name(phone)
+    if ctx.actor == remote:
+        out = [(ctx.actor, f"你对着{name}的听筒说：「{text}」")]
+        for p in _people(w):
+            if p != ctx.actor and w.place_of(p) is not None and w.place_of(p) == w.place_of(phone):
+                out.append((p, f"{name}里传出声音：「{text}」"))
+        return out
+    out = [(ctx.actor, f"你对着{name}说：「{text}」")]
+    if remote in w.entities:
+        out.append((remote, f"{refer(w, remote, ctx.actor)}的声音从听筒里传来：「{text}」"))
+    for p in _onlookers(w, ctx.actor, phone):
+        out.append((p, f"{refer(w, p, ctx.actor)}在打电话，听不清那头的声音。"))
+    return out
+
+
+def _promise_when(ctx: Ctx) -> str | None:
+    w = ctx.world
+    if not ctx.args.get("text"):
+        return "你什么也没答应"
+    to = ctx.args["to"]
+    if w.kind_of(to) != "person":
+        return f"{ctx.name(to)}不是一个人"
+    if not in_sight(w, ctx.actor, to):
+        return f"你看不见{ctx.name(to)}"
+    try:
+        at = int(ctx.args.get("at"))
+    except (TypeError, ValueError):
+        return "你没说定是哪一刻"
+    if at <= w.clock:
+        return "那个时间已经过去了"
+    return None
+
+
+def _promise_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+    """口头承诺进入时间表：到点时，答应的人会被世界提一句。"""
+    w = ctx.world
+    return [{"op": "schedule", "at": int(ctx.args["at"]),
+             "effect": {"kind": "remind", "who": ctx.actor, "to": ctx.args["to"],
+                        "place": w.place_of(ctx.actor), "about": ctx.args["text"]}}]
+
+
+def _promise_render(ctx: Ctx) -> list[tuple[str, str]]:
+    w = ctx.world
+    to = ctx.args["to"]
+    text = ctx.args["text"]
+    at = int(ctx.args["at"])
+    out = [(ctx.actor, f"你答应{refer(w, ctx.actor, to)}：「{text}」；到 "
+                       f"{clock_label(at, w.date)} 这件事会回到你面前。"),
+           (to, f"{refer(w, to, ctx.actor)}答应你：「{text}」。")]
+    for p in _onlookers(w, ctx.actor, to):
+        if p == to:
+            continue
+        out.append((p, f"{refer(w, p, ctx.actor)}对{refer(w, p, to)}说定了一件事。"))
+    return out
+
+
 _CONCEPTS = [
     Rule("examine", STORY, _examine_when, _examine_atoms, _examine_render, cost=1),
     Rule("read", STORY, _read_when, _read_atoms, _read_render, cost=1, hints=_read_hints),
@@ -727,15 +926,15 @@ _CONCEPTS = [
     Rule("knock", STORY, _knock_when, _knock_atoms, _knock_render, cost=1),
     Rule("move", STORY, _move_when, _move_atoms, _move_render, cost=2),
     Rule("wait", STORY, _wait_when, _wait_atoms, _wait_render, cost=1, entity_args=()),
-    Rule("write", ("s2_borrow_note", "s3_night_market", "s4_night_shift",
+    Rule("write", ("s2_borrow_note", "s3_night_market", "s4_night_shop",
                    "s5_wedding", "s7_campus_12d"),
          _write_when, _write_atoms, _write_render, cost=2, hints=_write_hints,
          entity_args=("target", "with")),
     Rule("erase", ("s2_borrow_note", "s7_campus_12d"),
          _erase_when, _erase_atoms, _erase_render, cost=2),
-    Rule("copy", ("s2_borrow_note", "s4_night_shift", "s7_campus_12d"),
+    Rule("copy", ("s2_borrow_note", "s4_night_shop", "s7_campus_12d"),
          _copy_when, _copy_atoms, _copy_render, cost=3),
-    Rule("unlock", ("s2_borrow_note", "s4_night_shift", "s6_parcel_station",
+    Rule("unlock", ("s2_borrow_note", "s4_night_shop", "s6_parcel_station",
                     "s7_campus_12d"),
          _unlock_when, _unlock_atoms, _unlock_render, cost=1),
     Rule("recognize", ("s2_borrow_note", "s7_campus_12d"),
@@ -743,7 +942,7 @@ _CONCEPTS = [
     Rule("speak", ("s1_last_bus", "s2_borrow_note", "s3_night_market",
                    "s5_wedding", "s7_campus_12d"),
          _speak_when, _speak_atoms, _speak_render, cost=1, entity_args=("to",)),
-    Rule("impound", ("s3_night_market", "s4_night_shift"),
+    Rule("impound", ("s3_night_market", "s4_night_shop"),
          _impound_when, _impound_atoms, _impound_render, cost=1, hints=_impound_hints),
     Rule("sign", ("s5_wedding", "s6_parcel_station"),
          _sign_when, _sign_atoms, _sign_render, cost=2),
@@ -753,6 +952,17 @@ _CONCEPTS = [
          _retell_when, _retell_atoms, _retell_render, cost=1, entity_args=("to",)),
     Rule("hail", ("s5_wedding", "s6_parcel_station"),
          _hail_when, _hail_atoms, _hail_render, cost=1, entity_args=()),
+    Rule("count", ("s4_night_shop", "s5_wedding", "s6_parcel_station"),
+         _count_when, _count_atoms, _count_render, cost=1),
+    Rule("lock", ("s4_night_shop", "s6_parcel_station"),
+         _lock_when, _lock_atoms, _lock_render, cost=1),
+    Rule("shift", ("s4_night_shop", "s6_parcel_station"),
+         _handover_when, _handover_atoms, _handover_render, cost=2,
+         entity_args=("target", "to", "key")),
+    Rule("call", ("s4_night_shop", "s5_wedding", "s6_parcel_station"),
+         _call_when, _call_atoms, _call_render, cost=1, entity_args=()),
+    Rule("promise", ("s4_night_shop", "s6_parcel_station"),
+         _promise_when, _promise_atoms, _promise_render, cost=1, entity_args=("to",)),
 ]
 
 #: 给模型看的一句话说明。工具表由这里生成，所以每个动词都必须有一句。
@@ -778,13 +988,20 @@ DOCS = {
     "announce": "对同一处的所有人高声说一句；看不看得见都听得见，传不到别的屋子",
     "retell": "把听来的话转述出去；每经一张嘴，话就短一截",
     "hail": "冲一个你说不出名字的人喊话，只能靠他穿什么、长什么样来指他",
+    "count": "数一数眼前的东西有几份；封着口的地方数不到",
+    "lock": "用钥匙把门或容器锁上",
+    "shift": "在交接记录上落一行，并把钥匙交给接班的人",
+    "call": "对着一部接通的电话说话：另一头听得到声音，两头互相看不见",
+    "promise": "答应别人一件事，并说定到哪一刻；到点你会被提醒",
 }
 
 LABELS = {"examine": "细看", "read": "读", "touch": "碰", "take": "拿起", "place": "放下",
           "give": "交给", "open": "打开", "knock": "敲门", "move": "走过去", "wait": "等",
           "write": "写", "erase": "擦掉", "copy": "复写", "unlock": "开锁",
           "recognize": "认字", "speak": "说话", "impound": "收",
-          "sign": "记上", "announce": "高声说", "retell": "转述", "hail": "喊住"}
+          "sign": "记上", "announce": "高声说", "retell": "转述", "hail": "喊住",
+          "count": "数", "lock": "锁上", "shift": "交接", "call": "打电话",
+          "promise": "答应"}
 
 #: 除目标之外还需要的参数。指称类参数由引擎解析成世界里的东西。
 PARAMS = {
@@ -799,6 +1016,9 @@ PARAMS = {
                ("to", "只对谁私下转述；不说就是这一处的人都听见", False)),
     "hail": (("who", "你怎么指他：穿什么、长什么样", True),
              ("text", "你要喊的话", True)),
+    "shift": (("to", "接这一班的人", True), ("key", "交出去的钥匙", False)),
+    "call": (("text", "你要说给那头听的话", True),),
+    "promise": (("text", "你答应的事", True), ("at", "到哪一刻（世界时钟的分钟数）", True)),
 }
 
 for _rule in _CONCEPTS:

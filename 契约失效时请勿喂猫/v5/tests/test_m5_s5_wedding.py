@@ -74,13 +74,24 @@ class EndingTests(unittest.TestCase):
 
 
 class OneDayTests(unittest.TestCase):
-    def test_the_day_runs_from_nine_to_ten_same_date(self):
+    def test_every_path_runs_the_whole_day_to_the_close(self):
+        """四条路都要把这一天走完：路 a 曾停在 09:22，读者打开 `runs/a.md` 看到的是一天被切断。
+
+        观察自：本包合入后的人工通读（2026-10-23）——`runs/a.md` 的"钟停在哪"是 09:22、"散场时间"是"还没到散场"。
+        没有它时：某条路只要删掉末尾那个空动作，那一天就悄悄停在上午，而"各自跑完一整天"这条判据仍然绿。
+        """
+        for variant in ("a", "b", "c", "d"):
+            with self.subTest(variant=variant):
+                run = play(variant)
+                world = run.world
+                self.assertEqual(world.date, "2026-05-20")
+                self.assertEqual(world.clock, CLOSE,
+                                 f"路 {variant} 没走到 {clock_label(CLOSE, world.date)} 就停了")
+                self.assertEqual(clock_label(world.clock, world.date), "2026-05-20 22:00")
+                self.assertEqual(summary(run)["散场时间"], "2026-05-20 22:00")
         run = play("b")
         world = run.world
-        self.assertEqual(world.date, "2026-05-20")
         self.assertEqual(load(DEFAULT_SEED).clock, START)
-        self.assertEqual(world.clock, CLOSE)
-        self.assertEqual(clock_label(world.clock, world.date), "2026-05-20 22:00")
 
         # 中午过了一道：12:00 的张贴事件真的落进了账本
         world_events = [(e.at, e.what) for e in run.log if e.kind == "world"]

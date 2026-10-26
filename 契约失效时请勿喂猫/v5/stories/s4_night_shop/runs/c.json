@@ -1,0 +1,1968 @@
+{
+ "events": [
+  {
+   "id": 1,
+   "at": 1320,
+   "kind": "intent",
+   "actor": "outgoing",
+   "what": "shift",
+   "atoms": [
+    {
+     "op": "set",
+     "e": "handover_record",
+     "k": "marks",
+     "v": [
+      {
+       "text": "白班 14:00 交班：抽屉收银 1000。",
+       "ink": "printed",
+       "style": "printed"
+      },
+      {
+       "text": "2026-04-02 22:00 交班：交班者→接班者；钥匙：办公室钥匙",
+       "ink": "ink",
+       "style": "out_hand"
+      }
+     ]
+    },
+    {
+     "op": "move",
+     "e": "office_key",
+     "to": "incoming"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1320,
+     "v": "你在交接记录上记下一班，把办公室钥匙交给了接班者。"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1320,
+     "v": "交班者在交接记录上记下一班，把办公室钥匙递给了你。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1320,
+     "v": "交班者和接班者交接了一班。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1320,
+     "v": "交班者和接班者交接了一班。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1320,
+     "v": "那个人和那个人交接了一班。"
+    },
+    {
+     "op": "clock",
+     "to": 1322
+    }
+   ],
+   "note": {
+    "target": "handover_record",
+    "digest_after": "c26e918c98578ef46124c4e81647c099571bb60b962b1a149d5fea9a57516350"
+   }
+  },
+  {
+   "id": 2,
+   "at": 1322,
+   "kind": "intent",
+   "actor": "outgoing",
+   "what": "write",
+   "atoms": [
+    {
+     "op": "set",
+     "e": "handover_record",
+     "k": "marks",
+     "v": [
+      {
+       "text": "白班 14:00 交班：抽屉收银 1000。",
+       "ink": "printed",
+       "style": "printed"
+      },
+      {
+       "text": "2026-04-02 22:00 交班：交班者→接班者；钥匙：办公室钥匙",
+       "ink": "ink",
+       "style": "out_hand"
+      },
+      {
+       "text": "付送货现金二百，当班结清。",
+       "ink": "ink",
+       "style": "out_hand"
+      }
+     ]
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1322,
+     "v": "你在交接记录上添了一笔：「付送货现金二百，当班结清。」"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1322,
+     "v": "交班者在交接记录上写字。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1322,
+     "v": "交班者在交接记录上写字。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1322,
+     "v": "交班者在交接记录上写字。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1322,
+     "v": "那个人在交接记录上写字。"
+    },
+    {
+     "op": "clock",
+     "to": 1324
+    }
+   ],
+   "note": {
+    "target": "handover_record",
+    "digest_after": "7ca460a2035a39b57f6f2dfcdd338c870957eca12ddce1d7fd145e2ad76fbd6a"
+   }
+  },
+  {
+   "id": 3,
+   "at": 1324,
+   "kind": "intent",
+   "actor": "outgoing",
+   "what": "place",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "pen",
+     "to": "shop"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1324,
+     "v": "你把笔放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1324,
+     "v": "交班者把笔放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1324,
+     "v": "交班者把笔放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1324,
+     "v": "交班者把笔放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1324,
+     "v": "那个人把笔放在了这儿。"
+    },
+    {
+     "op": "clock",
+     "to": 1325
+    }
+   ],
+   "note": {
+    "target": "pen",
+    "digest_after": "c470b91cd48719c0dd7885ce7d943a0065382a7586552a0ba4e54b0b2d7104a0"
+   }
+  },
+  {
+   "id": 4,
+   "at": 1325,
+   "kind": "intent",
+   "actor": "outgoing",
+   "what": "speak",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1325,
+     "v": "你说：「抽屉里一千，你数一遍；办公室钥匙我交给你了。」"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1325,
+     "v": "交班者说：「抽屉里一千，你数一遍；办公室钥匙我交给你了。」"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1325,
+     "v": "交班者说：「抽屉里一千，你数一遍；办公室钥匙我交给你了。」"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1325,
+     "v": "交班者说：「抽屉里一千，你数一遍；办公室钥匙我交给你了。」"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1325,
+     "v": "那个人说：「抽屉里一千，你数一遍；办公室钥匙我交给你了。」"
+    },
+    {
+     "op": "clock",
+     "to": 1326
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "a8fc0e6725cd5bd7e9c0b686dca88ae4ff93c972076f21b211eaa55fceb5d1d6"
+   }
+  },
+  {
+   "id": 5,
+   "at": 1326,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "promise",
+   "atoms": [
+    {
+     "op": "schedule",
+     "at": 1900,
+     "effect": {
+      "kind": "remind",
+      "who": "incoming",
+      "to": "outgoing",
+      "place": "shop",
+      "about": "明晚白班我替你顶。"
+     }
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1326,
+     "v": "你答应交班者：「明晚白班我替你顶。」；到 2026-04-03 07:40 这件事会回到你面前。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1326,
+     "v": "接班者答应你：「明晚白班我替你顶。」。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1326,
+     "v": "接班者对交班者说定了一件事。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1326,
+     "v": "接班者对交班者说定了一件事。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1326,
+     "v": "那个人对那个人说定了一件事。"
+    },
+    {
+     "op": "clock",
+     "to": 1327
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "4da4d003ff8cc7fb6da37f36364f490c74a8ff472f6d8e532d5cd1aa8e8c45d2"
+   }
+  },
+  {
+   "id": 6,
+   "at": 1327,
+   "kind": "intent",
+   "actor": "outgoing",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "outgoing",
+     "to": "outside"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1327,
+     "v": "你到了店外。"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1327,
+     "v": "交班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1327,
+     "v": "交班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1327,
+     "v": "交班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1327,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1329
+    }
+   ],
+   "note": {
+    "target": "outside",
+    "digest_after": "de3f51682e75a444452a006fe4a9247a571e7e2f42b6affc8f7105c86e544437"
+   }
+  },
+  {
+   "id": 7,
+   "at": 1329,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "count",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1329,
+     "v": "你数了收银抽屉：共 800（收银款 800）。"
+    },
+    {
+     "op": "clock",
+     "to": 1330
+    }
+   ],
+   "note": {
+    "target": "drawer",
+    "digest_after": "276bae4a214cab43b90c18ed4ae66c4b0d4e10664fb1c2c87e755f3770752f73"
+   }
+  },
+  {
+   "id": 8,
+   "at": 1330,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1330,
+     "v": "你读着交接记录：「白班 14:00 交班：抽屉收银 1000。2026-04-02 22:00 交班：交班者→接班者；钥匙：办公室钥匙付送货现金二百，当班结清。」"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1330,
+     "v": "接班者在看交接记录。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1330,
+     "v": "接班者在看交接记录。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1330,
+     "v": "接班者在看交接记录。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1330,
+     "v": "那个人在看交接记录。"
+    },
+    {
+     "op": "clock",
+     "to": 1331
+    }
+   ],
+   "note": {
+    "target": "handover_record",
+    "digest_after": "cdfefe9bf0c181cd6dd83e5a225c0e8c208166342db011df57a08c952762644b"
+   }
+  },
+  {
+   "id": 9,
+   "at": 1331,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1331,
+     "v": "你读着小票：「22:04 销售 1 笔 合计 3 元。本店留底。」"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1331,
+     "v": "接班者在看小票。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1331,
+     "v": "接班者在看小票。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1331,
+     "v": "接班者在看小票。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1331,
+     "v": "那个人在看小票。"
+    },
+    {
+     "op": "clock",
+     "to": 1332
+    }
+   ],
+   "note": {
+    "target": "receipt",
+    "digest_after": "cba20bb4d534a49340f495336fba48cf9dc24199d0f546fd3ce0359558e18875"
+   }
+  },
+  {
+   "id": 10,
+   "at": 1332,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1332,
+     "v": "你读着班表：「夜班 22:00–08:00：交班者、接班者；白班 08:00 接班。」"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1332,
+     "v": "接班者在看班表。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1332,
+     "v": "接班者在看班表。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1332,
+     "v": "接班者在看班表。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1332,
+     "v": "那个人在看班表。"
+    },
+    {
+     "op": "clock",
+     "to": 1333
+    }
+   ],
+   "note": {
+    "target": "shift_sheet",
+    "digest_after": "06964ad87379944121dea49c4ffc5085531a55b128fa821f5e6d719d6cbc487a"
+   }
+  },
+  {
+   "id": 11,
+   "at": 1333,
+   "kind": "intent",
+   "actor": "customer",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "customer",
+     "to": "shop"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1333,
+     "v": "你到了店内。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1333,
+     "v": "顾客走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1333,
+     "v": "顾客走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1333,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1333,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1335
+    }
+   ],
+   "note": {
+    "target": "shop",
+    "digest_after": "87ff43569aefa4a3314a445126a615048e8c7c92648a086b46572e10558d2e12"
+   }
+  },
+  {
+   "id": 12,
+   "at": 1335,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "take",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "pen",
+     "to": "incoming"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1335,
+     "v": "你拿起了笔。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1335,
+     "v": "接班者拿起了笔。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1335,
+     "v": "接班者拿起了笔。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1335,
+     "v": "接班者拿起了笔。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1335,
+     "v": "那个人拿起了笔。"
+    },
+    {
+     "op": "clock",
+     "to": 1336
+    }
+   ],
+   "note": {
+    "target": "pen",
+    "digest_after": "7e52a422180cb32a2ea675ea63d6d846b46957e14192f7aca01ecb45e1440159"
+   }
+  },
+  {
+   "id": 13,
+   "at": 1336,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "write",
+   "atoms": [
+    {
+     "op": "set",
+     "e": "receipt",
+     "k": "marks",
+     "v": [
+      {
+       "text": "22:04 销售 1 笔 合计 3 元。本店留底。",
+       "ink": "printed",
+       "style": "printed"
+      },
+      {
+       "text": "22:40 矿泉水一瓶 3 元。",
+       "ink": "ink",
+       "style": "in_hand"
+      }
+     ]
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1336,
+     "v": "你在小票上添了一笔：「22:40 矿泉水一瓶 3 元。」"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1336,
+     "v": "接班者在小票上写字。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1336,
+     "v": "接班者在小票上写字。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1336,
+     "v": "接班者在小票上写字。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1336,
+     "v": "那个人在小票上写字。"
+    },
+    {
+     "op": "clock",
+     "to": 1338
+    }
+   ],
+   "note": {
+    "target": "receipt",
+    "digest_after": "e3f1ea6daa86aa7a906cb480180f1637526cf2320508522260cfc70b062ec1da"
+   }
+  },
+  {
+   "id": 14,
+   "at": 1338,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "place",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "pen",
+     "to": "shop"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1338,
+     "v": "你把笔放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1338,
+     "v": "接班者把笔放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1338,
+     "v": "接班者把笔放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1338,
+     "v": "接班者把笔放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1338,
+     "v": "那个人把笔放在了这儿。"
+    },
+    {
+     "op": "clock",
+     "to": 1339
+    }
+   ],
+   "note": {
+    "target": "pen",
+    "digest_after": "d9064eaa9c9a50ce80a996af73bc9daa9656ac66dd3551190ecf1ac90e0528c0"
+   }
+  },
+  {
+   "id": 15,
+   "at": 1339,
+   "kind": "intent",
+   "actor": "customer",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1339,
+     "v": "你读着班表：「夜班 22:00–08:00：交班者、接班者；白班 08:00 接班。」"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1339,
+     "v": "顾客在看班表。"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1339,
+     "v": "顾客在看班表。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1339,
+     "v": "那个人在看班表。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1339,
+     "v": "那个人在看班表。"
+    },
+    {
+     "op": "clock",
+     "to": 1340
+    }
+   ],
+   "note": {
+    "target": "shift_sheet",
+    "digest_after": "50e55e7a86c00e6ec84a556625c92ae5bc0815dc8a51f2d6defc2fc60e8b36e6"
+   }
+  },
+  {
+   "id": 16,
+   "at": 1340,
+   "kind": "intent",
+   "actor": "customer",
+   "what": "speak",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1340,
+     "v": "你说：「这水多少钱？」"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1340,
+     "v": "顾客说：「这水多少钱？」"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1340,
+     "v": "顾客说：「这水多少钱？」"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1340,
+     "v": "那个人说：「这水多少钱？」"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1340,
+     "v": "那个人说：「这水多少钱？」"
+    },
+    {
+     "op": "clock",
+     "to": 1341
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "89744955b3f5a741962e3dd1c525ca801624cc2494bfe286911edaa9f9f2c15c"
+   }
+  },
+  {
+   "id": 17,
+   "at": 1341,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "speak",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1341,
+     "v": "你说：「三块。夜班就我一个人。」"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1341,
+     "v": "接班者说：「三块。夜班就我一个人。」"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1341,
+     "v": "接班者说：「三块。夜班就我一个人。」"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1341,
+     "v": "接班者说：「三块。夜班就我一个人。」"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1341,
+     "v": "那个人说：「三块。夜班就我一个人。」"
+    },
+    {
+     "op": "clock",
+     "to": 1342
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "70ae3c90b1cf5ed6c97bb793ee98d099544324bc811d814bdbb10a60df093d96"
+   }
+  },
+  {
+   "id": 18,
+   "at": 1342,
+   "kind": "intent",
+   "actor": "customer",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "customer",
+     "to": "outside"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1342,
+     "v": "你到了店外。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1342,
+     "v": "顾客走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1342,
+     "v": "顾客走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1342,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1342,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1344
+    }
+   ],
+   "note": {
+    "target": "outside",
+    "digest_after": "c094051f10352655c7b1265889df680ef42c6ce001dc94a33014b2964664e403"
+   }
+  },
+  {
+   "id": 19,
+   "at": 1344,
+   "kind": "intent",
+   "actor": "driver",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "driver",
+     "to": "shop"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1344,
+     "v": "你到了店内。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1344,
+     "v": "送货员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1344,
+     "v": "送货员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1344,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1344,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1346
+    }
+   ],
+   "note": {
+    "target": "shop",
+    "digest_after": "6838bb58ab66e7fbd9684282062664a434fe82ddba030e3e91c5caf97386e27a"
+   }
+  },
+  {
+   "id": 20,
+   "at": 1346,
+   "kind": "intent",
+   "actor": "driver",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "driver",
+     "to": "back_room"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1346,
+     "v": "你到了后仓。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1346,
+     "v": "送货员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1346,
+     "v": "送货员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1346,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1346,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1348
+    }
+   ],
+   "note": {
+    "target": "back_room",
+    "digest_after": "9484d5b907801813cee9502a913c76aa7636c3f58937b0bd6660ea417ac38c77"
+   }
+  },
+  {
+   "id": 21,
+   "at": 1348,
+   "kind": "intent",
+   "actor": "driver",
+   "what": "place",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "delivery",
+     "to": "back_room"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1348,
+     "v": "你把送货放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1348,
+     "v": "送货员把送货放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1348,
+     "v": "送货员把送货放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1348,
+     "v": "那个人把送货放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1348,
+     "v": "那个人把送货放在了这儿。"
+    },
+    {
+     "op": "clock",
+     "to": 1349
+    }
+   ],
+   "note": {
+    "target": "delivery",
+    "digest_after": "737b9eeb74bf714e5bed7ba0fd1833f668e10e2793fe7e1f5bb83a9991439518"
+   }
+  },
+  {
+   "id": 22,
+   "at": 1349,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "unlock",
+   "atoms": [
+    {
+     "op": "set",
+     "e": "office",
+     "k": "locked",
+     "v": false
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1349,
+     "v": "你打开了办公室的锁。"
+    },
+    {
+     "op": "clock",
+     "to": 1350
+    }
+   ],
+   "note": {
+    "target": "office",
+    "digest_after": "73efb4b496d633d8fa8dfd43bb9cf35aa1a458ee32907f52f9b088b5f3bfe0bb"
+   }
+  },
+  {
+   "id": 23,
+   "at": 1350,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "open",
+   "atoms": [
+    {
+     "op": "set",
+     "e": "office",
+     "k": "door",
+     "v": "open"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1350,
+     "v": "你推开了办公室的门。"
+    },
+    {
+     "op": "clock",
+     "to": 1351
+    }
+   ],
+   "note": {
+    "target": "office",
+    "digest_after": "9a8eb524749d22fe9cbae0bda6893a90826a6033e2305e868056b9a761909cb0"
+   }
+  },
+  {
+   "id": 24,
+   "at": 1351,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "incoming",
+     "to": "office"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1351,
+     "v": "你到了办公室。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1351,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1351,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1351,
+     "v": "接班者走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1351,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1353
+    }
+   ],
+   "note": {
+    "target": "office",
+    "digest_after": "e951c0a74b3970038b352495b140e868aef2f59f41028995a56df3364db40684"
+   }
+  },
+  {
+   "id": 25,
+   "at": 1353,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "call",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1353,
+     "v": "你对着电话说：「店长，接班盘点：抽屉里数出八百，账上写一千。」"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1353,
+     "v": "接班者的声音从听筒里传来：「店长，接班盘点：抽屉里数出八百，账上写一千。」"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1353,
+     "v": "接班者在打电话，听不清那头的声音。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1353,
+     "v": "接班者在打电话，听不清那头的声音。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1353,
+     "v": "那个人在打电话，听不清那头的声音。"
+    },
+    {
+     "op": "clock",
+     "to": 1354
+    }
+   ],
+   "note": {
+    "target": "电话",
+    "digest_after": "490324626c7195eae31f10077fecf966c5d47fc987c426c327bb10a45acab44c"
+   }
+  },
+  {
+   "id": 26,
+   "at": 1354,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "call",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1354,
+     "v": "你对着电话的听筒说：「我过不去。钥匙在谁手里，这一班的账就记在谁头上。」"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1354,
+     "v": "电话里传出声音：「我过不去。钥匙在谁手里，这一班的账就记在谁头上。」"
+    },
+    {
+     "op": "clock",
+     "to": 1355
+    }
+   ],
+   "note": {
+    "target": "电话",
+    "digest_after": "ae2f93b6c2bfba0dc6d67eeacfdadded4ed82789545388992ec7252b44838c3e"
+   }
+  },
+  {
+   "id": 27,
+   "at": 1355,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "incoming",
+     "to": "shop"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1355,
+     "v": "你到了店内。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1355,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1355,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1355,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1355,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1357
+    }
+   ],
+   "note": {
+    "target": "shop",
+    "digest_after": "8c0b906afbb4c6a79807444100d4f532ecda72f42b062582537f8c1aa5236bfd"
+   }
+  },
+  {
+   "id": 28,
+   "at": 1357,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "lock",
+   "atoms": [
+    {
+     "op": "set",
+     "e": "office",
+     "k": "door",
+     "v": "closed"
+    },
+    {
+     "op": "set",
+     "e": "office",
+     "k": "locked",
+     "v": true
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1357,
+     "v": "你用钥匙把办公室锁上了。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1357,
+     "v": "接班者把办公室锁上了。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1357,
+     "v": "接班者把办公室锁上了。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1357,
+     "v": "那个人把办公室锁上了。"
+    },
+    {
+     "op": "clock",
+     "to": 1358
+    }
+   ],
+   "note": {
+    "target": "office",
+    "digest_after": "32796879c857ff7eb9e80bcb640fa58325f6ab552a0890daed4640dff97dab20"
+   }
+  },
+  {
+   "id": 29,
+   "at": 1358,
+   "kind": "intent",
+   "actor": "driver",
+   "what": "take",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "box",
+     "to": "driver"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1358,
+     "v": "你拿起了纸箱。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1358,
+     "v": "送货员拿起了纸箱。"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1358,
+     "v": "送货员拿起了纸箱。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1358,
+     "v": "那个人拿起了纸箱。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1358,
+     "v": "那个人拿起了纸箱。"
+    },
+    {
+     "op": "clock",
+     "to": 1359
+    }
+   ],
+   "note": {
+    "target": "box",
+    "digest_after": "f128dbb6dce7cc567cdbfc13d48a420edc381debabd7e4f4193374fe7627dfce"
+   }
+  },
+  {
+   "id": 30,
+   "at": 1359,
+   "kind": "intent",
+   "actor": "driver",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "driver",
+     "to": "shop"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1359,
+     "v": "你到了店内。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1359,
+     "v": "送货员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1359,
+     "v": "送货员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1359,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1359,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1361
+    }
+   ],
+   "note": {
+    "target": "shop",
+    "digest_after": "a703ab68f677088bdd2a278ef9447c233c3df677801fb5b556807356b3329f0f"
+   }
+  },
+  {
+   "id": 31,
+   "at": 1361,
+   "kind": "intent",
+   "actor": "driver",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "driver",
+     "to": "outside"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1361,
+     "v": "你到了店外。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1361,
+     "v": "送货员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1361,
+     "v": "送货员走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1361,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1361,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1363
+    }
+   ],
+   "note": {
+    "target": "outside",
+    "digest_after": "80f3543624ec06e1e4a6627ee58c140a99b8a91fc62f10fc52dec670e6dbfb6a"
+   }
+  },
+  {
+   "id": 32,
+   "at": 1363,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1363,
+     "v": "你读着交接记录：「白班 14:00 交班：抽屉收银 1000。2026-04-02 22:00 交班：交班者→接班者；钥匙：办公室钥匙付送货现金二百，当班结清。」"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1363,
+     "v": "接班者在看交接记录。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1363,
+     "v": "接班者在看交接记录。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1363,
+     "v": "接班者在看交接记录。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1363,
+     "v": "那个人在看交接记录。"
+    },
+    {
+     "op": "clock",
+     "to": 1364
+    }
+   ],
+   "note": {
+    "target": "handover_record",
+    "digest_after": "ced98c6ce846f506ce197fa0c016c2a6491fdb479c862ee6a6a16d97075bc10c"
+   }
+  },
+  {
+   "id": 33,
+   "at": 1364,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1364,
+     "v": "你读着送货单：「送货十二箱；本店月结，不收现金。」"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1364,
+     "v": "接班者在看送货单。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1364,
+     "v": "接班者在看送货单。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1364,
+     "v": "接班者在看送货单。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1364,
+     "v": "那个人在看送货单。"
+    },
+    {
+     "op": "clock",
+     "to": 1365
+    }
+   ],
+   "note": {
+    "target": "delivery_note",
+    "digest_after": "33dcb2e831df0ef2e00f51c94fa3b39606942ef1fd273a0ed1a039d47212ca70"
+   }
+  },
+  {
+   "id": 34,
+   "at": 1365,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "speak",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1365,
+     "v": "你说：「账上多了一笔付送货的现金，送货单上写的是月结。」"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1365,
+     "v": "接班者说：「账上多了一笔付送货的现金，送货单上写的是月结。」"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1365,
+     "v": "接班者说：「账上多了一笔付送货的现金，送货单上写的是月结。」"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1365,
+     "v": "接班者说：「账上多了一笔付送货的现金，送货单上写的是月结。」"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1365,
+     "v": "那个人说：「账上多了一笔付送货的现金，送货单上写的是月结。」"
+    },
+    {
+     "op": "clock",
+     "to": 1366
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "f25fa63dad0606bec8fffb387d17a09828daf8be3f07c865260ba2c2f932ea1d"
+   }
+  },
+  {
+   "id": 35,
+   "at": 1900,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 1900
+    }
+   ],
+   "note": {
+    "digest_after": "0afc3c408e3e6a6e5966c2f1dbb1dc593de37f91620cfc28d2c6b5fbbcef0566"
+   }
+  },
+  {
+   "id": 36,
+   "at": 1900,
+   "kind": "world",
+   "actor": null,
+   "what": "remind",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1900,
+     "seq": 2
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1900,
+     "v": "店内这边到了你说定的那一刻：明晚白班我替你顶。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "remind",
+     "who": "incoming",
+     "to": "outgoing",
+     "place": "shop",
+     "about": "明晚白班我替你顶。"
+    },
+    "digest_after": "7b42e1032708ed2b0c6f5724a96aea48eacc71c5a6c32db7fa58431f8f6ab792"
+   }
+  },
+  {
+   "id": 37,
+   "at": 1920,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 1920
+    }
+   ],
+   "note": {
+    "digest_after": "e9885538f16dab10a5a0c4e3498fbf0fe1acee6717ceb360edb310d5b3951a43"
+   }
+  },
+  {
+   "id": 38,
+   "at": 1920,
+   "kind": "world",
+   "actor": null,
+   "what": "open",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1920,
+     "seq": 1
+    },
+    {
+     "op": "set",
+     "e": "office",
+     "k": "door",
+     "v": "open"
+    },
+    {
+     "op": "set",
+     "e": "office",
+     "k": "locked",
+     "v": false
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "open",
+     "place": "office"
+    },
+    "digest_after": "f18d09de5bc30be7289ea210903e8f6fbc130089e53d24290b175666dc72fb5c"
+   }
+  },
+  {
+   "id": 39,
+   "at": 1920,
+   "kind": "intent",
+   "actor": "outgoing",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "outgoing",
+     "to": "shop"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1920,
+     "v": "你到了店内。"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1920,
+     "v": "交班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1920,
+     "v": "交班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1920,
+     "v": "交班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1920,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1922
+    }
+   ],
+   "note": {
+    "target": "shop",
+    "digest_after": "e12a08e830ea43a5d72b7013ac0698486a8ca643e9e1c87aed73560e664f4513"
+   }
+  },
+  {
+   "id": 40,
+   "at": 1922,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "take",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "pen",
+     "to": "incoming"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1922,
+     "v": "你拿起了笔。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1922,
+     "v": "接班者拿起了笔。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1922,
+     "v": "接班者拿起了笔。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1922,
+     "v": "接班者拿起了笔。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1922,
+     "v": "那个人拿起了笔。"
+    },
+    {
+     "op": "clock",
+     "to": 1923
+    }
+   ],
+   "note": {
+    "target": "pen",
+    "digest_after": "ef42835cf82e4a7a0ef7957385ccb965f8dea182de3fbc2798ea60f6fbb8ff75"
+   }
+  },
+  {
+   "id": 41,
+   "at": 1923,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "shift",
+   "atoms": [
+    {
+     "op": "set",
+     "e": "handover_record",
+     "k": "marks",
+     "v": [
+      {
+       "text": "白班 14:00 交班：抽屉收银 1000。",
+       "ink": "printed",
+       "style": "printed"
+      },
+      {
+       "text": "2026-04-02 22:00 交班：交班者→接班者；钥匙：办公室钥匙",
+       "ink": "ink",
+       "style": "out_hand"
+      },
+      {
+       "text": "付送货现金二百，当班结清。",
+       "ink": "ink",
+       "style": "out_hand"
+      },
+      {
+       "text": "2026-04-03 08:03 交班：接班者→交班者；钥匙：办公室钥匙",
+       "ink": "ink",
+       "style": "in_hand"
+      }
+     ]
+    },
+    {
+     "op": "move",
+     "e": "office_key",
+     "to": "outgoing"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1923,
+     "v": "你在交接记录上记下一班，把办公室钥匙交给了交班者。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1923,
+     "v": "接班者在交接记录上记下一班，把办公室钥匙递给了你。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1923,
+     "v": "接班者和交班者交接了一班。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1923,
+     "v": "接班者和交班者交接了一班。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1923,
+     "v": "那个人和那个人交接了一班。"
+    },
+    {
+     "op": "clock",
+     "to": 1925
+    }
+   ],
+   "note": {
+    "target": "handover_record",
+    "digest_after": "ff269101693ab5a2d9178fe29eadc832b24d0513bbaaa29ebc91aba8f78a31ad"
+   }
+  }
+ ],
+ "summary": {
+  "收银抽屉里的数": 800,
+  "记录上的数": 1000,
+  "店里现金总数": 800,
+  "备用金最后在谁手里": "送货员拿着的纸箱",
+  "备用金的去向": [
+   "后仓的纸箱里",
+   "送货员拿着的纸箱"
+  ],
+  "交班者添的行": [
+   "付送货现金二百，当班结清。"
+  ],
+  "接班者添的行": [],
+  "送货单上写的": "送货十二箱；本店月结，不收现金。",
+  "交班时间": 1925,
+  "交班时刻读法": "2026-04-03 08:05",
+  "结局": "被人做了账：抽屉里只有 800，账上是 1000；记录上多出一笔「付送货现金二百，当班结清。」，送货单上写的是「送货十二箱；本店月结，不收现金。」"
+ }
+}
