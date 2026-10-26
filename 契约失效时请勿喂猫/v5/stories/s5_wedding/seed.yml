@@ -1,0 +1,165 @@
+story: s5-wedding
+# 2026-05-20 的婚宴。签到本上多了一个谁都不认识的名字，一桌人都说自己看见过他进来。
+date: 2026-05-20
+start_clock: 540          # 09:00 签到
+
+places:
+  - id: venue
+    name: 酒店
+    prose: 走廊铺着红地毯，宴会厅的门半开着，签到的长桌摆在外头
+  - id: hall
+    parent: venue
+    name: 厅内
+    prose: 十张圆桌，主桌靠里；灯串从这头拉到那头，舞台边上立着一支话筒
+  - id: checkin
+    parent: venue
+    name: 签到台
+    prose: 一张长条桌，红布铺到地上；桌上摊着簿子、铅笔、橡皮和一张席位表
+  - id: corridor
+    parent: venue
+    name: 后厨走廊
+    prose: 一道弹簧门隔开，端菜的人从这里进出，地砖上有水印
+  - id: parking
+    parent: venue
+    name: 停车场
+    prose: 地面被下午的太阳晒热，车缝里塞着落叶
+
+people:
+  - id: bride
+    parent: hall
+    name: 新娘
+    prose: 婚纱的下摆被踩脏了一小块
+    identity: 今天是你的婚礼。你从早上忙到现在，只盼这一天顺顺当当过去；签到的事一向不由你管。
+    knows: [venue, hall, checkin, corridor, parking, signin, guest_list, groom, bride_father, bride_mother, groom_father, groom_mother, best_man, maid, manager, bookkeeper]
+    state: {hand: cursive}
+
+  - id: groom
+    parent: hall
+    name: 新郎
+    prose: 礼服的领结歪着，一直在看门口
+    identity: 今天是你的婚礼。你在门口迎客，记得住的脸不多，来的都是客。
+    knows: [venue, hall, checkin, corridor, parking, signin, guest_list, bride, bride_father, bride_mother, groom_father, groom_mother, best_man, maid, manager, bookkeeper]
+    state: {hand: cursive}
+
+  - id: bride_father
+    parent: hall
+    name: 新娘的父亲
+    prose: 深色西装，袖口别着名牌
+    identity: 你是新娘的父亲。台上要讲话，稿子在口袋里，你惦记的是别出岔子。
+    knows: [venue, hall, checkin, corridor, parking, bride, groom, bride_mother, groom_father, groom_mother, best_man, maid, manager, bookkeeper]
+    state: {hand: cursive}
+
+  - id: bride_mother
+    parent: hall
+    name: 新娘的母亲
+    prose: 手里攥着一沓红包，见人就笑
+    identity: 你是新娘的母亲。红包攥在手里，谁来了你都要招呼一声。
+    knows: [venue, hall, checkin, corridor, parking, signin, bride, groom, bride_father, groom_father, groom_mother, best_man, maid, manager, bookkeeper]
+    state: {hand: cursive}
+
+  - id: groom_father
+    parent: hall
+    name: 新郎的父亲
+    prose: 坐在主桌，杯子空了也不叫人添
+    identity: 你是新郎的父亲。主桌坐着，酒喝得慢，眼睛一直往门口看。
+    knows: [venue, hall, checkin, corridor, parking, groom, bride, bride_father, bride_mother, groom_mother, best_man, maid, manager, bookkeeper]
+    state: {hand: cursive}
+
+  - id: groom_mother
+    parent: hall
+    name: 新郎的母亲
+    prose: 反复理着桌上的花
+    identity: 你是新郎的母亲。桌上的花被你理了又理，你不想听闲话。
+    knows: [venue, hall, checkin, corridor, parking, groom, bride, bride_father, bride_mother, groom_father, best_man, maid, manager, bookkeeper]
+    state: {hand: cursive}
+
+  - id: best_man
+    parent: hall
+    name: 伴郎
+    prose: 胸前别着胸花，站在门口迎客
+    identity: 你是伴郎。门口站了一早上，谁进来你都看一眼；穿灰夹克那个你没见过。
+    knows: [venue, hall, checkin, corridor, parking, signin, groom, bride, bride_father, bride_mother, groom_father, groom_mother, maid, manager, bookkeeper]
+    state: {hand: cursive}
+
+  - id: maid
+    parent: hall
+    name: 伴娘
+    prose: 裙摆上别着别针，帮新娘提着裙角
+    identity: 你是伴娘。你替新娘提着裙角，签到台那边的事你没凑近。
+    knows: [venue, hall, checkin, corridor, parking, bride, groom, bride_father, bride_mother, groom_father, groom_mother, best_man, manager, bookkeeper]
+    state: {hand: cursive}
+
+  - id: manager
+    parent: checkin
+    name: 酒店经理
+    prose: 黑西装，胸牌上写着职务
+    identity: 你是酒店经理。宴会厅、签到台、后厨走廊、停车场今天都归你照看；出了事，你只想这事赶紧过去。
+    knows: [venue, hall, checkin, corridor, parking, signin, guest_list, bride, groom, best_man, maid, bookkeeper]
+    state: {institution: venue}
+    believes:
+      - {about: hall, says: 厅里的事，越少人知道越好}
+
+  - id: bookkeeper
+    parent: checkin
+    name: 记账的人
+    prose: 戴老花镜，把簿子按在胳膊底下
+    identity: 你管签到和礼金。你只认簿子上写下的东西，嘴上说的都不算；铅笔是你自己带来的，图的是改起来方便。
+    knows: [venue, hall, checkin, corridor, parking, signin, guest_list, pencil, eraser, bride, groom, bride_father, bride_mother, groom_father, groom_mother, best_man, maid, manager]
+    state: {hand: cursive}
+    believes:
+      - {about: signin, says: 签到本上写下的才算数，嘴上说的不算}
+
+  - id: stranger
+    parent: hall
+    name: 陌生人
+    aliases: [穿灰夹克的男人, 穿灰夹克的, 灰夹克的男人]
+    prose: 灰夹克，领口磨白了，袖口有一块洗不掉的油渍，站在靠门那桌的边上
+    identity: 你不在名单上。你想进去吃一顿，签个名字就够了；有人问起，你就说自己是新娘那边的远亲。
+    knows: [venue, hall, checkin, parking, signin, pencil, guest_list]
+    state: {hand: printed}
+
+objects:
+  - id: signin
+    parent: checkin
+    name: 签到本
+    prose: 红皮簿子，纸页被翻得发软
+    state:
+      marks: [{text: "签到簿", ink: printed, style: printed}]
+      accepts: [ink, graphite]
+      records: true
+      portable: true
+
+  - id: pencil
+    parent: checkin
+    name: 铅笔
+    prose: 一支削得短短的铅笔，笔杆上有牙印
+    state: {implement: graphite, portable: true}
+
+  - id: eraser
+    parent: checkin
+    name: 橡皮
+    prose: 一块用成圆角的橡皮，沾着黑
+    state: {erases: true, portable: true}
+
+  - id: guest_list
+    parent: checkin
+    name: 名单
+    prose: 一张打印的席位表，边角用胶带粘过
+    state:
+      marks: [{text: "主桌：新娘、新郎、双方父母。宾客：伴郎、伴娘、记账人。", ink: printed, style: printed}]
+      accepts: [ink]
+      portable: true
+
+  - id: menu
+    parent: venue
+    name: 午宴安排
+    prose: 一张红纸，四个角用胶带粘过
+    state:
+      marks: [{text: "午宴 12:00 开席，席位按名单入座。", ink: printed, style: printed}]
+      portable: true
+
+schedule:
+  # 到中午，酒店把午宴安排贴到厅内；内容只有去读才知道。
+  - {at: 720, effect: {kind: post, place: hall, item: menu}}
+  # 22:00 散场：厅门到点关上锁上，不是谁的决定。
+  - {at: 1320, effect: {kind: close, place: hall}}

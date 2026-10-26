@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 from typing import Any
 
@@ -544,6 +545,175 @@ def _impound_render(ctx: Ctx) -> list[tuple[str, str]]:
     return out
 
 
+# ---------- M5：记录权威、人群扇出、传闻扩散、无名指称
+
+def _present(world: World, actor: str) -> list[str]:
+    """同一处的人：声音传得到，看不看得见另说。"""
+    place = world.place_of(actor)
+    return [p for p in _people(world)
+            if p != actor and world.place_of(p) == place]
+
+
+def _sign_when(ctx: Ctx) -> str | None:
+    """记录权威：只有能登记的本子上的字算数，嘴上说的不进本子。"""
+    w = ctx.world
+    if not ctx.args.get("text"):
+        return "你没想好要记什么"
+    if not w.get(ctx.target, "records"):
+        return f"{ctx.name(ctx.target)}不是能登记的本子"
+    tool = _implement_in_hand(w, ctx.actor)
+    if tool is None:
+        return "你手里没有能写字的东西"
+    ink = w.get(tool, "implement")
+    if ink not in (w.get(ctx.target, "accepts") or []):
+        return f"{ctx.name(ctx.target)}留不下{ink}这种痕迹"
+    if w.get(ctx.target, "closed"):
+        return f"{ctx.name(ctx.target)}封着口"
+    return None
+
+
+def _sign_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+    w = ctx.world
+    tool = _implement_in_hand(w, ctx.actor)
+    rows = list(w.get(ctx.target, "marks") or [])
+    rows.append({"text": f"{clock_label(w.clock, w.date)} {ctx.args['text']}",
+                 "ink": w.get(tool, "implement") or "ink",
+                 "style": w.get(ctx.actor, "hand") or "printed"})
+    return [{"op": "set", "e": ctx.target, "k": "marks", "v": rows}]
+
+
+def _sign_render(ctx: Ctx) -> list[tuple[str, str]]:
+    w = ctx.world
+    name = ctx.name(ctx.target)
+    out = [(ctx.actor, f"你在{name}上记下一行：「{ctx.args['text']}」")]
+    for p in _onlookers(w, ctx.actor, ctx.target):
+        out.append((p, f"{refer(w, p, ctx.actor)}在{name}上记了一行。"))
+    return out
+
+
+def _announce_when(ctx: Ctx) -> str | None:
+    if not ctx.args.get("text"):
+        return "你什么也没说"
+    return None
+
+
+def _announce_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+    return []
+
+
+def _announce_render(ctx: Ctx) -> list[tuple[str, str]]:
+    """人群感知扇出：对着这一处的所有人说，看不看得见都听得见；不传到别的屋子。"""
+    w = ctx.world
+    text = ctx.args["text"]
+    out = [(ctx.actor, f"你提高声音说：「{text}」")]
+    for p in _present(w, ctx.actor):
+        out.append((p, f"{refer(w, p, ctx.actor)}提高声音说：「{text}」"))
+    return out
+
+
+def _clauses(text: str) -> list[str]:
+    return [c for c in re.split(r"[，。；！？]", text) if c.strip()]
+
+
+def _degrade(text: str, hop: int) -> str:
+    """传闻每过一张嘴，就掉一截：第一个转述的人已经少说了最后半句。"""
+    parts = _clauses(text)
+    keep = max(1, len(parts) - hop)
+    body = "，".join(parts[:keep])
+    return f"{body}……" if hop > 0 else f"{body}。"
+
+
+def _retell_hop(w: World, about: str) -> int:
+    return int(w.flags.get(f"retold:{about}", 0)) + 1
+
+
+def _retell_when(ctx: Ctx) -> str | None:
+    w = ctx.world
+    text = ctx.args.get("text")
+    if not text:
+        return "你没什么可转述的"
+    about = ctx.args.get("about") or text
+    if not any(about in t for _at, t in w.memory.get(ctx.actor, [])):
+        return f"你没听人说起过「{about}」，编不出这话"
+    return None
+
+
+def _retell_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+    w = ctx.world
+    about = ctx.args.get("about") or ctx.args["text"]
+    return [{"op": "flag", "k": f"retold:{about}", "v": _retell_hop(w, about)}]
+
+
+def _retell_render(ctx: Ctx) -> list[tuple[str, str]]:
+    """传闻扩散：说的人存下的是掉了一截的版本，听的人拿到的更短。"""
+    w = ctx.world
+    text = ctx.args["text"]
+    about = ctx.args.get("about") or text
+    said = _degrade(text, _retell_hop(w, about))
+    to = ctx.args.get("to")
+    if to:
+        out = [(ctx.actor, f"你压低声音，把听来的话对{refer(w, ctx.actor, to)}转述了一遍：「{said}」"),
+               (to, f"{refer(w, to, ctx.actor)}低声对你说：「{said}」")]
+        for p in _onlookers(w, ctx.actor, to):
+            if p != to:
+                out.append((p, f"{refer(w, p, ctx.actor)}和{refer(w, p, to)}凑在一起低声说话，你听不清内容。"))
+        return out
+    out = [(ctx.actor, f"你把听来的话转述出去：「{said}」")]
+    for p in _onlookers(w, ctx.actor):
+        out.append((p, f"{refer(w, p, ctx.actor)}把听来的事转述了一遍：「{said}」"))
+    return out
+
+
+def resolve_looks(world: World, actor: str, ref: str) -> str | None:
+    """无名指称：不认识的人只能靠看得见的样子来叫；名字与 id 都叫不动他。"""
+    hits: list[str] = []
+    for eid in visible(world, actor):
+        if world.kind_of(eid) != "person":
+            continue
+        ent = world.entities[eid]
+        known = eid in world.knowledge.get(actor, [])
+        text = f"{ent.prose} {ent.name}" if known else ent.prose
+        if ref in text or any(ref in a for a in ent.aliases):
+            hits.append(eid)
+    return sorted(hits)[0] if hits else None
+
+
+def _hail_when(ctx: Ctx) -> str | None:
+    w = ctx.world
+    if not ctx.args.get("text"):
+        return "你什么也没说"
+    who = ctx.args.get("who") or ""
+    if not who:
+        return "你不知道该冲谁喊"
+    if resolve_looks(w, ctx.actor, who) is None:
+        return f"你看不出「{who}」指的是谁"
+    return None
+
+
+def _hail_atoms(ctx: Ctx) -> list[dict[str, Any]]:
+    w = ctx.world
+    eid = resolve_looks(w, ctx.actor, ctx.args.get("who") or "")
+    if eid is None:
+        return []
+    return [{"op": "know", "e": ctx.actor, "v": eid}]
+
+
+def _hail_render(ctx: Ctx) -> list[tuple[str, str]]:
+    w = ctx.world
+    who = ctx.args.get("who") or ""
+    text = ctx.args["text"]
+    eid = resolve_looks(w, ctx.actor, who)
+    if eid is None:
+        return [(ctx.actor, f"你冲着「{who}」喊了一声，没人应。")]
+    ent = w.entities[eid]
+    out = [(ctx.actor, f"你冲着{ent.prose}喊了一声：「{text}」"),
+           (eid, f"有人冲你喊了一声：「{text}」")]
+    for p in _onlookers(w, ctx.actor, eid):
+        if p != eid:
+            out.append((p, f"{refer(w, p, ctx.actor)}冲一个生面孔喊了一声：「{text}」"))
+    return out
+
+
 _CONCEPTS = [
     Rule("examine", STORY, _examine_when, _examine_atoms, _examine_render, cost=1),
     Rule("read", STORY, _read_when, _read_atoms, _read_render, cost=1, hints=_read_hints),
@@ -575,6 +745,14 @@ _CONCEPTS = [
          _speak_when, _speak_atoms, _speak_render, cost=1, entity_args=("to",)),
     Rule("impound", ("s3_night_market", "s4_night_shift"),
          _impound_when, _impound_atoms, _impound_render, cost=1, hints=_impound_hints),
+    Rule("sign", ("s5_wedding", "s6_parcel_station"),
+         _sign_when, _sign_atoms, _sign_render, cost=2),
+    Rule("announce", ("s5_wedding", "s6_parcel_station"),
+         _announce_when, _announce_atoms, _announce_render, cost=1, entity_args=()),
+    Rule("retell", ("s5_wedding", "s6_parcel_station"),
+         _retell_when, _retell_atoms, _retell_render, cost=1, entity_args=("to",)),
+    Rule("hail", ("s5_wedding", "s6_parcel_station"),
+         _hail_when, _hail_atoms, _hail_render, cost=1, entity_args=()),
 ]
 
 #: 给模型看的一句话说明。工具表由这里生成，所以每个动词都必须有一句。
@@ -596,12 +774,17 @@ DOCS = {
     "recognize": "盯着纸上的字迹看：你能认出是谁的字吗",
     "speak": "说一句话：不带 to 就是当众说，在场的人都听得见；带 to 就只对那个人说，旁人只看见你们在低声说话",
     "impound": "以制度身份把一件东西收走，并在登记本上记下一行",
+    "sign": "在签到本这类登记簿上记下一行；只有写下的才算数",
+    "announce": "对同一处的所有人高声说一句；看不看得见都听得见，传不到别的屋子",
+    "retell": "把听来的话转述出去；每经一张嘴，话就短一截",
+    "hail": "冲一个你说不出名字的人喊话，只能靠他穿什么、长什么样来指他",
 }
 
 LABELS = {"examine": "细看", "read": "读", "touch": "碰", "take": "拿起", "place": "放下",
           "give": "交给", "open": "打开", "knock": "敲门", "move": "走过去", "wait": "等",
           "write": "写", "erase": "擦掉", "copy": "复写", "unlock": "开锁",
-          "recognize": "认字", "speak": "说话", "impound": "收"}
+          "recognize": "认字", "speak": "说话", "impound": "收",
+          "sign": "记上", "announce": "高声说", "retell": "转述", "hail": "喊住"}
 
 #: 除目标之外还需要的参数。指称类参数由引擎解析成世界里的东西。
 PARAMS = {
@@ -609,6 +792,13 @@ PARAMS = {
     "speak": (("text", "你要说的话", True), ("to", "只对谁私下说；不说就是当众", False)),
     "place": (("to", "放到哪里", True),),
     "give": (("to", "交给谁", True),),
+    "sign": (("text", "记下什么", True),),
+    "announce": (("text", "你要高声说的话", True),),
+    "retell": (("text", "你要转述的话", True),
+               ("about", "你听人说起过的那件事（用来核对你的记忆）", False),
+               ("to", "只对谁私下转述；不说就是这一处的人都听见", False)),
+    "hail": (("who", "你怎么指他：穿什么、长什么样", True),
+             ("text", "你要喊的话", True)),
 }
 
 for _rule in _CONCEPTS:

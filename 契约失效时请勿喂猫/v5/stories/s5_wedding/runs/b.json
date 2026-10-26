@@ -1,0 +1,1304 @@
+{
+ "events": [
+  {
+   "id": 1,
+   "at": 540,
+   "kind": "intent",
+   "actor": "stranger",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "stranger",
+     "to": "venue"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 540,
+     "v": "你到了酒店。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 540,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 540,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 540,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 540,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 540,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 540,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 540,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 540,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 540,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 540,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 542
+    }
+   ],
+   "note": {
+    "target": "venue",
+    "digest_after": "5c73e5c9bfbe23dfc4c6ee75f76220603afa559adfe761d04dd11da85e49578c"
+   }
+  },
+  {
+   "id": 2,
+   "at": 542,
+   "kind": "intent",
+   "actor": "stranger",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "stranger",
+     "to": "checkin"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 542,
+     "v": "你到了签到台。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 542,
+     "v": "那个人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 542,
+     "v": "那个人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 542,
+     "v": "那个人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 542,
+     "v": "那个人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 542,
+     "v": "那个人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 542,
+     "v": "那个人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 542,
+     "v": "那个人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 542,
+     "v": "那个人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 542,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 542,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 544
+    }
+   ],
+   "note": {
+    "target": "checkin",
+    "digest_after": "e93a77b575b032662d71b1fc13e55bd47a51e37bc7a433529819775ff29a5bf9"
+   }
+  },
+  {
+   "id": 3,
+   "at": 544,
+   "kind": "intent",
+   "actor": "stranger",
+   "what": "take",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "pencil",
+     "to": "stranger"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 544,
+     "v": "你拿起了铅笔。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 544,
+     "v": "那个人拿起了铅笔。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 544,
+     "v": "那个人拿起了铅笔。"
+    },
+    {
+     "op": "clock",
+     "to": 545
+    }
+   ],
+   "note": {
+    "target": "pencil",
+    "digest_after": "97a8d8ab371830f84042096ce964a863b46c1a5adeb6049352ca2d0e83b97197"
+   }
+  },
+  {
+   "id": 4,
+   "at": 545,
+   "kind": "intent",
+   "actor": "stranger",
+   "what": "sign",
+   "atoms": [
+    {
+     "op": "set",
+     "e": "signin",
+     "k": "marks",
+     "v": [
+      {
+       "text": "签到簿",
+       "ink": "printed",
+       "style": "printed"
+      },
+      {
+       "text": "2026-05-20 09:05 陈明",
+       "ink": "graphite",
+       "style": "printed"
+      }
+     ]
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 545,
+     "v": "你在签到本上记下一行：「陈明」"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 545,
+     "v": "那个人在签到本上记了一行。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 545,
+     "v": "那个人在签到本上记了一行。"
+    },
+    {
+     "op": "clock",
+     "to": 547
+    }
+   ],
+   "note": {
+    "target": "signin",
+    "digest_after": "d0be6634e5cff0cfb9614d926ce48f0b2d63df971b9f2e9e29464d9f64156308"
+   }
+  },
+  {
+   "id": 5,
+   "at": 547,
+   "kind": "intent",
+   "actor": "stranger",
+   "what": "place",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "pencil",
+     "to": "checkin"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 547,
+     "v": "你把铅笔放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 547,
+     "v": "那个人把铅笔放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 547,
+     "v": "那个人把铅笔放在了这儿。"
+    },
+    {
+     "op": "clock",
+     "to": 548
+    }
+   ],
+   "note": {
+    "target": "pencil",
+    "digest_after": "152f7ecd279a6879f4ff82d955c4e7d1f4026282e6630f7b8de5e141c59b3b65"
+   }
+  },
+  {
+   "id": 6,
+   "at": 548,
+   "kind": "intent",
+   "actor": "stranger",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "stranger",
+     "to": "venue"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 548,
+     "v": "你到了酒店。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 548,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 548,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 548,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 548,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 548,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 548,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 548,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 548,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 548,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 548,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 550
+    }
+   ],
+   "note": {
+    "target": "venue",
+    "digest_after": "8375382a34a05a81b1c66380201b66304762bbfb14a0566eea801bfbc07f3380"
+   }
+  },
+  {
+   "id": 7,
+   "at": 550,
+   "kind": "intent",
+   "actor": "stranger",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "stranger",
+     "to": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 550,
+     "v": "你到了厅内。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 550,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 550,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 550,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 550,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 550,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 550,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 550,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 550,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 550,
+     "v": "那个人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 550,
+     "v": "那个人走了出去。"
+    },
+    {
+     "op": "clock",
+     "to": 552
+    }
+   ],
+   "note": {
+    "target": "hall",
+    "digest_after": "4487fcc32c5d04bd2c47af253061628a6332edc791daa74b84550159d8b08f7e"
+   }
+  },
+  {
+   "id": 8,
+   "at": 552,
+   "kind": "intent",
+   "actor": "bookkeeper",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 552,
+     "v": "你读着签到本：「签到簿2026-05-20 09:05 陈明」"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 552,
+     "v": "记账的人在看签到本。"
+    },
+    {
+     "op": "clock",
+     "to": 553
+    }
+   ],
+   "note": {
+    "target": "signin",
+    "digest_after": "f34e79a036887cf9634714efd45c3b77c57b4243ac6881b4d188edd83e9459a8"
+   }
+  },
+  {
+   "id": 9,
+   "at": 553,
+   "kind": "intent",
+   "actor": "groom",
+   "what": "announce",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 553,
+     "v": "你提高声音说：「各位入席，婚礼十点开始。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 553,
+     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 553,
+     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 553,
+     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 553,
+     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 553,
+     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 553,
+     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 553,
+     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 553,
+     "v": "那个人提高声音说：「各位入席，婚礼十点开始。」"
+    },
+    {
+     "op": "clock",
+     "to": 554
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "1de5d815c2493bcfcce38f5f8d02eeabe061a71a5c8c124da47303b4dbda0271"
+   }
+  },
+  {
+   "id": 10,
+   "at": 554,
+   "kind": "intent",
+   "actor": "bookkeeper",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "bookkeeper",
+     "to": "venue"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 554,
+     "v": "你到了酒店。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 554,
+     "v": "记账的人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 554,
+     "v": "记账的人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 554,
+     "v": "记账的人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 554,
+     "v": "记账的人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 554,
+     "v": "记账的人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 554,
+     "v": "记账的人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 554,
+     "v": "记账的人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 554,
+     "v": "记账的人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 554,
+     "v": "记账的人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 554,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 556
+    }
+   ],
+   "note": {
+    "target": "venue",
+    "digest_after": "f74e3c92d2aaf86021418be79453bf1a8ea8df8dd5068076c842095dac5ff8d5"
+   }
+  },
+  {
+   "id": 11,
+   "at": 556,
+   "kind": "intent",
+   "actor": "bookkeeper",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "bookkeeper",
+     "to": "parking"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 556,
+     "v": "你到了停车场。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 556,
+     "v": "记账的人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 556,
+     "v": "记账的人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 556,
+     "v": "记账的人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 556,
+     "v": "记账的人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 556,
+     "v": "记账的人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 556,
+     "v": "记账的人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 556,
+     "v": "记账的人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 556,
+     "v": "记账的人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 556,
+     "v": "记账的人走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 556,
+     "v": "那个人走了出去。"
+    },
+    {
+     "op": "clock",
+     "to": 558
+    }
+   ],
+   "note": {
+    "target": "parking",
+    "digest_after": "c5d06aa253ac19e962a1425cb7349dbe25c3cddec66f4efe3146f97759c1378c"
+   }
+  },
+  {
+   "id": 12,
+   "at": 558,
+   "kind": "intent",
+   "actor": "groom",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "groom",
+     "to": "venue"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 558,
+     "v": "你到了酒店。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 558,
+     "v": "新郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 558,
+     "v": "新郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 558,
+     "v": "新郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 558,
+     "v": "新郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 558,
+     "v": "新郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 558,
+     "v": "新郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 558,
+     "v": "新郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 558,
+     "v": "新郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 558,
+     "v": "新郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 558,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 560
+    }
+   ],
+   "note": {
+    "target": "venue",
+    "digest_after": "8cad0dddad9c2aa074c95b4308749e8fba61549cb570bd9e7d0d1aaa91d6675e"
+   }
+  },
+  {
+   "id": 13,
+   "at": 560,
+   "kind": "intent",
+   "actor": "groom",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "groom",
+     "to": "parking"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 560,
+     "v": "你到了停车场。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 560,
+     "v": "新郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 560,
+     "v": "新郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 560,
+     "v": "新郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 560,
+     "v": "新郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 560,
+     "v": "新郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 560,
+     "v": "新郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 560,
+     "v": "新郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 560,
+     "v": "新郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 560,
+     "v": "新郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 560,
+     "v": "那个人走了出去。"
+    },
+    {
+     "op": "clock",
+     "to": 562
+    }
+   ],
+   "note": {
+    "target": "parking",
+    "digest_after": "0fe15d9474d0f9248b1bfdad18a8a7e7571dac117559e3b33866ee9113d7bcf4"
+   }
+  },
+  {
+   "id": 14,
+   "at": 562,
+   "kind": "intent",
+   "actor": "bride",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "bride",
+     "to": "venue"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 562,
+     "v": "你到了酒店。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 562,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 562,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 562,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 562,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 562,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 562,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 562,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 562,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 562,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 562,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 564
+    }
+   ],
+   "note": {
+    "target": "venue",
+    "digest_after": "9487f03d02565adb6289952a51edc63979a60dc2cff36d588cb01b33606db97e"
+   }
+  },
+  {
+   "id": 15,
+   "at": 564,
+   "kind": "intent",
+   "actor": "bride",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "bride",
+     "to": "parking"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 564,
+     "v": "你到了停车场。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 564,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 564,
+     "v": "新娘走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 564,
+     "v": "新娘走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 564,
+     "v": "新娘走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 564,
+     "v": "新娘走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 564,
+     "v": "新娘走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 564,
+     "v": "新娘走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 564,
+     "v": "新娘走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 564,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 564,
+     "v": "那个人走了出去。"
+    },
+    {
+     "op": "clock",
+     "to": 566
+    }
+   ],
+   "note": {
+    "target": "parking",
+    "digest_after": "19081585ddf3e0bb300bf1b8d023a5cabda2ae272adbd242a10b8b51bb29aec5"
+   }
+  },
+  {
+   "id": 16,
+   "at": 720,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 720
+    }
+   ],
+   "note": {
+    "digest_after": "a63a624213cf51eae77f1b639a21f50ad9f7855a1972de9758b0093f18e2b338"
+   }
+  },
+  {
+   "id": 17,
+   "at": 720,
+   "kind": "world",
+   "actor": null,
+   "what": "post",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 720,
+     "seq": 1
+    },
+    {
+     "op": "move",
+     "e": "menu",
+     "to": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "post",
+     "place": "hall",
+     "item": "menu"
+    },
+    "digest_after": "dd14c7403937e4e064a6f3bfda663596a41ca1646586bd2178c93c4903031329"
+   }
+  },
+  {
+   "id": 18,
+   "at": 1320,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 1320
+    }
+   ],
+   "note": {
+    "digest_after": "fb1fbd60b2f70705623e4462bdc8a964d05192f753bd5339e479eb53ad045a17"
+   }
+  },
+  {
+   "id": 19,
+   "at": 1320,
+   "kind": "world",
+   "actor": null,
+   "what": "close",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1320,
+     "seq": 2
+    },
+    {
+     "op": "set",
+     "e": "hall",
+     "k": "door",
+     "v": "closed"
+    },
+    {
+     "op": "set",
+     "e": "hall",
+     "k": "locked",
+     "v": true
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "close",
+     "place": "hall"
+    },
+    "digest_after": "c59b5590e6e6c9f3427112b685af9ce3cdbf3f9920ed87b8329b235a8a77641b"
+   }
+  }
+ ],
+ "summary": {
+  "签到本上多出来的名字": "陈明",
+  "最后一行的字": "2026-05-20 09:05 陈明",
+  "有人把名字对上了人": false,
+  "对上的人": "没有人",
+  "对上时在哪": "不知何处",
+  "读过本子的人": 1,
+  "本子改过": false,
+  "散场时间": "2026-05-20 22:00",
+  "钟停在哪": "2026-05-20 22:00",
+  "结局": "没有人再查：那个名字留在签到本上，散场时本子还是那一本，最后一行的字是「2026-05-20 09:05 陈明」"
+ }
+}
