@@ -68,9 +68,9 @@ M5 (milestone)
 | 2 | `s1-model-report` | 《末班车》's real-model report, riding M5's ladder as the person placed it (2026-10-23) | a fresh `stories/s1_last_bus/runs/agent-*` directory with `decided_by: agent` on every turn, read against `AGENTS.md` | open — **needs a provider authorization**, which this advance did not have |
 | 2 | `s4-night-shop` / `s5-wedding` | the two same-scale worlds: shift handover, lock & key, quantity, crowd/rumour/record authority | two traces read through a whole day; `anti_cheat` still 3+ stories | landed 2026-10-23: `514310e` + `c2526ac`, merged by this layer at `0be9bd5` (one conflict in `library/concepts.py`, union of both vocabularies); gate 187 tests / lint / `anti_cheat` 5 stories. 人工通读抓到的两处见 `same-scale` 行。 |
 | 3 | `same-scale` | 两支世界的量与密度对得上：《夜班》的夜不再是空的，《婚礼》的量追到同一尺度 | 班内相邻时间戳间隔 ≤ 120 分钟；两支故事每条路的动作数比值在 ±30% 内；两支各四个结局仍互不相同 | landed 2026-10-23 `9752808`（经 f458777 → 05571b8 两轮修回）: 《夜班》53/50/52/50 与《婚礼》63/59/60/64 做成的事，失败动作 0，八条路最长空档 120 分钟；一条共用判据在 `tests/test_m5_same_scale.py`，反向控制已验（拿掉 16:00 那件排程，婚礼上午出现 207 分钟空档） |
-| 3 | `stocktake` | the claim "盘点由数量算出而非剧本决定" as a test: change a count in the world, the stocktake reading changes; write a number in the script and it is not read | a negative control that goes red when the stocktake stops summing | open |
-| 3 | `comparison` | the same-scale comparison report of the two worlds | report + the two traces it cites; entry condition: `same-scale` green（已达） | open |
-| — | `pack` | traces in git and a `check` that fails on a run directory without `context.md` | `python3 scripts/pack_trajectory.py check` | open |
+| 3 | `stocktake` | the claim "盘点由数量算出而非剧本决定" as a test: change a count in the world, the stocktake reading changes; write a number in the script and it is not read | a negative control that goes red when the stocktake stops summing | landed 2026-10-23 `7950513`: `library/stocktake.py` 一份读数一个出口（`count` 动词与结局摘要都走它）；副本里 800→650 读数变 650、清 0 读 0；把数写死探针下两条测试都红（本层复核过）；台账 `R12` |
+| 3 | `comparison` | the same-scale comparison report of the two worlds | report + the two traces it cites; entry condition: `same-scale` green（已达） | landed 2026-10-23: `v5/docs/V5-M5-COMPARISON.md`（七件事成立、三件没成立：`sign` 与 `shift` 是两个词说同一件事、婚礼“十人同场”只在场不参与、店长只有一句话） |
+| — | `pack` | traces in git and a `check` that fails on a run directory without `context.md` | `python3 scripts/pack_trajectory.py check` | landed 2026-10-23 `521f582`: 25 件 zstd 工件对 100 件原始件（3,172,688 字节退出索引、仍在磁盘），逐件摘要一致；`check` 四类坏都抓（本层复核：`check` 退出 0，`unpack` 对 provider 轨迹逐件摘要一致） |
 
 ## Decided
 
