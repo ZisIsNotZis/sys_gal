@@ -517,62 +517,20 @@
    "id": 9,
    "at": 553,
    "kind": "intent",
-   "actor": "groom",
-   "what": "announce",
+   "actor": "bookkeeper",
+   "what": "read",
    "atoms": [
     {
      "op": "remember",
-     "e": "groom",
+     "e": "bookkeeper",
      "at": 553,
-     "v": "你提高声音说：「各位入席，婚礼十点开始。」"
+     "v": "你读着名单：「主桌：新娘、新郎、双方父母。宾客：伴郎、伴娘、记账人。」"
     },
     {
      "op": "remember",
-     "e": "bride",
+     "e": "manager",
      "at": 553,
-     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
-    },
-    {
-     "op": "remember",
-     "e": "bride_father",
-     "at": 553,
-     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
-    },
-    {
-     "op": "remember",
-     "e": "bride_mother",
-     "at": 553,
-     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
-    },
-    {
-     "op": "remember",
-     "e": "groom_father",
-     "at": 553,
-     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
-    },
-    {
-     "op": "remember",
-     "e": "groom_mother",
-     "at": 553,
-     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
-    },
-    {
-     "op": "remember",
-     "e": "best_man",
-     "at": 553,
-     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
-    },
-    {
-     "op": "remember",
-     "e": "maid",
-     "at": 553,
-     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
-    },
-    {
-     "op": "remember",
-     "e": "stranger",
-     "at": 553,
-     "v": "那个人提高声音说：「各位入席，婚礼十点开始。」"
+     "v": "记账的人在看名单。"
     },
     {
      "op": "clock",
@@ -580,87 +538,141 @@
     }
    ],
    "note": {
-    "target": null,
-    "digest_after": "21e39c913b2d6bc68059de98f3c9d39f6b4b4feab2040aec5edf9d06d38de72a"
+    "target": "guest_list",
+    "digest_after": "08927a6d2ba0a21acc92f4c42ee7bb0ae3a5983f5dffa5dbae2560a9273c56dc"
    }
   },
   {
    "id": 10,
    "at": 554,
    "kind": "intent",
-   "actor": "bookkeeper",
-   "what": "move",
+   "actor": "groom",
+   "what": "announce",
    "atoms": [
     {
-     "op": "move",
-     "e": "bookkeeper",
-     "to": "venue"
-    },
-    {
      "op": "remember",
-     "e": "bookkeeper",
+     "e": "groom",
      "at": 554,
-     "v": "你到了酒店。"
+     "v": "你提高声音说：「各位入席，婚礼十点开始。」"
     },
     {
      "op": "remember",
      "e": "bride",
      "at": 554,
-     "v": "记账的人走了进来。"
-    },
-    {
-     "op": "remember",
-     "e": "groom",
-     "at": 554,
-     "v": "记账的人走了进来。"
+     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
     },
     {
      "op": "remember",
      "e": "bride_father",
      "at": 554,
-     "v": "记账的人走了进来。"
+     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
     },
     {
      "op": "remember",
      "e": "bride_mother",
      "at": 554,
-     "v": "记账的人走了进来。"
+     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
     },
     {
      "op": "remember",
      "e": "groom_father",
      "at": 554,
-     "v": "记账的人走了进来。"
+     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
     },
     {
      "op": "remember",
      "e": "groom_mother",
      "at": 554,
-     "v": "记账的人走了进来。"
+     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
     },
     {
      "op": "remember",
      "e": "best_man",
      "at": 554,
-     "v": "记账的人走了进来。"
+     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
     },
     {
      "op": "remember",
      "e": "maid",
      "at": 554,
-     "v": "记账的人走了进来。"
-    },
-    {
-     "op": "remember",
-     "e": "manager",
-     "at": 554,
-     "v": "记账的人走了进来。"
+     "v": "新郎提高声音说：「各位入席，婚礼十点开始。」"
     },
     {
      "op": "remember",
      "e": "stranger",
      "at": 554,
-     "v": "那个人走了进来。"
+     "v": "那个人提高声音说：「各位入席，婚礼十点开始。」"
+    },
+    {
+     "op": "clock",
+     "to": 555
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "d437b6dd38396a56ce86171cc9282eff2c2276ffa8108657b48572dc0654a1d3"
+   }
+  },
+  {
+   "id": 11,
+   "at": 555,
+   "kind": "intent",
+   "actor": "best_man",
+   "what": "announce",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 555,
+     "v": "你提高声音说：「门口没人了，都进来了。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 555,
+     "v": "伴郎提高声音说：「门口没人了，都进来了。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 555,
+     "v": "伴郎提高声音说：「门口没人了，都进来了。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 555,
+     "v": "伴郎提高声音说：「门口没人了，都进来了。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 555,
+     "v": "伴郎提高声音说：「门口没人了，都进来了。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 555,
+     "v": "伴郎提高声音说：「门口没人了，都进来了。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 555,
+     "v": "伴郎提高声音说：「门口没人了，都进来了。」"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 555,
+     "v": "伴郎提高声音说：「门口没人了，都进来了。」"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 555,
+     "v": "那个人提高声音说：「门口没人了，都进来了。」"
     },
     {
      "op": "clock",
@@ -668,87 +680,87 @@
     }
    ],
    "note": {
-    "target": "venue",
-    "digest_after": "3747fff085c9b560566e5081ffd25aa5ef1ce5f4f1219ec9d8dd8c6fa44783eb"
+    "target": null,
+    "digest_after": "8218becc5c1bb725a0461a43f7dc735e9d96bb4ca1c884d16a80f2a203a20129"
    }
   },
   {
-   "id": 11,
+   "id": 12,
    "at": 556,
    "kind": "intent",
-   "actor": "bookkeeper",
+   "actor": "best_man",
    "what": "move",
    "atoms": [
     {
      "op": "move",
-     "e": "bookkeeper",
-     "to": "parking"
-    },
-    {
-     "op": "remember",
-     "e": "bookkeeper",
-     "at": 556,
-     "v": "你到了停车场。"
-    },
-    {
-     "op": "remember",
-     "e": "bride",
-     "at": 556,
-     "v": "记账的人走了出去。"
-    },
-    {
-     "op": "remember",
-     "e": "groom",
-     "at": 556,
-     "v": "记账的人走了出去。"
-    },
-    {
-     "op": "remember",
-     "e": "bride_father",
-     "at": 556,
-     "v": "记账的人走了出去。"
-    },
-    {
-     "op": "remember",
-     "e": "bride_mother",
-     "at": 556,
-     "v": "记账的人走了出去。"
-    },
-    {
-     "op": "remember",
-     "e": "groom_father",
-     "at": 556,
-     "v": "记账的人走了出去。"
-    },
-    {
-     "op": "remember",
-     "e": "groom_mother",
-     "at": 556,
-     "v": "记账的人走了出去。"
+     "e": "best_man",
+     "to": "venue"
     },
     {
      "op": "remember",
      "e": "best_man",
      "at": 556,
-     "v": "记账的人走了出去。"
+     "v": "你到了酒店。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 556,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 556,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 556,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 556,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 556,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 556,
+     "v": "伴郎走了进来。"
     },
     {
      "op": "remember",
      "e": "maid",
      "at": 556,
-     "v": "记账的人走了出去。"
+     "v": "伴郎走了进来。"
     },
     {
      "op": "remember",
      "e": "manager",
      "at": 556,
-     "v": "记账的人走了出去。"
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 556,
+     "v": "伴郎走了进来。"
     },
     {
      "op": "remember",
      "e": "stranger",
      "at": 556,
-     "v": "那个人走了出去。"
+     "v": "那个人走了进来。"
     },
     {
      "op": "clock",
@@ -756,87 +768,87 @@
     }
    ],
    "note": {
-    "target": "parking",
-    "digest_after": "5df3ce3f3a188c87bcb3a4ec97fb4b84c13fe604f0caa46edc1395c0bd6d1d57"
+    "target": "venue",
+    "digest_after": "8e9175fb366585fc10589a5a6aba32498e4db63a5e1ff38bdf349fe8fbfaf6b4"
    }
   },
   {
-   "id": 12,
+   "id": 13,
    "at": 558,
    "kind": "intent",
-   "actor": "groom",
+   "actor": "best_man",
    "what": "move",
    "atoms": [
     {
      "op": "move",
-     "e": "groom",
-     "to": "venue"
-    },
-    {
-     "op": "remember",
-     "e": "groom",
-     "at": 558,
-     "v": "你到了酒店。"
-    },
-    {
-     "op": "remember",
-     "e": "bride",
-     "at": 558,
-     "v": "新郎走了进来。"
-    },
-    {
-     "op": "remember",
-     "e": "bride_father",
-     "at": 558,
-     "v": "新郎走了进来。"
-    },
-    {
-     "op": "remember",
-     "e": "bride_mother",
-     "at": 558,
-     "v": "新郎走了进来。"
-    },
-    {
-     "op": "remember",
-     "e": "groom_father",
-     "at": 558,
-     "v": "新郎走了进来。"
-    },
-    {
-     "op": "remember",
-     "e": "groom_mother",
-     "at": 558,
-     "v": "新郎走了进来。"
+     "e": "best_man",
+     "to": "checkin"
     },
     {
      "op": "remember",
      "e": "best_man",
      "at": 558,
-     "v": "新郎走了进来。"
+     "v": "你到了签到台。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 558,
+     "v": "伴郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 558,
+     "v": "伴郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 558,
+     "v": "伴郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 558,
+     "v": "伴郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 558,
+     "v": "伴郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 558,
+     "v": "伴郎走了出去。"
     },
     {
      "op": "remember",
      "e": "maid",
      "at": 558,
-     "v": "新郎走了进来。"
+     "v": "伴郎走了出去。"
     },
     {
      "op": "remember",
      "e": "manager",
      "at": 558,
-     "v": "新郎走了进来。"
+     "v": "伴郎走了进来。"
     },
     {
      "op": "remember",
      "e": "bookkeeper",
      "at": 558,
-     "v": "新郎走了进来。"
+     "v": "伴郎走了进来。"
     },
     {
      "op": "remember",
      "e": "stranger",
      "at": 558,
-     "v": "那个人走了进来。"
+     "v": "那个人走了出去。"
     },
     {
      "op": "clock",
@@ -844,13 +856,224 @@
     }
    ],
    "note": {
-    "target": "venue",
-    "digest_after": "fb08f47683e0435cf166d0c29c573c6ff1761464a02e7d971f27d936747b7be3"
+    "target": "checkin",
+    "digest_after": "affdc81570847ddec056485aeffa472670bbeb83aeb922af60412891941283ea"
    }
   },
   {
-   "id": 13,
+   "id": 14,
    "at": 560,
+   "kind": "intent",
+   "actor": "best_man",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 560,
+     "v": "你读着名单：「主桌：新娘、新郎、双方父母。宾客：伴郎、伴娘、记账人。」"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 560,
+     "v": "伴郎在看名单。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 560,
+     "v": "伴郎在看名单。"
+    },
+    {
+     "op": "clock",
+     "to": 561
+    }
+   ],
+   "note": {
+    "target": "guest_list",
+    "digest_after": "12504f9ffa88d50dbbc48615e0184004cc944bba5e662e7548db50be0e304297"
+   }
+  },
+  {
+   "id": 15,
+   "at": 561,
+   "kind": "intent",
+   "actor": "best_man",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "best_man",
+     "to": "venue"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 561,
+     "v": "你到了酒店。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 561,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 561,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 561,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 561,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 561,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 561,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 561,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 561,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 561,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 561,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 563
+    }
+   ],
+   "note": {
+    "target": "venue",
+    "digest_after": "1fa1bc89eff68df540382ac1120ae8eddb5c589b2c8dc28610f6966476a3b3e3"
+   }
+  },
+  {
+   "id": 16,
+   "at": 563,
+   "kind": "intent",
+   "actor": "best_man",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "best_man",
+     "to": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 563,
+     "v": "你到了厅内。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 563,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 563,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 563,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 563,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 563,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 563,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 563,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 563,
+     "v": "伴郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 563,
+     "v": "伴郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 563,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 565
+    }
+   ],
+   "note": {
+    "target": "hall",
+    "digest_after": "17d04a30617c696df2d6c6299ba4f46833a2cf3cfc3c7418774de641d7abca44"
+   }
+  },
+  {
+   "id": 17,
+   "at": 565,
    "kind": "intent",
    "actor": "groom",
    "what": "move",
@@ -858,262 +1081,174 @@
     {
      "op": "move",
      "e": "groom",
-     "to": "parking"
+     "to": "venue"
     },
     {
      "op": "remember",
      "e": "groom",
-     "at": 560,
-     "v": "你到了停车场。"
+     "at": 565,
+     "v": "你到了酒店。"
     },
     {
      "op": "remember",
      "e": "bride",
-     "at": 560,
-     "v": "新郎走了出去。"
+     "at": 565,
+     "v": "新郎走了进来。"
     },
     {
      "op": "remember",
      "e": "bride_father",
-     "at": 560,
-     "v": "新郎走了出去。"
+     "at": 565,
+     "v": "新郎走了进来。"
     },
     {
      "op": "remember",
      "e": "bride_mother",
-     "at": 560,
-     "v": "新郎走了出去。"
+     "at": 565,
+     "v": "新郎走了进来。"
     },
     {
      "op": "remember",
      "e": "groom_father",
-     "at": 560,
-     "v": "新郎走了出去。"
+     "at": 565,
+     "v": "新郎走了进来。"
     },
     {
      "op": "remember",
      "e": "groom_mother",
-     "at": 560,
-     "v": "新郎走了出去。"
+     "at": 565,
+     "v": "新郎走了进来。"
     },
     {
      "op": "remember",
      "e": "best_man",
-     "at": 560,
-     "v": "新郎走了出去。"
+     "at": 565,
+     "v": "新郎走了进来。"
     },
     {
      "op": "remember",
      "e": "maid",
-     "at": 560,
-     "v": "新郎走了出去。"
+     "at": 565,
+     "v": "新郎走了进来。"
     },
     {
      "op": "remember",
      "e": "manager",
-     "at": 560,
-     "v": "新郎走了出去。"
+     "at": 565,
+     "v": "新郎走了进来。"
     },
     {
      "op": "remember",
      "e": "bookkeeper",
-     "at": 560,
+     "at": 565,
      "v": "新郎走了进来。"
     },
     {
      "op": "remember",
      "e": "stranger",
-     "at": 560,
-     "v": "那个人走了出去。"
-    },
-    {
-     "op": "clock",
-     "to": 562
-    }
-   ],
-   "note": {
-    "target": "parking",
-    "digest_after": "97a4550739aa340a4061ed37bd677ae52c4e93cde744468909b9ce2125bc4eb7"
-   }
-  },
-  {
-   "id": 14,
-   "at": 562,
-   "kind": "intent",
-   "actor": "bride",
-   "what": "move",
-   "atoms": [
-    {
-     "op": "move",
-     "e": "bride",
-     "to": "venue"
-    },
-    {
-     "op": "remember",
-     "e": "bride",
-     "at": 562,
-     "v": "你到了酒店。"
-    },
-    {
-     "op": "remember",
-     "e": "groom",
-     "at": 562,
-     "v": "新娘走了进来。"
-    },
-    {
-     "op": "remember",
-     "e": "bride_father",
-     "at": 562,
-     "v": "新娘走了进来。"
-    },
-    {
-     "op": "remember",
-     "e": "bride_mother",
-     "at": 562,
-     "v": "新娘走了进来。"
-    },
-    {
-     "op": "remember",
-     "e": "groom_father",
-     "at": 562,
-     "v": "新娘走了进来。"
-    },
-    {
-     "op": "remember",
-     "e": "groom_mother",
-     "at": 562,
-     "v": "新娘走了进来。"
-    },
-    {
-     "op": "remember",
-     "e": "best_man",
-     "at": 562,
-     "v": "新娘走了进来。"
-    },
-    {
-     "op": "remember",
-     "e": "maid",
-     "at": 562,
-     "v": "新娘走了进来。"
-    },
-    {
-     "op": "remember",
-     "e": "manager",
-     "at": 562,
-     "v": "新娘走了进来。"
-    },
-    {
-     "op": "remember",
-     "e": "bookkeeper",
-     "at": 562,
-     "v": "新娘走了进来。"
-    },
-    {
-     "op": "remember",
-     "e": "stranger",
-     "at": 562,
+     "at": 565,
      "v": "那个人走了进来。"
     },
     {
      "op": "clock",
-     "to": 564
+     "to": 567
     }
    ],
    "note": {
     "target": "venue",
-    "digest_after": "770411fcc467b185699cb43f1b856f8f84d8e3f52579c7fb61fcd2aa10e68172"
+    "digest_after": "c45f1728d269f03d6ffb57c73de47c07ea77eec76a6e4887b71ccd3c6db162e2"
    }
   },
   {
-   "id": 15,
-   "at": 564,
+   "id": 18,
+   "at": 567,
    "kind": "intent",
-   "actor": "bride",
+   "actor": "groom",
    "what": "move",
    "atoms": [
     {
      "op": "move",
-     "e": "bride",
-     "to": "parking"
-    },
-    {
-     "op": "remember",
-     "e": "bride",
-     "at": 564,
-     "v": "你到了停车场。"
+     "e": "groom",
+     "to": "hall"
     },
     {
      "op": "remember",
      "e": "groom",
-     "at": 564,
-     "v": "新娘走了进来。"
+     "at": 567,
+     "v": "你到了厅内。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 567,
+     "v": "新郎走了进来。"
     },
     {
      "op": "remember",
      "e": "bride_father",
-     "at": 564,
-     "v": "新娘走了出去。"
+     "at": 567,
+     "v": "新郎走了进来。"
     },
     {
      "op": "remember",
      "e": "bride_mother",
-     "at": 564,
-     "v": "新娘走了出去。"
+     "at": 567,
+     "v": "新郎走了进来。"
     },
     {
      "op": "remember",
      "e": "groom_father",
-     "at": 564,
-     "v": "新娘走了出去。"
+     "at": 567,
+     "v": "新郎走了进来。"
     },
     {
      "op": "remember",
      "e": "groom_mother",
-     "at": 564,
-     "v": "新娘走了出去。"
+     "at": 567,
+     "v": "新郎走了进来。"
     },
     {
      "op": "remember",
      "e": "best_man",
-     "at": 564,
-     "v": "新娘走了出去。"
+     "at": 567,
+     "v": "新郎走了进来。"
     },
     {
      "op": "remember",
      "e": "maid",
-     "at": 564,
-     "v": "新娘走了出去。"
+     "at": 567,
+     "v": "新郎走了进来。"
     },
     {
      "op": "remember",
      "e": "manager",
-     "at": 564,
-     "v": "新娘走了出去。"
+     "at": 567,
+     "v": "新郎走了出去。"
     },
     {
      "op": "remember",
      "e": "bookkeeper",
-     "at": 564,
-     "v": "新娘走了进来。"
+     "at": 567,
+     "v": "新郎走了出去。"
     },
     {
      "op": "remember",
      "e": "stranger",
-     "at": 564,
-     "v": "那个人走了出去。"
+     "at": 567,
+     "v": "那个人走了进来。"
     },
     {
      "op": "clock",
-     "to": 566
+     "to": 569
     }
    ],
    "note": {
-    "target": "parking",
-    "digest_after": "fde2d41fed63978f6b4faee93e2b950cf32e4d04c4775e884e660dae59b0a44c"
+    "target": "hall",
+    "digest_after": "8ea3094c8c02a4243741014e5a32ecbffd5d0ecee759e3e51c51865bd446dd55"
    }
   },
   {
-   "id": 16,
+   "id": 19,
    "at": 720,
    "kind": "tick",
    "actor": null,
@@ -1125,11 +1260,11 @@
     }
    ],
    "note": {
-    "digest_after": "cf19e8a94b27edaae3c2cdb84231587123f8cba80dc8bbfda68b8c4407f31f50"
+    "digest_after": "b06c0e48a39e0f9da7fae232055cbe3520feb1a3ddf317fc37fab19cf3a1c0a9"
    }
   },
   {
-   "id": 17,
+   "id": 20,
    "at": 720,
    "kind": "world",
    "actor": null,
@@ -1144,6 +1279,18 @@
      "op": "move",
      "e": "menu",
      "to": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 720,
+     "v": "有人把午宴安排贴在了这里。"
     },
     {
      "op": "remember",
@@ -1194,189 +1341,86 @@
      "place": "hall",
      "item": "menu"
     },
-    "digest_after": "2c7bd297dda783403af7874c76cbd198f40f671158aaa00c3b00df08adfe50c1"
-   }
-  },
-  {
-   "id": 18,
-   "at": 720,
-   "kind": "refused",
-   "actor": "groom",
-   "what": "move",
-   "atoms": [],
-   "note": {
-    "reason": "厅内你现在看不见",
-    "hints": [
-     "你知道它，但它不在眼前：厅内"
-    ],
-    "requested": {
-     "target": "厅内"
-    },
-    "digest_after": "2c7bd297dda783403af7874c76cbd198f40f671158aaa00c3b00df08adfe50c1"
-   }
-  },
-  {
-   "id": 19,
-   "at": 720,
-   "kind": "refused",
-   "actor": "bride",
-   "what": "move",
-   "atoms": [],
-   "note": {
-    "reason": "厅内你现在看不见",
-    "hints": [
-     "你知道它，但它不在眼前：厅内"
-    ],
-    "requested": {
-     "target": "厅内"
-    },
-    "digest_after": "2c7bd297dda783403af7874c76cbd198f40f671158aaa00c3b00df08adfe50c1"
-   }
-  },
-  {
-   "id": 20,
-   "at": 720,
-   "kind": "refused",
-   "actor": "manager",
-   "what": "move",
-   "atoms": [],
-   "note": {
-    "reason": "后厨走廊你现在看不见",
-    "hints": [
-     "你知道它，但它不在眼前：后厨走廊"
-    ],
-    "requested": {
-     "target": "后厨走廊"
-    },
-    "digest_after": "2c7bd297dda783403af7874c76cbd198f40f671158aaa00c3b00df08adfe50c1"
+    "digest_after": "7a606e63234cdf66979ac8c8072dc6120be979e7c4adca61bd82576d847bddff"
    }
   },
   {
    "id": 21,
    "at": 720,
-   "kind": "refused",
-   "actor": "manager",
-   "what": "take",
-   "atoms": [],
-   "note": {
-    "reason": "这里没有一样东西叫「菜」",
-    "hints": [
-     "眼前能看见：酒店、签到台、签到本、铅笔、橡皮、名单"
-    ],
-    "requested": {
-     "target": "菜"
-    },
-    "digest_after": "2c7bd297dda783403af7874c76cbd198f40f671158aaa00c3b00df08adfe50c1"
-   }
-  },
-  {
-   "id": 22,
-   "at": 720,
-   "kind": "refused",
-   "actor": "manager",
-   "what": "move",
-   "atoms": [],
-   "note": {
-    "reason": "厅内你现在看不见",
-    "hints": [
-     "你知道它，但它不在眼前：厅内"
-    ],
-    "requested": {
-     "target": "厅内"
-    },
-    "digest_after": "2c7bd297dda783403af7874c76cbd198f40f671158aaa00c3b00df08adfe50c1"
-   }
-  },
-  {
-   "id": 23,
-   "at": 720,
-   "kind": "refused",
-   "actor": "manager",
-   "what": "place",
-   "atoms": [],
-   "note": {
-    "reason": "这里没有一样东西叫「菜」",
-    "hints": [
-     "眼前能看见：酒店、签到台、签到本、铅笔、橡皮、名单"
-    ],
-    "requested": {
-     "target": "菜",
-     "to": "厅内"
-    },
-    "digest_after": "2c7bd297dda783403af7874c76cbd198f40f671158aaa00c3b00df08adfe50c1"
-   }
-  },
-  {
-   "id": 24,
-   "at": 720,
    "kind": "intent",
    "actor": "manager",
-   "what": "announce",
+   "what": "move",
    "atoms": [
+    {
+     "op": "move",
+     "e": "manager",
+     "to": "venue"
+    },
     {
      "op": "remember",
      "e": "manager",
      "at": 720,
-     "v": "你提高声音说：「十二点开席，菜已经上来了，各位动筷。」"
+     "v": "你到了酒店。"
     },
     {
-     "op": "clock",
-     "to": 721
-    }
-   ],
-   "note": {
-    "target": null,
-    "digest_after": "b5a984e32faa730518a3611ce6480b81f42d32d6f9f03c832f787e378baa9fc0"
-   }
-  },
-  {
-   "id": 25,
-   "at": 721,
-   "kind": "intent",
-   "actor": "bride_father",
-   "what": "read",
-   "atoms": [
+     "op": "remember",
+     "e": "bride",
+     "at": 720,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 720,
+     "v": "酒店经理走了进来。"
+    },
     {
      "op": "remember",
      "e": "bride_father",
-     "at": 721,
-     "v": "你读着午宴安排：「午宴 12:00 开席，席位按名单入座。」"
+     "at": 720,
+     "v": "酒店经理走了进来。"
     },
     {
      "op": "remember",
      "e": "bride_mother",
-     "at": 721,
-     "v": "新娘的父亲在看午宴安排。"
+     "at": 720,
+     "v": "酒店经理走了进来。"
     },
     {
      "op": "remember",
      "e": "groom_father",
-     "at": 721,
-     "v": "新娘的父亲在看午宴安排。"
+     "at": 720,
+     "v": "酒店经理走了进来。"
     },
     {
      "op": "remember",
      "e": "groom_mother",
-     "at": 721,
-     "v": "新娘的父亲在看午宴安排。"
+     "at": 720,
+     "v": "酒店经理走了进来。"
     },
     {
      "op": "remember",
      "e": "best_man",
-     "at": 721,
-     "v": "新娘的父亲在看午宴安排。"
+     "at": 720,
+     "v": "酒店经理走了进来。"
     },
     {
      "op": "remember",
      "e": "maid",
-     "at": 721,
-     "v": "新娘的父亲在看午宴安排。"
+     "at": 720,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 720,
+     "v": "酒店经理走了进来。"
     },
     {
      "op": "remember",
      "e": "stranger",
-     "at": 721,
-     "v": "那个人在看午宴安排。"
+     "at": 720,
+     "v": "那个人走了进来。"
     },
     {
      "op": "clock",
@@ -1384,72 +1428,618 @@
     }
    ],
    "note": {
-    "target": "menu",
-    "digest_after": "a8ae882bbdfcea4cee6412fe1eb5cbf12ff026033612eed597a81f75ec355cff"
+    "target": "venue",
+    "digest_after": "70f562bdc0d844d9cd100a9d47dbfa7153d86aa2ad36e0c70d70e93df4112d32"
    }
   },
   {
-   "id": 26,
+   "id": 22,
    "at": 722,
    "kind": "intent",
-   "actor": "groom_father",
-   "what": "read",
+   "actor": "manager",
+   "what": "move",
    "atoms": [
     {
+     "op": "move",
+     "e": "manager",
+     "to": "corridor"
+    },
+    {
      "op": "remember",
-     "e": "groom_father",
+     "e": "manager",
      "at": 722,
-     "v": "你读着午宴安排：「午宴 12:00 开席，席位按名单入座。」"
+     "v": "你到了后厨走廊。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 722,
+     "v": "酒店经理走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 722,
+     "v": "酒店经理走了出去。"
     },
     {
      "op": "remember",
      "e": "bride_father",
      "at": 722,
-     "v": "新郎的父亲在看午宴安排。"
+     "v": "酒店经理走了出去。"
     },
     {
      "op": "remember",
      "e": "bride_mother",
      "at": 722,
-     "v": "新郎的父亲在看午宴安排。"
+     "v": "酒店经理走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 722,
+     "v": "酒店经理走了出去。"
     },
     {
      "op": "remember",
      "e": "groom_mother",
      "at": 722,
-     "v": "新郎的父亲在看午宴安排。"
+     "v": "酒店经理走了出去。"
     },
     {
      "op": "remember",
      "e": "best_man",
      "at": 722,
-     "v": "新郎的父亲在看午宴安排。"
+     "v": "酒店经理走了出去。"
     },
     {
      "op": "remember",
      "e": "maid",
      "at": 722,
-     "v": "新郎的父亲在看午宴安排。"
+     "v": "酒店经理走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 722,
+     "v": "酒店经理走了出去。"
     },
     {
      "op": "remember",
      "e": "stranger",
      "at": 722,
-     "v": "那个人在看午宴安排。"
+     "v": "那个人走了出去。"
     },
     {
      "op": "clock",
-     "to": 723
+     "to": 724
     }
    ],
    "note": {
-    "target": "menu",
-    "digest_after": "ca6840980f720784848c492a1976b005d8f14555e27e057cfee786896d64454c"
+    "target": "corridor",
+    "digest_after": "59a138e1052eaa2698151872ad6e6b3146657e78bd2c5a7bef0be7d80a9feb07"
+   }
+  },
+  {
+   "id": 23,
+   "at": 724,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "take",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "dishes",
+     "to": "manager"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 724,
+     "v": "你拿起了菜。"
+    },
+    {
+     "op": "clock",
+     "to": 725
+    }
+   ],
+   "note": {
+    "target": "dishes",
+    "digest_after": "ebf2c8d2c6e91ddbdf9d5f0e417d9a07af026ade1bf92971c4c76c6986fb8d4e"
+   }
+  },
+  {
+   "id": 24,
+   "at": 725,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "manager",
+     "to": "venue"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 725,
+     "v": "你到了酒店。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 725,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 725,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 725,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 725,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 725,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 725,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 725,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 725,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 725,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 725,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 727
+    }
+   ],
+   "note": {
+    "target": "venue",
+    "digest_after": "cb41a47ef234b40dd6239980b78f0e8c953779d15329f221d293ef7c21af01c0"
+   }
+  },
+  {
+   "id": 25,
+   "at": 727,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "manager",
+     "to": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 727,
+     "v": "你到了厅内。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 727,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 727,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 727,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 727,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 727,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 727,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 727,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 727,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 727,
+     "v": "酒店经理走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 727,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 729
+    }
+   ],
+   "note": {
+    "target": "hall",
+    "digest_after": "086b72e114002d2f7486df33aa614f3c55c0163c12b63c513f41b9661d2e2f6a"
+   }
+  },
+  {
+   "id": 26,
+   "at": 729,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "place",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "dishes",
+     "to": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 729,
+     "v": "你把菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 729,
+     "v": "酒店经理把菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 729,
+     "v": "酒店经理把菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 729,
+     "v": "酒店经理把菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 729,
+     "v": "酒店经理把菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 729,
+     "v": "酒店经理把菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 729,
+     "v": "酒店经理把菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 729,
+     "v": "酒店经理把菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 729,
+     "v": "酒店经理把菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 729,
+     "v": "那个人把菜放在了这儿。"
+    },
+    {
+     "op": "clock",
+     "to": 730
+    }
+   ],
+   "note": {
+    "target": "dishes",
+    "digest_after": "756c98ec7d68d0cf635892554d2fb129abbbcbce96bde38a22240161724c3182"
    }
   },
   {
    "id": 27,
-   "at": 723,
+   "at": 730,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "announce",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 730,
+     "v": "你提高声音说：「十二点开席，菜已经上来了，各位动筷。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 730,
+     "v": "酒店经理提高声音说：「十二点开席，菜已经上来了，各位动筷。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 730,
+     "v": "酒店经理提高声音说：「十二点开席，菜已经上来了，各位动筷。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 730,
+     "v": "酒店经理提高声音说：「十二点开席，菜已经上来了，各位动筷。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 730,
+     "v": "酒店经理提高声音说：「十二点开席，菜已经上来了，各位动筷。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 730,
+     "v": "酒店经理提高声音说：「十二点开席，菜已经上来了，各位动筷。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 730,
+     "v": "酒店经理提高声音说：「十二点开席，菜已经上来了，各位动筷。」"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 730,
+     "v": "酒店经理提高声音说：「十二点开席，菜已经上来了，各位动筷。」"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 730,
+     "v": "酒店经理提高声音说：「十二点开席，菜已经上来了，各位动筷。」"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 730,
+     "v": "那个人提高声音说：「十二点开席，菜已经上来了，各位动筷。」"
+    },
+    {
+     "op": "clock",
+     "to": 731
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "e30d6c1da86ffe976bc5894942b231cade8f41e0ed25e76d8a3537ff82c60b8b"
+   }
+  },
+  {
+   "id": 28,
+   "at": 731,
+   "kind": "intent",
+   "actor": "bride_father",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 731,
+     "v": "你读着午宴安排：「午宴 12:00 开席，席位按名单入座。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 731,
+     "v": "新娘的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 731,
+     "v": "新娘的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 731,
+     "v": "新娘的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 731,
+     "v": "新娘的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 731,
+     "v": "新娘的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 731,
+     "v": "新娘的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 731,
+     "v": "新娘的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 731,
+     "v": "那个人在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 731,
+     "v": "那个人在看午宴安排。"
+    },
+    {
+     "op": "clock",
+     "to": 732
+    }
+   ],
+   "note": {
+    "target": "menu",
+    "digest_after": "c08f6e579bae8f3f7bf1d9b8cf7056984470dbed33cde0e08f5dc605a356941b"
+   }
+  },
+  {
+   "id": 29,
+   "at": 732,
+   "kind": "intent",
+   "actor": "groom_mother",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 732,
+     "v": "你读着午宴安排：「午宴 12:00 开席，席位按名单入座。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 732,
+     "v": "新郎的母亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 732,
+     "v": "新郎的母亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 732,
+     "v": "新郎的母亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 732,
+     "v": "新郎的母亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 732,
+     "v": "新郎的母亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 732,
+     "v": "新郎的母亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 732,
+     "v": "新郎的母亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 732,
+     "v": "那个人在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 732,
+     "v": "那个人在看午宴安排。"
+    },
+    {
+     "op": "clock",
+     "to": 733
+    }
+   ],
+   "note": {
+    "target": "menu",
+    "digest_after": "ff60ec27a3eff64e3ff14ee3ecb26be95f17cb050534b9f220d63c03abe582f9"
+   }
+  },
+  {
+   "id": 30,
+   "at": 733,
    "kind": "intent",
    "actor": "best_man",
    "what": "take",
@@ -1462,96 +2052,240 @@
     {
      "op": "remember",
      "e": "best_man",
-     "at": 723,
+     "at": 733,
      "v": "你拿起了酒。"
     },
     {
      "op": "remember",
+     "e": "bride",
+     "at": 733,
+     "v": "伴郎拿起了酒。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 733,
+     "v": "伴郎拿起了酒。"
+    },
+    {
+     "op": "remember",
      "e": "bride_father",
-     "at": 723,
+     "at": 733,
      "v": "伴郎拿起了酒。"
     },
     {
      "op": "remember",
      "e": "bride_mother",
-     "at": 723,
+     "at": 733,
      "v": "伴郎拿起了酒。"
     },
     {
      "op": "remember",
      "e": "groom_father",
-     "at": 723,
+     "at": 733,
      "v": "伴郎拿起了酒。"
     },
     {
      "op": "remember",
      "e": "groom_mother",
-     "at": 723,
+     "at": 733,
      "v": "伴郎拿起了酒。"
     },
     {
      "op": "remember",
      "e": "maid",
-     "at": 723,
+     "at": 733,
+     "v": "伴郎拿起了酒。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 733,
      "v": "伴郎拿起了酒。"
     },
     {
      "op": "remember",
      "e": "stranger",
-     "at": 723,
+     "at": 733,
      "v": "那个人拿起了酒。"
     },
     {
      "op": "clock",
-     "to": 724
+     "to": 734
     }
    ],
    "note": {
     "target": "liquor",
-    "digest_after": "f12e026e3976ab4c2908edc7b5534c791bdebcade99dd807774b7ed34d7c6c42"
+    "digest_after": "7e05e3b88be282c028ac6751da8ecc896a8d692a2f59efca7ffea6708982f2eb"
    }
   },
   {
-   "id": 28,
-   "at": 724,
-   "kind": "refused",
+   "id": 31,
+   "at": 734,
+   "kind": "intent",
    "actor": "best_man",
    "what": "give",
-   "atoms": [],
-   "note": {
-    "reason": "groom你现在看不见",
-    "hints": [
-     "你知道它，但它不在眼前：新郎"
-    ],
-    "requested": {
-     "target": "酒",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "liquor",
      "to": "groom"
     },
-    "digest_after": "f12e026e3976ab4c2908edc7b5534c791bdebcade99dd807774b7ed34d7c6c42"
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 734,
+     "v": "你把酒交给了新郎。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 734,
+     "v": "伴郎把酒递给了你。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 734,
+     "v": "伴郎把手里的东西递给了新郎。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 734,
+     "v": "伴郎把手里的东西递给了新郎。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 734,
+     "v": "伴郎把手里的东西递给了新郎。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 734,
+     "v": "伴郎把手里的东西递给了新郎。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 734,
+     "v": "伴郎把手里的东西递给了新郎。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 734,
+     "v": "伴郎把手里的东西递给了新郎。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 734,
+     "v": "伴郎把手里的东西递给了新郎。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 734,
+     "v": "那个人把手里的东西递给了那个人。"
+    },
+    {
+     "op": "clock",
+     "to": 735
+    }
+   ],
+   "note": {
+    "target": "liquor",
+    "digest_after": "17a3c9e86dcbc94585d3342338a673667bf0930eb90e8c40ed910fc5b755fd8a"
    }
   },
   {
-   "id": 29,
-   "at": 724,
-   "kind": "refused",
+   "id": 32,
+   "at": 735,
+   "kind": "intent",
    "actor": "groom",
    "what": "place",
-   "atoms": [],
-   "note": {
-    "reason": "这里没有一样东西叫「酒」",
-    "hints": [
-     "眼前能看见：酒店、停车场、新娘、记账的人、车"
-    ],
-    "requested": {
-     "target": "酒",
-     "to": "厅内"
+   "atoms": [
+    {
+     "op": "move",
+     "e": "liquor",
+     "to": "hall"
     },
-    "digest_after": "f12e026e3976ab4c2908edc7b5534c791bdebcade99dd807774b7ed34d7c6c42"
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 735,
+     "v": "你把酒放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 735,
+     "v": "新郎把酒放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 735,
+     "v": "新郎把酒放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 735,
+     "v": "新郎把酒放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 735,
+     "v": "新郎把酒放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 735,
+     "v": "新郎把酒放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 735,
+     "v": "新郎把酒放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 735,
+     "v": "新郎把酒放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 735,
+     "v": "新郎把酒放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 735,
+     "v": "那个人把酒放在了这儿。"
+    },
+    {
+     "op": "clock",
+     "to": 736
+    }
+   ],
+   "note": {
+    "target": "liquor",
+    "digest_after": "bee3cecb2b800026c1e9f547955b0f061953010a795b4f27a26cb87c16a7a3ae"
    }
   },
   {
-   "id": 30,
-   "at": 724,
+   "id": 33,
+   "at": 736,
    "kind": "intent",
    "actor": "groom",
    "what": "speak",
@@ -1559,87 +2293,181 @@
     {
      "op": "remember",
      "e": "groom",
-     "at": 724,
+     "at": 736,
      "v": "你说：「我先敬各位一杯。」"
     },
     {
      "op": "remember",
      "e": "bride",
-     "at": 724,
+     "at": 736,
      "v": "新郎说：「我先敬各位一杯。」"
     },
     {
      "op": "remember",
-     "e": "bookkeeper",
-     "at": 724,
+     "e": "bride_father",
+     "at": 736,
      "v": "新郎说：「我先敬各位一杯。」"
     },
     {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 736,
+     "v": "新郎说：「我先敬各位一杯。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 736,
+     "v": "新郎说：「我先敬各位一杯。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 736,
+     "v": "新郎说：「我先敬各位一杯。」"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 736,
+     "v": "新郎说：「我先敬各位一杯。」"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 736,
+     "v": "新郎说：「我先敬各位一杯。」"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 736,
+     "v": "新郎说：「我先敬各位一杯。」"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 736,
+     "v": "那个人说：「我先敬各位一杯。」"
+    },
+    {
      "op": "clock",
-     "to": 725
+     "to": 737
     }
    ],
    "note": {
     "target": null,
-    "digest_after": "0a5e5f6d13e60a3a368eea6e9d0e24d05fbe6b920655358e3bfcae1c1587c320"
-   }
-  },
-  {
-   "id": 31,
-   "at": 725,
-   "kind": "refused",
-   "actor": "bride_mother",
-   "what": "move",
-   "atoms": [],
-   "note": {
-    "reason": "你已经在厅内里了",
-    "hints": [],
-    "requested": {
-     "target": "厅内"
-    },
-    "digest_after": "0a5e5f6d13e60a3a368eea6e9d0e24d05fbe6b920655358e3bfcae1c1587c320"
-   }
-  },
-  {
-   "id": 32,
-   "at": 725,
-   "kind": "refused",
-   "actor": "bride_mother",
-   "what": "give",
-   "atoms": [],
-   "note": {
-    "reason": "bride你现在看不见",
-    "hints": [
-     "你知道它，但它不在眼前：新娘"
-    ],
-    "requested": {
-     "target": "红包",
-     "to": "bride"
-    },
-    "digest_after": "0a5e5f6d13e60a3a368eea6e9d0e24d05fbe6b920655358e3bfcae1c1587c320"
-   }
-  },
-  {
-   "id": 33,
-   "at": 725,
-   "kind": "refused",
-   "actor": "bride",
-   "what": "count",
-   "atoms": [],
-   "note": {
-    "reason": "这里没有一样东西叫「红包」",
-    "hints": [
-     "眼前能看见：酒店、停车场、新郎、记账的人、车"
-    ],
-    "requested": {
-     "target": "红包"
-    },
-    "digest_after": "0a5e5f6d13e60a3a368eea6e9d0e24d05fbe6b920655358e3bfcae1c1587c320"
+    "digest_after": "16b83a00269c64e36d9d97c3181b517ec6a218b03c1a21985d6b7903c5f28233"
    }
   },
   {
    "id": 34,
-   "at": 725,
+   "at": 737,
+   "kind": "intent",
+   "actor": "bride_mother",
+   "what": "give",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "red_envelopes",
+     "to": "bride"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 737,
+     "v": "你把红包交给了新娘。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 737,
+     "v": "新娘的母亲把红包递给了你。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 737,
+     "v": "新娘的母亲把手里的东西递给了新娘。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 737,
+     "v": "新娘的母亲把手里的东西递给了新娘。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 737,
+     "v": "新娘的母亲把手里的东西递给了新娘。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 737,
+     "v": "新娘的母亲把手里的东西递给了新娘。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 737,
+     "v": "新娘的母亲把手里的东西递给了新娘。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 737,
+     "v": "新娘的母亲把手里的东西递给了新娘。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 737,
+     "v": "那个人把手里的东西递给了新娘。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 737,
+     "v": "那个人把手里的东西递给了那个人。"
+    },
+    {
+     "op": "clock",
+     "to": 738
+    }
+   ],
+   "note": {
+    "target": "red_envelopes",
+    "digest_after": "636144b433c494a3762e3993147adc86b21716bac2b38d04afcdfe78224a2823"
+   }
+  },
+  {
+   "id": 35,
+   "at": 738,
+   "kind": "intent",
+   "actor": "bride",
+   "what": "count",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 738,
+     "v": "你数了红包：共 8（红包 8）。"
+    },
+    {
+     "op": "clock",
+     "to": 739
+    }
+   ],
+   "note": {
+    "target": "red_envelopes",
+    "digest_after": "00bf8027b88947b7e472dc6301319251085ca12102ccf65f499db91be1fe7d99"
+   }
+  },
+  {
+   "id": 36,
+   "at": 739,
    "kind": "intent",
    "actor": "bride_father",
    "what": "speak",
@@ -1647,57 +2475,75 @@
     {
      "op": "remember",
      "e": "bride_father",
-     "at": 725,
+     "at": 739,
      "v": "你说：「谢谢大家来。」"
     },
     {
      "op": "remember",
+     "e": "bride",
+     "at": 739,
+     "v": "新娘的父亲说：「谢谢大家来。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 739,
+     "v": "新娘的父亲说：「谢谢大家来。」"
+    },
+    {
+     "op": "remember",
      "e": "bride_mother",
-     "at": 725,
+     "at": 739,
      "v": "新娘的父亲说：「谢谢大家来。」"
     },
     {
      "op": "remember",
      "e": "groom_father",
-     "at": 725,
+     "at": 739,
      "v": "新娘的父亲说：「谢谢大家来。」"
     },
     {
      "op": "remember",
      "e": "groom_mother",
-     "at": 725,
+     "at": 739,
      "v": "新娘的父亲说：「谢谢大家来。」"
     },
     {
      "op": "remember",
      "e": "best_man",
-     "at": 725,
+     "at": 739,
      "v": "新娘的父亲说：「谢谢大家来。」"
     },
     {
      "op": "remember",
      "e": "maid",
-     "at": 725,
+     "at": 739,
      "v": "新娘的父亲说：「谢谢大家来。」"
     },
     {
      "op": "remember",
+     "e": "manager",
+     "at": 739,
+     "v": "那个人说：「谢谢大家来。」"
+    },
+    {
+     "op": "remember",
      "e": "stranger",
-     "at": 725,
+     "at": 739,
      "v": "那个人说：「谢谢大家来。」"
     },
     {
      "op": "clock",
-     "to": 726
+     "to": 740
     }
    ],
    "note": {
     "target": null,
-    "digest_after": "6e72f7a9620795eabf1cacebb81d392d9f4cab726216cd3e055cab30bc144d59"
+    "digest_after": "d8d4c9740881825ce3ce28b7fbc791b0cb4acec33d09499480be4a624a3c61fb"
    }
   },
   {
-   "id": 35,
+   "id": 37,
    "at": 1290,
    "kind": "tick",
    "actor": null,
@@ -1709,11 +2555,11 @@
     }
    ],
    "note": {
-    "digest_after": "ef576c22117dd59877be08f5ebb7eb37357d7d2f4884432f8616404551d89454"
+    "digest_after": "7fc91c5b2345bf337e046b31205c205ad5dfa538916fabcf9412e7b3ef934713"
    }
   },
   {
-   "id": 36,
+   "id": 38,
    "at": 1290,
    "kind": "world",
    "actor": null,
@@ -1731,6 +2577,18 @@
     },
     {
      "op": "remember",
+     "e": "bride",
+     "at": 1290,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1290,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
      "e": "bride_father",
      "at": 1290,
      "v": "清洁的人进了厅内，开始收拾。"
@@ -1762,6 +2620,12 @@
     {
      "op": "remember",
      "e": "maid",
+     "at": 1290,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
      "at": 1290,
      "v": "清洁的人进了厅内，开始收拾。"
     },
@@ -1777,152 +2641,86 @@
      "kind": "clean",
      "place": "hall"
     },
-    "digest_after": "6d88ffd0cb98882b5fbc216488161cc0a57e470233a3f98e5fcef80d9af95b8a"
-   }
-  },
-  {
-   "id": 37,
-   "at": 1290,
-   "kind": "refused",
-   "actor": "manager",
-   "what": "move",
-   "atoms": [],
-   "note": {
-    "reason": "厅内你现在看不见",
-    "hints": [
-     "你知道它，但它不在眼前：厅内"
-    ],
-    "requested": {
-     "target": "厅内"
-    },
-    "digest_after": "6d88ffd0cb98882b5fbc216488161cc0a57e470233a3f98e5fcef80d9af95b8a"
-   }
-  },
-  {
-   "id": 38,
-   "at": 1290,
-   "kind": "intent",
-   "actor": "manager",
-   "what": "announce",
-   "atoms": [
-    {
-     "op": "remember",
-     "e": "manager",
-     "at": 1290,
-     "v": "你提高声音说：「各位慢用，十点散场，门口有车等着。」"
-    },
-    {
-     "op": "clock",
-     "to": 1291
-    }
-   ],
-   "note": {
-    "target": null,
-    "digest_after": "944729572362538afe84574e98647664a75756c3b2b85bfe0eec161d566e2f6a"
+    "digest_after": "b24dd597a1110cf4a79bfb16e42872aaa99204e7aced7f923a8b17e4ec2cf631"
    }
   },
   {
    "id": 39,
-   "at": 1291,
-   "kind": "refused",
-   "actor": "best_man",
-   "what": "move",
-   "atoms": [],
-   "note": {
-    "reason": "停车场你现在看不见",
-    "hints": [
-     "你知道它，但它不在眼前：停车场"
-    ],
-    "requested": {
-     "target": "停车场"
-    },
-    "digest_after": "944729572362538afe84574e98647664a75756c3b2b85bfe0eec161d566e2f6a"
-   }
-  },
-  {
-   "id": 40,
-   "at": 1291,
-   "kind": "refused",
-   "actor": "best_man",
-   "what": "examine",
-   "atoms": [],
-   "note": {
-    "reason": "这里没有一样东西叫「车」",
-    "hints": [
-     "眼前能看见：酒店、厅内、新娘的父亲、新娘的母亲、新郎的父亲、新郎的母亲、伴娘、陌生人、午宴安排、红包、酒"
-    ],
-    "requested": {
-     "target": "车"
-    },
-    "digest_after": "944729572362538afe84574e98647664a75756c3b2b85bfe0eec161d566e2f6a"
-   }
-  },
-  {
-   "id": 41,
-   "at": 1291,
-   "kind": "refused",
-   "actor": "maid",
-   "what": "move",
-   "atoms": [],
-   "note": {
-    "reason": "停车场你现在看不见",
-    "hints": [
-     "你知道它，但它不在眼前：停车场"
-    ],
-    "requested": {
-     "target": "停车场"
-    },
-    "digest_after": "944729572362538afe84574e98647664a75756c3b2b85bfe0eec161d566e2f6a"
-   }
-  },
-  {
-   "id": 42,
-   "at": 1291,
+   "at": 1290,
    "kind": "intent",
-   "actor": "maid",
-   "what": "speak",
+   "actor": "manager",
+   "what": "move",
    "atoms": [
     {
-     "op": "remember",
-     "e": "maid",
-     "at": 1291,
-     "v": "你压低声音，对伴郎说：「这一排最里头那辆是你的？」"
+     "op": "move",
+     "e": "manager",
+     "to": "venue"
     },
     {
      "op": "remember",
-     "e": "best_man",
-     "at": 1291,
-     "v": "伴娘压低声音，对你说：「这一排最里头那辆是你的？」"
+     "e": "manager",
+     "at": 1290,
+     "v": "你到了酒店。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1290,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1290,
+     "v": "酒店经理走了进来。"
     },
     {
      "op": "remember",
      "e": "bride_father",
-     "at": 1291,
-     "v": "伴娘和伴郎凑在一起低声说话，你听不清内容。"
+     "at": 1290,
+     "v": "酒店经理走了进来。"
     },
     {
      "op": "remember",
      "e": "bride_mother",
-     "at": 1291,
-     "v": "伴娘和伴郎凑在一起低声说话，你听不清内容。"
+     "at": 1290,
+     "v": "酒店经理走了进来。"
     },
     {
      "op": "remember",
      "e": "groom_father",
-     "at": 1291,
-     "v": "伴娘和伴郎凑在一起低声说话，你听不清内容。"
+     "at": 1290,
+     "v": "酒店经理走了进来。"
     },
     {
      "op": "remember",
      "e": "groom_mother",
-     "at": 1291,
-     "v": "伴娘和伴郎凑在一起低声说话，你听不清内容。"
+     "at": 1290,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1290,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1290,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 1290,
+     "v": "酒店经理走了进来。"
     },
     {
      "op": "remember",
      "e": "stranger",
-     "at": 1291,
-     "v": "那个人和那个人凑在一起低声说话，你听不清内容。"
+     "at": 1290,
+     "v": "那个人走了进来。"
     },
     {
      "op": "clock",
@@ -1930,115 +2728,87 @@
     }
    ],
    "note": {
-    "target": null,
-    "digest_after": "9f19e9f62b0549ec1ce67f22c4defcc5a344b486a90094bcd774079ce6356cb6"
+    "target": "venue",
+    "digest_after": "94d01730c4a9642e7b147e4bf29ad02b09d4eaf86a6fbd9b6e0af8202bfda55c"
    }
   },
   {
-   "id": 43,
+   "id": 40,
    "at": 1292,
    "kind": "intent",
-   "actor": "best_man",
-   "what": "speak",
+   "actor": "manager",
+   "what": "move",
    "atoms": [
     {
-     "op": "remember",
-     "e": "best_man",
-     "at": 1292,
-     "v": "你压低声音，对伴娘说：「我挪一下。」"
+     "op": "move",
+     "e": "manager",
+     "to": "parking"
     },
     {
      "op": "remember",
-     "e": "maid",
+     "e": "manager",
      "at": 1292,
-     "v": "伴郎压低声音，对你说：「我挪一下。」"
+     "v": "你到了停车场。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1292,
+     "v": "酒店经理走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1292,
+     "v": "酒店经理走了出去。"
     },
     {
      "op": "remember",
      "e": "bride_father",
      "at": 1292,
-     "v": "伴郎和伴娘凑在一起低声说话，你听不清内容。"
+     "v": "酒店经理走了出去。"
     },
     {
      "op": "remember",
      "e": "bride_mother",
      "at": 1292,
-     "v": "伴郎和伴娘凑在一起低声说话，你听不清内容。"
+     "v": "酒店经理走了出去。"
     },
     {
      "op": "remember",
      "e": "groom_father",
      "at": 1292,
-     "v": "伴郎和伴娘凑在一起低声说话，你听不清内容。"
+     "v": "酒店经理走了出去。"
     },
     {
      "op": "remember",
      "e": "groom_mother",
      "at": 1292,
-     "v": "伴郎和伴娘凑在一起低声说话，你听不清内容。"
+     "v": "酒店经理走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1292,
+     "v": "酒店经理走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1292,
+     "v": "酒店经理走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 1292,
+     "v": "酒店经理走了出去。"
     },
     {
      "op": "remember",
      "e": "stranger",
      "at": 1292,
-     "v": "那个人和那个人凑在一起低声说话，你听不清内容。"
-    },
-    {
-     "op": "clock",
-     "to": 1293
-    }
-   ],
-   "note": {
-    "target": null,
-    "digest_after": "51f10cb2eb736adfc6528a515db5add3ffc766698bd692bd6cd541e0236818a6"
-   }
-  },
-  {
-   "id": 44,
-   "at": 1293,
-   "kind": "refused",
-   "actor": "best_man",
-   "what": "move",
-   "atoms": [],
-   "note": {
-    "reason": "你已经在厅内里了",
-    "hints": [],
-    "requested": {
-     "target": "厅内"
-    },
-    "digest_after": "51f10cb2eb736adfc6528a515db5add3ffc766698bd692bd6cd541e0236818a6"
-   }
-  },
-  {
-   "id": 45,
-   "at": 1293,
-   "kind": "refused",
-   "actor": "manager",
-   "what": "move",
-   "atoms": [],
-   "note": {
-    "reason": "停车场你现在看不见",
-    "hints": [
-     "你知道它，但它不在眼前：停车场"
-    ],
-    "requested": {
-     "target": "停车场"
-    },
-    "digest_after": "51f10cb2eb736adfc6528a515db5add3ffc766698bd692bd6cd541e0236818a6"
-   }
-  },
-  {
-   "id": 46,
-   "at": 1293,
-   "kind": "intent",
-   "actor": "manager",
-   "what": "speak",
-   "atoms": [
-    {
-     "op": "remember",
-     "e": "manager",
-     "at": 1293,
-     "v": "你说：「最里头那辆车挪一下，散场要让出道。」"
+     "v": "那个人走了出去。"
     },
     {
      "op": "clock",
@@ -2046,12 +2816,832 @@
     }
    ],
    "note": {
+    "target": "parking",
+    "digest_after": "19ded34eef082bc2e8eb44704a40d41084d33c80c78704b6cf4a670b4e343408"
+   }
+  },
+  {
+   "id": 41,
+   "at": 1294,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "examine",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1294,
+     "v": "你细看：酒店（走廊铺着红地毯，宴会厅的门半开着，签到的长桌摆在外头）；停车场（地面被下午的太阳晒热，车缝里塞着落叶）；车（一辆停在最里侧的车，前挡风玻璃上落了叶）。"
+    },
+    {
+     "op": "clock",
+     "to": 1295
+    }
+   ],
+   "note": {
+    "target": "car",
+    "digest_after": "22da10dc372aa82c7bc0aa86d75c288bd1cc89cb4fb34218c217842f7841adbf"
+   }
+  },
+  {
+   "id": 42,
+   "at": 1295,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "manager",
+     "to": "venue"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1295,
+     "v": "你到了酒店。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1295,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1295,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1295,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1295,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1295,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1295,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1295,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1295,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 1295,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1295,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1297
+    }
+   ],
+   "note": {
+    "target": "venue",
+    "digest_after": "425ba3b592c40d5ceb8c9561204e35f60e43329a72ceebac14beaf4836dd6ad0"
+   }
+  },
+  {
+   "id": 43,
+   "at": 1297,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "manager",
+     "to": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1297,
+     "v": "你到了厅内。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1297,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1297,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1297,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1297,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1297,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1297,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1297,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1297,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 1297,
+     "v": "酒店经理走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1297,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1299
+    }
+   ],
+   "note": {
+    "target": "hall",
+    "digest_after": "a88509a65e75465cf8a8d447544546c20a9cfb3bffedf1373400917e01eab9c2"
+   }
+  },
+  {
+   "id": 44,
+   "at": 1299,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "announce",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1299,
+     "v": "你提高声音说：「各位慢用，十点散场，门口有车等着。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1299,
+     "v": "酒店经理提高声音说：「各位慢用，十点散场，门口有车等着。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1299,
+     "v": "酒店经理提高声音说：「各位慢用，十点散场，门口有车等着。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1299,
+     "v": "酒店经理提高声音说：「各位慢用，十点散场，门口有车等着。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1299,
+     "v": "酒店经理提高声音说：「各位慢用，十点散场，门口有车等着。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1299,
+     "v": "酒店经理提高声音说：「各位慢用，十点散场，门口有车等着。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1299,
+     "v": "酒店经理提高声音说：「各位慢用，十点散场，门口有车等着。」"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1299,
+     "v": "酒店经理提高声音说：「各位慢用，十点散场，门口有车等着。」"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1299,
+     "v": "酒店经理提高声音说：「各位慢用，十点散场，门口有车等着。」"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1299,
+     "v": "那个人提高声音说：「各位慢用，十点散场，门口有车等着。」"
+    },
+    {
+     "op": "clock",
+     "to": 1300
+    }
+   ],
+   "note": {
     "target": null,
-    "digest_after": "57ad08cd574831379349da78fabf547e09a18994d5cc97b0b87b2afcc37e3550"
+    "digest_after": "5eb4ffedab49c9bb21879459c77a9d58367d0365c34521830d7b32f00ebd29cd"
+   }
+  },
+  {
+   "id": 45,
+   "at": 1300,
+   "kind": "intent",
+   "actor": "best_man",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "best_man",
+     "to": "venue"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1300,
+     "v": "你到了酒店。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1300,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1300,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1300,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1300,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1300,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1300,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1300,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1300,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 1300,
+     "v": "伴郎走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1300,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1302
+    }
+   ],
+   "note": {
+    "target": "venue",
+    "digest_after": "af11bb71dab63abd33ff4fca3f510cd6461400bfd185b84d7a36dc13382ae449"
+   }
+  },
+  {
+   "id": 46,
+   "at": 1302,
+   "kind": "intent",
+   "actor": "best_man",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "best_man",
+     "to": "parking"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1302,
+     "v": "你到了停车场。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1302,
+     "v": "伴郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1302,
+     "v": "伴郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1302,
+     "v": "伴郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1302,
+     "v": "伴郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1302,
+     "v": "伴郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1302,
+     "v": "伴郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1302,
+     "v": "伴郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1302,
+     "v": "伴郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 1302,
+     "v": "伴郎走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1302,
+     "v": "那个人走了出去。"
+    },
+    {
+     "op": "clock",
+     "to": 1304
+    }
+   ],
+   "note": {
+    "target": "parking",
+    "digest_after": "d6f89a5646254bf4b14b22403bec6e30a174f05becb986d87e109384074321e4"
    }
   },
   {
    "id": 47,
+   "at": 1304,
+   "kind": "intent",
+   "actor": "best_man",
+   "what": "examine",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1304,
+     "v": "你细看：酒店（走廊铺着红地毯，宴会厅的门半开着，签到的长桌摆在外头）；停车场（地面被下午的太阳晒热，车缝里塞着落叶）；车（一辆停在最里侧的车，前挡风玻璃上落了叶）。"
+    },
+    {
+     "op": "clock",
+     "to": 1305
+    }
+   ],
+   "note": {
+    "target": "car",
+    "digest_after": "4b551bbd29eef102f51a686db9ca298bde032157837e51bbaaf449b81f526b3f"
+   }
+  },
+  {
+   "id": 48,
+   "at": 1305,
+   "kind": "intent",
+   "actor": "maid",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "maid",
+     "to": "venue"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1305,
+     "v": "你到了酒店。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1305,
+     "v": "伴娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1305,
+     "v": "伴娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1305,
+     "v": "伴娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1305,
+     "v": "伴娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1305,
+     "v": "伴娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1305,
+     "v": "伴娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1305,
+     "v": "伴娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1305,
+     "v": "伴娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 1305,
+     "v": "伴娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1305,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1307
+    }
+   ],
+   "note": {
+    "target": "venue",
+    "digest_after": "28569f608856cb50e8eb75cb0477e8607793e0b78d318a57b44b5e8563f11983"
+   }
+  },
+  {
+   "id": 49,
+   "at": 1307,
+   "kind": "intent",
+   "actor": "maid",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "maid",
+     "to": "parking"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1307,
+     "v": "你到了停车场。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1307,
+     "v": "伴娘走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1307,
+     "v": "伴娘走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1307,
+     "v": "伴娘走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1307,
+     "v": "伴娘走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1307,
+     "v": "伴娘走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1307,
+     "v": "伴娘走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1307,
+     "v": "伴娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1307,
+     "v": "伴娘走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 1307,
+     "v": "伴娘走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1307,
+     "v": "那个人走了出去。"
+    },
+    {
+     "op": "clock",
+     "to": 1309
+    }
+   ],
+   "note": {
+    "target": "parking",
+    "digest_after": "8af636b31d551282e8d47d1b7be98555f04d25b5bc6e2febdfbfe6f46c99f0fc"
+   }
+  },
+  {
+   "id": 50,
+   "at": 1309,
+   "kind": "intent",
+   "actor": "maid",
+   "what": "speak",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1309,
+     "v": "你压低声音，对伴郎说：「这一排最里头那辆是你的？」"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1309,
+     "v": "伴娘压低声音，对你说：「这一排最里头那辆是你的？」"
+    },
+    {
+     "op": "clock",
+     "to": 1310
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "39b5fd38cd1f80d5494d7f838e7dda72b2ebcd72b96e712509268bf45f6b1de2"
+   }
+  },
+  {
+   "id": 51,
+   "at": 1310,
+   "kind": "intent",
+   "actor": "best_man",
+   "what": "speak",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1310,
+     "v": "你压低声音，对伴娘说：「我挪一下。」"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1310,
+     "v": "伴郎压低声音，对你说：「我挪一下。」"
+    },
+    {
+     "op": "clock",
+     "to": 1311
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "3cea6521aa03466f2b9e658f1b3bc275ff1582ea9032bda81d4a716364123120"
+   }
+  },
+  {
+   "id": 52,
+   "at": 1311,
+   "kind": "intent",
+   "actor": "groom",
+   "what": "count",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1311,
+     "v": "你数了酒：共 2（酒 2）。"
+    },
+    {
+     "op": "clock",
+     "to": 1312
+    }
+   ],
+   "note": {
+    "target": "liquor",
+    "digest_after": "4c60d13e069c3f57ebcb2345015c8bf0ad4bfc200745729beb2a52c7fea585ea"
+   }
+  },
+  {
+   "id": 53,
+   "at": 1312,
+   "kind": "intent",
+   "actor": "bride",
+   "what": "count",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1312,
+     "v": "你数了红包：共 8（红包 8）。"
+    },
+    {
+     "op": "clock",
+     "to": 1313
+    }
+   ],
+   "note": {
+    "target": "red_envelopes",
+    "digest_after": "9354780d0c1142fe12e6131ac553f28490b8e96ca87236f070c9a0d5ca7e11af"
+   }
+  },
+  {
+   "id": 54,
+   "at": 1313,
+   "kind": "intent",
+   "actor": "bride_mother",
+   "what": "speak",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1313,
+     "v": "你说：「车都在门口等着了，慢慢来。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1313,
+     "v": "新娘的母亲说：「车都在门口等着了，慢慢来。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1313,
+     "v": "新娘的母亲说：「车都在门口等着了，慢慢来。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1313,
+     "v": "新娘的母亲说：「车都在门口等着了，慢慢来。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1313,
+     "v": "新娘的母亲说：「车都在门口等着了，慢慢来。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1313,
+     "v": "新娘的母亲说：「车都在门口等着了，慢慢来。」"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1313,
+     "v": "那个人说：「车都在门口等着了，慢慢来。」"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1313,
+     "v": "那个人说：「车都在门口等着了，慢慢来。」"
+    },
+    {
+     "op": "clock",
+     "to": 1314
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "e59412605b318d63eadbd77cc68b88e00d55773b3d264c3ac581a8938645b2fd"
+   }
+  },
+  {
+   "id": 55,
    "at": 1320,
    "kind": "tick",
    "actor": null,
@@ -2063,11 +3653,11 @@
     }
    ],
    "note": {
-    "digest_after": "84a0394d3bcee08a28e27a21a97c8df800b21e5e695ae90544b2f12cd029021c"
+    "digest_after": "9afbdfc5ad15e3fb95864cdd864773862ff30ffeacde8a4a94c0d85710a84daf"
    }
   },
   {
-   "id": 48,
+   "id": 56,
    "at": 1320,
    "kind": "world",
    "actor": null,
@@ -2092,6 +3682,18 @@
     },
     {
      "op": "remember",
+     "e": "bride",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1320,
+     "v": "厅内的门关上了，接着是锁扣上的响。"
+    },
+    {
+     "op": "remember",
      "e": "bride_father",
      "at": 1320,
      "v": "厅内的门关上了，接着是锁扣上的响。"
@@ -2116,13 +3718,7 @@
     },
     {
      "op": "remember",
-     "e": "best_man",
-     "at": 1320,
-     "v": "厅内的门关上了，接着是锁扣上的响。"
-    },
-    {
-     "op": "remember",
-     "e": "maid",
+     "e": "manager",
      "at": 1320,
      "v": "厅内的门关上了，接着是锁扣上的响。"
     },
@@ -2138,7 +3734,7 @@
      "kind": "close",
      "place": "hall"
     },
-    "digest_after": "eaa901f1c6490b1450264400413c603e03d777caa1bdd180cca69a087d2d7dda"
+    "digest_after": "ce0c3fe5530ef13d84fe266380a9359e6684021e67d147195621f95a3fae1978"
    }
   }
  ],

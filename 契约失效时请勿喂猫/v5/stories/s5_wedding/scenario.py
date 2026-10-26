@@ -53,39 +53,61 @@ _OPENING: list[tuple[str, str, dict[str, Any]]] = [
     ("stranger", "move", {"target": "厅内"}),
 ]
 
-#: 中午开席：上菜、敬酒、入席、读安排，都是这一天真会发生的事。
-_LUNCH: list[tuple[str, str, dict[str, Any]]] = [
+#: 上午：宾客到签到台报到（名单摊在桌上，自己的位子自己找），新郎到酒店门口迎客。
+_GUESTS: list[tuple[str, str, dict[str, Any]]] = [
+    ("best_man", "move", {"target": "酒店"}),
+    ("best_man", "move", {"target": "签到台"}),
+    ("best_man", "read", {"target": "名单"}),
+    ("best_man", "move", {"target": "酒店"}),
+    ("best_man", "move", {"target": "厅内"}),
+    ("groom", "move", {"target": "酒店"}),
     ("groom", "move", {"target": "厅内"}),
-    ("bride", "move", {"target": "厅内"}),
+]
+
+#: 中午开席：经理从后厨走廊把菜端进厅里、上桌，宾客敬酒、读席位。
+#: 后厨走廊不挨着厅内，端菜的人得从酒店大堂穿过去——所以是六步，不是两步。
+_LUNCH: list[tuple[str, str, dict[str, Any]]] = [
+    ("manager", "move", {"target": "酒店"}),
     ("manager", "move", {"target": "后厨走廊"}),
     ("manager", "take", {"target": "菜"}),
+    ("manager", "move", {"target": "酒店"}),
     ("manager", "move", {"target": "厅内"}),
     ("manager", "place", {"target": "菜", "to": "厅内"}),
     ("manager", "announce", {"text": "十二点开席，菜已经上来了，各位动筷。"}),
     ("bride_father", "read", {"target": "午宴安排"}),
-    ("groom_father", "read", {"target": "午宴安排"}),
+    ("groom_mother", "read", {"target": "午宴安排"}),
     ("best_man", "take", {"target": "酒"}),
     ("best_man", "give", {"target": "酒", "to": "groom"}),
     ("groom", "place", {"target": "酒", "to": "厅内"}),
     ("groom", "speak", {"text": "我先敬各位一杯。"}),
-    ("bride_mother", "move", {"target": "厅内"}),
     ("bride_mother", "give", {"target": "红包", "to": "bride"}),
     ("bride", "count", {"target": "红包"}),
     ("bride_father", "speak", {"text": "谢谢大家来。"}),
 ]
 
-#: 散场前：厅里开始收，停车场上有一次照面。
+#: 散场前：经理去看门口的车，伴郎伴娘在停车场上照一面，厅里开始收。
+#: 21:30 到 22:00 只有半个钟头，所以这里的走动都算着分钟走。
 _EVENING: list[tuple[str, str, dict[str, Any]]] = [
+    ("manager", "move", {"target": "酒店"}),
+    ("manager", "move", {"target": "停车场"}),
+    ("manager", "examine", {"target": "车"}),
+    ("manager", "move", {"target": "酒店"}),
     ("manager", "move", {"target": "厅内"}),
     ("manager", "announce", {"text": "各位慢用，十点散场，门口有车等着。"}),
+    ("best_man", "move", {"target": "酒店"}),
     ("best_man", "move", {"target": "停车场"}),
     ("best_man", "examine", {"target": "车"}),
+    ("maid", "move", {"target": "酒店"}),
     ("maid", "move", {"target": "停车场"}),
     ("maid", "speak", {"text": "这一排最里头那辆是你的？", "to": "伴郎"}),
     ("best_man", "speak", {"text": "我挪一下。", "to": "伴娘"}),
-    ("best_man", "move", {"target": "厅内"}),
-    ("manager", "move", {"target": "停车场"}),
-    ("manager", "speak", {"text": "最里头那辆车挪一下，散场要让出道。"}),
+]
+
+#: 散场前的收拾：桌上的酒清点一遍，收到手的红包再点一遍。
+_CLOSING: list[tuple[str, str, dict[str, Any]]] = [
+    ("groom", "count", {"target": "酒"}),
+    ("bride", "count", {"target": "红包"}),
+    ("bride_mother", "speak", {"text": "车都在门口等着了，慢慢来。"}),
 ]
 
 SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
@@ -101,27 +123,27 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("manager", "announce", {"text": "签到本上多了个名字，叫陈明，名单上没有这个人。谁见过？"}),
         ("best_man", "announce", {"text": "早上我看见一个穿灰夹克的男人从签到台那边过来。"}),
         ("bride", "hail", {"who": "穿灰夹克的男人", "text": "你就是本子上写的陈明？"}),
+        *_GUESTS,
         ("", NEXT, {}),
         *_LUNCH,
         ("", NEXT, {}),
         *_EVENING,
+        *_CLOSING,
         ("", DAY, {}),
     ],
     # B：记账的人看见了，但谁也没往下问；一天照常过完，22:00 散场
     "b": [
         *_OPENING,
         ("bookkeeper", "read", {"target": "签到本"}),
+        ("bookkeeper", "read", {"target": "名单"}),
         ("groom", "announce", {"text": "各位入席，婚礼十点开始。"}),
-        ("bookkeeper", "move", {"target": "酒店"}),
-        ("bookkeeper", "move", {"target": "停车场"}),
-        ("groom", "move", {"target": "酒店"}),
-        ("groom", "move", {"target": "停车场"}),
-        ("bride", "move", {"target": "酒店"}),
-        ("bride", "move", {"target": "停车场"}),
+        ("best_man", "announce", {"text": "门口没人了，都进来了。"}),
+        *_GUESTS,
         ("", NEXT, {}),
         *_LUNCH,
         ("", NEXT, {}),
         *_EVENING,
+        *_CLOSING,
         ("", DAY, {}),
     ],
     # C：记账的人把那一行擦掉，再当众说"本子上没多什么人"
@@ -132,13 +154,15 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("bookkeeper", "erase", {"target": "签到本"}),
         ("bookkeeper", "place", {"target": "橡皮", "to": "签到台"}),
         ("bookkeeper", "announce", {"text": "没事了，本子上没多什么人。"}),
+        *_GUESTS,
         ("", NEXT, {}),
         *_LUNCH,
         ("", NEXT, {}),
         *_EVENING,
+        *_CLOSING,
         ("", DAY, {}),
     ],
-    # D：记账的人私下告诉经理，经理转述给厅里的人，然后大家说好都不再提
+    # D：记账的人私下告诉经理，经理在席间转述给厅里的人，然后大家说好都不再提
     "d": [
         *_OPENING,
         ("bookkeeper", "read", {"target": "签到本"}),
@@ -147,15 +171,17 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("bride_mother", "read", {"target": "签到本"}),
         ("bookkeeper", "speak", {"text": "签到本上多了个名字，叫陈明，是穿灰夹克的男人写的。",
                                  "to": "经理"}),
-        ("manager", "move", {"target": "酒店"}),
-        ("manager", "move", {"target": "厅内"}),
+        ("bride_mother", "move", {"target": "酒店"}),
+        ("bride_mother", "move", {"target": "厅内"}),
+        *_GUESTS,
+        ("", NEXT, {}),
+        *_LUNCH,
         ("manager", "retell", {"about": "陈明",
                                "text": "签到本上多了个名字，叫陈明，是穿灰夹克的男人写的。"}),
         ("manager", "announce", {"text": "今天的事就到这儿，谁都别再提了。"}),
         ("", NEXT, {}),
-        *_LUNCH,
-        ("", NEXT, {}),
         *_EVENING,
+        *_CLOSING,
         ("", DAY, {}),
     ],
 }

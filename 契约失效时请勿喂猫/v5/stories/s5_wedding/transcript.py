@@ -10,7 +10,7 @@ from .scenario import Run
 # `stories/common.py` 不归本包所有，它的排版用词表里还没有这几个动词。
 # 这里只补词，不动它已有的任何条目。
 for _verb, _label in (("sign", "记上"), ("announce", "高声说"),
-                      ("retell", "转述"), ("hail", "喊住")):
+                      ("retell", "转述"), ("hail", "喊住"), ("count", "数")):
     common.VERBS.setdefault(_verb, _label)
 
 
