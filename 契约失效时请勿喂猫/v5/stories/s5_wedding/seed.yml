@@ -158,7 +158,32 @@ objects:
       marks: [{text: "午宴 12:00 开席，席位按名单入座。", ink: printed, style: printed}]
       portable: true
 
+  - id: red_envelopes
+    parent: bride_mother
+    name: 红包
+    prose: 一沓封口没粘的红包，边角被手汗浸软
+    state: {count: 8, portable: true}
+
+  - id: liquor
+    parent: hall
+    name: 酒
+    prose: 两瓶白酒立在主桌边上，瓶身冒着水汽
+    state: {count: 2, portable: true}
+
+  - id: dishes
+    parent: corridor
+    name: 菜
+    prose: 后厨刚出锅的菜，一盘一盘码在托盘上
+    state: {count: 10, portable: true}
+
+  - id: car
+    parent: parking
+    name: 车
+    prose: 一辆停在最里侧的车，前挡风玻璃上落了叶
+
 schedule:
+  # 21:30 散场前的收拾：酒店到点把厅交给清洁的人。
+  - {at: 1290, effect: {kind: clean, place: hall}}
   # 到中午，酒店把午宴安排贴到厅内；内容只有去读才知道。
   - {at: 720, effect: {kind: post, place: hall, item: menu}}
   # 22:00 散场：厅门到点关上锁上，不是谁的决定。

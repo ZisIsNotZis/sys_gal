@@ -25,7 +25,8 @@ from engine.resolve import in_sight, visible
 from engine.seed import load
 from library import EFFECTS
 from stories.s4_night_shop import scenario
-from stories.s4_night_shop.scenario import DEFAULT_SEED, NIGHT, SCRIPTS, play, summary
+from stories.common import advance_next
+from stories.s4_night_shop.scenario import DEFAULT_SEED, NEXT, NIGHT, SCRIPTS, play, summary
 from stories.s4_night_shop.transcript import transcript
 
 VARIANTS = ("a", "b", "c", "d")
@@ -39,6 +40,9 @@ def walk(world, log, steps):
         drain(world, log, EFFECTS)
         if verb == NIGHT:
             advance_idle(world, log, EFFECTS)
+            continue
+        if verb == NEXT:
+            advance_next(world, log, EFFECTS)
             continue
         submit(world, log, actor, verb, dict(args))
     return world, log
@@ -118,6 +122,36 @@ class MidnightTests(unittest.TestCase):
         self.assertIn("明晚白班我替你顶", heard)
         reminders = [e for e in run.log if e.kind == "world" and e.what == "remind"]
         self.assertEqual([e.at for e in reminders], [1900])
+
+    def test_the_night_has_no_silent_gap_longer_than_two_hours(self):
+        """这一班从 22:00 到次日 08:00，相邻两条轨迹的时间戳间隔不得超过 120 分钟。
+
+        观察自：本包合入后的人工通读（2026-10-23）——`runs/a.md` 从 22:45 一直空到 07:40，
+        九个小时没有一条事件；判据只数世界与脚本动作，不数时钟 tick。
+        """
+        for variant in VARIANTS:
+            with self.subTest(variant=variant):
+                run = play(variant)
+                stamps = [item["at"] for item in run.items
+                          if 1320 <= item["at"] <= 1920]
+                self.assertGreater(len(stamps), 20, variant)
+                gaps = [(b - a, a, b) for a, b in zip(stamps, stamps[1:])]
+                longest = max(gaps)
+                self.assertLessEqual(longest[0], 120,
+                                     f"路 {variant} 的空档 {longest[0]} 分钟：{longest[1]} → {longest[2]}")
+                self.assertIn(1320, stamps, variant)
+                self.assertIn(1920, stamps, variant)
+
+    def test_the_nights_institutions_reach_the_shop(self):
+        """送货、巡夜签到、清晨补货与清扫真的落在账本里，而不是人物嘴上。"""
+        run = play("a")
+        world = [(event.at, event.what) for event in run.log if event.kind == "world"]
+        self.assertEqual([at for at, what in world if what == "deliver"], [1425, 1770])
+        self.assertEqual([at for at, what in world if what == "stamp"], [1530])
+        self.assertEqual([at for at, what in world if what == "clean"], [1880])
+        self.assertIn("夜间补货", " ".join(text for _at, text in run.world.memory["incoming"]))
+        log_rows = [row["text"] for row in run.world.get("patrol_log", "marks")]
+        self.assertTrue(any("巡夜签到" in text for text in log_rows), log_rows)
 
     def test_closing_hands_the_key_back(self):
         run = play("a")

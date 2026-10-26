@@ -85,7 +85,7 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "5c73e5c9bfbe23dfc4c6ee75f76220603afa559adfe761d04dd11da85e49578c"
+    "digest_after": "212d125716a96862e350c7ee5dba331c68ebcd9cfad56dfad9ed51d91477d8ae"
    }
   },
   {
@@ -173,7 +173,7 @@
    ],
    "note": {
     "target": "checkin",
-    "digest_after": "e93a77b575b032662d71b1fc13e55bd47a51e37bc7a433529819775ff29a5bf9"
+    "digest_after": "d5c19dc0d574e443f8bc351ebd939ff14b12d7691b0a7e805c4e881a4104d1dd"
    }
   },
   {
@@ -213,7 +213,7 @@
    ],
    "note": {
     "target": "pencil",
-    "digest_after": "97a8d8ab371830f84042096ce964a863b46c1a5adeb6049352ca2d0e83b97197"
+    "digest_after": "7737bb015d0e6450fb0bf73c2aed1932763daec8d7b93bc1579bccaeabdab3db"
    }
   },
   {
@@ -265,7 +265,7 @@
    ],
    "note": {
     "target": "signin",
-    "digest_after": "d0be6634e5cff0cfb9614d926ce48f0b2d63df971b9f2e9e29464d9f64156308"
+    "digest_after": "d11d9920df833b3ffdff4965e835cefa6875157fad479f9c0e7608d7ab9498d1"
    }
   },
   {
@@ -305,7 +305,7 @@
    ],
    "note": {
     "target": "pencil",
-    "digest_after": "152f7ecd279a6879f4ff82d955c4e7d1f4026282e6630f7b8de5e141c59b3b65"
+    "digest_after": "758636498df4e7f9c5cc7f6ded7d6a479af332031eace2d6ec1ef497dd035e58"
    }
   },
   {
@@ -393,7 +393,7 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "8375382a34a05a81b1c66380201b66304762bbfb14a0566eea801bfbc07f3380"
+    "digest_after": "e48f99eeb4349dc991b5123e77e37c161751fc3a0f527428423b2d548da6f6de"
    }
   },
   {
@@ -481,7 +481,7 @@
    ],
    "note": {
     "target": "hall",
-    "digest_after": "4487fcc32c5d04bd2c47af253061628a6332edc791daa74b84550159d8b08f7e"
+    "digest_after": "ed6c507aca27bb646163c57d077e4e9d6c9f92acaad7d6da8baccca64ce49473"
    }
   },
   {
@@ -510,7 +510,7 @@
    ],
    "note": {
     "target": "signin",
-    "digest_after": "f34e79a036887cf9634714efd45c3b77c57b4243ac6881b4d188edd83e9459a8"
+    "digest_after": "8cdc8a0193442a35dd9b625a9fdcc276283b35180b6a503a934d3495db7e67e8"
    }
   },
   {
@@ -581,7 +581,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "1de5d815c2493bcfcce38f5f8d02eeabe061a71a5c8c124da47303b4dbda0271"
+    "digest_after": "21e39c913b2d6bc68059de98f3c9d39f6b4b4feab2040aec5edf9d06d38de72a"
    }
   },
   {
@@ -669,7 +669,7 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "f74e3c92d2aaf86021418be79453bf1a8ea8df8dd5068076c842095dac5ff8d5"
+    "digest_after": "3747fff085c9b560566e5081ffd25aa5ef1ce5f4f1219ec9d8dd8c6fa44783eb"
    }
   },
   {
@@ -757,7 +757,7 @@
    ],
    "note": {
     "target": "parking",
-    "digest_after": "c5d06aa253ac19e962a1425cb7349dbe25c3cddec66f4efe3146f97759c1378c"
+    "digest_after": "5df3ce3f3a188c87bcb3a4ec97fb4b84c13fe604f0caa46edc1395c0bd6d1d57"
    }
   },
   {
@@ -845,7 +845,7 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "8cad0dddad9c2aa074c95b4308749e8fba61549cb570bd9e7d0d1aaa91d6675e"
+    "digest_after": "fb08f47683e0435cf166d0c29c573c6ff1761464a02e7d971f27d936747b7be3"
    }
   },
   {
@@ -933,7 +933,7 @@
    ],
    "note": {
     "target": "parking",
-    "digest_after": "0fe15d9474d0f9248b1bfdad18a8a7e7571dac117559e3b33866ee9113d7bcf4"
+    "digest_after": "97a4550739aa340a4061ed37bd677ae52c4e93cde744468909b9ce2125bc4eb7"
    }
   },
   {
@@ -1021,7 +1021,7 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "9487f03d02565adb6289952a51edc63979a60dc2cff36d588cb01b33606db97e"
+    "digest_after": "770411fcc467b185699cb43f1b856f8f84d8e3f52579c7fb61fcd2aa10e68172"
    }
   },
   {
@@ -1109,7 +1109,7 @@
    ],
    "note": {
     "target": "parking",
-    "digest_after": "19081585ddf3e0bb300bf1b8d023a5cabda2ae272adbd242a10b8b51bb29aec5"
+    "digest_after": "fde2d41fed63978f6b4faee93e2b950cf32e4d04c4775e884e660dae59b0a44c"
    }
   },
   {
@@ -1125,7 +1125,7 @@
     }
    ],
    "note": {
-    "digest_after": "a63a624213cf51eae77f1b639a21f50ad9f7855a1972de9758b0093f18e2b338"
+    "digest_after": "cf19e8a94b27edaae3c2cdb84231587123f8cba80dc8bbfda68b8c4407f31f50"
    }
   },
   {
@@ -1138,7 +1138,7 @@
     {
      "op": "unschedule",
      "at": 720,
-     "seq": 1
+     "seq": 2
     },
     {
      "op": "move",
@@ -1194,11 +1194,864 @@
      "place": "hall",
      "item": "menu"
     },
-    "digest_after": "dd14c7403937e4e064a6f3bfda663596a41ca1646586bd2178c93c4903031329"
+    "digest_after": "2c7bd297dda783403af7874c76cbd198f40f671158aaa00c3b00df08adfe50c1"
    }
   },
   {
    "id": 18,
+   "at": 720,
+   "kind": "refused",
+   "actor": "groom",
+   "what": "move",
+   "atoms": [],
+   "note": {
+    "reason": "厅内你现在看不见",
+    "hints": [
+     "你知道它，但它不在眼前：厅内"
+    ],
+    "requested": {
+     "target": "厅内"
+    },
+    "digest_after": "2c7bd297dda783403af7874c76cbd198f40f671158aaa00c3b00df08adfe50c1"
+   }
+  },
+  {
+   "id": 19,
+   "at": 720,
+   "kind": "refused",
+   "actor": "bride",
+   "what": "move",
+   "atoms": [],
+   "note": {
+    "reason": "厅内你现在看不见",
+    "hints": [
+     "你知道它，但它不在眼前：厅内"
+    ],
+    "requested": {
+     "target": "厅内"
+    },
+    "digest_after": "2c7bd297dda783403af7874c76cbd198f40f671158aaa00c3b00df08adfe50c1"
+   }
+  },
+  {
+   "id": 20,
+   "at": 720,
+   "kind": "refused",
+   "actor": "manager",
+   "what": "move",
+   "atoms": [],
+   "note": {
+    "reason": "后厨走廊你现在看不见",
+    "hints": [
+     "你知道它，但它不在眼前：后厨走廊"
+    ],
+    "requested": {
+     "target": "后厨走廊"
+    },
+    "digest_after": "2c7bd297dda783403af7874c76cbd198f40f671158aaa00c3b00df08adfe50c1"
+   }
+  },
+  {
+   "id": 21,
+   "at": 720,
+   "kind": "refused",
+   "actor": "manager",
+   "what": "take",
+   "atoms": [],
+   "note": {
+    "reason": "这里没有一样东西叫「菜」",
+    "hints": [
+     "眼前能看见：酒店、签到台、签到本、铅笔、橡皮、名单"
+    ],
+    "requested": {
+     "target": "菜"
+    },
+    "digest_after": "2c7bd297dda783403af7874c76cbd198f40f671158aaa00c3b00df08adfe50c1"
+   }
+  },
+  {
+   "id": 22,
+   "at": 720,
+   "kind": "refused",
+   "actor": "manager",
+   "what": "move",
+   "atoms": [],
+   "note": {
+    "reason": "厅内你现在看不见",
+    "hints": [
+     "你知道它，但它不在眼前：厅内"
+    ],
+    "requested": {
+     "target": "厅内"
+    },
+    "digest_after": "2c7bd297dda783403af7874c76cbd198f40f671158aaa00c3b00df08adfe50c1"
+   }
+  },
+  {
+   "id": 23,
+   "at": 720,
+   "kind": "refused",
+   "actor": "manager",
+   "what": "place",
+   "atoms": [],
+   "note": {
+    "reason": "这里没有一样东西叫「菜」",
+    "hints": [
+     "眼前能看见：酒店、签到台、签到本、铅笔、橡皮、名单"
+    ],
+    "requested": {
+     "target": "菜",
+     "to": "厅内"
+    },
+    "digest_after": "2c7bd297dda783403af7874c76cbd198f40f671158aaa00c3b00df08adfe50c1"
+   }
+  },
+  {
+   "id": 24,
+   "at": 720,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "announce",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 720,
+     "v": "你提高声音说：「十二点开席，菜已经上来了，各位动筷。」"
+    },
+    {
+     "op": "clock",
+     "to": 721
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "b5a984e32faa730518a3611ce6480b81f42d32d6f9f03c832f787e378baa9fc0"
+   }
+  },
+  {
+   "id": 25,
+   "at": 721,
+   "kind": "intent",
+   "actor": "bride_father",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 721,
+     "v": "你读着午宴安排：「午宴 12:00 开席，席位按名单入座。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 721,
+     "v": "新娘的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 721,
+     "v": "新娘的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 721,
+     "v": "新娘的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 721,
+     "v": "新娘的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 721,
+     "v": "新娘的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 721,
+     "v": "那个人在看午宴安排。"
+    },
+    {
+     "op": "clock",
+     "to": 722
+    }
+   ],
+   "note": {
+    "target": "menu",
+    "digest_after": "a8ae882bbdfcea4cee6412fe1eb5cbf12ff026033612eed597a81f75ec355cff"
+   }
+  },
+  {
+   "id": 26,
+   "at": 722,
+   "kind": "intent",
+   "actor": "groom_father",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 722,
+     "v": "你读着午宴安排：「午宴 12:00 开席，席位按名单入座。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 722,
+     "v": "新郎的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 722,
+     "v": "新郎的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 722,
+     "v": "新郎的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 722,
+     "v": "新郎的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 722,
+     "v": "新郎的父亲在看午宴安排。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 722,
+     "v": "那个人在看午宴安排。"
+    },
+    {
+     "op": "clock",
+     "to": 723
+    }
+   ],
+   "note": {
+    "target": "menu",
+    "digest_after": "ca6840980f720784848c492a1976b005d8f14555e27e057cfee786896d64454c"
+   }
+  },
+  {
+   "id": 27,
+   "at": 723,
+   "kind": "intent",
+   "actor": "best_man",
+   "what": "take",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "liquor",
+     "to": "best_man"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 723,
+     "v": "你拿起了酒。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 723,
+     "v": "伴郎拿起了酒。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 723,
+     "v": "伴郎拿起了酒。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 723,
+     "v": "伴郎拿起了酒。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 723,
+     "v": "伴郎拿起了酒。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 723,
+     "v": "伴郎拿起了酒。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 723,
+     "v": "那个人拿起了酒。"
+    },
+    {
+     "op": "clock",
+     "to": 724
+    }
+   ],
+   "note": {
+    "target": "liquor",
+    "digest_after": "f12e026e3976ab4c2908edc7b5534c791bdebcade99dd807774b7ed34d7c6c42"
+   }
+  },
+  {
+   "id": 28,
+   "at": 724,
+   "kind": "refused",
+   "actor": "best_man",
+   "what": "give",
+   "atoms": [],
+   "note": {
+    "reason": "groom你现在看不见",
+    "hints": [
+     "你知道它，但它不在眼前：新郎"
+    ],
+    "requested": {
+     "target": "酒",
+     "to": "groom"
+    },
+    "digest_after": "f12e026e3976ab4c2908edc7b5534c791bdebcade99dd807774b7ed34d7c6c42"
+   }
+  },
+  {
+   "id": 29,
+   "at": 724,
+   "kind": "refused",
+   "actor": "groom",
+   "what": "place",
+   "atoms": [],
+   "note": {
+    "reason": "这里没有一样东西叫「酒」",
+    "hints": [
+     "眼前能看见：酒店、停车场、新娘、记账的人、车"
+    ],
+    "requested": {
+     "target": "酒",
+     "to": "厅内"
+    },
+    "digest_after": "f12e026e3976ab4c2908edc7b5534c791bdebcade99dd807774b7ed34d7c6c42"
+   }
+  },
+  {
+   "id": 30,
+   "at": 724,
+   "kind": "intent",
+   "actor": "groom",
+   "what": "speak",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 724,
+     "v": "你说：「我先敬各位一杯。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 724,
+     "v": "新郎说：「我先敬各位一杯。」"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 724,
+     "v": "新郎说：「我先敬各位一杯。」"
+    },
+    {
+     "op": "clock",
+     "to": 725
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "0a5e5f6d13e60a3a368eea6e9d0e24d05fbe6b920655358e3bfcae1c1587c320"
+   }
+  },
+  {
+   "id": 31,
+   "at": 725,
+   "kind": "refused",
+   "actor": "bride_mother",
+   "what": "move",
+   "atoms": [],
+   "note": {
+    "reason": "你已经在厅内里了",
+    "hints": [],
+    "requested": {
+     "target": "厅内"
+    },
+    "digest_after": "0a5e5f6d13e60a3a368eea6e9d0e24d05fbe6b920655358e3bfcae1c1587c320"
+   }
+  },
+  {
+   "id": 32,
+   "at": 725,
+   "kind": "refused",
+   "actor": "bride_mother",
+   "what": "give",
+   "atoms": [],
+   "note": {
+    "reason": "bride你现在看不见",
+    "hints": [
+     "你知道它，但它不在眼前：新娘"
+    ],
+    "requested": {
+     "target": "红包",
+     "to": "bride"
+    },
+    "digest_after": "0a5e5f6d13e60a3a368eea6e9d0e24d05fbe6b920655358e3bfcae1c1587c320"
+   }
+  },
+  {
+   "id": 33,
+   "at": 725,
+   "kind": "refused",
+   "actor": "bride",
+   "what": "count",
+   "atoms": [],
+   "note": {
+    "reason": "这里没有一样东西叫「红包」",
+    "hints": [
+     "眼前能看见：酒店、停车场、新郎、记账的人、车"
+    ],
+    "requested": {
+     "target": "红包"
+    },
+    "digest_after": "0a5e5f6d13e60a3a368eea6e9d0e24d05fbe6b920655358e3bfcae1c1587c320"
+   }
+  },
+  {
+   "id": 34,
+   "at": 725,
+   "kind": "intent",
+   "actor": "bride_father",
+   "what": "speak",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 725,
+     "v": "你说：「谢谢大家来。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 725,
+     "v": "新娘的父亲说：「谢谢大家来。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 725,
+     "v": "新娘的父亲说：「谢谢大家来。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 725,
+     "v": "新娘的父亲说：「谢谢大家来。」"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 725,
+     "v": "新娘的父亲说：「谢谢大家来。」"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 725,
+     "v": "新娘的父亲说：「谢谢大家来。」"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 725,
+     "v": "那个人说：「谢谢大家来。」"
+    },
+    {
+     "op": "clock",
+     "to": 726
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "6e72f7a9620795eabf1cacebb81d392d9f4cab726216cd3e055cab30bc144d59"
+   }
+  },
+  {
+   "id": 35,
+   "at": 1290,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 1290
+    }
+   ],
+   "note": {
+    "digest_after": "ef576c22117dd59877be08f5ebb7eb37357d7d2f4884432f8616404551d89454"
+   }
+  },
+  {
+   "id": 36,
+   "at": 1290,
+   "kind": "world",
+   "actor": null,
+   "what": "clean",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1290,
+     "seq": 1
+    },
+    {
+     "op": "flag",
+     "k": "cleaned",
+     "v": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1290,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1290,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1290,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1290,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1290,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1290,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1290,
+     "v": "清洁的人进了厅内，开始收拾。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "clean",
+     "place": "hall"
+    },
+    "digest_after": "6d88ffd0cb98882b5fbc216488161cc0a57e470233a3f98e5fcef80d9af95b8a"
+   }
+  },
+  {
+   "id": 37,
+   "at": 1290,
+   "kind": "refused",
+   "actor": "manager",
+   "what": "move",
+   "atoms": [],
+   "note": {
+    "reason": "厅内你现在看不见",
+    "hints": [
+     "你知道它，但它不在眼前：厅内"
+    ],
+    "requested": {
+     "target": "厅内"
+    },
+    "digest_after": "6d88ffd0cb98882b5fbc216488161cc0a57e470233a3f98e5fcef80d9af95b8a"
+   }
+  },
+  {
+   "id": 38,
+   "at": 1290,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "announce",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1290,
+     "v": "你提高声音说：「各位慢用，十点散场，门口有车等着。」"
+    },
+    {
+     "op": "clock",
+     "to": 1291
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "944729572362538afe84574e98647664a75756c3b2b85bfe0eec161d566e2f6a"
+   }
+  },
+  {
+   "id": 39,
+   "at": 1291,
+   "kind": "refused",
+   "actor": "best_man",
+   "what": "move",
+   "atoms": [],
+   "note": {
+    "reason": "停车场你现在看不见",
+    "hints": [
+     "你知道它，但它不在眼前：停车场"
+    ],
+    "requested": {
+     "target": "停车场"
+    },
+    "digest_after": "944729572362538afe84574e98647664a75756c3b2b85bfe0eec161d566e2f6a"
+   }
+  },
+  {
+   "id": 40,
+   "at": 1291,
+   "kind": "refused",
+   "actor": "best_man",
+   "what": "examine",
+   "atoms": [],
+   "note": {
+    "reason": "这里没有一样东西叫「车」",
+    "hints": [
+     "眼前能看见：酒店、厅内、新娘的父亲、新娘的母亲、新郎的父亲、新郎的母亲、伴娘、陌生人、午宴安排、红包、酒"
+    ],
+    "requested": {
+     "target": "车"
+    },
+    "digest_after": "944729572362538afe84574e98647664a75756c3b2b85bfe0eec161d566e2f6a"
+   }
+  },
+  {
+   "id": 41,
+   "at": 1291,
+   "kind": "refused",
+   "actor": "maid",
+   "what": "move",
+   "atoms": [],
+   "note": {
+    "reason": "停车场你现在看不见",
+    "hints": [
+     "你知道它，但它不在眼前：停车场"
+    ],
+    "requested": {
+     "target": "停车场"
+    },
+    "digest_after": "944729572362538afe84574e98647664a75756c3b2b85bfe0eec161d566e2f6a"
+   }
+  },
+  {
+   "id": 42,
+   "at": 1291,
+   "kind": "intent",
+   "actor": "maid",
+   "what": "speak",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1291,
+     "v": "你压低声音，对伴郎说：「这一排最里头那辆是你的？」"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1291,
+     "v": "伴娘压低声音，对你说：「这一排最里头那辆是你的？」"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1291,
+     "v": "伴娘和伴郎凑在一起低声说话，你听不清内容。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1291,
+     "v": "伴娘和伴郎凑在一起低声说话，你听不清内容。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1291,
+     "v": "伴娘和伴郎凑在一起低声说话，你听不清内容。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1291,
+     "v": "伴娘和伴郎凑在一起低声说话，你听不清内容。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1291,
+     "v": "那个人和那个人凑在一起低声说话，你听不清内容。"
+    },
+    {
+     "op": "clock",
+     "to": 1292
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "9f19e9f62b0549ec1ce67f22c4defcc5a344b486a90094bcd774079ce6356cb6"
+   }
+  },
+  {
+   "id": 43,
+   "at": 1292,
+   "kind": "intent",
+   "actor": "best_man",
+   "what": "speak",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1292,
+     "v": "你压低声音，对伴娘说：「我挪一下。」"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1292,
+     "v": "伴郎压低声音，对你说：「我挪一下。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1292,
+     "v": "伴郎和伴娘凑在一起低声说话，你听不清内容。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1292,
+     "v": "伴郎和伴娘凑在一起低声说话，你听不清内容。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1292,
+     "v": "伴郎和伴娘凑在一起低声说话，你听不清内容。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1292,
+     "v": "伴郎和伴娘凑在一起低声说话，你听不清内容。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1292,
+     "v": "那个人和那个人凑在一起低声说话，你听不清内容。"
+    },
+    {
+     "op": "clock",
+     "to": 1293
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "51f10cb2eb736adfc6528a515db5add3ffc766698bd692bd6cd541e0236818a6"
+   }
+  },
+  {
+   "id": 44,
+   "at": 1293,
+   "kind": "refused",
+   "actor": "best_man",
+   "what": "move",
+   "atoms": [],
+   "note": {
+    "reason": "你已经在厅内里了",
+    "hints": [],
+    "requested": {
+     "target": "厅内"
+    },
+    "digest_after": "51f10cb2eb736adfc6528a515db5add3ffc766698bd692bd6cd541e0236818a6"
+   }
+  },
+  {
+   "id": 45,
+   "at": 1293,
+   "kind": "refused",
+   "actor": "manager",
+   "what": "move",
+   "atoms": [],
+   "note": {
+    "reason": "停车场你现在看不见",
+    "hints": [
+     "你知道它，但它不在眼前：停车场"
+    ],
+    "requested": {
+     "target": "停车场"
+    },
+    "digest_after": "51f10cb2eb736adfc6528a515db5add3ffc766698bd692bd6cd541e0236818a6"
+   }
+  },
+  {
+   "id": 46,
+   "at": 1293,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "speak",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1293,
+     "v": "你说：「最里头那辆车挪一下，散场要让出道。」"
+    },
+    {
+     "op": "clock",
+     "to": 1294
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "57ad08cd574831379349da78fabf547e09a18994d5cc97b0b87b2afcc37e3550"
+   }
+  },
+  {
+   "id": 47,
    "at": 1320,
    "kind": "tick",
    "actor": null,
@@ -1210,11 +2063,11 @@
     }
    ],
    "note": {
-    "digest_after": "fb1fbd60b2f70705623e4462bdc8a964d05192f753bd5339e479eb53ad045a17"
+    "digest_after": "84a0394d3bcee08a28e27a21a97c8df800b21e5e695ae90544b2f12cd029021c"
    }
   },
   {
-   "id": 19,
+   "id": 48,
    "at": 1320,
    "kind": "world",
    "actor": null,
@@ -1223,7 +2076,7 @@
     {
      "op": "unschedule",
      "at": 1320,
-     "seq": 2
+     "seq": 3
     },
     {
      "op": "set",
@@ -1285,7 +2138,7 @@
      "kind": "close",
      "place": "hall"
     },
-    "digest_after": "c59b5590e6e6c9f3427112b685af9ce3cdbf3f9920ed87b8329b235a8a77641b"
+    "digest_after": "eaa901f1c6490b1450264400413c603e03d777caa1bdd180cca69a087d2d7dda"
    }
   }
  ],

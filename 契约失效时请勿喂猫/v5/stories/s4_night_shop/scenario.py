@@ -27,6 +27,7 @@ from engine.rules import Receipt, advance_idle, drain, submit
 from engine.seed import load
 from engine.surface import block, clock_label
 from library import EFFECTS
+from stories.common import advance_next
 
 DEFAULT_SEED = Path(__file__).with_name("seed.yml")
 
@@ -42,6 +43,8 @@ SHOP = "shop"
 #: 脚本里的时间标记：没有动作，世界自己走到下一个排程点（`advance_idle`）。
 #: 夜里那一段没有人替角色做决定，承诺的提醒与白班开门都是制度自己到点。
 NIGHT = "__night__"
+#: 时间只走到下一个排程点，好让值班的人在两个制度事件之间收箱点数。
+NEXT = "__next__"
 
 #: 22:00 交接：记录落一行、钥匙交出、笔留在柜台上、承诺顶班、两班人分开。
 _OPENING: list[tuple[str, str, dict[str, Any]]] = [
@@ -91,6 +94,27 @@ _OFFICE_CALL: list[tuple[str, str, dict[str, Any]]] = [
 #: 夜里世界自己走：承诺的提醒、次日白班开门。
 _NIGHT = [("", NIGHT, {})]
 
+#: 夜里有人当班：送货到点后收箱、点数、在夜间记录上落一行；清晨那车也一样点数。
+_NIGHT_ROUND: list[tuple[str, str, dict[str, Any]]] = [
+    ("", NEXT, {}),
+    ("incoming", "take", {"target": "笔"}),
+    ("incoming", "move", {"target": "后仓"}),
+    ("incoming", "count", {"target": "夜间补货"}),
+    ("incoming", "write", {"target": "夜间记录", "text": "夜间补货到，点数六箱，已入后仓。",
+                           "with": "笔"}),
+    ("incoming", "place", {"target": "笔", "to": "后仓"}),
+    ("incoming", "move", {"target": "店内"}),
+    ("", NEXT, {}),
+    ("incoming", "read", {"target": "巡夜登记"}),
+    ("", NEXT, {}),
+    ("", NEXT, {}),
+    ("incoming", "move", {"target": "后仓"}),
+    ("incoming", "count", {"target": "清晨补货"}),
+    ("incoming", "move", {"target": "店内"}),
+    ("", NEXT, {}),
+    *_NIGHT,
+]
+
 #: 次日 08:00 交班：钥匙交回，记录上再落一行。
 _CLOSING: list[tuple[str, str, dict[str, Any]]] = [
     ("outgoing", "move", {"target": "店内"}),
@@ -121,7 +145,7 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("incoming", "move", {"target": "店内"}),
         ("incoming", "place", {"target": "备用金", "to": "收银抽屉"}),
         ("incoming", "count", {"target": "收银抽屉"}),
-        *_NIGHT,
+        *_NIGHT_ROUND,
         *_CLOSING,
     ],
     # B：真丢了——送货员把那个纸箱当空箱带走，两百跟着出了店，没人记账。
@@ -135,7 +159,7 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("driver", "move", {"target": "店外"}),
         ("incoming", "count", {"target": "收银抽屉"}),
         ("incoming", "speak", {"text": "两百对不上，账上写着一千。"}),
-        *_NIGHT,
+        *_NIGHT_ROUND,
         *_CLOSING,
     ],
     # C：被人做了账——交班者添一笔现金付款，送货单上却是月结。
@@ -152,7 +176,7 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("incoming", "read", {"target": "交接记录"}),
         ("incoming", "read", {"target": "送货单"}),
         ("incoming", "speak", {"text": "账上多了一笔付送货的现金，送货单上写的是月结。"}),
-        *_NIGHT,
+        *_NIGHT_ROUND,
         *_CLOSING,
     ],
     # D：自己背——纸箱没开，接班者在记录上写下短款二百由自己补。
@@ -166,7 +190,7 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("incoming", "place", {"target": "笔", "to": "店内"}),
         ("incoming", "count", {"target": "收银抽屉"}),
         ("incoming", "speak", {"text": "数出来八百，差两百，先记我头上。"}),
-        *_NIGHT,
+        *_NIGHT_ROUND,
         *_CLOSING,
     ],
 }
@@ -209,6 +233,10 @@ def play(variant: str = "a", seed_path: Path = DEFAULT_SEED) -> Run:
         if verb == NIGHT:
             # 没有动作：时间自己走到下一个排程点，途中的世界事件照样入账与入册。
             run.items.extend(_world_item(event) for event in advance_idle(world, log, EFFECTS))
+            continue
+        if verb == NEXT:
+            # 只走到下一个排程点：这一班的人还要在两个制度事件之间做事。
+            run.items.extend(_world_item(event) for event in advance_next(world, log, EFFECTS))
             continue
         context = block(world, actor)
         receipt = submit(world, log, actor, verb, dict(args))

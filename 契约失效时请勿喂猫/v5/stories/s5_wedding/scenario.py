@@ -25,6 +25,7 @@ from engine.rules import Receipt, advance_idle, drain, submit
 from engine.seed import load
 from engine.surface import block, clock_label
 from library import EFFECTS
+from stories.common import advance_next
 
 DEFAULT_SEED = Path(__file__).with_name("seed.yml")
 
@@ -38,6 +39,8 @@ EXTRA_NAME = "陈明"
 #: 脚本里的时间标记：这一段没有动作，世界自己走到下一个排程点（`advance_idle`）。
 #: 路 b 靠它把一天从 09:00 走到 22:00，跨过中午，日期不翻页。
 DAY = "__day__"
+#: 时间只走到下一个排程点：中午上菜与散场前收拾都要在它们之间插进来。
+NEXT = "__next__"
 
 #: 四条路共用的开场：一个不在名单上的人走进签到台，写下那个名字，再回到厅里。
 _OPENING: list[tuple[str, str, dict[str, Any]]] = [
@@ -48,6 +51,41 @@ _OPENING: list[tuple[str, str, dict[str, Any]]] = [
     ("stranger", "place", {"target": "铅笔", "to": "签到台"}),
     ("stranger", "move", {"target": "酒店"}),
     ("stranger", "move", {"target": "厅内"}),
+]
+
+#: 中午开席：上菜、敬酒、入席、读安排，都是这一天真会发生的事。
+_LUNCH: list[tuple[str, str, dict[str, Any]]] = [
+    ("groom", "move", {"target": "厅内"}),
+    ("bride", "move", {"target": "厅内"}),
+    ("manager", "move", {"target": "后厨走廊"}),
+    ("manager", "take", {"target": "菜"}),
+    ("manager", "move", {"target": "厅内"}),
+    ("manager", "place", {"target": "菜", "to": "厅内"}),
+    ("manager", "announce", {"text": "十二点开席，菜已经上来了，各位动筷。"}),
+    ("bride_father", "read", {"target": "午宴安排"}),
+    ("groom_father", "read", {"target": "午宴安排"}),
+    ("best_man", "take", {"target": "酒"}),
+    ("best_man", "give", {"target": "酒", "to": "groom"}),
+    ("groom", "place", {"target": "酒", "to": "厅内"}),
+    ("groom", "speak", {"text": "我先敬各位一杯。"}),
+    ("bride_mother", "move", {"target": "厅内"}),
+    ("bride_mother", "give", {"target": "红包", "to": "bride"}),
+    ("bride", "count", {"target": "红包"}),
+    ("bride_father", "speak", {"text": "谢谢大家来。"}),
+]
+
+#: 散场前：厅里开始收，停车场上有一次照面。
+_EVENING: list[tuple[str, str, dict[str, Any]]] = [
+    ("manager", "move", {"target": "厅内"}),
+    ("manager", "announce", {"text": "各位慢用，十点散场，门口有车等着。"}),
+    ("best_man", "move", {"target": "停车场"}),
+    ("best_man", "examine", {"target": "车"}),
+    ("maid", "move", {"target": "停车场"}),
+    ("maid", "speak", {"text": "这一排最里头那辆是你的？", "to": "伴郎"}),
+    ("best_man", "speak", {"text": "我挪一下。", "to": "伴娘"}),
+    ("best_man", "move", {"target": "厅内"}),
+    ("manager", "move", {"target": "停车场"}),
+    ("manager", "speak", {"text": "最里头那辆车挪一下，散场要让出道。"}),
 ]
 
 SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
@@ -63,6 +101,10 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("manager", "announce", {"text": "签到本上多了个名字，叫陈明，名单上没有这个人。谁见过？"}),
         ("best_man", "announce", {"text": "早上我看见一个穿灰夹克的男人从签到台那边过来。"}),
         ("bride", "hail", {"who": "穿灰夹克的男人", "text": "你就是本子上写的陈明？"}),
+        ("", NEXT, {}),
+        *_LUNCH,
+        ("", NEXT, {}),
+        *_EVENING,
         ("", DAY, {}),
     ],
     # B：记账的人看见了，但谁也没往下问；一天照常过完，22:00 散场
@@ -76,6 +118,10 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("groom", "move", {"target": "停车场"}),
         ("bride", "move", {"target": "酒店"}),
         ("bride", "move", {"target": "停车场"}),
+        ("", NEXT, {}),
+        *_LUNCH,
+        ("", NEXT, {}),
+        *_EVENING,
         ("", DAY, {}),
     ],
     # C：记账的人把那一行擦掉，再当众说"本子上没多什么人"
@@ -86,6 +132,10 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("bookkeeper", "erase", {"target": "签到本"}),
         ("bookkeeper", "place", {"target": "橡皮", "to": "签到台"}),
         ("bookkeeper", "announce", {"text": "没事了，本子上没多什么人。"}),
+        ("", NEXT, {}),
+        *_LUNCH,
+        ("", NEXT, {}),
+        *_EVENING,
         ("", DAY, {}),
     ],
     # D：记账的人私下告诉经理，经理转述给厅里的人，然后大家说好都不再提
@@ -102,6 +152,10 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("manager", "retell", {"about": "陈明",
                                "text": "签到本上多了个名字，叫陈明，是穿灰夹克的男人写的。"}),
         ("manager", "announce", {"text": "今天的事就到这儿，谁都别再提了。"}),
+        ("", NEXT, {}),
+        *_LUNCH,
+        ("", NEXT, {}),
+        *_EVENING,
         ("", DAY, {}),
     ],
 }
@@ -134,6 +188,10 @@ def play(variant: str = "a", seed_path: Path = DEFAULT_SEED) -> Run:
         if verb == DAY:
             # 没有动作：时间自己走到下一个排程点，途中的世界事件照样入账与入册。
             run.items.extend(_world_item(event) for event in advance_idle(world, log, EFFECTS))
+            continue
+        if verb == NEXT:
+            # 只走到下一个排程点：中午上菜与散场前收拾要插在制度事件之间。
+            run.items.extend(_world_item(event) for event in advance_next(world, log, EFFECTS))
             continue
         context = block(world, actor)
         receipt = submit(world, log, actor, verb, dict(args))

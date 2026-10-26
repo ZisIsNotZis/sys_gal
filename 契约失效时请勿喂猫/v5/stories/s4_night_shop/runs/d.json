@@ -66,7 +66,7 @@
    ],
    "note": {
     "target": "handover_record",
-    "digest_after": "c26e918c98578ef46124c4e81647c099571bb60b962b1a149d5fea9a57516350"
+    "digest_after": "21e5b9462d877bbdea4493390f2145c986df5379703d131e899ffb8fdbd1a002"
    }
   },
   {
@@ -118,7 +118,7 @@
    ],
    "note": {
     "target": "pen",
-    "digest_after": "b6dbfcb3ef8bdbc6cc0b829cd4deec2281c8a98d21dbd5fc7439e49cbaa19803"
+    "digest_after": "9fb114ea6ba4e979623c585c3b8a4e585a316b885725069df3d99b19b52eb03d"
    }
   },
   {
@@ -165,7 +165,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "dd1e2975e83326201b73e2466b005168b2b48e86b3fae880b1632b039b682efd"
+    "digest_after": "a72b145c11182e9c90a5052b44b77e66558ef75cc82e2f1875e769313a69a65c"
    }
   },
   {
@@ -223,7 +223,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "c7e6721681b0722bdae951044dab6eb22cfcb9204ed659c6e951ae47e0b81f18"
+    "digest_after": "5650a3d635602b35482acbe2657500c869f4403910fbfd0a1b0dbf5078d7a935"
    }
   },
   {
@@ -275,7 +275,7 @@
    ],
    "note": {
     "target": "outside",
-    "digest_after": "aa669bf275b386b1b407cad00883228ee6184680e5582cf48326d25f761deb81"
+    "digest_after": "92e243a7688ed8e66c7dc8d90e7a07810b6a2e68c90d7fd44d21cd69cbe78eeb"
    }
   },
   {
@@ -298,7 +298,7 @@
    ],
    "note": {
     "target": "drawer",
-    "digest_after": "0e8c50f8907f388993ad03a833e7729a68ddd2635468a690bd2ff49724bccb88"
+    "digest_after": "9200193274d66054abd753f2f5d946e934e3feaab8cb5b0a9de668bd72a583ba"
    }
   },
   {
@@ -345,7 +345,7 @@
    ],
    "note": {
     "target": "handover_record",
-    "digest_after": "f9738b5e8d799aa1786f9610e6c4ea06c0a81b9141d8bcccb316fb556afa90a3"
+    "digest_after": "089d02aaed8fdd166d9777b2c33d4a448574b9f374547666132a6413cffcc9e9"
    }
   },
   {
@@ -392,7 +392,7 @@
    ],
    "note": {
     "target": "receipt",
-    "digest_after": "171718fbd727bf2f3348485a997569cf10a8149845b8130be8558acdab845c3d"
+    "digest_after": "37866f548d9408e8225077e3e6e1ca8d30a1654f0faa6a8ac280ee3e68559d62"
    }
   },
   {
@@ -439,7 +439,7 @@
    ],
    "note": {
     "target": "shift_sheet",
-    "digest_after": "f47aa6963bceec795e2aefd397545afd4989b690a44dea0163207f37d211d106"
+    "digest_after": "227d099582a8ec4b290740288b283417880352343acd9110ed2c1a623f951c10"
    }
   },
   {
@@ -491,7 +491,7 @@
    ],
    "note": {
     "target": "shop",
-    "digest_after": "e46b27f8f45fd3b2047ade84dcb59001b459c7a07e6bb3b7a8c0851fcc80e686"
+    "digest_after": "bd229c8c867e0f6c8466eeeb81cde0adcfa2e99793ffbae1026c5d4d480bc41e"
    }
   },
   {
@@ -543,7 +543,7 @@
    ],
    "note": {
     "target": "pen",
-    "digest_after": "8f7191986d3222e1406b144fe05c7e74a8419938f0c13a84854bbe9c07756c09"
+    "digest_after": "1fd14c94193af55105ca5513062a44e27c38c3165328cb8d341891a38ef6cdf1"
    }
   },
   {
@@ -607,7 +607,7 @@
    ],
    "note": {
     "target": "receipt",
-    "digest_after": "d13fa2c151dedb309334978c70bdaf31262b27713a88ecf090ee43893ff7c9bb"
+    "digest_after": "9812b7e1a6f8d3cefaabafdeb31345c15cf5aade3022588fd47c2ebce2831dcc"
    }
   },
   {
@@ -659,7 +659,7 @@
    ],
    "note": {
     "target": "pen",
-    "digest_after": "b7251049b3aacf0d94507b82fe1c97dd0505c5920aeec249f57151597777a81f"
+    "digest_after": "d2489091ebe1554a9ccbeb31574de785abb91d6732be6f85973a6825a4bac1cd"
    }
   },
   {
@@ -706,7 +706,7 @@
    ],
    "note": {
     "target": "shift_sheet",
-    "digest_after": "c36779aed1d0af3219a08379f1a8fbfe815b0706a9b26ca39daab062be89751a"
+    "digest_after": "65443fcec274d068663eab4b3849cfab978b13043cf77723ad0c4f45af5786be"
    }
   },
   {
@@ -753,7 +753,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "af1a10440257b06d5b70e7db3b1e737c978c5076c8e6f0545955023142d078dd"
+    "digest_after": "d8db6ebec9d0973c63f0216f13b847146b563cfd11e465fd8876213f6c523a34"
    }
   },
   {
@@ -800,7 +800,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "438a314c7c2a4278f96a0f8aca20648e13b5c4dea2f1bdac81357824c548e378"
+    "digest_after": "7d39e64bc37c345bb52fd6685af7e9cd3785309273ccba3ac188afdc90580fa5"
    }
   },
   {
@@ -852,7 +852,7 @@
    ],
    "note": {
     "target": "outside",
-    "digest_after": "ff64896baee8d336237d39ed0d23c560323abe6e0122058829911095d6d2e473"
+    "digest_after": "ea1c0b4b34789dabcb6f7a05296edc5ffce3955a967ed414a5faaf7d88cf6241"
    }
   },
   {
@@ -904,7 +904,7 @@
    ],
    "note": {
     "target": "shop",
-    "digest_after": "acb7d4251d26d96466b6a08d2a285670b7e89a037163939d0c2757134da7476e"
+    "digest_after": "bdcb86042fb5b66f1897cceb6fb0aea61338d902be1aac0261d4e43841caf54b"
    }
   },
   {
@@ -956,7 +956,7 @@
    ],
    "note": {
     "target": "back_room",
-    "digest_after": "2489e8692080af452b84d93ec0c329cacb24d419e303229025dce6a388967ccc"
+    "digest_after": "ddb287d895df5eac2a17b15712bdefb9fec8cdeda27377be1467a38ba476322a"
    }
   },
   {
@@ -1008,7 +1008,7 @@
    ],
    "note": {
     "target": "delivery",
-    "digest_after": "fd19cafbf91fff09ebfc8b8d200384ab5bd0990f914c1a6e4d1981186fbea0ad"
+    "digest_after": "36feb73a8c57d41625a67009d198eae8d3f8a031b939238df2848d8a6af6167a"
    }
   },
   {
@@ -1037,7 +1037,7 @@
    ],
    "note": {
     "target": "office",
-    "digest_after": "d66237539506c5283aea3657878347a5206282e1ee0afbcb38f6d02bd45838a4"
+    "digest_after": "73ae4064311b816a58c762fd610e98f5399638af4fdacf3c9c369ef1390e0498"
    }
   },
   {
@@ -1066,7 +1066,7 @@
    ],
    "note": {
     "target": "office",
-    "digest_after": "246e5c7a9eab0b16e3f130f2e525b644dda5c9255ce40b06d524c2ed4fde925c"
+    "digest_after": "9d9303b059a90d16e9ce9161e68fca0c599c955b1c3bf108564a57f1fe66127d"
    }
   },
   {
@@ -1118,7 +1118,7 @@
    ],
    "note": {
     "target": "office",
-    "digest_after": "c261c319228e056b39069a5c4397ba7f6fb85fe6344f4326a7faff9028d39172"
+    "digest_after": "c5d61f06e42a3d34e52b57d653eec1d1fa1c9af83a4ab5f3e851371c45ad67e3"
    }
   },
   {
@@ -1165,7 +1165,7 @@
    ],
    "note": {
     "target": "电话",
-    "digest_after": "09a5aceb875283229eb02cee8a42f43fc0f2e562b1ca1e3b32c5731c41b5bad1"
+    "digest_after": "1c1151c310bd508d3adec27229a4a8251363327fe6da7a3b634cdc5a68e7e6b9"
    }
   },
   {
@@ -1194,7 +1194,7 @@
    ],
    "note": {
     "target": "电话",
-    "digest_after": "d7fe3e4c46ae6a6ac65701fd8b997181d94090e8b4862479975e8b14c5471472"
+    "digest_after": "1a1295a6e5eaf51c9523b8079ba5f221e173f0647c8389546540ca152fd4a402"
    }
   },
   {
@@ -1246,7 +1246,7 @@
    ],
    "note": {
     "target": "shop",
-    "digest_after": "df6f69d7f294070e8ef54da637231ab678b873c161db2a3e7b36492ebc57e27d"
+    "digest_after": "9d7e9aca9c641ed2d112feb080772b97bf6baa4893804769a631e6db937cda39"
    }
   },
   {
@@ -1299,7 +1299,7 @@
    ],
    "note": {
     "target": "office",
-    "digest_after": "167287c0b24ce844ac2d9bc51db14dfc1ad32c57985cc575f19d79e54a5b8442"
+    "digest_after": "728272045c5baad1b8ca7f152334bf3d17d4716a28540ad4146643c7693eb084"
    }
   },
   {
@@ -1351,7 +1351,7 @@
    ],
    "note": {
     "target": "pen",
-    "digest_after": "45bd9bba6ddf77cedcc150acfcdc76fe2a780902ceb33aaf4b51ce505881437b"
+    "digest_after": "c80b297fd9e983188404b8b8a9c5f3d6ad42c196832c9bc1085de20b45f4820a"
    }
   },
   {
@@ -1420,7 +1420,7 @@
    ],
    "note": {
     "target": "handover_record",
-    "digest_after": "398446129977226ef520e590ee259956c8d3593f49e0ce073175f6f2e36c8fef"
+    "digest_after": "7614f74bddac175bb088934ad475773dbc8e9e39d8d724e3f0129f717100f7af"
    }
   },
   {
@@ -1472,7 +1472,7 @@
    ],
    "note": {
     "target": "pen",
-    "digest_after": "c02f921cdb3a8333020c79db20cc1555ab4f4a399761419130c52109c5801684"
+    "digest_after": "361bdf4f876f27b286e8d806b9b5a81e0ea4a91a576613492473e5108f910f6a"
    }
   },
   {
@@ -1495,7 +1495,7 @@
    ],
    "note": {
     "target": "drawer",
-    "digest_after": "3498f91cb0fed0f5b79906f3124180008a314ff0e689899c1be872e384e43559"
+    "digest_after": "48a41b36214883525558bd495f836ad665b26802bf69ff8adda12fafcccf0d7e"
    }
   },
   {
@@ -1542,11 +1542,775 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "5a1ef55cce37c30157cf6407ea794243c1861e79b96e88d53243c209ad69c3a9"
+    "digest_after": "44cb125b9573ec2cea500166222b0c9dfd9282eae1dacaa27e353675c282e821"
    }
   },
   {
    "id": 33,
+   "at": 1425,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 1425
+    }
+   ],
+   "note": {
+    "digest_after": "668dd806e1c6fd28d403bf26d591c3b1f335100e86cae88560e9495580b03f18"
+   }
+  },
+  {
+   "id": 34,
+   "at": 1425,
+   "kind": "world",
+   "actor": null,
+   "what": "deliver",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1425,
+     "seq": 1
+    },
+    {
+     "op": "move",
+     "e": "night_crate",
+     "to": "back_room"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1425,
+     "v": "送货车在后仓门口停下，卸下夜间补货。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1425,
+     "v": "送货车在后仓门口停下，卸下夜间补货。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "deliver",
+     "place": "back_room",
+     "item": "night_crate"
+    },
+    "digest_after": "375f8f348afabb0bd36897a46a6dbc7d6673990c3e948485ee9cf22ebb37a31d"
+   }
+  },
+  {
+   "id": 35,
+   "at": 1425,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "take",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "pen",
+     "to": "incoming"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1425,
+     "v": "你拿起了笔。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1425,
+     "v": "接班者拿起了笔。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1425,
+     "v": "接班者拿起了笔。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1425,
+     "v": "接班者拿起了笔。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1425,
+     "v": "那个人拿起了笔。"
+    },
+    {
+     "op": "clock",
+     "to": 1426
+    }
+   ],
+   "note": {
+    "target": "pen",
+    "digest_after": "5949ee65a4b8665428aaac2978435638dec7c930066cfb7e50cb2af13d16f825"
+   }
+  },
+  {
+   "id": 36,
+   "at": 1426,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "incoming",
+     "to": "back_room"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1426,
+     "v": "你到了后仓。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1426,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1426,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1426,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1426,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1428
+    }
+   ],
+   "note": {
+    "target": "back_room",
+    "digest_after": "e550ce37e0e5edc1f5beedd41165563e96ce9aa5b9561e56423b97f83bb50dc5"
+   }
+  },
+  {
+   "id": 37,
+   "at": 1428,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "count",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1428,
+     "v": "你数了夜间补货：共 6（夜间补货 6）。"
+    },
+    {
+     "op": "clock",
+     "to": 1429
+    }
+   ],
+   "note": {
+    "target": "night_crate",
+    "digest_after": "eaf08c7972e13811436439447cb35f01a47545788b0959532ceebab371358a2a"
+   }
+  },
+  {
+   "id": 38,
+   "at": 1429,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "write",
+   "atoms": [
+    {
+     "op": "set",
+     "e": "night_log",
+     "k": "marks",
+     "v": [
+      {
+       "text": "夜间补货到，点数六箱，已入后仓。",
+       "ink": "ink",
+       "style": "in_hand"
+      }
+     ]
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1429,
+     "v": "你在夜间记录上添了一笔：「夜间补货到，点数六箱，已入后仓。」"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1429,
+     "v": "接班者在夜间记录上写字。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1429,
+     "v": "接班者在夜间记录上写字。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1429,
+     "v": "接班者在夜间记录上写字。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1429,
+     "v": "那个人在夜间记录上写字。"
+    },
+    {
+     "op": "clock",
+     "to": 1431
+    }
+   ],
+   "note": {
+    "target": "night_log",
+    "digest_after": "3030764a2efa2b6d6bc8c78a372ed3064dfa4a3560fe3f31a39079c41ec48098"
+   }
+  },
+  {
+   "id": 39,
+   "at": 1431,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "place",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "pen",
+     "to": "back_room"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1431,
+     "v": "你把笔放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1431,
+     "v": "接班者把笔放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1431,
+     "v": "接班者把笔放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1431,
+     "v": "接班者把笔放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1431,
+     "v": "那个人把笔放在了这儿。"
+    },
+    {
+     "op": "clock",
+     "to": 1432
+    }
+   ],
+   "note": {
+    "target": "pen",
+    "digest_after": "3c491257642a4e36376a38b1ef1984c5c9129504d8d04c0f2412462d5ef2ec33"
+   }
+  },
+  {
+   "id": 40,
+   "at": 1432,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "incoming",
+     "to": "shop"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1432,
+     "v": "你到了店内。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1432,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1432,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1432,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1432,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1434
+    }
+   ],
+   "note": {
+    "target": "shop",
+    "digest_after": "b69fab7d1eb40cc7a6ec9fccc5553bd9dc477ba2b88a94b78283dc71f635f57d"
+   }
+  },
+  {
+   "id": 41,
+   "at": 1530,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 1530
+    }
+   ],
+   "note": {
+    "digest_after": "74ec2f14fe86c74b4ccacc75317a4385df815170902091cb51d8b0f7bf667f55"
+   }
+  },
+  {
+   "id": 42,
+   "at": 1530,
+   "kind": "world",
+   "actor": null,
+   "what": "stamp",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1530,
+     "seq": 2
+    },
+    {
+     "op": "set",
+     "e": "patrol_log",
+     "k": "marks",
+     "v": [
+      {
+       "text": "2026-04-03 01:30 巡夜签到：门已看过，店内一人值守。",
+       "ink": "printed",
+       "style": "printed"
+      }
+     ]
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1530,
+     "v": "巡夜登记上多了一行登记。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1530,
+     "v": "巡夜登记上多了一行登记。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "stamp",
+     "place": "shop",
+     "item": "patrol_log",
+     "station": "巡夜签到：门已看过，店内一人值守。"
+    },
+    "digest_after": "a4832d34807c28a0a402af63aaa95398f956f5decd54ec504ac4fbaf126c315f"
+   }
+  },
+  {
+   "id": 43,
+   "at": 1530,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1530,
+     "v": "你读着巡夜登记：「2026-04-03 01:30 巡夜签到：门已看过，店内一人值守。」"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1530,
+     "v": "接班者在看巡夜登记。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1530,
+     "v": "接班者在看巡夜登记。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1530,
+     "v": "接班者在看巡夜登记。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1530,
+     "v": "那个人在看巡夜登记。"
+    },
+    {
+     "op": "clock",
+     "to": 1531
+    }
+   ],
+   "note": {
+    "target": "patrol_log",
+    "digest_after": "03a1ff8652e2e032d3e1812c8ab28056d145308aa651b01aabc105eb656834f4"
+   }
+  },
+  {
+   "id": 44,
+   "at": 1650,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 1650
+    }
+   ],
+   "note": {
+    "digest_after": "ce35e2de616ea1d6d4c8ea9eea782d21b28331fbc45755146d505e2c156be974"
+   }
+  },
+  {
+   "id": 45,
+   "at": 1650,
+   "kind": "world",
+   "actor": null,
+   "what": "arrive",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1650,
+     "seq": 3
+    },
+    {
+     "op": "flag",
+     "k": "last_stop",
+     "v": "凌晨的清运车"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1650,
+     "v": "车停了一下：凌晨的清运车。"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1650,
+     "v": "车停了一下：凌晨的清运车。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1650,
+     "v": "车停了一下：凌晨的清运车。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1650,
+     "v": "车停了一下：凌晨的清运车。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1650,
+     "v": "车停了一下：凌晨的清运车。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "arrive",
+     "place": "outside",
+     "station": "凌晨的清运车"
+    },
+    "digest_after": "6adfe8eaa1b9625afbd40cbf5a3eea2a69eae6cb21acc74c48b88350f2e6bca6"
+   }
+  },
+  {
+   "id": 46,
+   "at": 1770,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 1770
+    }
+   ],
+   "note": {
+    "digest_after": "e07465c6efbf75ef50ba8e45d0e6d81eed45cec7538d6d476f582e6fb16ede82"
+   }
+  },
+  {
+   "id": 47,
+   "at": 1770,
+   "kind": "world",
+   "actor": null,
+   "what": "deliver",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1770,
+     "seq": 4
+    },
+    {
+     "op": "move",
+     "e": "morning_crate",
+     "to": "back_room"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1770,
+     "v": "送货车在后仓门口停下，卸下清晨补货。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1770,
+     "v": "送货车在后仓门口停下，卸下清晨补货。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "deliver",
+     "place": "back_room",
+     "item": "morning_crate"
+    },
+    "digest_after": "e76be7e2ff9324e69e4872fe06d892300cf8430b7373248dfb44fd0c64f48574"
+   }
+  },
+  {
+   "id": 48,
+   "at": 1770,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "incoming",
+     "to": "back_room"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1770,
+     "v": "你到了后仓。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1770,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1770,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1770,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1770,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1772
+    }
+   ],
+   "note": {
+    "target": "back_room",
+    "digest_after": "2ff838e07c710d8da4ec5f7f0aa07b995313aeced5db2e9cbe038b1c03a61924"
+   }
+  },
+  {
+   "id": 49,
+   "at": 1772,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "count",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1772,
+     "v": "你数了清晨补货：共 4（清晨补货 4）。"
+    },
+    {
+     "op": "clock",
+     "to": 1773
+    }
+   ],
+   "note": {
+    "target": "morning_crate",
+    "digest_after": "a7a519407736ad7ee7af48e1d961cfeef2796855aae097c4c70c0bb8c530725e"
+   }
+  },
+  {
+   "id": 50,
+   "at": 1773,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "incoming",
+     "to": "shop"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1773,
+     "v": "你到了店内。"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1773,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1773,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1773,
+     "v": "接班者走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1773,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1775
+    }
+   ],
+   "note": {
+    "target": "shop",
+    "digest_after": "3fade8798cc27760f59ed6b953749ba5c1ead23d67f09bbda22a98ed0a2766fd"
+   }
+  },
+  {
+   "id": 51,
+   "at": 1880,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 1880
+    }
+   ],
+   "note": {
+    "digest_after": "a810693dbf2c0d0b52110c14fdb572ac0ca5c1ad35f1a80ada550605dcc2c7c7"
+   }
+  },
+  {
+   "id": 52,
+   "at": 1880,
+   "kind": "world",
+   "actor": null,
+   "what": "clean",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1880,
+     "seq": 5
+    },
+    {
+     "op": "flag",
+     "k": "cleaned",
+     "v": "shop"
+    },
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1880,
+     "v": "清洁的人进了店内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1880,
+     "v": "清洁的人进了店内，开始收拾。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "clean",
+     "place": "shop"
+    },
+    "digest_after": "40e9ad06f15eac07b12606fb9cc6f4fa1ac52bc0dac340a0f5d39ffe59801420"
+   }
+  },
+  {
+   "id": 53,
    "at": 1900,
    "kind": "tick",
    "actor": null,
@@ -1558,11 +2322,11 @@
     }
    ],
    "note": {
-    "digest_after": "f2010af1c2be351f57b82ac9140cf7716bfd347323a5bd9e313c6e207672172c"
+    "digest_after": "d77367bfd97a45f509d559465aff7088aeb2201ae0d989a198b9f85b981ed98e"
    }
   },
   {
-   "id": 34,
+   "id": 54,
    "at": 1900,
    "kind": "world",
    "actor": null,
@@ -1571,7 +2335,7 @@
     {
      "op": "unschedule",
      "at": 1900,
-     "seq": 2
+     "seq": 7
     },
     {
      "op": "remember",
@@ -1588,11 +2352,11 @@
      "place": "shop",
      "about": "明晚白班我替你顶。"
     },
-    "digest_after": "58fe5dccf0a0b54127881c363473096fdee485ce9b4aaaf6269161e61358694c"
+    "digest_after": "301e56eb4d50a66f793601f55dc76addeb2fcb7e600e33022dc62305d9df6ea2"
    }
   },
   {
-   "id": 35,
+   "id": 55,
    "at": 1920,
    "kind": "tick",
    "actor": null,
@@ -1604,11 +2368,11 @@
     }
    ],
    "note": {
-    "digest_after": "ac051950a3187220eefcf6f6a7c4076c13a27641f6d2bc920b9737f72d204aa5"
+    "digest_after": "e7c2ec7d98cefd57de4b0eda9558f6169f8ca0a295cce3142d5e3866538aa5c4"
    }
   },
   {
-   "id": 36,
+   "id": 56,
    "at": 1920,
    "kind": "world",
    "actor": null,
@@ -1617,7 +2381,7 @@
     {
      "op": "unschedule",
      "at": 1920,
-     "seq": 1
+     "seq": 6
     },
     {
      "op": "set",
@@ -1637,11 +2401,11 @@
      "kind": "open",
      "place": "office"
     },
-    "digest_after": "65330a49e2caa1af682aa5a97f550de40611ff50e32fd59e461358b1d77524e2"
+    "digest_after": "f38adcab2785de5658091e1c093619d9b9f35a1c780fe4fd61fa40c214638c9d"
    }
   },
   {
-   "id": 37,
+   "id": 57,
    "at": 1920,
    "kind": "intent",
    "actor": "outgoing",
@@ -1689,11 +2453,11 @@
    ],
    "note": {
     "target": "shop",
-    "digest_after": "263c676d9ef9bcba84fb892cc576f982f8a848b500b0ac0dcb7887561f831570"
+    "digest_after": "00ae4c0d71811751ed5f1610dc0eefc78240faa957726e6a5a4b24ed5481426f"
    }
   },
   {
-   "id": 38,
+   "id": 58,
    "at": 1922,
    "kind": "intent",
    "actor": "incoming",
@@ -1741,11 +2505,11 @@
    ],
    "note": {
     "target": "pen",
-    "digest_after": "53be7fe1d9ede6104800cadb479bee7d912c16ff54d064ded7358bd6a3700f05"
+    "digest_after": "39022c94298beb0687c47558efef6b27a229f5ca971bc4887745b340a3f787b0"
    }
   },
   {
-   "id": 39,
+   "id": 59,
    "at": 1923,
    "kind": "intent",
    "actor": "incoming",
@@ -1820,7 +2584,7 @@
    ],
    "note": {
     "target": "handover_record",
-    "digest_after": "36ea51b83a88c5d7edee1e15b8fbc10ba09678f85afa94b7e3a0f9b8115a521f"
+    "digest_after": "121408cfd87d28da686f759e2bd3b8f545e8bd613a91604fd198f96b95db2f82"
    }
   }
  ],

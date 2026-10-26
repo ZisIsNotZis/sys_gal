@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from engine.events import Event, EventLog
+from engine.rules import advance_to, drain
 from engine.surface import clock_label, render_block
 
 DECIDERS = {"world": "世界", "script": "脚本", "agent": "角色"}
@@ -116,6 +118,16 @@ def context_view(run: Any) -> str:
             lines.append(f"- 没成：{item['reason']}")
         lines.append("")
     return "\n".join(lines)
+
+
+def advance_next(world: Any, log: EventLog, effects: dict[str, Any]) -> list[Event]:
+    """时间只走到下一个排程点：夜里要按时段插入动作时用它，
+    `advance_idle` 会一路走到排程空掉。"""
+    when = world.next_due()
+    if when is None:
+        return []
+    advance_to(world, log, when)
+    return drain(world, log, effects)
 
 
 def digest_row(run: Any) -> dict[str, Any]:

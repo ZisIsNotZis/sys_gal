@@ -176,6 +176,43 @@ objects:
     prose: 一箱刚搬下来的水，箱底沾着灰
     state: {count: 12, portable: true}
 
+  - id: night_crate
+    parent: outside
+    name: 夜间补货
+    prose: 一箱还没拆封的酸奶，箱口压着送货单
+    state: {count: 6, portable: true}
+
+  - id: morning_crate
+    parent: outside
+    name: 清晨补货
+    prose: 一箱刚卸下的面包，塑料袋上结着水汽
+    state: {count: 4, portable: true}
+
+  - id: night_log
+    parent: back_room
+    name: 夜间记录
+    prose: 后仓墙上挂着的一本横格簿，绳子拴着笔
+    state:
+      marks: []
+      accepts: [ink]
+      portable: false
+
+  - id: patrol_log
+    parent: shop
+    name: 巡夜登记
+    prose: 收银台边上摊着的一张登记表，格子里等人签到
+    state:
+      marks: []
+      accepts: [ink]
+      portable: false
+
 schedule:
+  # 一夜的制度：送货、巡夜、清晨补货与清扫都按时到点，不是谁的决定。
+  - {at: 1425, effect: {kind: deliver, place: back_room, item: night_crate}}
+  - {at: 1530, effect: {kind: stamp, place: shop, item: patrol_log,
+                       station: "巡夜签到：门已看过，店内一人值守。"}}
+  - {at: 1650, effect: {kind: arrive, place: outside, station: "凌晨的清运车"}}
+  - {at: 1770, effect: {kind: deliver, place: back_room, item: morning_crate}}
+  - {at: 1880, effect: {kind: clean, place: shop}}
   # 白班到点开门：不是谁的决定，是这一班的制度。
   - {at: 1920, effect: {kind: open, place: office}}

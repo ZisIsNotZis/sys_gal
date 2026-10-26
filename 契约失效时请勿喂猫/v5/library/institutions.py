@@ -10,6 +10,7 @@ from typing import Any
 
 from engine.core import World
 from engine.resolve import in_sight
+from engine.surface import clock_label
 
 
 def _present(world: World, place: str) -> list[str]:
@@ -28,6 +29,15 @@ def _witnesses(world: World, place: str) -> list[str]:
     """看得见这个地点的人：里面有谁，外面谁看得见它。"""
     return [p for p in world.entities
             if world.kind_of(p) == "person" and in_sight(world, p, place)]
+
+
+def _around(world: World, place: str) -> list[str]:
+    """就在这一处和紧邻的外间的人：卸货的动静隔一道门也听得见。"""
+    people = set(_present(world, place))
+    parent = world.container(place)
+    if parent is not None and world.kind_of(parent) == "place":
+        people.update(_present(world, parent))
+    return [p for p in world.entities if p in people]
 
 
 def arrive(world: World, effect: dict[str, Any]) -> list[dict[str, Any]]:
@@ -95,6 +105,44 @@ def post(world: World, effect: dict[str, Any]) -> list[dict[str, Any]]:
     return atoms
 
 
+def deliver(world: World, effect: dict[str, Any]) -> list[dict[str, Any]]:
+    """到点的送货：货车把货卸到某处，看得见的人听见动静。"""
+    item, place = effect["item"], effect["place"]
+    item_name = world.entities[item].name
+    place_name = world.entities[place].name
+    atoms: list[dict[str, Any]] = [{"op": "move", "e": item, "to": place}]
+    atoms += [{"op": "remember", "e": p, "at": world.clock,
+               "v": f"送货车在{place_name}门口停下，卸下{item_name}。"}
+              for p in _around(world, place)]
+    return atoms
+
+
+def stamp(world: World, effect: dict[str, Any]) -> list[dict[str, Any]]:
+    """到点登记：值班的人或巡夜在登记本上落一行，字是这一处公开的。"""
+    item = effect["item"]
+    text = effect.get("station", "签到")
+    rows = list(world.get(item, "marks") or [])
+    rows.append({"text": f"{clock_label(world.clock, world.date)} {text}",
+                 "ink": "printed", "style": "printed"})
+    place = effect.get("place") or world.place_of(item)
+    atoms: list[dict[str, Any]] = [{"op": "set", "e": item, "k": "marks", "v": rows}]
+    atoms += [{"op": "remember", "e": p, "at": world.clock,
+               "v": f"{world.entities[item].name}上多了一行登记。"}
+              for p in (_present(world, place) if place else [])]
+    return atoms
+
+
+def clean(world: World, effect: dict[str, Any]) -> list[dict[str, Any]]:
+    """到点清扫/收拾：这是一班的收尾，不归任何一个人的决定。"""
+    place = effect["place"]
+    name = world.entities[place].name
+    atoms: list[dict[str, Any]] = [{"op": "flag", "k": "cleaned", "v": place}]
+    atoms += [{"op": "remember", "e": p, "at": world.clock,
+               "v": f"清洁的人进了{name}，开始收拾。"}
+              for p in _present(world, place)]
+    return atoms
+
+
 def remind(world: World, effect: dict[str, Any]) -> list[dict[str, Any]]:
     """到点提醒许下承诺的人：承诺进入了时间表，提醒只说那件事本身。"""
     who = effect["who"]
@@ -107,4 +155,5 @@ def remind(world: World, effect: dict[str, Any]) -> list[dict[str, Any]]:
 
 EFFECTS = {"arrive": arrive, "stops": stops,
            "close": close, "open": reopen,
-           "pickup_due": pickup_due, "post": post, "remind": remind}
+           "pickup_due": pickup_due, "post": post, "remind": remind,
+           "deliver": deliver, "stamp": stamp, "clean": clean}
