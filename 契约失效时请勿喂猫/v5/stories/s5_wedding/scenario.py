@@ -110,6 +110,28 @@ _CLOSING: list[tuple[str, str, dict[str, Any]]] = [
     ("bride_mother", "speak", {"text": "车都在门口等着了，慢慢来。"}),
 ]
 
+#: 下午到傍晚：午宴撤席、四点合影、晚宴上菜、送客车辆。世界事件由排程落下，
+#: 人只做物理上做得到的事——经理从厅里出去把推车上的菜端进厅，菜不是凭空出现的。
+_AFTERNOON: list[tuple[str, str, dict[str, Any]]] = [
+    # 14:00 清洁的人进厅撤席，经理把客人先请到厅外歇着，新娘与母亲陪着出去换衣。
+    ("manager", "announce", {"text": "午宴到这儿，各位先到厅外歇一歇，四点回来合影。"}),
+    ("bride", "move", {"target": "酒店"}),
+    ("bride_mother", "move", {"target": "酒店"}),
+    ("", NEXT, {}),
+    # 16:00 厅里贴出合影安排，长辈先去读一读自己坐哪。
+    ("bride_father", "read", {"target": "合影安排"}),
+    ("", NEXT, {}),
+    # 17:30 后厨备料出齐；经理去门口把推车上的晚宴菜端进厅里。
+    ("manager", "move", {"target": "酒店"}),
+    ("manager", "take", {"target": "晚宴的菜"}),
+    ("manager", "move", {"target": "厅内"}),
+    ("manager", "place", {"target": "晚宴的菜", "to": "厅内"}),
+    ("", NEXT, {}),
+    # 19:30 厅里贴出送客车辆的时刻，经理先看一眼。
+    ("manager", "read", {"target": "送客车辆"}),
+    ("", NEXT, {}),
+]
+
 SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
     # A：记账的人发现多了一个名字，经理当众问，伴郎说见过，新娘把名字对上了人
     "a": [
@@ -125,8 +147,10 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("bride", "hail", {"who": "穿灰夹克的男人", "text": "你就是本子上写的陈明？"}),
         *_GUESTS,
         ("", NEXT, {}),
+        ("", NEXT, {}),
         *_LUNCH,
         ("", NEXT, {}),
+        *_AFTERNOON,
         *_EVENING,
         *_CLOSING,
         ("", DAY, {}),
@@ -140,8 +164,10 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("best_man", "announce", {"text": "门口没人了，都进来了。"}),
         *_GUESTS,
         ("", NEXT, {}),
+        ("", NEXT, {}),
         *_LUNCH,
         ("", NEXT, {}),
+        *_AFTERNOON,
         *_EVENING,
         *_CLOSING,
         ("", DAY, {}),
@@ -156,8 +182,10 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("bookkeeper", "announce", {"text": "没事了，本子上没多什么人。"}),
         *_GUESTS,
         ("", NEXT, {}),
+        ("", NEXT, {}),
         *_LUNCH,
         ("", NEXT, {}),
+        *_AFTERNOON,
         *_EVENING,
         *_CLOSING,
         ("", DAY, {}),
@@ -175,11 +203,13 @@ SCRIPTS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("bride_mother", "move", {"target": "厅内"}),
         *_GUESTS,
         ("", NEXT, {}),
+        ("", NEXT, {}),
         *_LUNCH,
         ("manager", "retell", {"about": "陈明",
                                "text": "签到本上多了个名字，叫陈明，是穿灰夹克的男人写的。"}),
         ("manager", "announce", {"text": "今天的事就到这儿，谁都别再提了。"}),
         ("", NEXT, {}),
+        *_AFTERNOON,
         *_EVENING,
         *_CLOSING,
         ("", DAY, {}),

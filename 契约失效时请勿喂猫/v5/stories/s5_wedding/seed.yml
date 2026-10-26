@@ -181,7 +181,51 @@ objects:
     name: 车
     prose: 一辆停在最里侧的车，前挡风玻璃上落了叶
 
+  - id: photo_plan
+    parent: checkin
+    name: 合影安排
+    prose: 一张打印的流程单，四个角用胶带粘过
+    state:
+      marks: [{text: "下午四点，厅内合影，长辈坐前排。", ink: printed, style: printed}]
+      accepts: [ink]
+      portable: true
+
+  - id: sendoff_plan
+    parent: checkin
+    name: 送客车辆
+    prose: 一张写着车次与时间的纸条
+    state:
+      marks: [{text: "21:00 起门口发车，按桌前顺序送客。", ink: printed, style: printed}]
+      accepts: [ink]
+      portable: true
+
+  - id: dinner_dishes
+    parent: venue
+    name: 晚宴的菜
+    prose: 十盘扣着盖的菜，码在推车上，盖沿还冒着热气
+    state: {count: 10, portable: true}
+
+  - id: kitchen_log
+    parent: corridor
+    name: 备餐登记
+    prose: 后厨门边挂着的一块白板，格子里写着出菜的时辰
+    state:
+      marks: []
+      accepts: [ink]
+      portable: false
+
 schedule:
+  # 11:00 酒店把厅内提前收拾好，等十二点开席。
+  - {at: 660, effect: {kind: clean, place: hall}}
+  # 14:00 午宴撤席：清洁的人进厅收拾，不是谁的决定。
+  - {at: 840, effect: {kind: clean, place: hall}}
+  # 16:00 下午的合影安排贴到厅内；内容只有去读才知道。
+  - {at: 960, effect: {kind: post, place: hall, item: photo_plan}}
+  # 17:30 后厨备料出齐，在备餐登记上落一行。
+  - {at: 1050, effect: {kind: stamp, place: corridor, item: kitchen_log,
+                        station: "17:30 晚宴备料出齐，十桌。"}}
+  # 19:30 送客车辆的时刻贴到厅内。
+  - {at: 1170, effect: {kind: post, place: hall, item: sendoff_plan}}
   # 21:30 散场前的收拾：酒店到点把厅交给清洁的人。
   - {at: 1290, effect: {kind: clean, place: hall}}
   # 到中午，酒店把午宴安排贴到厅内；内容只有去读才知道。

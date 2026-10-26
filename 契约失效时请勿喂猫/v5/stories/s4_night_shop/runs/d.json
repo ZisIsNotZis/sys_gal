@@ -2075,6 +2075,52 @@
   },
   {
    "id": 46,
+   "at": 1650,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "count",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1650,
+     "v": "你数了收银抽屉：共 800（收银款 800）。"
+    },
+    {
+     "op": "clock",
+     "to": 1651
+    }
+   ],
+   "note": {
+    "target": "drawer",
+    "digest_after": "b9c71e4b70707e7ab7455e278ea08bde673516752c7a393b9cbf8cbf9b4842c0"
+   }
+  },
+  {
+   "id": 47,
+   "at": 1651,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "examine",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1651,
+     "v": "你细看：店外（门口的台阶上有一层夜里的潮气，卷帘门半开着）；店内（两排货架，冰柜嗡嗡响，收银台正对着门；门开着）；后仓（纸箱堆到膝盖高，墙角立着几箱没拆的水）；办公室（一张折叠桌，桌上一部座机，墙上贴着一张旧排班表；门关着；锁着）；交班者（外套搭在手臂上，围裙还没解）；顾客（手里攥着一张零钱，进门先看冰柜）；送货员（蓝色工装，肩上扛着一箱水）；巡夜（反光背心，手电筒夹在腋下）；收银抽屉（拉出来一半的铁抽屉，里面压着一张旧小票）；收银款（一叠零钱和几张整钞）；纸箱（一个拆过口的纸箱，口子用胶带随手粘了回去；封着口）；交接记录（一本压在柜台玻璃下面的横格本；上面有 3 笔字：印刷、钢笔、钢笔）；小票（一叠从机器里出来的小票，最上面一张还翘着边；上面有 2 笔字：印刷、钢笔）；班表（一张塑封过的排班表，边角被胶带粘在货架上；印上去的）；送货单（一联复写过的送货单，纸边有折痕；印上去的）；办公室钥匙（一把黄铜色的钥匙，柄上缠着一圈胶布）；笔（一支按一下才出芯的圆珠笔；写墨水字的）；库存（墙角立着的几箱水，外面裹着塑料膜）；送货（一箱刚搬下来的水，箱底沾着灰）；夜间补货（一箱还没拆封的酸奶，箱口压着送货单）；清晨补货（一箱刚卸下的面包，塑料袋上结着水汽）；夜间记录（后仓墙上挂着的一本横格簿，绳子拴着笔；手写的，用的是钢笔）；巡夜登记（收银台边上摊着的一张登记表，格子里等人签到；印上去的）。"
+    },
+    {
+     "op": "clock",
+     "to": 1652
+    }
+   ],
+   "note": {
+    "target": "patrol_log",
+    "digest_after": "94077ace0df674534a1ed2244dd7e87136983a91bf5f4c7b7719011e50c8f517"
+   }
+  },
+  {
+   "id": 48,
    "at": 1770,
    "kind": "tick",
    "actor": null,
@@ -2086,11 +2132,11 @@
     }
    ],
    "note": {
-    "digest_after": "e07465c6efbf75ef50ba8e45d0e6d81eed45cec7538d6d476f582e6fb16ede82"
+    "digest_after": "2bdb5b360f2a417ba5a1ae3e0da9d733b5171d9f28f2b4c357c60865da9ece2b"
    }
   },
   {
-   "id": 47,
+   "id": 49,
    "at": 1770,
    "kind": "world",
    "actor": null,
@@ -2125,11 +2171,11 @@
      "place": "back_room",
      "item": "morning_crate"
     },
-    "digest_after": "e76be7e2ff9324e69e4872fe06d892300cf8430b7373248dfb44fd0c64f48574"
+    "digest_after": "820ab964750bfe7888e429c9499ce86b1c310ab9aa5310d0ca370aafcb0fb431"
    }
   },
   {
-   "id": 48,
+   "id": 50,
    "at": 1770,
    "kind": "intent",
    "actor": "incoming",
@@ -2177,11 +2223,11 @@
    ],
    "note": {
     "target": "back_room",
-    "digest_after": "2ff838e07c710d8da4ec5f7f0aa07b995313aeced5db2e9cbe038b1c03a61924"
+    "digest_after": "2ec5e978ebf1a4b51d14e248d403399fea4e4fe2080608183f39246f17bf8eab"
    }
   },
   {
-   "id": 49,
+   "id": 51,
    "at": 1772,
    "kind": "intent",
    "actor": "incoming",
@@ -2200,11 +2246,11 @@
    ],
    "note": {
     "target": "morning_crate",
-    "digest_after": "a7a519407736ad7ee7af48e1d961cfeef2796855aae097c4c70c0bb8c530725e"
+    "digest_after": "519a47fdd7733a6dba59a3ce9b5d3236af2155c299d632f5150bbb566fe37770"
    }
   },
   {
-   "id": 50,
+   "id": 52,
    "at": 1773,
    "kind": "intent",
    "actor": "incoming",
@@ -2252,11 +2298,105 @@
    ],
    "note": {
     "target": "shop",
-    "digest_after": "3fade8798cc27760f59ed6b953749ba5c1ead23d67f09bbda22a98ed0a2766fd"
+    "digest_after": "aef10165dd920ac91d7a3f1d0e4ba6a78bfc981d759f406238508d3e85109237"
    }
   },
   {
-   "id": 51,
+   "id": 53,
+   "at": 1775,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1775,
+     "v": "你读着小票：「22:04 销售 1 笔 合计 3 元。本店留底。22:40 矿泉水一瓶 3 元。」"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1775,
+     "v": "接班者在看小票。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1775,
+     "v": "接班者在看小票。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1775,
+     "v": "接班者在看小票。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1775,
+     "v": "那个人在看小票。"
+    },
+    {
+     "op": "clock",
+     "to": 1776
+    }
+   ],
+   "note": {
+    "target": "receipt",
+    "digest_after": "ebd66fc8cce4a18fa4bb2b111ada7c88c1de2252f88e7b1694de9fff38fc41cf"
+   }
+  },
+  {
+   "id": 54,
+   "at": 1776,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1776,
+     "v": "你读着交接记录：「白班 14:00 交班：抽屉收银 1000。2026-04-02 22:00 交班：交班者→接班者；钥匙：办公室钥匙短款二百，由接班者补。」"
+    },
+    {
+     "op": "remember",
+     "e": "outgoing",
+     "at": 1776,
+     "v": "接班者在看交接记录。"
+    },
+    {
+     "op": "remember",
+     "e": "customer",
+     "at": 1776,
+     "v": "接班者在看交接记录。"
+    },
+    {
+     "op": "remember",
+     "e": "driver",
+     "at": 1776,
+     "v": "接班者在看交接记录。"
+    },
+    {
+     "op": "remember",
+     "e": "patrol",
+     "at": 1776,
+     "v": "那个人在看交接记录。"
+    },
+    {
+     "op": "clock",
+     "to": 1777
+    }
+   ],
+   "note": {
+    "target": "handover_record",
+    "digest_after": "117e9c13e44d9abf29faa271be385744c55eccc63a08ccd594b2654fcb441c6a"
+   }
+  },
+  {
+   "id": 55,
    "at": 1880,
    "kind": "tick",
    "actor": null,
@@ -2268,11 +2408,11 @@
     }
    ],
    "note": {
-    "digest_after": "a810693dbf2c0d0b52110c14fdb572ac0ca5c1ad35f1a80ada550605dcc2c7c7"
+    "digest_after": "2f9ab0b7ce529cd3e4916f5f53bddfc0a1bf725d28987394368eae80f5a8f498"
    }
   },
   {
-   "id": 52,
+   "id": 56,
    "at": 1880,
    "kind": "world",
    "actor": null,
@@ -2306,11 +2446,34 @@
      "kind": "clean",
      "place": "shop"
     },
-    "digest_after": "40e9ad06f15eac07b12606fb9cc6f4fa1ac52bc0dac340a0f5d39ffe59801420"
+    "digest_after": "4c4cc7bfb5e06b47c92f373ed089204cbfbbd164a030fbd50ea0b33320234701"
    }
   },
   {
-   "id": 53,
+   "id": 57,
+   "at": 1880,
+   "kind": "intent",
+   "actor": "incoming",
+   "what": "count",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "incoming",
+     "at": 1880,
+     "v": "你数了收银抽屉：共 800（收银款 800）。"
+    },
+    {
+     "op": "clock",
+     "to": 1881
+    }
+   ],
+   "note": {
+    "target": "drawer",
+    "digest_after": "333b29c8c63e6685fadb28c3575811529ddcd98faec09bcb5279ece59eaf0cb4"
+   }
+  },
+  {
+   "id": 58,
    "at": 1900,
    "kind": "tick",
    "actor": null,
@@ -2322,11 +2485,11 @@
     }
    ],
    "note": {
-    "digest_after": "d77367bfd97a45f509d559465aff7088aeb2201ae0d989a198b9f85b981ed98e"
+    "digest_after": "f9b68dff94beb5dfcc6e43581cc72ff53df99a71a6aa24fb5a7c66fd56d652eb"
    }
   },
   {
-   "id": 54,
+   "id": 59,
    "at": 1900,
    "kind": "world",
    "actor": null,
@@ -2352,11 +2515,11 @@
      "place": "shop",
      "about": "明晚白班我替你顶。"
     },
-    "digest_after": "301e56eb4d50a66f793601f55dc76addeb2fcb7e600e33022dc62305d9df6ea2"
+    "digest_after": "86507a4eeba53719b723d776bac43fda1cbaafc792b929c6be715152c97b561a"
    }
   },
   {
-   "id": 55,
+   "id": 60,
    "at": 1920,
    "kind": "tick",
    "actor": null,
@@ -2368,11 +2531,11 @@
     }
    ],
    "note": {
-    "digest_after": "e7c2ec7d98cefd57de4b0eda9558f6169f8ca0a295cce3142d5e3866538aa5c4"
+    "digest_after": "bec8a0321560b606ffbd93af99041d502fa79551b49fdfe76d7df9b595cd8b6f"
    }
   },
   {
-   "id": 56,
+   "id": 61,
    "at": 1920,
    "kind": "world",
    "actor": null,
@@ -2401,11 +2564,11 @@
      "kind": "open",
      "place": "office"
     },
-    "digest_after": "f38adcab2785de5658091e1c093619d9b9f35a1c780fe4fd61fa40c214638c9d"
+    "digest_after": "ad84a624beb2c64ff6661ca2bb2d76d9af26339130786482239b0f5d7eee8da7"
    }
   },
   {
-   "id": 57,
+   "id": 62,
    "at": 1920,
    "kind": "intent",
    "actor": "outgoing",
@@ -2453,11 +2616,11 @@
    ],
    "note": {
     "target": "shop",
-    "digest_after": "00ae4c0d71811751ed5f1610dc0eefc78240faa957726e6a5a4b24ed5481426f"
+    "digest_after": "b583f9cf16fde06d33dcd1d06dc62f316141edc739f4476b7b337095955efa98"
    }
   },
   {
-   "id": 58,
+   "id": 63,
    "at": 1922,
    "kind": "intent",
    "actor": "incoming",
@@ -2505,11 +2668,11 @@
    ],
    "note": {
     "target": "pen",
-    "digest_after": "39022c94298beb0687c47558efef6b27a229f5ca971bc4887745b340a3f787b0"
+    "digest_after": "a8a53b7f895c9f142de301b0bb46bb12bf21d91685dadc9c99cab83914281b0a"
    }
   },
   {
-   "id": 59,
+   "id": 64,
    "at": 1923,
    "kind": "intent",
    "actor": "incoming",
@@ -2584,7 +2747,7 @@
    ],
    "note": {
     "target": "handover_record",
-    "digest_after": "121408cfd87d28da686f759e2bd3b8f545e8bd613a91604fd198f96b95db2f82"
+    "digest_after": "b72506ed8bd2ac1d5d070ffbb08fac8c58c2579642c80935eef60e25205c5e3d"
    }
   }
  ],

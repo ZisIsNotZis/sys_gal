@@ -123,25 +123,6 @@ class MidnightTests(unittest.TestCase):
         reminders = [e for e in run.log if e.kind == "world" and e.what == "remind"]
         self.assertEqual([e.at for e in reminders], [1900])
 
-    def test_the_night_has_no_silent_gap_longer_than_two_hours(self):
-        """这一班从 22:00 到次日 08:00，相邻两条轨迹的时间戳间隔不得超过 120 分钟。
-
-        观察自：本包合入后的人工通读（2026-10-23）——`runs/a.md` 从 22:45 一直空到 07:40，
-        九个小时没有一条事件；判据只数世界与脚本动作，不数时钟 tick。
-        """
-        for variant in VARIANTS:
-            with self.subTest(variant=variant):
-                run = play(variant)
-                stamps = [item["at"] for item in run.items
-                          if 1320 <= item["at"] <= 1920]
-                self.assertGreater(len(stamps), 20, variant)
-                gaps = [(b - a, a, b) for a, b in zip(stamps, stamps[1:])]
-                longest = max(gaps)
-                self.assertLessEqual(longest[0], 120,
-                                     f"路 {variant} 的空档 {longest[0]} 分钟：{longest[1]} → {longest[2]}")
-                self.assertIn(1320, stamps, variant)
-                self.assertIn(1920, stamps, variant)
-
     def test_the_nights_institutions_reach_the_shop(self):
         """送货、巡夜签到、清晨补货与清扫真的落在账本里，而不是人物嘴上。"""
         run = play("a")

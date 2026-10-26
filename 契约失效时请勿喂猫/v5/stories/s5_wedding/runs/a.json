@@ -85,7 +85,7 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "212d125716a96862e350c7ee5dba331c68ebcd9cfad56dfad9ed51d91477d8ae"
+    "digest_after": "c2a1efa59baa83b3a3a9f7dd2554d18585630db08aa9d785b8d0ee93fff039da"
    }
   },
   {
@@ -173,7 +173,7 @@
    ],
    "note": {
     "target": "checkin",
-    "digest_after": "d5c19dc0d574e443f8bc351ebd939ff14b12d7691b0a7e805c4e881a4104d1dd"
+    "digest_after": "e62e0d4bd78975bffd4b44d8e0167e62bf3570f56c3940b4cd091fa575a32598"
    }
   },
   {
@@ -213,7 +213,7 @@
    ],
    "note": {
     "target": "pencil",
-    "digest_after": "7737bb015d0e6450fb0bf73c2aed1932763daec8d7b93bc1579bccaeabdab3db"
+    "digest_after": "a4ee2b1a98eb01d5467a2314844bab93a51c03bfbf8b1fbf8a381e2175a51ea3"
    }
   },
   {
@@ -265,7 +265,7 @@
    ],
    "note": {
     "target": "signin",
-    "digest_after": "d11d9920df833b3ffdff4965e835cefa6875157fad479f9c0e7608d7ab9498d1"
+    "digest_after": "d3007939d8396dfb06490b0132186bfee71eaf37b2fb27af183e17f0bc996426"
    }
   },
   {
@@ -305,7 +305,7 @@
    ],
    "note": {
     "target": "pencil",
-    "digest_after": "758636498df4e7f9c5cc7f6ded7d6a479af332031eace2d6ec1ef497dd035e58"
+    "digest_after": "7e9986aeca34b54105103f9971faa66313bd1b77280d4d121a19cc90eaf3f480"
    }
   },
   {
@@ -393,7 +393,7 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "e48f99eeb4349dc991b5123e77e37c161751fc3a0f527428423b2d548da6f6de"
+    "digest_after": "2103fca24df99a37d4dc42e95775e7b869517b033e43aeb65fdf5308c830cf53"
    }
   },
   {
@@ -481,7 +481,7 @@
    ],
    "note": {
     "target": "hall",
-    "digest_after": "ed6c507aca27bb646163c57d077e4e9d6c9f92acaad7d6da8baccca64ce49473"
+    "digest_after": "d95fd3078e2190c9dd5923e9846a0ff4e2e3676ecadc8258667efe896e6af88a"
    }
   },
   {
@@ -510,7 +510,7 @@
    ],
    "note": {
     "target": "signin",
-    "digest_after": "8cdc8a0193442a35dd9b625a9fdcc276283b35180b6a503a934d3495db7e67e8"
+    "digest_after": "bdefe0f89fe397da6bb13a497cb8209a1a5f19c5e0104ff16c960938647c93f8"
    }
   },
   {
@@ -539,7 +539,7 @@
    ],
    "note": {
     "target": "guest_list",
-    "digest_after": "08927a6d2ba0a21acc92f4c42ee7bb0ae3a5983f5dffa5dbae2560a9273c56dc"
+    "digest_after": "dc5583966f64a9b014e60ce33cd688d5099b632c555feda6b55f14ee863c59e7"
    }
   },
   {
@@ -568,7 +568,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "1573d5c62eb4a6c30d82551802207e93e5546fa8d25529bd639d857c551fa251"
+    "digest_after": "dc0119ec65f8488c1b595e1dc0f37adcb59857711a376c4bb3c90c8bbcae50ea"
    }
   },
   {
@@ -656,7 +656,7 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "d6e66ac43fde325000483a46b62d5865f48ce1e597182709e48286df8c4b103f"
+    "digest_after": "dd28cd564efa37ad3009ec7f1d0aca217fde3a1bbad695e25fee4cb483318279"
    }
   },
   {
@@ -744,7 +744,7 @@
    ],
    "note": {
     "target": "hall",
-    "digest_after": "c335dad8f2bb7c2e6137369ab425988299c505835a6126dc9ef7a57d0b5afc21"
+    "digest_after": "ab3b2a77e26070da25d8ccfff7f608b04cebac600f6dc5b1138c8413bcc46622"
    }
   },
   {
@@ -821,7 +821,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "2057156ea35452173b2f589b7dc56d126fdf8d3d0e3f7439a00934b9f96ac95c"
+    "digest_after": "c5b287ecf7c9e2efaf64589cdacbaaa0049375d6b3873c2a52357a2ba8663728"
    }
   },
   {
@@ -898,7 +898,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "3ba1fc8f19945147faa2ed58f5a6d7bbd1bf67bc95a78f6b2f132d657eca9482"
+    "digest_after": "455763660e45cf457362d00eac5ea08bfd67c348f2938c8707d2c198709041a6"
    }
   },
   {
@@ -980,7 +980,7 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "d809125ba232d4ecc120327e1ea5356a532b7e98d5023d116becaa9c70be6137"
+    "digest_after": "0b2033f2ddd1e6f5f7a9d1b737af416e428ae2d8afeafc871f6e590346a1b4ac"
    }
   },
   {
@@ -1068,7 +1068,7 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "9ae9e36ba7ac3cafdc3773e8f32a7eb8a5d97d333730bc40691fa84625fed0a6"
+    "digest_after": "870f4affe257fafe30c325f737bb284e94e2c9f0cfa021dff4014df4061118a1"
    }
   },
   {
@@ -1156,7 +1156,7 @@
    ],
    "note": {
     "target": "checkin",
-    "digest_after": "b8e3730415e5032ae55700aa3ea0d498cce6accaf9ff1f68305951796020d878"
+    "digest_after": "9ff32f00ded1033a654123eb170493656433c99bf440eaf8a85265b6a22113f4"
    }
   },
   {
@@ -1185,7 +1185,7 @@
    ],
    "note": {
     "target": "guest_list",
-    "digest_after": "1cd64728df26db2dd972218dc56249dee656f66ffa1b5155f7630ed6c8c66196"
+    "digest_after": "5fd2d047bb8c0252add2d4ccd947296ae7655a98165d8792a250f87e4126f6dc"
    }
   },
   {
@@ -1273,7 +1273,7 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "81badf1621e1aa63c2908117dfd3ea5f1b0dbb9bf5ead2b4c48cd70cefefbdc3"
+    "digest_after": "8bb299dfbbd1ce8db1e62a2f7e5174e6e2f0261eb1e2dd8da2220144604f9c02"
    }
   },
   {
@@ -1361,7 +1361,7 @@
    ],
    "note": {
     "target": "hall",
-    "digest_after": "767e2f4fb6061b6d62a9a1223994ca53bd0245bc625b8f0c885ad6700941c66d"
+    "digest_after": "9d3285682faf27b36c770c9a7242619fb2221a269d6c95e53274a57f2b690b10"
    }
   },
   {
@@ -1449,7 +1449,7 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "c3c0d497afd988ba86b7927d3d325f9d8143a3d64db268c12e457f76a7c81d71"
+    "digest_after": "39f1ae7727cab6fcbaab2820eaa86ec6561c89ea34d298d01e4ec55431d5e36c"
    }
   },
   {
@@ -1537,11 +1537,113 @@
    ],
    "note": {
     "target": "hall",
-    "digest_after": "5cbb9318222bc5cb5f087a0e3ebd0b119531fa32ad7fbb5ae5dcc1d95b20e626"
+    "digest_after": "150c03aab83aaa8448192a0edfbb4753bb23aca2dbb836bd1ddc7e4624392ffb"
    }
   },
   {
    "id": 23,
+   "at": 660,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 660
+    }
+   ],
+   "note": {
+    "digest_after": "46af69a00aa1dba818aae3088dded42e3daea8e42a255e49703a0d2118ba279f"
+   }
+  },
+  {
+   "id": 24,
+   "at": 660,
+   "kind": "world",
+   "actor": null,
+   "what": "clean",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 660,
+     "seq": 1
+    },
+    {
+     "op": "flag",
+     "k": "cleaned",
+     "v": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 660,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 660,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 660,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 660,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 660,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 660,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 660,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 660,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 660,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 660,
+     "v": "清洁的人进了厅内，开始收拾。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "clean",
+     "place": "hall"
+    },
+    "digest_after": "461af4ef4311e024c1bb3afad817db5243e7e32c0b9dcddf7a9064193353f764"
+   }
+  },
+  {
+   "id": 25,
    "at": 720,
    "kind": "tick",
    "actor": null,
@@ -1553,11 +1655,11 @@
     }
    ],
    "note": {
-    "digest_after": "6c4384b017ea15c17dc78069ebc459c99cae530010c05c6deb68212794ef3dae"
+    "digest_after": "fa3d37c8572d2c6897007020fd9389b7b44e933ed6f17f525c222b6a6c9d861c"
    }
   },
   {
-   "id": 24,
+   "id": 26,
    "at": 720,
    "kind": "world",
    "actor": null,
@@ -1566,7 +1668,7 @@
     {
      "op": "unschedule",
      "at": 720,
-     "seq": 2
+     "seq": 7
     },
     {
      "op": "move",
@@ -1640,11 +1742,11 @@
      "place": "hall",
      "item": "menu"
     },
-    "digest_after": "759c311a2c786736ebf5ebce01e13e171d2b18e3cee60d68571d3fa73f0402f5"
+    "digest_after": "40317bcbb56e30da7ae2f74fa07d2215d0ddd9f96958c8eb6c67b3d9cb50a288"
    }
   },
   {
-   "id": 25,
+   "id": 27,
    "at": 720,
    "kind": "intent",
    "actor": "manager",
@@ -1728,11 +1830,11 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "14123fdd5a45e1e31e29f25e434d871c518a69642cffe85ad151708965f53aa5"
+    "digest_after": "56dac108dfbea6eab340b9ba60520ce62e9106c0e82204dc258c1b79e295f81d"
    }
   },
   {
-   "id": 26,
+   "id": 28,
    "at": 722,
    "kind": "intent",
    "actor": "manager",
@@ -1816,11 +1918,11 @@
    ],
    "note": {
     "target": "corridor",
-    "digest_after": "ee4e575eb945a9a08048418d3b178af4bf6861364b3383c9cace104bb4aab8e9"
+    "digest_after": "44dd23b91291ddb31dc70e8a7715c3d3bc0cf53c7a703444685e8299405cea6a"
    }
   },
   {
-   "id": 27,
+   "id": 29,
    "at": 724,
    "kind": "intent",
    "actor": "manager",
@@ -1844,11 +1946,11 @@
    ],
    "note": {
     "target": "dishes",
-    "digest_after": "4dd8ca2e0f6f643378ba22acc5ad01845aaa2c5e8776a6bbce06ab4bde1192c9"
+    "digest_after": "2624cb730cc7d0db02045b4b3fec7ffb234a92228747efc5fef6baeebadc392b"
    }
   },
   {
-   "id": 28,
+   "id": 30,
    "at": 725,
    "kind": "intent",
    "actor": "manager",
@@ -1932,11 +2034,11 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "cc79a70fbfaf4e5a8d04544c0ed4302571eb8da670da280bcf820e5b0fd82a08"
+    "digest_after": "c77dfd898ebbf8fd19de0b296af9adc0bb214f6b9118c001af8d2237df4c5e00"
    }
   },
   {
-   "id": 29,
+   "id": 31,
    "at": 727,
    "kind": "intent",
    "actor": "manager",
@@ -2020,11 +2122,11 @@
    ],
    "note": {
     "target": "hall",
-    "digest_after": "289448ee50b960636678d21e6c2685b9b5e7d020085c939e87ee488e12157a7a"
+    "digest_after": "6f2a32526fae06aaf4ba73698539c561e0815760bc39f6d407715cc07958e7c0"
    }
   },
   {
-   "id": 30,
+   "id": 32,
    "at": 729,
    "kind": "intent",
    "actor": "manager",
@@ -2102,11 +2204,11 @@
    ],
    "note": {
     "target": "dishes",
-    "digest_after": "c663452be1fa806295d55e7b8a24118b732ae305cc6b4ddc7f3fdf97cb2a52cc"
+    "digest_after": "e2fc125bd1c45884e49133ea657bec16eba3fa6702d2937916d056d0767138f8"
    }
   },
   {
-   "id": 31,
+   "id": 33,
    "at": 730,
    "kind": "intent",
    "actor": "manager",
@@ -2179,11 +2281,11 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "283dffb0c50c29c00dd04b370acf5fe795a0003728e35c930a17ea1f6e317f97"
+    "digest_after": "b941d2f33cb62a68be996625f2da7b57eef3effa21987be621646e609dd9f60b"
    }
   },
   {
-   "id": 32,
+   "id": 34,
    "at": 731,
    "kind": "intent",
    "actor": "bride_father",
@@ -2256,11 +2358,11 @@
    ],
    "note": {
     "target": "menu",
-    "digest_after": "35859dc3278a9414519d77d59f01773898de0c9b73a0cf43182f39a4c2adf884"
+    "digest_after": "d662cff1600819564b550cd9df52bbdead5d14d499832ca47d36cb20e33f2eda"
    }
   },
   {
-   "id": 33,
+   "id": 35,
    "at": 732,
    "kind": "intent",
    "actor": "groom_mother",
@@ -2333,11 +2435,11 @@
    ],
    "note": {
     "target": "menu",
-    "digest_after": "a6e0fd458425b9e36e0980e76f83a1adf8402e971e12d5f0ca52556ee6471299"
+    "digest_after": "aafeb71aa2fe4fb0a813705dd72a84d2461062cacd39fc057d7c19d9124aa8fe"
    }
   },
   {
-   "id": 34,
+   "id": 36,
    "at": 733,
    "kind": "intent",
    "actor": "best_man",
@@ -2415,11 +2517,11 @@
    ],
    "note": {
     "target": "liquor",
-    "digest_after": "cbc6e88ca4cd1ac9e7dd4d01486dcb0a5ecaf7acd1f214e0f36bd3be4048952e"
+    "digest_after": "02e110d45151f411f7e5a90e83c146472aee805fd91d8d24303d41734382f9f0"
    }
   },
   {
-   "id": 35,
+   "id": 37,
    "at": 734,
    "kind": "intent",
    "actor": "best_man",
@@ -2497,11 +2599,11 @@
    ],
    "note": {
     "target": "liquor",
-    "digest_after": "aa99c4e8095bdf7f50fc6896071fa9fb8a4231fea3efe9217b7925208cf0880b"
+    "digest_after": "18da867bf40672768c2840eb9a5a6b2cc31977fcc5176694a82c3a9d6ae93f42"
    }
   },
   {
-   "id": 36,
+   "id": 38,
    "at": 735,
    "kind": "intent",
    "actor": "groom",
@@ -2579,11 +2681,11 @@
    ],
    "note": {
     "target": "liquor",
-    "digest_after": "d62bc56e7222e0c8682e67286ff060cbdefabbaa4dc73892116a987580b5541a"
+    "digest_after": "038fae557bf29053004098bc993101d37ac31aa8b24622c20c148717cba02082"
    }
   },
   {
-   "id": 37,
+   "id": 39,
    "at": 736,
    "kind": "intent",
    "actor": "groom",
@@ -2656,11 +2758,11 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "90a66cfda5210f767b2e4968ef3a16f1f0d52e5786746ee3fa7fb02a29f20ad8"
+    "digest_after": "c8fc5dbbf6a57152dad77e0de612c0667b4ec976954a88b3fed5a3968a83a7b9"
    }
   },
   {
-   "id": 38,
+   "id": 40,
    "at": 737,
    "kind": "intent",
    "actor": "bride_mother",
@@ -2738,11 +2840,11 @@
    ],
    "note": {
     "target": "red_envelopes",
-    "digest_after": "c8839e00e57533d580593d5f6f9a333748d7b7b1bca2fbebc525aeb112b14b7f"
+    "digest_after": "e5bf2acd870207b72cc57ff076f368bb54267e35e8ec9ed0b5b6e25096e3ee6f"
    }
   },
   {
-   "id": 39,
+   "id": 41,
    "at": 738,
    "kind": "intent",
    "actor": "bride",
@@ -2761,11 +2863,11 @@
    ],
    "note": {
     "target": "red_envelopes",
-    "digest_after": "0ff6243b12e379a09a54818d7bbec7d55f85406176b94159fb7a55360ebeb10a"
+    "digest_after": "6cd2c64fb1335d6f6daa307890f1aa7cb3d9c95461690dff48d902e0745323e3"
    }
   },
   {
-   "id": 40,
+   "id": 42,
    "at": 739,
    "kind": "intent",
    "actor": "bride_father",
@@ -2838,11 +2940,1123 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "ef8a3c22d3511201f402704866fe150d42a210e68e582c62d7e6aacdaadd17b6"
+    "digest_after": "89c9d3d8a433654b125c1d0e04382b589b88ccfa1bc4396cd8a419b47abde092"
    }
   },
   {
-   "id": 41,
+   "id": 43,
+   "at": 840,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 840
+    }
+   ],
+   "note": {
+    "digest_after": "55b86f516b17b1d0f1d897a9a6b1fe1fc0ba026e545e22d88d862d2620756e0a"
+   }
+  },
+  {
+   "id": 44,
+   "at": 840,
+   "kind": "world",
+   "actor": null,
+   "what": "clean",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 840,
+     "seq": 2
+    },
+    {
+     "op": "flag",
+     "k": "cleaned",
+     "v": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 840,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 840,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 840,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 840,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 840,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 840,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 840,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 840,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 840,
+     "v": "清洁的人进了厅内，开始收拾。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 840,
+     "v": "清洁的人进了厅内，开始收拾。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "clean",
+     "place": "hall"
+    },
+    "digest_after": "df1b65e6aaeb4a885a7ce92519b81adccd236a4cf518597ed0d7b239ff160292"
+   }
+  },
+  {
+   "id": 45,
+   "at": 840,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "announce",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 840,
+     "v": "你提高声音说：「午宴到这儿，各位先到厅外歇一歇，四点回来合影。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 840,
+     "v": "酒店经理提高声音说：「午宴到这儿，各位先到厅外歇一歇，四点回来合影。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 840,
+     "v": "酒店经理提高声音说：「午宴到这儿，各位先到厅外歇一歇，四点回来合影。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 840,
+     "v": "酒店经理提高声音说：「午宴到这儿，各位先到厅外歇一歇，四点回来合影。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 840,
+     "v": "酒店经理提高声音说：「午宴到这儿，各位先到厅外歇一歇，四点回来合影。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 840,
+     "v": "酒店经理提高声音说：「午宴到这儿，各位先到厅外歇一歇，四点回来合影。」"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 840,
+     "v": "酒店经理提高声音说：「午宴到这儿，各位先到厅外歇一歇，四点回来合影。」"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 840,
+     "v": "酒店经理提高声音说：「午宴到这儿，各位先到厅外歇一歇，四点回来合影。」"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 840,
+     "v": "酒店经理提高声音说：「午宴到这儿，各位先到厅外歇一歇，四点回来合影。」"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 840,
+     "v": "那个人提高声音说：「午宴到这儿，各位先到厅外歇一歇，四点回来合影。」"
+    },
+    {
+     "op": "clock",
+     "to": 841
+    }
+   ],
+   "note": {
+    "target": null,
+    "digest_after": "bd6a58d689885fe36417830d14fd74db0abd99d9fa7e762452362e6a004fd597"
+   }
+  },
+  {
+   "id": 46,
+   "at": 841,
+   "kind": "intent",
+   "actor": "bride",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "bride",
+     "to": "venue"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 841,
+     "v": "你到了酒店。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 841,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 841,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 841,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 841,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 841,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 841,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 841,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 841,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 841,
+     "v": "新娘走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 841,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 843
+    }
+   ],
+   "note": {
+    "target": "venue",
+    "digest_after": "bb42367f6771f1cd9d59c2a3e3d90c33da6f3c870441f87c5aed4dd3965b5a60"
+   }
+  },
+  {
+   "id": 47,
+   "at": 843,
+   "kind": "intent",
+   "actor": "bride_mother",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "bride_mother",
+     "to": "venue"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 843,
+     "v": "你到了酒店。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 843,
+     "v": "新娘的母亲走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 843,
+     "v": "新娘的母亲走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 843,
+     "v": "新娘的母亲走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 843,
+     "v": "新娘的母亲走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 843,
+     "v": "新娘的母亲走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 843,
+     "v": "新娘的母亲走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 843,
+     "v": "新娘的母亲走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 843,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 843,
+     "v": "新娘的母亲走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 843,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 845
+    }
+   ],
+   "note": {
+    "target": "venue",
+    "digest_after": "1876adb475788e1f88c8789b9d9cf754126a60c6873b1e9c9705de72a6eff68c"
+   }
+  },
+  {
+   "id": 48,
+   "at": 960,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 960
+    }
+   ],
+   "note": {
+    "digest_after": "41eba106dbb6213fa983fd6184600c411e23623a925c2d70190bfdc14c0a0938"
+   }
+  },
+  {
+   "id": 49,
+   "at": 960,
+   "kind": "world",
+   "actor": null,
+   "what": "post",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 960,
+     "seq": 3
+    },
+    {
+     "op": "move",
+     "e": "photo_plan",
+     "to": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 960,
+     "v": "有人把合影安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 960,
+     "v": "有人把合影安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 960,
+     "v": "有人把合影安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 960,
+     "v": "有人把合影安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 960,
+     "v": "有人把合影安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 960,
+     "v": "有人把合影安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 960,
+     "v": "有人把合影安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 960,
+     "v": "有人把合影安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 960,
+     "v": "有人把合影安排贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 960,
+     "v": "有人把合影安排贴在了这里。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "post",
+     "place": "hall",
+     "item": "photo_plan"
+    },
+    "digest_after": "ad128c32be699f5b277419406062de8feeb777866ff291f7d47acd35f2766c73"
+   }
+  },
+  {
+   "id": 50,
+   "at": 960,
+   "kind": "intent",
+   "actor": "bride_father",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 960,
+     "v": "你读着合影安排：「下午四点，厅内合影，长辈坐前排。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 960,
+     "v": "新娘的父亲在看合影安排。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 960,
+     "v": "新娘的父亲在看合影安排。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 960,
+     "v": "新娘的父亲在看合影安排。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 960,
+     "v": "新娘的父亲在看合影安排。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 960,
+     "v": "新娘的父亲在看合影安排。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 960,
+     "v": "新娘的父亲在看合影安排。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 960,
+     "v": "新娘的父亲在看合影安排。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 960,
+     "v": "那个人在看合影安排。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 960,
+     "v": "那个人在看合影安排。"
+    },
+    {
+     "op": "clock",
+     "to": 961
+    }
+   ],
+   "note": {
+    "target": "photo_plan",
+    "digest_after": "b953a208ac6360c1c3ec311c1dd9f51379a6aec3c6fb753bd13f226f4c2a7b41"
+   }
+  },
+  {
+   "id": 51,
+   "at": 1050,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 1050
+    }
+   ],
+   "note": {
+    "digest_after": "c2ab607725749179c11ffe153b13d40f9e43834958885c95577a787e57cc9133"
+   }
+  },
+  {
+   "id": 52,
+   "at": 1050,
+   "kind": "world",
+   "actor": null,
+   "what": "stamp",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1050,
+     "seq": 4
+    },
+    {
+     "op": "set",
+     "e": "kitchen_log",
+     "k": "marks",
+     "v": [
+      {
+       "text": "2026-05-20 17:30 17:30 晚宴备料出齐，十桌。",
+       "ink": "printed",
+       "style": "printed"
+      }
+     ]
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "stamp",
+     "place": "corridor",
+     "item": "kitchen_log",
+     "station": "17:30 晚宴备料出齐，十桌。"
+    },
+    "digest_after": "77c6ce16501163e164228a94695b8ccad5aa7b519642703f47c22113ab9142bf"
+   }
+  },
+  {
+   "id": 53,
+   "at": 1050,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "manager",
+     "to": "venue"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1050,
+     "v": "你到了酒店。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1050,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1050,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1050,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1050,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1050,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1050,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1050,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1050,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 1050,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1050,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1052
+    }
+   ],
+   "note": {
+    "target": "venue",
+    "digest_after": "e05b5c22e79a30210a7a71936e792be5f3be475b5f13ff3f77707e56c49872be"
+   }
+  },
+  {
+   "id": 54,
+   "at": 1052,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "take",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "dinner_dishes",
+     "to": "manager"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1052,
+     "v": "你拿起了晚宴的菜。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1052,
+     "v": "酒店经理拿起了晚宴的菜。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1052,
+     "v": "酒店经理拿起了晚宴的菜。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1052,
+     "v": "酒店经理拿起了晚宴的菜。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1052,
+     "v": "酒店经理拿起了晚宴的菜。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1052,
+     "v": "酒店经理拿起了晚宴的菜。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1052,
+     "v": "酒店经理拿起了晚宴的菜。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1052,
+     "v": "酒店经理拿起了晚宴的菜。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1052,
+     "v": "酒店经理拿起了晚宴的菜。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 1052,
+     "v": "酒店经理拿起了晚宴的菜。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1052,
+     "v": "那个人拿起了晚宴的菜。"
+    },
+    {
+     "op": "clock",
+     "to": 1053
+    }
+   ],
+   "note": {
+    "target": "dinner_dishes",
+    "digest_after": "078edc562b8364f6d4eef1c34b85b4f18db1b8dacc6d8dd5bb069b98d2d88ef3"
+   }
+  },
+  {
+   "id": 55,
+   "at": 1053,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "move",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "manager",
+     "to": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1053,
+     "v": "你到了厅内。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1053,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1053,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1053,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1053,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1053,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1053,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1053,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1053,
+     "v": "酒店经理走了进来。"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 1053,
+     "v": "酒店经理走了出去。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1053,
+     "v": "那个人走了进来。"
+    },
+    {
+     "op": "clock",
+     "to": 1055
+    }
+   ],
+   "note": {
+    "target": "hall",
+    "digest_after": "51d567e2700c8159549022dcea5ecdb3797cd55c65d45933f669f948d0936f57"
+   }
+  },
+  {
+   "id": 56,
+   "at": 1055,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "place",
+   "atoms": [
+    {
+     "op": "move",
+     "e": "dinner_dishes",
+     "to": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1055,
+     "v": "你把晚宴的菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1055,
+     "v": "酒店经理把晚宴的菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1055,
+     "v": "酒店经理把晚宴的菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1055,
+     "v": "酒店经理把晚宴的菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1055,
+     "v": "酒店经理把晚宴的菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1055,
+     "v": "酒店经理把晚宴的菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1055,
+     "v": "酒店经理把晚宴的菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1055,
+     "v": "酒店经理把晚宴的菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1055,
+     "v": "酒店经理把晚宴的菜放在了这儿。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1055,
+     "v": "那个人把晚宴的菜放在了这儿。"
+    },
+    {
+     "op": "clock",
+     "to": 1056
+    }
+   ],
+   "note": {
+    "target": "dinner_dishes",
+    "digest_after": "1ee4dce620758ed0b33057510c4490a175beaf3293dd58b5080ccea0e4543a77"
+   }
+  },
+  {
+   "id": 57,
+   "at": 1170,
+   "kind": "tick",
+   "actor": null,
+   "what": "clock",
+   "atoms": [
+    {
+     "op": "clock",
+     "to": 1170
+    }
+   ],
+   "note": {
+    "digest_after": "36584602b267d0c362800a3e30fd805cd901b3114abafee80f77d2f8f3a8c59c"
+   }
+  },
+  {
+   "id": 58,
+   "at": 1170,
+   "kind": "world",
+   "actor": null,
+   "what": "post",
+   "atoms": [
+    {
+     "op": "unschedule",
+     "at": 1170,
+     "seq": 5
+    },
+    {
+     "op": "move",
+     "e": "sendoff_plan",
+     "to": "hall"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1170,
+     "v": "有人把送客车辆贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1170,
+     "v": "有人把送客车辆贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1170,
+     "v": "有人把送客车辆贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1170,
+     "v": "有人把送客车辆贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1170,
+     "v": "有人把送客车辆贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1170,
+     "v": "有人把送客车辆贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1170,
+     "v": "有人把送客车辆贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1170,
+     "v": "有人把送客车辆贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1170,
+     "v": "有人把送客车辆贴在了这里。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1170,
+     "v": "有人把送客车辆贴在了这里。"
+    }
+   ],
+   "note": {
+    "effect": {
+     "kind": "post",
+     "place": "hall",
+     "item": "sendoff_plan"
+    },
+    "digest_after": "e12155f168b59d005ae91842ccceee900d8403f436fff3ffb1c3448c5a39b2f3"
+   }
+  },
+  {
+   "id": 59,
+   "at": 1170,
+   "kind": "intent",
+   "actor": "manager",
+   "what": "read",
+   "atoms": [
+    {
+     "op": "remember",
+     "e": "manager",
+     "at": 1170,
+     "v": "你读着送客车辆：「21:00 起门口发车，按桌前顺序送客。」"
+    },
+    {
+     "op": "remember",
+     "e": "bride",
+     "at": 1170,
+     "v": "酒店经理在看送客车辆。"
+    },
+    {
+     "op": "remember",
+     "e": "groom",
+     "at": 1170,
+     "v": "酒店经理在看送客车辆。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_father",
+     "at": 1170,
+     "v": "酒店经理在看送客车辆。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1170,
+     "v": "酒店经理在看送客车辆。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_father",
+     "at": 1170,
+     "v": "酒店经理在看送客车辆。"
+    },
+    {
+     "op": "remember",
+     "e": "groom_mother",
+     "at": 1170,
+     "v": "酒店经理在看送客车辆。"
+    },
+    {
+     "op": "remember",
+     "e": "best_man",
+     "at": 1170,
+     "v": "酒店经理在看送客车辆。"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1170,
+     "v": "酒店经理在看送客车辆。"
+    },
+    {
+     "op": "remember",
+     "e": "stranger",
+     "at": 1170,
+     "v": "那个人在看送客车辆。"
+    },
+    {
+     "op": "clock",
+     "to": 1171
+    }
+   ],
+   "note": {
+    "target": "sendoff_plan",
+    "digest_after": "0573000556e90c107125b33f3e19c9cf3def10800b5ac9037ab83355cead0315"
+   }
+  },
+  {
+   "id": 60,
    "at": 1290,
    "kind": "tick",
    "actor": null,
@@ -2854,11 +4068,11 @@
     }
    ],
    "note": {
-    "digest_after": "b5c6b2b497f80f5b57c1e6a0d669569f63715bc8d29a4aca268b71c041a70174"
+    "digest_after": "3c6e7c29867f04a35fbbc7072c8410a0957c7caccb5884689cf3fda98e944c85"
    }
   },
   {
-   "id": 42,
+   "id": 61,
    "at": 1290,
    "kind": "world",
    "actor": null,
@@ -2867,18 +4081,12 @@
     {
      "op": "unschedule",
      "at": 1290,
-     "seq": 1
+     "seq": 6
     },
     {
      "op": "flag",
      "k": "cleaned",
      "v": "hall"
-    },
-    {
-     "op": "remember",
-     "e": "bride",
-     "at": 1290,
-     "v": "清洁的人进了厅内，开始收拾。"
     },
     {
      "op": "remember",
@@ -2889,12 +4097,6 @@
     {
      "op": "remember",
      "e": "bride_father",
-     "at": 1290,
-     "v": "清洁的人进了厅内，开始收拾。"
-    },
-    {
-     "op": "remember",
-     "e": "bride_mother",
      "at": 1290,
      "v": "清洁的人进了厅内，开始收拾。"
     },
@@ -2940,11 +4142,11 @@
      "kind": "clean",
      "place": "hall"
     },
-    "digest_after": "a06ca5f8421d79093c539e623c898c369289c095270cec1c5b05b275a336a6aa"
+    "digest_after": "a1b4bdcec5e6abb6521e5d33137f4ba85920d8cbb929be3e6833ff212044059b"
    }
   },
   {
-   "id": 43,
+   "id": 62,
    "at": 1290,
    "kind": "intent",
    "actor": "manager",
@@ -3028,11 +4230,11 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "c7de55ecbb61fb1346f53160efc4eb3e019af53ae0f7eea0aea3869dd3f9120d"
+    "digest_after": "7e3cad7a34f6f95c9ddf20ec58920ec08ffd05bea3ae94605d2c9ae689cc42ab"
    }
   },
   {
-   "id": 44,
+   "id": 63,
    "at": 1292,
    "kind": "intent",
    "actor": "manager",
@@ -3053,7 +4255,7 @@
      "op": "remember",
      "e": "bride",
      "at": 1292,
-     "v": "酒店经理走了出去。"
+     "v": "酒店经理走了进来。"
     },
     {
      "op": "remember",
@@ -3071,7 +4273,7 @@
      "op": "remember",
      "e": "bride_mother",
      "at": 1292,
-     "v": "酒店经理走了出去。"
+     "v": "酒店经理走了进来。"
     },
     {
      "op": "remember",
@@ -3116,11 +4318,11 @@
    ],
    "note": {
     "target": "parking",
-    "digest_after": "fdb58fd0fd62494f4dfe5be10bb35407acef8295954d44f718ff5a10781261c0"
+    "digest_after": "2b48ff97fe13c25d96b1f3664d78f52f8d6b04342d4587d318672afc1b8c7f12"
    }
   },
   {
-   "id": 45,
+   "id": 64,
    "at": 1294,
    "kind": "intent",
    "actor": "manager",
@@ -3130,7 +4332,7 @@
      "op": "remember",
      "e": "manager",
      "at": 1294,
-     "v": "你细看：酒店（走廊铺着红地毯，宴会厅的门半开着，签到的长桌摆在外头）；停车场（地面被下午的太阳晒热，车缝里塞着落叶）；车（一辆停在最里侧的车，前挡风玻璃上落了叶）。"
+     "v": "你细看：酒店（走廊铺着红地毯，宴会厅的门半开着，签到的长桌摆在外头）；停车场（地面被下午的太阳晒热，车缝里塞着落叶）；新娘（婚纱的下摆被踩脏了一小块）；那个人（手里攥着一沓红包，见人就笑）；红包（一沓封口没粘的红包，边角被手汗浸软）；车（一辆停在最里侧的车，前挡风玻璃上落了叶）。"
     },
     {
      "op": "clock",
@@ -3139,11 +4341,11 @@
    ],
    "note": {
     "target": "car",
-    "digest_after": "fbb4e0ac2c715f378a46a12f2298d5090e726caa5c8b0727a0a92ab267868bd1"
+    "digest_after": "d894ffaef67382daba715ce9e919b534b038022647f90c65038196eef2552b02"
    }
   },
   {
-   "id": 46,
+   "id": 65,
    "at": 1295,
    "kind": "intent",
    "actor": "manager",
@@ -3227,11 +4429,11 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "a5eed6361d8051e5d52ba018c0dbca78d6d33ce69a8309a2dd1c6cba5d9a98ae"
+    "digest_after": "a6df82759f72e0b3b6a6db57ef1ff0e143e1311183c52f7f181e08730080be5f"
    }
   },
   {
-   "id": 47,
+   "id": 66,
    "at": 1297,
    "kind": "intent",
    "actor": "manager",
@@ -3315,11 +4517,11 @@
    ],
    "note": {
     "target": "hall",
-    "digest_after": "0a327f48701262db6bf203936fd737968b1c8fdede5bd856f0b27405f053b661"
+    "digest_after": "ee8b3316394ba580ee016f2e7d7dc86743d9c40e97b8863bd28f27244fb51501"
    }
   },
   {
-   "id": 48,
+   "id": 67,
    "at": 1299,
    "kind": "intent",
    "actor": "manager",
@@ -3333,12 +4535,6 @@
     },
     {
      "op": "remember",
-     "e": "bride",
-     "at": 1299,
-     "v": "酒店经理提高声音说：「各位慢用，十点散场，门口有车等着。」"
-    },
-    {
-     "op": "remember",
      "e": "groom",
      "at": 1299,
      "v": "酒店经理提高声音说：「各位慢用，十点散场，门口有车等着。」"
@@ -3346,12 +4542,6 @@
     {
      "op": "remember",
      "e": "bride_father",
-     "at": 1299,
-     "v": "酒店经理提高声音说：「各位慢用，十点散场，门口有车等着。」"
-    },
-    {
-     "op": "remember",
-     "e": "bride_mother",
      "at": 1299,
      "v": "酒店经理提高声音说：「各位慢用，十点散场，门口有车等着。」"
     },
@@ -3392,11 +4582,11 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "11edc28f21483b71cfe110fefed6e0ed0f6d9b93446e7d620dda8769aa96657e"
+    "digest_after": "e1322a87815356e54f2e7f0027739368d1da9beec816b5af57ac5b232212667d"
    }
   },
   {
-   "id": 49,
+   "id": 68,
    "at": 1300,
    "kind": "intent",
    "actor": "best_man",
@@ -3480,11 +4670,11 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "2054cadd31258dd8d83e42a9e2c68ab78bcb4e7157abfa03649c2069ca97e73d"
+    "digest_after": "8e6da04953d643f045f057435741b51f38ea2196e6c76c7fd9386b71b12a1b49"
    }
   },
   {
-   "id": 50,
+   "id": 69,
    "at": 1302,
    "kind": "intent",
    "actor": "best_man",
@@ -3505,7 +4695,7 @@
      "op": "remember",
      "e": "bride",
      "at": 1302,
-     "v": "伴郎走了出去。"
+     "v": "伴郎走了进来。"
     },
     {
      "op": "remember",
@@ -3523,7 +4713,7 @@
      "op": "remember",
      "e": "bride_mother",
      "at": 1302,
-     "v": "伴郎走了出去。"
+     "v": "伴郎走了进来。"
     },
     {
      "op": "remember",
@@ -3568,11 +4758,11 @@
    ],
    "note": {
     "target": "parking",
-    "digest_after": "8780743fd49e006ccf9b6f68b25139654d2d70f5a64070307bcd706ffb2eb418"
+    "digest_after": "c771ff7951fd9f8d034ebe0bef76cc491570b07032ab43816da02c6d95bdf0de"
    }
   },
   {
-   "id": 51,
+   "id": 70,
    "at": 1304,
    "kind": "intent",
    "actor": "best_man",
@@ -3582,7 +4772,7 @@
      "op": "remember",
      "e": "best_man",
      "at": 1304,
-     "v": "你细看：酒店（走廊铺着红地毯，宴会厅的门半开着，签到的长桌摆在外头）；停车场（地面被下午的太阳晒热，车缝里塞着落叶）；车（一辆停在最里侧的车，前挡风玻璃上落了叶）。"
+     "v": "你细看：酒店（走廊铺着红地毯，宴会厅的门半开着，签到的长桌摆在外头）；停车场（地面被下午的太阳晒热，车缝里塞着落叶）；新娘（婚纱的下摆被踩脏了一小块）；新娘的母亲（手里攥着一沓红包，见人就笑）；红包（一沓封口没粘的红包，边角被手汗浸软）；车（一辆停在最里侧的车，前挡风玻璃上落了叶）。"
     },
     {
      "op": "clock",
@@ -3591,11 +4781,11 @@
    ],
    "note": {
     "target": "car",
-    "digest_after": "347a56f798d02b204a62ea42c612e478aa7a1ae0e428fe34f37a84126c00ebb4"
+    "digest_after": "f9bb0825a93a017288f3dc52b01fe460bdba5d8b2d2d9582d9cea4653c2c36d6"
    }
   },
   {
-   "id": 52,
+   "id": 71,
    "at": 1305,
    "kind": "intent",
    "actor": "maid",
@@ -3679,11 +4869,11 @@
    ],
    "note": {
     "target": "venue",
-    "digest_after": "0c10e15c428743c0f172266710ad0213e1dc18dc9522704e474b885d105e9290"
+    "digest_after": "f63f95975913b7c1204a95bde4324d4b86761810e5e1a53471acf8fcee5ccd3a"
    }
   },
   {
-   "id": 53,
+   "id": 72,
    "at": 1307,
    "kind": "intent",
    "actor": "maid",
@@ -3704,7 +4894,7 @@
      "op": "remember",
      "e": "bride",
      "at": 1307,
-     "v": "伴娘走了出去。"
+     "v": "伴娘走了进来。"
     },
     {
      "op": "remember",
@@ -3722,7 +4912,7 @@
      "op": "remember",
      "e": "bride_mother",
      "at": 1307,
-     "v": "伴娘走了出去。"
+     "v": "伴娘走了进来。"
     },
     {
      "op": "remember",
@@ -3767,11 +4957,11 @@
    ],
    "note": {
     "target": "parking",
-    "digest_after": "cf350ff9fe0009ee944a8196ebce4d471457448bc35ea9bb0293da862b25a4b9"
+    "digest_after": "56c0b229169c9ee20750dbef9e3cf0a90854481182fdba06c75c79f70fbc29e7"
    }
   },
   {
-   "id": 54,
+   "id": 73,
    "at": 1309,
    "kind": "intent",
    "actor": "maid",
@@ -3790,17 +4980,29 @@
      "v": "伴娘压低声音，对你说：「这一排最里头那辆是你的？」"
     },
     {
+     "op": "remember",
+     "e": "bride",
+     "at": 1309,
+     "v": "伴娘和伴郎凑在一起低声说话，你听不清内容。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1309,
+     "v": "伴娘和伴郎凑在一起低声说话，你听不清内容。"
+    },
+    {
      "op": "clock",
      "to": 1310
     }
    ],
    "note": {
     "target": null,
-    "digest_after": "d5d228936dcfdd924ab83aa89d5ecb6bdd3fe400687cc9c66464b9ee7e85ccc8"
+    "digest_after": "0d5ed401158cb183556fd7705f7d34c25bc7cf41b2f15391f1791883e8f9a2a1"
    }
   },
   {
-   "id": 55,
+   "id": 74,
    "at": 1310,
    "kind": "intent",
    "actor": "best_man",
@@ -3819,17 +5021,29 @@
      "v": "伴郎压低声音，对你说：「我挪一下。」"
     },
     {
+     "op": "remember",
+     "e": "bride",
+     "at": 1310,
+     "v": "伴郎和伴娘凑在一起低声说话，你听不清内容。"
+    },
+    {
+     "op": "remember",
+     "e": "bride_mother",
+     "at": 1310,
+     "v": "伴郎和伴娘凑在一起低声说话，你听不清内容。"
+    },
+    {
      "op": "clock",
      "to": 1311
     }
    ],
    "note": {
     "target": null,
-    "digest_after": "1de03c03ec36f2bc9f8a5a206d739d12214e1785fb0432a1bd23628f5c65f4ae"
+    "digest_after": "6c8a9a0bf915f7ed3b5a7b22e625fe0913d6d579e5551e15d4d9b16e7c4cbaf0"
    }
   },
   {
-   "id": 56,
+   "id": 75,
    "at": 1311,
    "kind": "intent",
    "actor": "groom",
@@ -3848,11 +5062,11 @@
    ],
    "note": {
     "target": "liquor",
-    "digest_after": "7ece045aaa4de8e4ad22335824e3e3840058d16692254d03f00ba1c7cc83e077"
+    "digest_after": "230412e124dade6428a5818eb2b9ae4d15587bca22a131e50b66f8d1d447b17d"
    }
   },
   {
-   "id": 57,
+   "id": 76,
    "at": 1312,
    "kind": "intent",
    "actor": "bride",
@@ -3871,11 +5085,11 @@
    ],
    "note": {
     "target": "red_envelopes",
-    "digest_after": "5d7af0d24fc43e009e73b74dd50357d9f2b1843167fb45c5f6681e2aa30720d7"
+    "digest_after": "4bbf5a1108ca828d308ca470653b718b7d2033c156e691eca53785cb1701b78e"
    }
   },
   {
-   "id": 58,
+   "id": 77,
    "at": 1313,
    "kind": "intent",
    "actor": "bride_mother",
@@ -3919,9 +5133,27 @@
     },
     {
      "op": "remember",
+     "e": "best_man",
+     "at": 1313,
+     "v": "新娘的母亲说：「车都在门口等着了，慢慢来。」"
+    },
+    {
+     "op": "remember",
+     "e": "maid",
+     "at": 1313,
+     "v": "新娘的母亲说：「车都在门口等着了，慢慢来。」"
+    },
+    {
+     "op": "remember",
      "e": "manager",
      "at": 1313,
      "v": "那个人说：「车都在门口等着了，慢慢来。」"
+    },
+    {
+     "op": "remember",
+     "e": "bookkeeper",
+     "at": 1313,
+     "v": "新娘的母亲说：「车都在门口等着了，慢慢来。」"
     },
     {
      "op": "remember",
@@ -3936,11 +5168,11 @@
    ],
    "note": {
     "target": null,
-    "digest_after": "f3a0c07e0b58844fdf6a1a0380b9dcca54f70e1354af16c065cd7dd21ca74304"
+    "digest_after": "6596b3d42416c9ba8c196852c3f0433bc72a6149e60bb58181682971807803b6"
    }
   },
   {
-   "id": 59,
+   "id": 78,
    "at": 1320,
    "kind": "tick",
    "actor": null,
@@ -3952,11 +5184,11 @@
     }
    ],
    "note": {
-    "digest_after": "e513686d1a0910ad84b6427e0667313c3084796fe64359deac68cb504e7c0abb"
+    "digest_after": "a4ab395bae72c721cf681322f24e808cd21e7ffaaaa381da3bd8f9eff57444b8"
    }
   },
   {
-   "id": 60,
+   "id": 79,
    "at": 1320,
    "kind": "world",
    "actor": null,
@@ -3965,7 +5197,7 @@
     {
      "op": "unschedule",
      "at": 1320,
-     "seq": 3
+     "seq": 8
     },
     {
      "op": "set",
@@ -4033,7 +5265,7 @@
      "kind": "close",
      "place": "hall"
     },
-    "digest_after": "9f177e3351019f2ee7b18db016ef2e63a56eb144f9ee9000bcb0502cdc79a118"
+    "digest_after": "b5084b8b0ffe34491f85bcb5c4c682f80b03a8f114e5d8b933e2ed5c49269519"
    }
   }
  ],
@@ -4042,11 +5274,11 @@
   "最后一行的字": "2026-05-20 09:05 陈明",
   "有人把名字对上了人": true,
   "对上的人": "新娘",
-  "对上时在哪": "厅内",
+  "对上时在哪": "酒店",
   "读过本子的人": 1,
   "本子改过": false,
   "散场时间": "2026-05-20 22:00",
   "钟停在哪": "2026-05-20 22:00",
-  "结局": "查出了是谁：新娘在厅内认出了那个穿灰夹克的，签到本上多出来的那一行总算有了主"
+  "结局": "查出了是谁：新娘在酒店认出了那个穿灰夹克的，签到本上多出来的那一行总算有了主"
  }
 }

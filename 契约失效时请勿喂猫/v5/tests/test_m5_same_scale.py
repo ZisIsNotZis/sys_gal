@@ -28,8 +28,12 @@ VARIANTS = ("a", "b", "c", "d")
 PLAYS = {"s4_night_shop": play_night, "s5_wedding": play_wedding}
 
 #: 这次定下的**做成的事**（`ok` 的脚本动作，不含世界事件）。
-NIGHT_MADE = {"a": 48, "b": 45, "c": 47, "d": 45}
-WEDDING_MADE = {"a": 54, "b": 50, "c": 51, "d": 55}
+NIGHT_MADE = {"a": 53, "b": 50, "c": 52, "d": 50}
+WEDDING_MADE = {"a": 63, "b": 59, "c": 60, "d": 64}
+
+#: 每支故事「一整天」的时间窗（分钟）：起点与终点都必须落在轨迹里。
+#: 《夜班》是 22:00 → 次日 08:00，《婚礼》是 09:00 → 22:00。
+SPANS = {"s4_night_shop": (1320, 1920), "s5_wedding": (540, 1320)}
 
 #: 故意留着不许成功的脚本动作：（故事, 路）→ 条数。
 #: 某条路若要让角色去够一个够不到的东西（"想拿已经不在手里的东西"），在这里登记，
@@ -86,6 +90,31 @@ class SameScaleTests(unittest.TestCase):
             night = made(play_night(variant))
             wedding = made(play_wedding(variant))
             self.assertGreater(wedding / night, 0.63, variant)
+
+    def test_no_path_has_a_silent_gap_longer_than_two_hours(self):
+        """两支故事八条路，相邻两条轨迹的时间戳间隔都不得超过 120 分钟。
+
+        观察自两次人工通读：上一版《夜班》从 22:45 一直空到 07:40，九个小时没有一条
+        事件；上一版《婚礼》的 12:19 到 21:30 之间一件世界事件都没有，只有 21:30 清洁
+        的人进来。两个空档是同一个缺陷的两半，所以这条判据由两支故事共用。
+
+        判据只数世界与脚本动作，不数时钟 tick——所以空档里必须真的有事发生，
+        拿掉任何一条路上的任何一次填充，这条就会在那一路上变红。
+        """
+        for story, play in PLAYS.items():
+            lo, hi = SPANS[story]
+            for variant in VARIANTS:
+                with self.subTest(story=story, variant=variant):
+                    run = play(variant)
+                    stamps = [item["at"] for item in run.items if lo <= item["at"] <= hi]
+                    self.assertGreater(len(stamps), 20, variant)
+                    self.assertIn(lo, stamps, variant)
+                    self.assertIn(hi, stamps, variant)
+                    gaps = [(b - a, a, b) for a, b in zip(stamps, stamps[1:])]
+                    longest = max(gaps)
+                    self.assertLessEqual(
+                        longest[0], 120,
+                        f"{story}/{variant} 的空档 {longest[0]} 分钟：{longest[1]} → {longest[2]}")
 
 
 if __name__ == "__main__":

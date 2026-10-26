@@ -106,12 +106,19 @@ _NIGHT_ROUND: list[tuple[str, str, dict[str, Any]]] = [
     ("incoming", "move", {"target": "店内"}),
     ("", NEXT, {}),
     ("incoming", "read", {"target": "巡夜登记"}),
+    # 凌晨的清运车从门口过；当班的人再点一次钱，把签到表看一遍。
     ("", NEXT, {}),
+    ("incoming", "count", {"target": "收银抽屉"}),
+    ("incoming", "examine", {"target": "巡夜登记"}),
     ("", NEXT, {}),
     ("incoming", "move", {"target": "后仓"}),
     ("incoming", "count", {"target": "清晨补货"}),
     ("incoming", "move", {"target": "店内"}),
+    # 清晨补货到齐，把夜里的小票与交接记录核一遍，交班前再点一次钱。
+    ("incoming", "read", {"target": "小票"}),
+    ("incoming", "read", {"target": "交接记录"}),
     ("", NEXT, {}),
+    ("incoming", "count", {"target": "收银抽屉"}),
     *_NIGHT,
 ]
 
