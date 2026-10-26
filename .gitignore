@@ -7,6 +7,13 @@ __pycache__/
 契约失效时请勿喂猫/v4/**/runs/*.json
 契约失效时请勿喂猫/v4/**/checkpoints/*.json
 
+# v5：一次运行的四件原始材料（视图 / 上下文 / 事件账 / 摘要）只是本地可读副本，
+# 事实的家是它的紧凑形态 契约失效时请勿喂猫/v5/runs/<story>-<路>.jsonl.zst
+# （一行一条记录 + zstd -19，四件逐字节可还原），由 v5/scripts/pack_trajectory.py
+# 生成与核对。原件从此不进 git；`pack_trajectory.py check` 挡住“未打包/过期/不一致/缺
+# context.md”。所以这里整目录挡住 stories/*/runs/，不按文件类型挡。
+契约失效时请勿喂猫/v5/stories/*/runs/**
+
 # Common local caches and temporary workspaces
 node_modules/
 .pi/

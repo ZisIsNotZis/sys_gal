@@ -79,6 +79,7 @@ cd 契约失效时请勿喂猫/v5
 python3 -m unittest discover -s tests -p 'test_*.py'
 python3 scripts/v5_lint.py --strict
 python3 scripts/anti_cheat.py --verbose
+python3 scripts/pack_trajectory.py check
 ```
 
 `v5_lint` covers state-key/renderer pairing, a strict seed schema, the orphan
@@ -92,6 +93,13 @@ unique. Each run's evidence is its `transcript.md` (story view with
 the raw tool call), and `run.json`/`events.jsonl` (replayable). A run without
 `context.md` cannot answer "what did he know when he did that", so it is not
 evidence.
+
+That evidence lives in git as one packed artefact per run,
+`runs/<story>-<路>.jsonl.zst` (one record per line, `zstd -19`, nothing trimmed;
+`unpack` restores the four files byte for byte). The raw four stay local and are
+not tracked; `scripts/pack_trajectory.py check` fails on an unpacked run, a pack
+older than its raw files, a pack that unpacks to different bytes, or a run with no
+`context.md`. After every run, `pack`, then `check` green before quoting readings.
 
 A new in-world name that no seed declares is a defect on either line — register it
 instead of leaving it as prose, so the perceiver, the knowledge lookup and the
