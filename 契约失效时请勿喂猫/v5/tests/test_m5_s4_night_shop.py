@@ -23,7 +23,7 @@ from engine.events import EventLog, dump_log, replay
 from engine.rules import advance_idle, drain, submit
 from engine.resolve import in_sight, visible
 from engine.seed import load
-from library import EFFECTS
+from library import EFFECTS, stocktake
 from stories.s4_night_shop import scenario
 from stories.common import advance_next
 from stories.s4_night_shop.scenario import DEFAULT_SEED, NEXT, NIGHT, SCRIPTS, play, summary
@@ -198,6 +198,53 @@ class ConceptTests(unittest.TestCase):
         self.assertEqual(len(world.get(RECORD, "marks")), before + 1)
         self.assertIn("交班", world.get(RECORD, "marks")[-1]["text"])
         self.assertEqual(world.container(KEY), "incoming")
+
+
+class ReverseControlTests(unittest.TestCase):
+    """反向控制：盘点由数量算出，不由剧本决定。
+
+    世界里的一个数改了，读数就跟着改；把数写死在 `scenario.py` 里，它不被读。
+    两份种子都只在 `/tmp` 的副本里改动，真实故事里的数一字不动。
+    """
+
+    TILL_LINE = "count: 800"
+
+    @staticmethod
+    def _seed_copy(tmp: Path, new_line: str) -> Path:
+        text = DEFAULT_SEED.read_text(encoding="utf-8")
+        assert ReverseControlTests.TILL_LINE in text
+        path = tmp / "seed.yml"
+        path.write_text(text.replace(ReverseControlTests.TILL_LINE, new_line, 1),
+                        encoding="utf-8")
+        return path
+
+    def test_the_drawer_reading_follows_the_seed_count_not_the_script(self):
+        """把收银抽屉那叠钱的 count 从 800 改成 650，读数与结局摘要都必须跟着变。"""
+        baseline = summary(play("b"))
+        self.assertEqual(baseline["收银抽屉里的数"], 800)
+        with tempfile.TemporaryDirectory() as tmp:
+            seed = self._seed_copy(Path(tmp), "count: 650")
+            self.assertEqual(stocktake(load(seed), scenario.DRAWER, keep=lambda e: e in scenario.MONEY).total, 650)
+            changed = summary(play("b", seed_path=seed))
+        # 盘点读数跟着世界里的数走，而不是跟着剧本里写死的那个数。
+        self.assertEqual(changed["收银抽屉里的数"], 650)
+        self.assertEqual(changed["店里现金总数"], 650)
+        # 结局摘要里的那几个数也一起变。
+        self.assertIn("抽屉里只有 650", changed["结局"])
+        self.assertNotEqual(changed["结局"], baseline["结局"])
+
+    def test_zeroing_the_drawer_reads_zero_not_the_scripted_number(self):
+        """把抽屉里的钱清空到 0，读数必须数出 0，而不是打印种子注释里的八百。"""
+        self.assertEqual(stocktake(load(DEFAULT_SEED), scenario.DRAWER,
+                                   keep=lambda e: e in scenario.MONEY).total, 800)
+        with tempfile.TemporaryDirectory() as tmp:
+            seed = self._seed_copy(Path(tmp), "count: 0")
+            self.assertEqual(stocktake(load(seed), scenario.DRAWER,
+                                       keep=lambda e: e in scenario.MONEY).total, 0)
+            run = play("b", seed_path=seed)
+        self.assertEqual(run.summary["收银抽屉里的数"], 0)
+        self.assertEqual(run.summary["店里现金总数"], 0)
+        self.assertIn("抽屉里只有 0", run.summary["结局"])
 
 
 class NoScheduledActorTests(unittest.TestCase):

@@ -2,6 +2,12 @@
 
 概念与物性的破坏性变更升主版本，并在此写明迁移；一个概念的生命周期从"某个故事第一次用到"开始。
 
+## 0.5 — M5
+
+- 新增 `library/stocktake.py`：盘点成为一次可复算的读数 `stocktake(world, eid, *, include_sealed=False, keep=None) -> Reading`。读数是一份 `(名字, 份数)` 的清单，总数是 `Reading.total`；份数只来自实体的 `count`，封着口的容器里的数数不到（`include_sealed=True` 时按物理位置数到底）。
+- `count` 动词与《夜班》的结局摘要都走这一条加法：`_count_render` 与 `scenario._drawer_total`/`_shop_total` 不再各拼一遍同样的求和；旧 `_countable`/`_in_shop` 随之删除。
+- 反向控制：改种子里 `till_cash` 的 `count`，盘点读数与结局摘要里的数都跟着改；把数写进剧本它不被读（`tests/test_m5_s4_night_shop.py` 的 `ReverseControlTests`，台账 R12）。
+
 ## 0.4 — M4
 
 - 新增动词 `impound`（标签「收」）：有 `institution` 身份的人把一件东西从某个人或某个地方收走，并在带 `records` 的登记本上留下恰好一行。

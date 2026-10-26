@@ -12,9 +12,10 @@ from typing import Any
 
 from engine.core import World
 from engine.render import describe, refer
-from engine.resolve import hidden_by_container, in_sight, inner_place, resolve, visible
+from engine.resolve import in_sight, inner_place, resolve, visible
 from engine.rules import Ctx, Rule, register
 from engine.surface import clock_label
+from library.stocktake import stocktake
 
 STORY = ("s1_last_bus", "s2_borrow_note", "s7_campus_12d")
 
@@ -716,18 +717,6 @@ def _hail_render(ctx: Ctx) -> list[tuple[str, str]]:
 
 # ---------- M5：数量与盘点、锁与钥匙、交接、远程通道、承诺
 
-def _countable(world: World, eid: str) -> list[tuple[str, int]]:
-    """一个东西连同它里面看得见的份数；封着的容器里的份数数不到。"""
-    rows: list[tuple[str, int]] = []
-    if "count" in world.state.get(eid, {}):
-        rows.append((world.entities[eid].name, int(world.get(eid, "count"))))
-    for child in world.children(eid):
-        if hidden_by_container(world, child):
-            continue
-        rows += _countable(world, child)
-    return rows
-
-
 def _count_when(ctx: Ctx) -> str | None:
     return None
 
@@ -737,12 +726,11 @@ def _count_atoms(ctx: Ctx) -> list[dict[str, Any]]:
 
 
 def _count_render(ctx: Ctx) -> list[tuple[str, str]]:
-    rows = _countable(ctx.world, ctx.target)
-    if not rows:
+    reading = stocktake(ctx.world, ctx.target)
+    if not reading.rows:
         return [(ctx.actor, f"你数了{ctx.name(ctx.target)}，里面没有可数的份数。")]
-    total = sum(n for _name, n in rows)
-    parts = "、".join(f"{name} {n}" for name, n in rows)
-    return [(ctx.actor, f"你数了{ctx.name(ctx.target)}：共 {total}（{parts}）。")]
+    parts = "、".join(f"{name} {n}" for name, n in reading.rows)
+    return [(ctx.actor, f"你数了{ctx.name(ctx.target)}：共 {reading.total}（{parts}）。")]
 
 
 def _lock_when(ctx: Ctx) -> str | None:

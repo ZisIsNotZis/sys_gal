@@ -26,7 +26,7 @@ from engine.events import Event, EventLog
 from engine.rules import Receipt, advance_idle, drain, submit
 from engine.seed import load
 from engine.surface import block, clock_label
-from library import EFFECTS
+from library import EFFECTS, stocktake
 from stories.common import advance_next
 
 DEFAULT_SEED = Path(__file__).with_name("seed.yml")
@@ -294,21 +294,22 @@ def _spare_where(world: World) -> str:
     return "不在世界里"
 
 
-def _in_shop(world: World, eid: str) -> bool:
-    place = world.place_of(eid)
-    return place is not None and (place == SHOP or SHOP in world.ancestors(place))
+#: 店里的现金就是这两样：盘点读数只数它们，总数仍由 `Reading.total` 一处相加。
+MONEY = (TILL, SPARE)
+
+
+def _money(eid: str) -> bool:
+    return eid in MONEY
 
 
 def _drawer_total(world: World) -> int:
-    total = int(world.get(TILL, "count") or 0)
-    if world.container(SPARE) == DRAWER:
-        total += int(world.get(SPARE, "count") or 0)
-    return total
+    """抽屉里看得见的现金：封着的那一叠数不到。"""
+    return stocktake(world, DRAWER, keep=_money).total
 
 
 def _shop_total(world: World) -> int:
-    return sum(int(world.get(eid, "count") or 0)
-               for eid in (TILL, SPARE) if _in_shop(world, eid))
+    """店里还剩下的现金：按物理位置算，封在纸箱里的也算在店里。"""
+    return stocktake(world, SHOP, include_sealed=True, keep=_money).total
 
 
 def _record_expected(world: World) -> int | None:

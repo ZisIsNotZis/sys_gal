@@ -16,6 +16,7 @@ R08 排程效果没有处理器时被悄悄吃掉（P3：排程无后果） ....
 R09 拿走别人的东西没有被在场者看见（或被告知给看不见的人） .. test_r09_taking_from_another_persons_drawer_is_seen_only_by_those_who_can_see
 R10 "结局不唯一"的门槛被退回到 2（N 条路径 N-1 个结局照样过门） test_r10_the_uniqueness_threshold_scales_with_the_number_of_paths
 R11 过夜之后时钟读成 32:00、日期不翻（一局过了夜，读的人看不出来） test_r11_the_clock_rolls_the_date_when_the_world_crosses_midnight
+R12 盘点由剧本写死（改世界里的数，读数不跟着变） ......... test_r12_the_stocktake_reading_is_computed_from_the_seed_count
 
 E01 引擎里出现故事名词（盲区） ............................ tests.test_m1_core.PrimitiveTests.test_engine_does_not_know_story_names；scripts/v5_lint.py check_engine_is_story_blind
 E02 状态键没有渲染（改了状态但看不见） .................... tests.test_m1_core.SeedTests.test_every_state_key_has_a_renderer；scripts/v5_lint.py
@@ -63,10 +64,12 @@ from engine.events import EventLog  # noqa: E402
 from engine.rules import drain, submit  # noqa: E402
 from engine.seed import load  # noqa: E402
 from library import EFFECTS  # noqa: E402
+from library.stocktake import stocktake  # noqa: E402
 from stories.common import context_view  # noqa: E402
 from stories.s2_borrow_note import agent_run  # noqa: E402
 from stories.s2_borrow_note.agent_run import play_agents, write_artifacts  # noqa: E402
 from stories.s2_borrow_note.scenario import DEFAULT_SEED, play  # noqa: E402
+from stories.s4_night_shop import scenario as night_shop  # noqa: E402
 
 
 def _one_agent_run(order=("jia",), turns_each=1, decisions=None):
@@ -336,6 +339,35 @@ class HistoricalFailureLedger(unittest.TestCase):
         view = transcript(play("e"), "《夜市》路 e")
         self.assertIn("2026-04-03 08:00", view)
         self.assertNotIn("32:00", view)
+
+
+    def test_r12_the_stocktake_reading_is_computed_from_the_seed_count(self):
+        """【R12 盘点由剧本写死】抽屉里的数必须由 count 算出：改一个数，读数就跟着改；把数写死在剧本里，它不被读。
+
+        观察自：M5「一日两个世界」的 ws3 反向控制——《夜班》四条路都打印“收银抽屉里的数 / 记录上的数 / 店里现金总数”，此前没有任何测试证明它们不是从 scenario.py 里抄下来的；改 /tmp 副本里的 count 就能推翻。
+        没有它时：把某个数字直接写进剧本，四条路照样会绿，“盘点”退回成作者的断言，不再是世界里数得出来的事实。
+        """
+        text = night_shop.DEFAULT_SEED.read_text(encoding="utf-8")
+        self.assertIn("count: 800", text)
+
+        def drawer_reading(seed_text: str) -> int:
+            with tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "seed.yml"
+                path.write_text(seed_text, encoding="utf-8")
+                world = load(path)
+                return stocktake(world, "drawer", keep=lambda eid: eid in night_shop.MONEY).total
+
+        # 读数跟着 count 走：800 → 650 → 0。
+        self.assertEqual(drawer_reading(text), 800)
+        self.assertEqual(drawer_reading(text.replace("count: 800", "count: 650", 1)), 650)
+        self.assertEqual(drawer_reading(text.replace("count: 800", "count: 0", 1)), 0)
+
+        # 结局摘要里的数也由同一个 count 算出，不是抄来的。
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "seed.yml"
+            path.write_text(text.replace("count: 800", "count: 0", 1), encoding="utf-8")
+            run = night_shop.play("b", seed_path=path)
+        self.assertEqual(run.summary["收银抽屉里的数"], 0)
 
 
 if __name__ == "__main__":

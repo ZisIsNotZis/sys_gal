@@ -6,5 +6,6 @@ from . import concepts as _concepts  # noqa: F401  规则在导入时登记
 from . import institutions as _institutions  # noqa: F401
 from . import renderers as _renderers  # noqa: F401  状态渲染在导入时登记
 from .institutions import EFFECTS  # noqa: F401
+from .stocktake import Reading, stocktake  # noqa: F401
 
-__all__ = ["EFFECTS"]
+__all__ = ["EFFECTS", "Reading", "stocktake"]
