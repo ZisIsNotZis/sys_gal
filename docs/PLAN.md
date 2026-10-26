@@ -66,9 +66,10 @@ M5 (milestone)
 | --- | --- | --- | --- | --- |
 | 1 | `second-story-agent` | `stories/agent_loop.py` — one model loop both stories share (《借条》's shell is thin, 《末班车》's shell points the same loop at the second seed); S1's ending composed from facts instead of looked up by script label; S1's stale script traces regenerated | `python3 -m unittest tests.test_m5_second_story_agent -v` (6 tests) + the v5 gate | taken and landed 2026-10-23; zero provider spend (MockProvider) |
 | 2 | `s1-model-report` | 《末班车》's real-model report, riding M5's ladder as the person placed it (2026-10-23) | a fresh `stories/s1_last_bus/runs/agent-*` directory with `decided_by: agent` on every turn, read against `AGENTS.md` | open — **needs a provider authorization**, which this advance did not have |
-| 2 | `s4-night-shop` / `s5-wedding` | the two same-scale worlds: shift handover, lock & key, quantity, crowd/rumour/record authority | two traces read through a whole day; `anti_cheat` still 3+ stories | taken 2026-10-23, two workers in parallel worktrees (merge held by this layer); zero provider spend |
+| 2 | `s4-night-shop` / `s5-wedding` | the two same-scale worlds: shift handover, lock & key, quantity, crowd/rumour/record authority | two traces read through a whole day; `anti_cheat` still 3+ stories | landed 2026-10-23: `514310e` + `c2526ac`, merged by this layer at `0be9bd5` (one conflict in `library/concepts.py`, union of both vocabularies); gate 187 tests / lint / `anti_cheat` 5 stories. 人工通读抓到的两处见 `same-scale` 行。 |
+| 3 | `same-scale` | 两支世界的量与密度对得上：《夜班》的夜不再是空的，《婚礼》的量追到同一尺度 | 班内相邻时间戳间隔 ≤ 120 分钟；两支故事每条路的动作数比值在 ±30% 内；两支各四个结局仍互不相同 | taken 2026-10-23; evidence: 夜班 38 动作/42 事件、22:45→次日 07:40 无事件；婚礼 15 动作/19 事件 |
 | 3 | `stocktake` | the claim "盘点由数量算出而非剧本决定" as a test: change a count in the world, the stocktake reading changes; write a number in the script and it is not read | a negative control that goes red when the stocktake stops summing | open |
-| 3 | `comparison` | the same-scale comparison report of the two worlds | report + the two traces it cites | open |
+| 3 | `comparison` | the same-scale comparison report of the two worlds | report + the two traces it cites; entry condition: `same-scale` green | open |
 | — | `pack` | traces in git and a `check` that fails on a run directory without `context.md` | `python3 scripts/pack_trajectory.py check` | open |
 
 ## Decided
@@ -88,6 +89,8 @@ M5 (milestone)
 
 - **物权 的第二次声明** — the concept returns when a second story needs a held-by relation that containment cannot carry.
 - **半天这一段现在是真的，但它是空的** — 那一局真的从 18:30 走到次日 08:00（`9dc76d4`），轨迹上现在印着次日的日期（`engine/surface.py:clock_label` 给日期就翻日，`R11` 钉住）。名字与工件从此对得上，剩下的是密度：过夜那 14 小时里没有人做任何事，'全天故事'还差 S5/S7 那一档的密集动作。这不是判据违反，是 M5 的两个世界要填的东西。
+- **门绿不等于判据达成：轨迹要读** — 我自己的，2026-10-23，代价是两支新世界第一次合入时差点被当成交付。《婚礼》的路 a 与路 c 的轨迹停在 09:22 与 09:18（"散场时间：还没到散场"），而当时的测试只验了路 b 走完一天；`anti_cheat`、`lint`、187 支测试全绿。修法两件一起：路 a/c 的脚本末尾补上"世界自己走到下一个排程点"那个空动作（四路现在都读到 `2026-05-20 22:00`），测试改成四条路逐条断言走到散场——拿掉一条路的空动作它会红（已用反向控制验过：钟停在 562 分钟）。预防：一个包回来时，先读一份轨迹的头尾再跑门，门的读数放在读完之后。
+- **派出去的活要在指定的工作树里落地** — 我自己的，2026-10-23：《婚礼》的 worker 把提交落在了 `master` 而不是它的 worktree 分支，《夜班》的落在自己分支上。两者都没丢东西（我在主树里合并），但下一次派包时要求接收方先自证 `git rev-parse --show-toplevel` 与 `git status -sb` 再动手，免得两个写者在一个索引上相遇。
 - **反作弊第三检不改：一条路写两遍就是一条路** — root, 2026-10-23, assent: agreed. 原话的意思：脚本能用就继续用；脚本跟实际合理性打架时改脚本，别为了脚本去硬凑不自然的东西；也别为它花太多时间——每支实验自己的判据在它自己的目标上，目标达成就好，没达成就修那个目标。落成两条：`anti_cheat` 的 `len(distinct) < len(variants)` 留着（它实现的就是 `anti_cheat.py:6` 那句写下来的判据）；一支故事想要两条路殊途同归，就把它写成一条路，不写假差异去喂指标。四支故事（S1/S2/S3 + 新两支）按这条走。
 - **两件便宜的加固，登记但不花时间** — root 2026-10-23 说过不为脚本花太多时间，所以这两件只排队、不现在做，谁下次碰那个文件谁顺手做掉：(1) `R10` 只钉住了"退回 2"，改成常数 `3` 它仍绿（判别式是那句 `"3 条路径只走到 2 个结局"`），补一个 4 条路 / 3 个结局的用例就钉死；(2) `engine/seed.py` 的 `ALLOWED` 只约束 `places`/`people`/`objects` 三段，`schedule.effect` 没有形状约束，多写的 `actor`/`say`/`do` 会被静默吃下——把 `schedule` 与每种 `EFFECTS` 的允许字段也写进 `ALLOWED`，「排程里替角色做决定」就从检测变成加载期报错（`check_destiny` 留作第二道防线）。
 - **`契约失效时请勿喂猫/.scratch/` 在 HEAD 上是 tracked** — 里面是 v3 时代的 `active-work.md` 与 `v3-harness-followups/issues/01–08.md`。本目录的规矩把 `.scratch/` 留给"跑出来的缺陷"（见 Decided），所以它不是违规；但它是旧缓冲的名字，谁下次碰它就把还有价值的搬走、没价值的带理由退役。不是 v5 的事，也不是 M4 的事。
