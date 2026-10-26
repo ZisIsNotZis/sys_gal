@@ -1,0 +1,181 @@
+story: s4-night-shop
+# 22:00 的便利店夜班。交接班时抽屉里少了两百，摄像头坏了，现场只有三张嘴。
+date: 2026-04-02
+start_clock: 1320
+
+places:
+  - id: outside
+    name: 店外
+    prose: 门口的台阶上有一层夜里的潮气，卷帘门半开着
+  - id: shop
+    parent: outside
+    name: 店内
+    prose: 两排货架，冰柜嗡嗡响，收银台正对着门
+    state: {door: open}
+  - id: back_room
+    parent: shop
+    name: 后仓
+    prose: 纸箱堆到膝盖高，墙角立着几箱没拆的水
+  - id: office
+    parent: shop
+    name: 办公室
+    prose: 一张折叠桌，桌上一部座机，墙上贴着一张旧排班表
+    state: {door: closed, locked: true}
+
+people:
+  - id: outgoing
+    parent: shop
+    name: 交班者
+    prose: 外套搭在手臂上，围裙还没解
+    identity: 你在这家店值夜班两年。今晚你把班交出去，抽屉里的数你报了，剩下的归下一班。
+    knows: [drawer, till_cash, box, spare_cash, handover_record, receipt, shift_sheet,
+            delivery_note, phone, office_key, pen, stock, delivery, shop, back_room,
+            office, outside, incoming, manager, customer, driver, patrol]
+    state: {hand: out_hand}
+    believes:
+      - {about: handover_record, says: 抽屉里收银一千，是白班交下来的数}
+      - {about: box, says: 后仓那几个纸箱是空的，等送货员顺手带走}
+
+  - id: incoming
+    parent: shop
+    name: 接班者
+    prose: 背着包，先看了一眼收银台
+    identity: 你今晚来接这个夜班。你只认数出来的东西，账上写的要跟抽屉对得上。
+    knows: [drawer, till_cash, box, spare_cash, handover_record, receipt, shift_sheet,
+            delivery_note, phone, office_key, pen, stock, delivery, shop, back_room,
+            office, outside, outgoing, manager, customer, driver, patrol]
+    state: {hand: in_hand}
+    believes:
+      - {about: handover_record, says: 上一班报的是一千}
+
+  - id: manager
+    name: 店长
+    prose: 只在电话那端，声音比人先到
+    identity: 你今晚不在店里，电话是你唯一知道这边发生了什么的通道；你看不见柜台，只听得见人说话。
+    knows: [handover_record, drawer, till_cash, shop, office, outside, incoming, outgoing,
+            driver, customer]
+    believes:
+      - {about: handover_record, says: 夜班的账要一笔一笔对清楚}
+
+  - id: customer
+    parent: outside
+    name: 顾客
+    prose: 手里攥着一张零钱，进门先看冰柜
+    identity: 你只是半夜来买一瓶水。店里两个人的脸色比冰柜还冷，你不想多待。
+    knows: [shop, outside, shift_sheet, receipt, incoming, outgoing]
+
+  - id: driver
+    parent: outside
+    name: 送货员
+    prose: 蓝色工装，肩上扛着一箱水
+    identity: 你半夜来送货，顺路把空箱子带走。单子上写的是月结，你不碰现金。
+    knows: [delivery, delivery_note, box, stock, shop, back_room, outside, incoming, outgoing]
+    believes:
+      - {about: delivery_note, says: 这一车货是月结，店里不用给现钱}
+
+  - id: patrol
+    parent: outside
+    name: 巡夜
+    prose: 反光背心，手电筒夹在腋下
+    identity: 你这一夜在这条街上走几圈，店门开着就过，不开就记一笔。
+    knows: [shop, outside, office, back_room]
+    state: {institution: outside}
+
+objects:
+  - id: drawer
+    parent: shop
+    name: 收银抽屉
+    prose: 拉出来一半的铁抽屉，里面压着一张旧小票
+
+  - id: till_cash
+    parent: drawer
+    name: 收银款
+    prose: 一叠零钱和几张整钞
+    state: {count: 800, portable: true}
+
+  - id: box
+    parent: back_room
+    name: 纸箱
+    prose: 一个拆过口的纸箱，口子用胶带随手粘了回去
+    state: {closed: true, portable: true}
+
+  - id: spare_cash
+    parent: box
+    name: 备用金
+    prose: 一叠对折过两次的现钞
+    state: {count: 200, portable: true}
+
+  - id: handover_record
+    parent: shop
+    name: 交接记录
+    prose: 一本压在柜台玻璃下面的横格本
+    state:
+      marks:
+        - {text: "白班 14:00 交班：抽屉收银 1000。", ink: printed, style: printed}
+      accepts: [ink, graphite]
+      records: true
+      portable: false
+
+  - id: receipt
+    parent: shop
+    name: 小票
+    prose: 一叠从机器里出来的小票，最上面一张还翘着边
+    state:
+      marks:
+        - {text: "22:04 销售 1 笔 合计 3 元。本店留底。", ink: printed, style: printed}
+      accepts: [ink]
+      portable: true
+
+  - id: shift_sheet
+    parent: shop
+    name: 班表
+    prose: 一张塑封过的排班表，边角被胶带粘在货架上
+    state:
+      marks:
+        - {text: "夜班 22:00–08:00：交班者、接班者；白班 08:00 接班。", ink: printed, style: printed}
+      accepts: [ink]
+      portable: false
+
+  - id: delivery_note
+    parent: driver
+    name: 送货单
+    prose: 一联复写过的送货单，纸边有折痕
+    state:
+      marks:
+        - {text: "送货十二箱；本店月结，不收现金。", ink: printed, style: printed}
+      accepts: [ink, graphite]
+      portable: true
+
+  - id: phone
+    parent: office
+    name: 电话
+    prose: 一部座机，听筒线卷成一团
+    state: {line_to: manager}
+
+  - id: office_key
+    parent: outgoing
+    name: 办公室钥匙
+    prose: 一把黄铜色的钥匙，柄上缠着一圈胶布
+    state: {opens: office, portable: true}
+
+  - id: pen
+    parent: outgoing
+    name: 笔
+    prose: 一支按一下才出芯的圆珠笔
+    state: {implement: ink, portable: true}
+
+  - id: stock
+    parent: back_room
+    name: 库存
+    prose: 墙角立着的几箱水，外面裹着塑料膜
+    state: {count: 24}
+
+  - id: delivery
+    parent: driver
+    name: 送货
+    prose: 一箱刚搬下来的水，箱底沾着灰
+    state: {count: 12, portable: true}
+
+schedule:
+  # 白班到点开门：不是谁的决定，是这一班的制度。
+  - {at: 1920, effect: {kind: open, place: office}}

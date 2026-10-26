@@ -95,6 +95,16 @@ def post(world: World, effect: dict[str, Any]) -> list[dict[str, Any]]:
     return atoms
 
 
+def remind(world: World, effect: dict[str, Any]) -> list[dict[str, Any]]:
+    """到点提醒许下承诺的人：承诺进入了时间表，提醒只说那件事本身。"""
+    who = effect["who"]
+    about = effect.get("about", "")
+    place = effect.get("place")
+    where = world.entities[place].name if place in world.entities else ""
+    text = f"{where}这边到了你说定的那一刻" if where else "到了你说定的那一刻"
+    return [{"op": "remember", "e": who, "at": world.clock, "v": f"{text}：{about}"}]
+
+
 EFFECTS = {"arrive": arrive, "stops": stops,
            "close": close, "open": reopen,
-           "pickup_due": pickup_due, "post": post}
+           "pickup_due": pickup_due, "post": post, "remind": remind}
