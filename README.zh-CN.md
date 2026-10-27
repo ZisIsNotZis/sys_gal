@@ -1,37 +1,114 @@
-# Sys Gal 🧠
+[English](README.md) | **简体中文**
 
-[English](README.md) | 简体中文
+<img src="assets/logo.svg" alt="sys_gal" width="132">
 
-这是一个中文叙事模拟实验工作区，研究自主角色、信息边界和可复现故事轨迹。
+# sys_gal
 
-## 从哪里开始
+### 一个可复现的中文叙事模拟实验室
 
-- [AGENTS.md](AGENTS.md) — 仓库级 agent 工作政策；运行 provider 实验前先读。
-- [`契约失效时请勿喂猫/`](契约失效时请勿喂猫/) — 主要实验，先读它自己的 [README](契约失效时请勿喂猫/README.md)。
-- [CONTEXT.md](CONTEXT.md) — 共享领域词汇表。
+**`sys_gal` 用显式规则跑小小的中文小说世界——每个角色只依据自己真正感知到的东西行动，每一局都留下一条能逐字节重放、能被人查账的轨迹。**
 
-## 文档按层分家
+这是个研究原型，不是游戏。它盯的是一句话说不清的那个问题：一个角色这一步动了，是世界推着他走，还是作者在安排？只有三件事都成立，这个问题才可查——世界是客观的（事情由规则发生，不由旁白发生），信息边界是真的（角色只知道送到他手上的东西），证据是完整的（轨迹连同每次决定背后的上下文都留了下来）。
 
-一个事实只有一个家。编号越小越靠目的。
+## 快速开始
 
-| 层 | 文件 | 放什么 |
+```bash
+git clone git@github.com:ZisIsNotZis/sys_gal.git
+cd sys_gal/契约失效时请勿喂猫/v5
+pip install pyyaml                    # 唯一的运行依赖
+python3 -m stories.s1_last_bus.run a  # 《末班车》第 a 条路：脚本演员、确定、不花钱
+sed -n '1,40p' stories/s1_last_bus/runs/a.md
+```
+
+这一局会在 `stories/s1_last_bus/runs/` 里留下四件材料：轨迹（`a.md`）、每个动作前这个人手里的全部上下文（`a.context.md`）、事件账（`a.events.json`）与摘要（`a.json`）。另外还有 `b`、`c` 两条路。
+
+换成真模型跑同一支故事，走任何 OpenAI 兼容的接口即可（默认连本机的 LiteLLM 网关 `localhost:4000`，凭证读 `LITELLM_BASE_URL` / `LITELLM_MASTER_KEY`）：
+
+```bash
+python3 -m stories.s1_last_bus.agent_run github_copilot/gpt-6-luna 4   # 模型、每角色回合数
+```
+
+真模型的每一局都要花钱，且一局一个不可覆盖的目录：`runs/agent-<时间>-<pid>-<标签>/`。
+
+## 现在能做成的
+
+- **五支故事，五个世界**——《末班车》22:30 的末班车，三站路，一个人把包留在了座位上；《借条》一张借条上多了一笔，三个人里有一个认得出那笔字；《夜市》摊子被收了，押金条在几个人手里传过；《夜班》交接班时抽屉里少了两百；《婚礼》一整天的婚宴，签到本上多了一个谁都不认识的名字。阶梯上还声明了两支，暂时没有种子。
+- **十条原始项、二十六个动词**——实体、状态、包含、时间、事件、感知投递、心智、意愿、规则、命名解析；日常动词（`read`、`write`、`copy`、`sign`、`retell`、`shift` 等）由它们组合出来，住在 `library/` 里，不在引擎里。
+- **感知，而不是全知**——每回合角色只拿到自己那一份：眼前有什么（纸上只写“上面有字”，看不到内容）、他实际收到的最近几条、他相信的事（可能错、可能旧）。"读到字"是另一个动词，内容只进他自己一个人的记忆。
+- **逐字节重放**——每个状态变化都走规则的原子效果；每件事记下应用后的世界摘要；重放事件账必须逐事件对上摘要，否则抛 `ReplayMismatch`。
+- **检查点与续跑**——检查点把世界状态与到这刻为止的账本前缀冻在一起；续跑接着旧的事件编号往下走，而过午夜的时钟真的翻日（18:30 走到次日 08:00，读出来是第二天，不是 `32:00`）。
+- **证据一件不丢**——一局的四件原始材料打包成一件 `runs/<story>-<路>.jsonl.zst`，内容不裁剪。这棵树上的实测：100 件原始件、3,172,688 字节，打成 25 件工件共 227,547 字节（13.9 倍），每个字节都能 `unpack` 回来。
+- **会变红的门**——结构检查、反作弊三检、打包核对与单元测试套件，外加一份编号台账（`R01…`）：每一条踩过的坑都留着一个测试，坑再出现它就变红。
+
+## 架构
+
+三层，以及让三层老实的那条规矩：一份事实只住在一层里。
+
+| 层 | 拥有什么 | 不许有什么 |
 | --- | --- | --- |
-| — | [docs/0_STAGING.md](docs/0_STAGING.md) | 值得留、还没落到它该在的层里的事实 |
-| — | [docs/0_ROADMAP.md](docs/0_ROADMAP.md) | 里程碑、工作包、决定了什么、还开着什么 |
-| 1 | [docs/1_PROBLEM.md](docs/1_PROBLEM.md) | 为什么值得做 |
-| 2 | [docs/2_GOAL.md](docs/2_GOAL.md) | 成功长什么样，以及不宣称什么 |
-| 3 | [docs/3_REQUIREMENT.md](docs/3_REQUIREMENT.md) | 虚构契约、五层分离、确定性、可重放 |
-| 4 | [docs/4_USECASE.md](docs/4_USECASE.md) | 谁把什么做完；四条流程；七支故事作为价值切片 |
-| 5 | [docs/5_PRODUCT.md](docs/5_PRODUCT.md) | 故事阶梯、覆盖矩阵、已知结论、拒绝过的分支 |
-| 6 | [docs/6_ARCHITECTURE.md](docs/6_ARCHITECTURE.md) | 引擎/库/种子的边界与质量属性 |
-| 7 | [docs/7_INTERFACE.md](docs/7_INTERFACE.md) | 种子形状、动词表、运行工件、命令行、错误语义 |
-| 8 | [docs/8_DETAIL.md](docs/8_DETAIL.md) | 原始项、时钟、检查点、盘点、反作弊的内部 |
-| 9 | [docs/9_IMPLEMENTATION.md](docs/9_IMPLEMENTATION.md) | 环境、门、测试策略、跑与打包的纪律 |
+| `engine/` | 十条原始项、种子解析、排程与回合、重放、检查点、心智看到的那一面 | 任何故事名词、任何具体动词、任何物性 |
+| `library/` | 可复用的常识：物性与规则、渲染、失败回执、制度、盘点、动词表 | 世界实例、剧情、故事名词 |
+| `stories/<story>/` | 一份 `seed.yml`（地点、卡司、知识、排程）、脚本演员、这支故事的验收与运行 | 逻辑、引擎真相、对准具名角色的祈使句 |
 
-带拒绝分支的决定在 [docs/adr/](docs/adr/)。
+种子只是数据：多写一个字段就是加载期 `ValueError`，不许静默丢弃。角色的意愿由规则表来裁，裁出的原子效果落进事件账；事件账是"发生了什么"的唯一账本。渲染把账本投影成每个心智自己的一面，打包器把账本与各面视图一起带走成一件工件。
 
-## 状态与未来
+```text
+契约失效时请勿喂猫/
+├── v1/ v2/ v3/       历史版本线（归档）
+├── v4/               参考线（归档）：harness、world、长跑纪律
+└── v5/               主线
+    ├── engine/       十条原始项、种子解析、规则、重放——不认识故事名词
+    ├── library/      物性与规则、渲染、失败回执、盘点、制度
+    ├── stories/      每支故事一份 seed.yml + 脚本演员 + 验收，及其 runs/
+    ├── scripts/      v5_lint.py、anti_cheat.py、pack_trajectory.py
+    ├── runs/         打包后的轨迹（入 git）
+    └── tests/        引擎、门禁、重放、故事验收、历史失败台账
+```
 
-这是持续演进的研究原型，不是完成的游戏，也不宣称具有人类级故事质量。当前活动线是 v5；目标是一个可复现的叙事实验室，能检查角色行为、知识、失败与因果连续性。进度见 [docs/0_ROADMAP.md](docs/0_ROADMAP.md)。
+只有 `v5` 描述当前行为，`v4` 及更早留着是为了溯源。设计记录按层分家：里程碑与还开着的问题在 [`docs/0_ROADMAP.md`](docs/0_ROADMAP.md)，一层一个问题在 [`docs/1_PROBLEM.md`](docs/1_PROBLEM.md) 到 [`docs/9_IMPLEMENTATION.md`](docs/9_IMPLEMENTATION.md)，带拒绝分支的决定在 [`docs/adr/`](docs/adr/)，共同的词汇在 [`CONTEXT.md`](CONTEXT.md)。
 
-欢迎 Issue 和 PR。代理可以协助调查与文档工作；维护者负责审核与合并。
+## 怎么开发
+
+所有命令都在 `契约失效时请勿喂猫/v5/` 下跑。需要：Python 3、`PyYAML`，打包另需 `zstd`。
+
+```bash
+python3 -m unittest discover -s tests -p 'test_*.py'   # 测试套件
+python3 scripts/v5_lint.py --strict                    # 种子形状、状态渲染、孤儿概念、引擎盲区
+python3 scripts/anti_cheat.py --verbose                # 无祈使句、无天意事件、结局不唯一
+python3 scripts/pack_trajectory.py check               # 每件工件都打包过、没过期、还原一致
+python3 scripts/v5_lint.py                             # 报告模式，孤儿概念只算警告
+```
+
+这里没有 CI：上面四道门由人自己跑，任何会被引用的读数之前都必须先跑；门红了是阻断，不是"先跑跑看"的理由。测试策略与运行纪律在 [`docs/9_IMPLEMENTATION.md`](docs/9_IMPLEMENTATION.md)，跑完之后的读法在 [`AGENTS.md`](AGENTS.md)。
+
+第一次来，从这个顺序读：[`AGENTS.md`](AGENTS.md)（工作政策）、[`契约失效时请勿喂猫/README.md`](契约失效时请勿喂猫/README.md)（这个实验）、[`CONTEXT.md`](CONTEXT.md)（词汇表）。
+
+## 怎么参与
+
+见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。一句话版本：跑四道门；引擎里不许出现故事名词；一份事实只有一个家；一个说法要么能被推翻，要么别说。
+
+## 路线
+
+**已交付**
+
+| 里程碑（用它证明了什么来叫） | 树里的证据 |
+| --- | --- |
+| 规格冻结——引擎、概念库、故事阶梯与路线在写第一行代码之前就写成了文档 | `docs/1…9`、`docs/adr/` |
+| 玩具世界——《末班车》从种子跑到收场，重放逐字节一致 | `stories/s1_last_bus/`、`tests/test_m1_*` |
+| 库的第一次通用——《借条》换到第二个世界，两条路都走得到，而 `engine/` 里找不到任何故事名词 | `stories/s2_borrow_note/`、`tests/test_m2_*` |
+| 演员试点——把脚本演员换成真模型，看这一局是被世界推动还是被作者安排 | `stories/agent_loop.py`、`v5/runs/` 里的真模型轨迹、`tests/test_m3_*` |
+| 半日一局——《夜市》从 18:30 走过午夜，押金条每一种归属都真的走得到 | `stories/s3_night_market/`、`tests/test_m4_*` |
+| 一日两个世界——《夜班》与《婚礼》用同一套概念各跑完一整天，量到的尺度也对得上 | `stories/s4_night_shop/`、`stories/s5_wedding/`、`tests/test_m5_*` |
+
+**计划中**
+
+| 里程碑 | 它必须证明什么 |
+| --- | --- |
+| 《快递站》——三天，一个丢件，每个人都改过一次口供 | 跨日状态、记忆失真、责任与信任；唯一没改过的是记录 |
+| 《契约失效时请勿喂猫》——十二天的校园长弧 | 2013 年那份通知书上的签字由人自己说出来，绝不由台账剧透；一整条阶梯的概念落在同一支长故事上 |
+
+方向是这样一个实验室：一条长故事弧可以复现——你能重跑它、中途停下、接着跑、把轨迹交给别人，而对方能逐条核对你说过的每一个判断。还开着的难题（十人同场的婚礼里真正撑住戏的只有两个人、夜班的店长每条路只有一句话、一个制度动作有两个动词实现）都老实写在 [`docs/0_ROADMAP.md`](docs/0_ROADMAP.md) 里。
+
+## 许可
+
+GNU Affero 通用公共许可证第 3 版（AGPL-3.0-only）。版权所有 © ZisIsNotZis。见 [`LICENSE`](LICENSE)。
