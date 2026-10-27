@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 40" role="img" aria-label="sys_gal">
+  <title>sys_gal</title>
+  <style>
+    svg { color: #111; }
+    @media (prefers-color-scheme: dark) { svg { color: #f2f2f2; } }
+    .stroke { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .tear { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .word { fill: currentColor; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 19px; font-weight: 600; letter-spacing: 0.5px; }
+  </style>
+  <!-- the contract: a page with cat ears and a tear down the middle -->
+  <path class="stroke" d="M11 9 H29 A2 2 0 0 1 31 11 V33 A2 2 0 0 1 29 35 H11 A2 2 0 0 1 9 33 V11 A2 2 0 0 1 11 9 Z"/>
+  <path class="stroke" d="M11 9 L12 2 L18 7.6"/>
+  <path class="stroke" d="M22 7.6 L28 2 L29 9"/>
+  <path class="tear" d="M20 12.5 L16.5 17.5 L22 21.5 L17 26.5 L21 31.5"/>
+  <text class="word" x="42" y="27.5">sys_gal</text>
+</svg>
