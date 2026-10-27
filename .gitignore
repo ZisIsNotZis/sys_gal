@@ -31,3 +31,8 @@ worktrees/
 !.env.example
 *.log
 /契约失效时请勿喂猫/v4/logs/drive-boot.txt
+
+# Python environments and packaging metadata
+.venv/
+venv/
+*.egg-info/
