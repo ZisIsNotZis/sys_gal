@@ -1,13 +1,10 @@
 # 《契约失效时请勿喂猫》— 中文叙事模拟实验
 
-本目录是 `sys_gal` 的主要实验：一个**可复现的中文叙事模拟**。一个客观世界
-（校园），一组严肃自主的角色，一个绑定主角的非常规 System；角色按各自动机
-与合法获知的信息行动，世界按显式规则运行。目标是产出可检查、可回放的轨迹，
-而不是成品游戏。
+本目录是 `sys_gal` 的主要实验：一个**可复现的中文叙事模拟**。一个客观世界（校园），一组严肃自主的角色，一个绑定主角的非常规 System；角色按各自动机与合法获知的信息行动，世界按显式规则运行。目标是产出可检查、可回放的轨迹，而不是成品游戏。
 
-12 个模拟日（2026-03-16 → 03-27）的剧情弧、目标结局与逐日检查点方法见
-[`v4/docs/V4-STORY-MILESTONES.md`](v4/docs/V4-STORY-MILESTONES.md)。
-**项目交付里程碑与工作包见 [`ROADMAP.md`](ROADMAP.md)**（面向用户同步与验收）。
+12 个模拟日的剧情弧、目标结局与逐日检查点方法见 `v4/docs/V4-STORY-MILESTONES.md`（参考线，不是现行要求）。
+
+**进度、 milestones 与工作包不在本文件**：它们在仓库根的 [`../docs/0_ROADMAP.md`](../docs/0_ROADMAP.md)。
 
 ## 版本线
 
@@ -16,83 +13,34 @@
 | v1 | 历史归档 | 首个世界与角色草案；其文档不作为现行要求。 |
 | v2 | 历史归档 | 引入引擎契约与领域词汇；同上。 |
 | v3 | 历史归档 | story-neutral 引擎 + 世界包适配 + 大型运行；被 v4 取代。 |
-| v4 | 参考线（归档） | 中文沉浸接口、两层演员制、半天检查点、剧情锚点检查器；v5 的 M2 通过后不再演进，保留用于溯源与运行纪律的出处。 |
-| **v5** | **主线** | 重写世界模型：十条原始项 + 库 + 种子；短故事阶梯 S1–S7；M3 已有模型试点。见 `v5/README.md`。 |
+| v4 | 参考线（归档） | 中文沉浸接口、两层演员制、半天检查点、剧情锚点检查器；保留用于溯源与运行纪律的出处。 |
+| **v5** | **主线** | 重写世界模型：十条原始项 + 库 + 种子；短故事阶梯。见 `v5/README.md`。 |
 
-v5 是当前主线（进度见 `v5/docs/V5-ROADMAP.md`）；v4 已归档为参考，只在需要溯源运行纪律时读。v1–v3 历史归档，请勿据其判断当前行为。
+v1–v4 都不得据以判断当前行为；只有 v5 是主线（`../docs/adr/0002-v5-becomes-the-main-line.md`）。
 
 ## 目录结构
 
 ```
 契约失效时请勿喂猫/
-├── README.md                 # 本文件：概览与 SSOT 地图
-├── ROADMAP.md                # v4 线的历史计划（参考，不再演进）
+├── README.md                 # 本文件：概览
 ├── v1/ v2/ v3/               # 历史版本（归档）
-├── v4/                       # 参考线（归档）：docs/ harness/ world/ scripts/ runs/ checkpoints/ logs/
-├── v5/                       # 主线：docs/ engine/ library/ stories/ scripts/ tests/
+├── v4/                       # 参考线（归档）：docs/ harness/ world/ scripts/ runs/
+├── v5/                       # 主线：engine/ library/ stories/ scripts/ tests/ runs/
 └── ../AGENTS.md              # 运行后分析协议与预门（在仓库根；agent 必读）
 ```
 
-## SSOT 地图（每份事实只有一个家）
+## 每份事实的家（不在本文件里复述，只指过去）
 
 | 主题 | 权威文档 |
 | --- | --- |
-| 最终目标 / 设计原则 | `../docs/PRINCIPLE.md` |
+| 最终目标 / 设计原则 | `../docs/1_PROBLEM.md`、`../docs/3_REQUIREMENT.md` |
 | 领域词汇 | `../CONTEXT.md` |
-| v5 线的里程碑 / 故事阶梯 / 当前状态 | `v5/docs/V5-ROADMAP.md` |
-| v5 引擎的概念边界 | `v5/docs/V5-PRIMITIVES.md` |
-| v5 三层与按需具体化 / 谁做的决定 | `v5/docs/V5-LAYERS.md` |
-| v5 场景清单（短故事与长弧的覆盖证明） | `v5/docs/V5-SCENES.md` |
-| v5 首份模型试点报告 | `v5/docs/V5-M3-PILOT.md` |
-| v4 线的历史计划（参考） | `ROADMAP.md` |
-| 版本线决策记录 | `../docs/adr/`（0002 起以 v5 为主线） |
-| 运行后分析协议 / 预门 / 中断续跑方法 | `AGENTS.md` |
+| 里程碑 / 工作包 / 当前状态 | `../docs/0_ROADMAP.md` |
+| 故事阶梯 / 场景清单 / 覆盖矩阵 | `../docs/5_PRODUCT.md`、`../docs/4_USECASE.md` |
+| 引擎的概念边界与内部机制 | `../docs/8_DETAIL.md` |
+| 三层与按需具体化 / 谁做的决定 | `../docs/6_ARCHITECTURE.md` |
+| 种子形状、动词表、运行工件、命令行 | `../docs/7_INTERFACE.md` |
+| 运行后分析协议 / 预门 / 中断续跑方法 | `../AGENTS.md`、`../docs/9_IMPLEMENTATION.md` |
+| 版本线决策记录 | `../docs/adr/` |
 | v4 产品与交互物理（设计真理） | `v4/docs/V4-DESIGN.md` |
-| v4 引擎时序 / 并发 / 冻结语义 | `v4/docs/V4-ENGINE.md` |
-| v4 agent 接口（prompt / 工具 / 响应 / KB 行） | `v4/docs/V4-AGENT-INTERFACE.md` |
-| v4 演员分层 / NPC 班底 / 世界加厚 | `v4/docs/V4-CAST.md` |
-| v4 剧情设计与逐日里程碑（剧情锚点） | `v4/docs/V4-STORY-MILESTONES.md` |
-| 世界事实（可机读） | `v4/world/manifest.yml` + `v4/world/{characters,documents,items,locations}/` |
-| 过程历史 / 证据 / 决定轨迹 | `.scratch/`（ticket；append，非事实文档） |
-
-`V4-GOSSIP-CHARACTER.md` 是被取代的旧草案，已移入 `v4/docs/archive/`。
-
-## 前置条件与检查（v4）
-
-运行 provider-backed 实验前，必须满足 `AGENTS.md` 的预门：历史失败回归全绿。
-需要本地 LiteLLM 代理（`OPENAI_BASE_URL=http://localhost:4000/v1`，
-`OPENAI_API_KEY` 为代理 master key）。故事模型默认 `github_copilot/gpt-6-luna`
-（`V3_PROVIDER_API=responses`）；备用 `zai/glm-4.7-flash`（chat）。
-
-```bash
-cd 契约失效时请勿喂猫/v4
-export OPENAI_MODEL=github_copilot/gpt-6-luna
-
-# 预门 1：历史失败 + 引擎/检查器回归（必须全绿）
-python3 -m unittest discover -s harness/tests -p 'test_*.py'
-
-# 预门 2：种子自洽（每个具名 token 都必须解析到实体/概念）
-python3 scripts/seed_lint.py --verbose
-
-# 无 provider 的确定性运行（跑到 world_stops）
-python3 -m harness.dry_run
-
-# 剧情锚点门：判定某个半天/整天的剧情里程碑
-python3 scripts/check_milestones.py runs/<artifact>.json --half d1-am
-
-# provider-backed 运行（唯一命名工件）与中断续跑
-python3 -m harness.real_run
-python3 -m harness.resume_run runs/<runid>.checkpoint.json
-```
-
-半天推进器（跑到边界 → 存档检查点 → 过门 → 续跑）见
-`v4/scripts/half_day_flow.sh` 与整条弧线的 `v4/scripts/drive_arc.sh`。
-
-## 硬性规则
-
-- **每次 provider 运行后必须人工检查轨迹**并以具体行为与因果问题报告，不得
-  用计数或 clean/failed 标签代替结论。见 `AGENTS.md`。
-- 引擎必须保持 story-neutral：无剧情阶段、好感度、路线、主角特权。
-- 一次运行只从种子与规则运行；作者可在两次重跑之间修订种子，不得静默修补
-  正在跑的一局。
-- 每份工件唯一命名，绝不覆盖。
+| v4 线的历史计划（参考） | 已退役；过程账本是 git 历史 |
